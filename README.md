@@ -9,18 +9,17 @@ AcoustSee is an open-source project to transform visual environments into intuit
 Imagine a blind person walking through a park, hearing a tree on their left as a low hum, a path ahead as a clear tone, and a bench on their right as a sharp ping. AcoustSee aims to make this a reality, starting with static images, moving to live video, and now expanding to mobile apps.
 ## Status
 **Work in Progress**  
-- **Milestone 1 (Complete)**: Static image to basic HRTF-like audio (left/right panning).  
+- **Milestone 1 (Complete)**: Static image to basic HRTF-like audio (left/right panning). Successfully generates WAV output in GitHub Codespaces using `main_codespaces.py`.  
 - **Milestone 2 (Current)**: Adding true HRTF, Hilbert curve mapping, and video processing.  
 - **Milestone 3 (Planned)**: Android app integration (draft in progress) and real-time optimization.
 
 ## Project Structure
 acoustsee/
-├── src/              # Core code (video processing, audio generation)
-├── tests/            # Unit tests
-├── docs/             # Technical docs (math, algorithms)
-├── examples/         # Demo images, videos, and audio outputs
-└── README.md         # Project overview
-
+├── src/ # Core code (video processing, audio generation)
+├── tests/ # Unit tests
+├── docs/ # Technical docs (math, algorithms)
+├── examples/ # Demo images, videos, and audio outputs
+└── README.md # Project overview
 
 ## Getting started with our first commit wich is a MVP Python Code
 
@@ -33,36 +32,83 @@ A simple proof-of-concept: process a static image with Gabor filters and output 
    git clone https://github.com/MAMware/acoustsee.git
    cd acoustsee
    ```
+**Set Up Virtual Environment**:
+  ```bash
+  python3 -m venv acoustsee_env
+  source acoustsee_env/bin/activate
+  ```
 **Install Dependencies**:
 	```bash
-	pip install opencv-python numpy scipy pyo
+	pip install opencv-python-headless numpy scipy pyo
 	```
 **Run the MVP**:
+For local machines
 	```bash
 	python src/main.py
 	```
+For headless environments (e.g., Codespaces):
+  ```bash
+  python src/main_codespaces.py
+  ```
+
 Try it with examples/wall_left.jpg to hear a basic left/right audio split!
 
-## Troubleshooting 
-
+## Troubleshooting
 - **Windows `pyo` Installation**:
-```bash
-ERROR: Failed building wheel for pyo
-Failed to build pyo
-```
   - Use Python 3.11 or 3.12 for best compatibility.
   - Install Microsoft Visual C++ Build Tools: [Download](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
   - Ensure PortAudio is installed and in your PATH.
-
-Why the Error?
-The pyo library relies on C extensions, which require a proper build environment (e.g., compilers) to compile on Windows. The error likely stems from one of these issues:
-Missing C Compiler: pyo needs a C compiler (like Microsoft Visual C++ Build Tools) to build its extensions.
-
-Python 3.13 Compatibility: pyo might not yet fully support Python 3.13, as it’s a new release (October 2024).
-
-Missing Dependencies: pyo requires libraries like PortAudio or liblo, which might not be installed.
-
-Windows-Specific Build Issue: The mapleleafrag.mid file copy error could indicate a misconfigured build path or missing MIDI-related dependencies.
-
-(Note: too many errors on windows got me bored, ill move to linux via codespaces)
+  - Example:
+    ```bash
+    python3.11 -m venv acoustsee_env
+    .\acoustsee_env\Scripts\activate
+    pip install opencv-python numpy scipy pyo
+    ```
+- **Linux `pyo` Installation (e.g., GitHub Codespaces)**:
+  - Use a virtual environment:
+    ```bash
+    python3 -m venv acoustsee_env
+    source acoustsee_env/bin/activate
+    ```
+  - Install development libraries:
+    ```bash
+    sudo apt update
+    sudo apt install -y libportaudio2 portaudio19-dev libportmidi-dev liblo-dev libsndfile1-dev libasound-dev libjack-dev build-essential libgl1-mesa-glx
+    ```
+  - Install Python dependencies:
+    ```bash
+    pip install opencv-python-headless numpy scipy pyo
+    ```
+  - If `opencv-python` fails with `libGL.so.1` errors, use `opencv-python-headless`:
+    ```bash
+    pip uninstall -y opencv-python
+    pip install opencv-python-headless
+    ```
+  - If Python 3.12 fails, try Python 3.11:
+    ```bash
+    sudo apt install -y python3.11 python3.11-venv
+    python3.11 -m venv acoustsee_env
+    source acoustsee_env/bin/activate
+    pip install opencv-python-headless numpy scipy pyo
+    ```
+- **Headless Environments (e.g., Codespaces)**:
+  - Codespaces lacks audio output. Use `main_codespaces.py` to generate WAV files:
+    ```bash
+    python src/main_codespaces.py
+    ```
+  - Download `examples/output.wav` via the Codespaces file explorer and play locally.
+  - Example WAV test:
+    ```python
+    from pyo import *
+    s = Server(audio="offline").boot()
+    s.recordOptions(dur=2, filename="test.wav")
+    sine = Sine(freq=440, mul=0.5).out()
+    s.start()
+    s.stop()
+    ```
+- **WxPython/Tkinter Warning**:
+  - `pyo` may warn about missing WxPython, falling back to Tkinter. This is harmless for WAV generation.
+- **SetuptoolsDeprecationWarning**:
+  - A warning about `License :: OSI Approved :: GNU General Public License` is harmless (it’s a `pyo` packaging issue).
+- **Still stuck?** Open an issue on GitHub or ping us on [X](https://x.com/MAMware).
 
