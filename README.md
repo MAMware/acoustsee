@@ -11,14 +11,19 @@ Imagine a blind person walking through a park, hearing a pole on their left as a
 ## Status
 **Work in Progress**  
 - **Milestone 1 (Complete)**: Static image to basic HRTF-like audio (left/right panning). Successfully generates WAV output in GitHub Codespaces using `main_codespaces.py`.  
-- **Milestone 2 (Current)**: Adding true HRTF, Hilbert curve mapping, and live video processing.  
-- **Milestone 3 (Planned)**: Android/iOS app developtment (draft in progress) and real-time optimizations.
+- **Milestone 2 (Current)**: Live video processing with Hilbert curve mapping via web.
+- **Milestone 3 (Planned)**: Adding true HRTF, Android/iOS app developtment (draft in progress) and real-time optimizations.
 
 ## Project Structure
 acoustsee/
-├── src/ # Python core code (video processing, audio generation)
-├── web/ # html,css and javascript for web
-├── tests/ # Unit tests (missing)
-├── docs/ # Technical docs (math, algorithms)
-├── examples/ # Demo images, videos, and audio outputs
-└── README.md # Project overview
+`├──` src/ # Python core code (video processing, audio generation)
+`├──` web/ # html,css and javascript for web
+`├──` tests/ # Unit tests (missing)
+`├──` docs/ # Technical docs (math, algorithms)
+`├──` examples/ # Demo images, videos, and audio outputs
+`└──` README.md # Project overview
+
+# Current HRTF Implementation
+Uses Web Audio API’s `PannerNode` with `panningModel = 'HRTF'`. A 200 Hz crossover separates low (non-spatialized) and high (spatialized) frequencies.
+- **Crossover**: Modify in `web/hrtf/hrtf_panner.js`.
+- **Calibration**: Set azimuth offset via settings (upper half tap).
