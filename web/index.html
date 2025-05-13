@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcoustSee - Spatial Audio Navigation, a photon to phonon transpile</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="upperHalf" role="button" aria-label="Adjust settings" tabindex="0">
+        <p>Tap upper half for settings</p>
+    </div>
+    <div id="lowerHalf" role="button" aria-label="Start or stop navigation audio" tabindex="0">
+        <p>Tap lower half to start/stop navigation</p>
+    </div>
+    <video id="videoFeed" autoplay style="display: none;"></video>
+    <canvas id="imageCanvas" width="128" height="96" style="display: none;"></canvas>
+    <script src="hrtf/hrtf_container.js"></script>
+    <script src="hrtf/hrtf_panner.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
