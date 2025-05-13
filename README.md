@@ -17,14 +17,21 @@ AcoustSee aims to make this a reality, we started a prof of concept with static 
 - **Milestone 3 (Planned)**: Adding true HRTF, Android/iOS app developtment (draft in progress) and optimizations are meant to be added in order to achieve real-time performance.
 
 ## Project Structure
+
 ```
 acoustsee/
-- ├── src/: Contains the core Python code for image processing and audio generation.
-- ├── web/: Contains HTML, CSS, and JavaScript files for the web interface.
-- ├── tests/: Contains unit tests (currently missing).
-- ├── docs/: Contains technical documentation, including math and algorithms.
-- ├── examples/: Contains demo images, videos, and audio outputs from the python version.
-- └── README.md: This file, providing an overview of the project.
+├── src/                       # Contains the Python PoC code for still image processing and audio generation.
+├── web/                       # Contains HTML, CSS, and JavaScript files for the web interface
+│   ├── hrtf/
+│   │   ├── hrtf_container.js  # HRTF loading and interpolation
+│   │   ├── hrtf_panner.js     # HRTF panner implementation
+│   ├── index.html
+│   ├── main.js
+│   ├── styles.css
+├── examples/                  # Still image and output container for the Python PoC
+├── tests/                     # Should contain unit tests (currently missing)
+├── docs/                      # Contains technical documentation
+└── README.md                  # This file, providing an overview of the project
 ```
 
 ## Current HRTF Implementation
