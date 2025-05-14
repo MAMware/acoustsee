@@ -1,3 +1,6 @@
+let audioContext;
+let isAudioInitialized = false;
+let hrtfPanner, noisePanner, harmonicPanner;
 const upperHalf = document.getElementById('upperHalf');
 const lowerHalf = document.getElementById('lowerHalf');
 const videoFeed = document.getElementById('videoFeed');
@@ -5,15 +8,30 @@ const canvas = document.getElementById('imageCanvas');
 const ctx = canvas.getContext('2d');
 let stream = null;
 let audioInterval = null;
-let hrtfPanner, noisePanner;
 const settings = {
     updateInterval: 500, // ms (250, 500, 1000)
     brownNoise: false,
-    brownNoiseAmplitude: 0.01
+    brownNoiseAmplitude: 0.01,
+    settingIndex: 0 // Track current setting (FPS, noise, amplitude)
 };
 
+function initializeAudio() {
+    if (isAudioInitialized) return;
+    try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        isAudioInitialized = true;
+        new SpeechSynthesisUtterance('Audio initialized').speak();
+    } catch (error) {
+        console.error('Audio Initialization Error:', error);
+        new SpeechSynthesisUtterance('Error initializing audio').speak();
+    }
+}
+
 function mapFrameToHilbert(frameData, width, height) {
-    const gridSize = 8; // 8x8 grid
+    const gridSize = 8;
     const intensities = [];
     let xSum = 0, ySum = 0, brightCount = 0;
     for (let i = 0; i < 64; i++) {
@@ -41,40 +59,40 @@ function mapFrameToHilbert(frameData, width, height) {
 }
 
 function playAudio(frameData, width, height) {
-    const audioCtx = new AudioContext();
-    const oscillator = audioCtx.createOscillator();
+    if (!isAudioInitialized) return;
+    const oscillator = audioContext.createOscillator();
     oscillator.type = 'sine';
     const { frequency, amplitude, azimuth, elevation, harmonic } = mapFrameToHilbert(frameData, width, height);
-    oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-    const harmonicOsc = audioCtx.createOscillator();
-    harmonicOsc.type = 'sine';
-    harmonicOsc.frequency.setValueAtTime(frequency * 2, audioCtx.currentTime);
-    const harmonicGain = audioCtx.createGain();
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+    const harmonicOsc = audioContext.createOscillator();
+    harmonicOsc.type = 'sawtooth'; // Inspired by script.js.txt
+    harmonicOsc.frequency.setValueAtTime(frequency * 2, audioContext.currentTime);
+    const harmonicGain = audioContext.createGain();
     harmonicGain.gain.value = harmonic;
     harmonicOsc.connect(harmonicGain);
     let noise, noiseGain;
     if (settings.brownNoise) {
-        const noiseBuffer = audioCtx.createBuffer(1, 2 * audioCtx.sampleRate, audioCtx.sampleRate);
+        const noiseBuffer = audioContext.createBuffer(1, 2 * audioContext.sampleRate, audioContext.sampleRate);
         const noiseData = noiseBuffer.getChannelData(0);
         for (let i = 0; i < noiseData.length; i++) {
             noiseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / noiseData.length, 2);
         }
-        noise = audioCtx.createBufferSource();
+        noise = audioContext.createBufferSource();
         noise.buffer = noiseBuffer;
         noise.loop = true;
-        noiseGain = audioCtx.createGain();
+        noiseGain = audioContext.createGain();
         noiseGain.gain.value = settings.brownNoiseAmplitude;
         noise.connect(noiseGain);
     }
-    hrtfPanner = new HRTFPanner(audioCtx, oscillator, new HRTFContainer());
-    const harmonicPanner = new HRTFPanner(audioCtx, harmonicGain, new HRTFContainer());
-    noisePanner = settings.brownNoise ? new HRTFPanner(audioCtx, noiseGain, new HRTFContainer()) : null;
+    hrtfPanner = new HRTFPanner(audioContext, oscillator, new HRTFContainer());
+    harmonicPanner = new HRTFPanner(audioContext, harmonicGain, new HRTFContainer());
+    noisePanner = settings.brownNoise ? new HRTFPanner(audioContext, noiseGain, new HRTFContainer()) : null;
     hrtfPanner.update(azimuth, elevation);
     harmonicPanner.update(azimuth, elevation);
     if (noisePanner) noisePanner.update(0, 0);
-    hrtfPanner.connect(audioCtx.destination);
-    harmonicPanner.connect(audioCtx.destination);
-    if (noisePanner) noisePanner.connect(audioCtx.destination);
+    hrtfPanner.connect(audioContext.destination);
+    harmonicPanner.connect(audioContext.destination);
+    if (noisePanner) noisePanner.connect(audioContext.destination);
     if (noise) noise.start();
     oscillator.start();
     harmonicOsc.start();
@@ -82,23 +100,53 @@ function playAudio(frameData, width, height) {
         if (noise) noise.stop();
         oscillator.stop();
         harmonicOsc.stop();
-        audioCtx.close();
     }, settings.updateInterval);
 }
 
 function updateSettings() {
-    const fpsChoice = prompt('Enter FPS (4 for 250ms, 2 for 500ms, 1 for 1000ms):', 2);
-    const intervals = { '4': 250, '2': 500, '1': 1000 };
-    settings.updateInterval = intervals[fpsChoice] || 500;
-    const noiseChoice = prompt('Brown noise on? (yes/no):', 'no');
-    settings.brownNoise = noiseChoice.toLowerCase() === 'yes';
-    if (settings.brownNoise) {
-        settings.brownNoiseAmplitude = parseFloat(prompt('Brown noise amplitude (0-0.02):', 0.01)) || 0.01;
-    }
-    new SpeechSynthesisUtterance(`Settings updated. FPS: ${1000 / settings.updateInterval}, Brown noise: ${settings.brownNoise ? 'on' : 'off'}`).speak();
+    navigator.vibrate(200); // Haptic feedback
+    settings.settingIndex = (settings.settingIndex + 1) % 3;
+    const prompts = [
+        `FPS setting. Tap again to select: 4 for fast, 2 for medium, 1 for slow. Current: ${1000 / settings.updateInterval}`,
+        `Brown noise setting. Tap again to toggle. Current: ${settings.brownNoise ? 'on' : 'off'}`,
+        `Brown noise volume. Tap again to adjust: 0 to 0.02. Current: ${settings.brownNoiseAmplitude}`
+    ];
+    new SpeechSynthesisUtterance(prompts[settings.settingIndex]).speak();
+    let tapCount = 0;
+    const handleTap = () => {
+        tapCount++;
+        if (settings.settingIndex === 0) { // FPS
+            const intervals = [250, 500, 1000];
+            settings.updateInterval = intervals[tapCount % 3] || 500;
+            new SpeechSynthesisUtterance(`FPS set to ${1000 / settings.updateInterval}`).speak();
+        } else if (settings.settingIndex === 1) { // Brown noise toggle
+            settings.brownNoise = !settings.brownNoise;
+            new SpeechSynthesisUtterance(`Brown noise ${settings.brownNoise ? 'on' : 'off'}`).speak();
+        } else { // Brown noise amplitude
+            settings.brownNoiseAmplitude = (tapCount % 3) * 0.01;
+            new SpeechSynthesisUtterance(`Brown noise volume set to ${settings.brownNoiseAmplitude}`).speak();
+        }
+        navigator.vibrate(100);
+        if (audioInterval) {
+            clearInterval(audioInterval);
+            audioInterval = setInterval(() => {
+                ctx.drawImage(videoFeed, 0, 0, 128, 96);
+                const imageData = ctx.getImageData(0, 0, 128, 96);
+                const grayData = new Uint8ClampedArray(128 * 96);
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    grayData[i / 4] = (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
+                }
+                playAudio(grayData, 128, 96);
+            }, settings.updateInterval);
+        }
+    };
+    upperHalf.addEventListener('click', handleTap, { once: true });
 }
 
 lowerHalf.addEventListener('click', async () => {
+    navigator.vibrate(200);
+    initializeAudio();
+    if (!isAudioInitialized) return;
     if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
@@ -114,7 +162,6 @@ lowerHalf.addEventListener('click', async () => {
         canvas.width = 128;
         canvas.height = 96;
         new SpeechSynthesisUtterance('Navigation started').speak();
-        updateSettings(); // Initial settings on start
         audioInterval = setInterval(() => {
             ctx.drawImage(videoFeed, 0, 0, 128, 96);
             const imageData = ctx.getImageData(0, 0, 128, 96);
