@@ -4,9 +4,8 @@ function HRTFContainer() {
         console.log('HRIR loading not implemented yet');
         onLoad();
     };
-
+// Return dummy HRIR for now
     this.interpolateHRIR = function(azimuth, elevation) {
-        // Return dummy HRIR for now
         return [new Float32Array(200), new Float32Array(200)];
     };
 }
