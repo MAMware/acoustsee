@@ -1,6 +1,7 @@
 let audioContext;
 let isAudioInitialized = false;
 let hrtfPanner, noisePanner, harmonicPanner;
+let prevIntensity = 0; // Track for approach detection
 const upperHalf = document.getElementById('upperHalf');
 const lowerHalf = document.getElementById('lowerHalf');
 const videoFeed = document.getElementById('videoFeed');
@@ -12,7 +13,7 @@ const settings = {
     updateInterval: 500, // ms (250, 500, 1000)
     brownNoise: false,
     brownNoiseAmplitude: 0.01,
-    settingIndex: 0 // Track current setting (FPS, noise, amplitude)
+    settingIndex: 0 // 0: FPS, 1: Brown Noise, 2: Amplitude
 };
 
 function initializeAudio() {
@@ -31,6 +32,7 @@ function initializeAudio() {
         }
     } catch (error) {
         console.error('Audio Initialization Error:', error);
+        isAudioInitialized = true; // Proceed despite speech error
         if (window.speechSynthesis) {
             const utterance = new SpeechSynthesisUtterance('Error initializing audio');
             window.speechSynthesis.speak(utterance);
@@ -59,23 +61,28 @@ function mapFrameToHilbert(frameData, width, height) {
     const avgIntensity = intensities.reduce((sum, val) => sum + val, 0) / 64;
     const azimuth = brightCount ? (xSum / brightCount - width / 2) * 160 / width : 0;
     const elevation = brightCount ? (height / 2 - ySum / brightCount) * 60 / height : 0;
+    const waveform = avgIntensity < 100 ? 'sine' : avgIntensity < 200 ? 'sawtooth' : 'square';
+    const isApproaching = avgIntensity > prevIntensity + 10; // Simple approach detection
+    prevIntensity = avgIntensity;
     return {
         frequency: 300 + (avgIntensity / 255) * 500,
         amplitude: 0.1 + (avgIntensity / 255) * 0.4,
         azimuth,
         elevation,
-        harmonic: avgIntensity < 100 ? 0.1 : 0
+        harmonic: avgIntensity < 100 ? 0.1 : 0,
+        waveform,
+        isApproaching
     };
 }
 
 function playAudio(frameData, width, height) {
     if (!isAudioInitialized) return;
     const oscillator = audioContext.createOscillator();
-    oscillator.type = 'sine';
-    const { frequency, amplitude, azimuth, elevation, harmonic } = mapFrameToHilbert(frameData, width, height);
+    const { frequency, amplitude, azimuth, elevation, harmonic, waveform, isApproaching } = mapFrameToHilbert(frameData, width, height);
+    oscillator.type = waveform;
     oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
     const harmonicOsc = audioContext.createOscillator();
-    harmonicOsc.type = 'sawtooth'; // Inspired by script.js.txt
+    harmonicOsc.type = 'sawtooth';
     harmonicOsc.frequency.setValueAtTime(frequency * 2, audioContext.currentTime);
     const harmonicGain = audioContext.createGain();
     harmonicGain.gain.value = harmonic;
@@ -113,47 +120,71 @@ function playAudio(frameData, width, height) {
     }, settings.updateInterval);
 }
 
-function updateSettings() {
-    navigator.vibrate(200); // Haptic feedback
-    settings.settingIndex = (settings.settingIndex + 1) % 3;
-    const prompts = [
-        `FPS setting. Tap again to select: 4 for fast, 2 for medium, 1 for slow. Current: ${1000 / settings.updateInterval}`,
-        `Brown noise setting. Tap again to toggle. Current: ${settings.brownNoise ? 'on' : 'off'}`,
-        `Brown noise volume. Tap again to adjust: 0 to 0.02. Current: ${settings.brownNoiseAmplitude}`
-    ];
-    new SpeechSynthesisUtterance(prompts[settings.settingIndex]).speak();
-    let tapCount = 0;
-    const handleTap = () => {
-        tapCount++;
-        if (settings.settingIndex === 0) { // FPS
-            const intervals = [250, 500, 1000];
-            settings.updateInterval = intervals[tapCount % 3] || 500;
-            new SpeechSynthesisUtterance(`FPS set to ${1000 / settings.updateInterval}`).speak();
-        } else if (settings.settingIndex === 1) { // Brown noise toggle
-            settings.brownNoise = !settings.brownNoise;
-            new SpeechSynthesisUtterance(`Brown noise ${settings.brownNoise ? 'on' : 'off'}`).speak();
-        } else { // Brown noise amplitude
-            settings.brownNoiseAmplitude = (tapCount % 3) * 0.01;
-            new SpeechSynthesisUtterance(`Brown noise volume set to ${settings.brownNoiseAmplitude}`).speak();
+function updateSettings(event) {
+    navigator.vibrate(200);
+    const touch = event.changedTouches ? event.changedTouches[0] : null;
+    if (!touch) return;
+    const startX = touch.clientX;
+    let swipeDirection = null;
+    const handleTouchEnd = (endEvent) => {
+        const endTouch = endEvent.changedTouches[0];
+        const deltaX = endTouch.clientX - startX;
+        if (Math.abs(deltaX) > 50) { // Minimum swipe distance
+            swipeDirection = deltaX > 0 ? 'right' : 'left';
         }
-        navigator.vibrate(100);
-        if (audioInterval) {
-            clearInterval(audioInterval);
-            audioInterval = setInterval(() => {
-                ctx.drawImage(videoFeed, 0, 0, 128, 96);
-                const imageData = ctx.getImageData(0, 0, 128, 96);
-                const grayData = new Uint8ClampedArray(128 * 96);
-                for (let i = 0; i < imageData.data.length; i += 4) {
-                    grayData[i / 4] = (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
+        if (swipeDirection === 'right') {
+            settings.settingIndex = (settings.settingIndex + 1) % 3;
+            const prompts = [
+                `FPS setting. Swipe left to select: 4 for fast, 2 for medium, 1 for slow. Current: ${1000 / settings.updateInterval}`,
+                `Brown noise setting. Swipe left to toggle. Current: ${settings.brownNoise ? 'on' : 'off'}`,
+                `Brown noise volume. Swipe left to adjust: 0 to 0.02. Current: ${settings.brownNoiseAmplitude}`
+            ];
+            if (window.speechSynthesis) {
+                const utterance = new SpeechSynthesisUtterance(prompts[settings.settingIndex]);
+                window.speechSynthesis.speak(utterance);
+            }
+        } else if (swipeDirection === 'left') {
+            if (settings.settingIndex === 0) { // FPS
+                const intervals = [250, 500, 1000];
+                settings.updateInterval = intervals[(intervals.indexOf(settings.updateInterval) + 1) % 3] || 500;
+                if (window.speechSynthesis) {
+                    const utterance = new SpeechSynthesisUtterance(`FPS set to ${1000 / settings.updateInterval}`);
+                    window.speechSynthesis.speak(utterance);
                 }
-                playAudio(grayData, 128, 96);
-            }, settings.updateInterval);
+            } else if (settings.settingIndex === 1) { // Brown noise toggle
+                settings.brownNoise = !settings.brownNoise;
+                if (window.speechSynthesis) {
+                    const utterance = new SpeechSynthesisUtterance(`Brown noise ${settings.brownNoise ? 'on' : 'off'}`);
+                    window.speechSynthesis.speak(utterance);
+                }
+            } else { // Brown noise amplitude
+                settings.brownNoiseAmplitude = Math.min(0.02, settings.brownNoiseAmplitude + 0.01) || 0;
+                if (window.speechSynthesis) {
+                    const utterance = new SpeechSynthesisUtterance(`Brown noise volume set to ${settings.brownNoiseAmplitude}`);
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+            navigator.vibrate(100);
+            if (audioInterval) {
+                clearInterval(audioInterval);
+                audioInterval = setInterval(() => {
+                    ctx.drawImage(videoFeed, 0, 0, 128, 96);
+                    const imageData = ctx.getImageData(0, 0, 128, 96);
+                    const grayData = new Uint8ClampedArray(128 * 96);
+                    for (let i = 0; i < imageData.data.length; i += 4) {
+                        grayData[i / 4] = (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
+                    }
+                    playAudio(grayData, 128, 96);
+                }, settings.updateInterval);
+            }
         }
+        upperHalf.removeEventListener('touchend', handleTouchEnd);
     };
-    upperHalf.addEventListener('click', handleTap, { once: true });
+    upperHalf.addEventListener('touchend', handleTouchEnd, { once: true });
 }
 
-lowerHalf.addEventListener('click', async () => {
+lowerHalf.addEventListener('touchstart', async (event) => {
+    event.preventDefault(); // Prevent scrolling
     navigator.vibrate(200);
     initializeAudio();
     if (!isAudioInitialized) return;
@@ -162,7 +193,10 @@ lowerHalf.addEventListener('click', async () => {
         stream = null;
         videoFeed.style.display = 'none';
         clearInterval(audioInterval);
-        new SpeechSynthesisUtterance('Navigation stopped').speak();
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Navigation stopped');
+            window.speechSynthesis.speak(utterance);
+        }
         return;
     }
     try {
@@ -171,7 +205,10 @@ lowerHalf.addEventListener('click', async () => {
         videoFeed.style.display = 'block';
         canvas.width = 128;
         canvas.height = 96;
-        new SpeechSynthesisUtterance('Navigation started').speak();
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Navigation started');
+            window.speechSynthesis.speak(utterance);
+        }
         audioInterval = setInterval(() => {
             ctx.drawImage(videoFeed, 0, 0, 128, 96);
             const imageData = ctx.getImageData(0, 0, 128, 96);
@@ -183,8 +220,11 @@ lowerHalf.addEventListener('click', async () => {
         }, settings.updateInterval);
     } catch (err) {
         console.error('Camera access failed:', err);
-        new SpeechSynthesisUtterance('Failed to access camera').speak();
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Failed to access camera');
+            window.speechSynthesis.speak(utterance);
+        }
     }
 });
 
-upperHalf.addEventListener('click', updateSettings);
+upperHalf.addEventListener('touchstart', updateSettings);
