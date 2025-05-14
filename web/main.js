@@ -23,10 +23,20 @@ function initializeAudio() {
             audioContext.resume();
         }
         isAudioInitialized = true;
-        new SpeechSynthesisUtterance('Audio initialized').speak();
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Audio initialized');
+            window.speechSynthesis.speak(utterance);
+        } else {
+            console.warn('Web Speech API not supported');
+        }
     } catch (error) {
         console.error('Audio Initialization Error:', error);
-        new SpeechSynthesisUtterance('Error initializing audio').speak();
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Error initializing audio');
+            window.speechSynthesis.speak(utterance);
+        } else {
+            console.warn('Web Speech API not supported');
+        }
     }
 }
 
