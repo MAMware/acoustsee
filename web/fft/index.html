@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AcoustSee - Webcam FFT Audio</title>
+  <title>Webcam FFT Audio</title>
   <style>
     canvas { 
       border: 1px solid black; 
@@ -203,7 +203,8 @@
 
         let energy = 0;
         if (fft) {
-          fft.forward(input, output);
+          fft.realTransform(output, input);
+          console.log('FFT processed');
           const lowFreqCount = Math.floor(fftSize / 10);
           for (let i = 0; i < lowFreqCount * 2; i += 2) {
             const real = output[i];
@@ -230,7 +231,7 @@
         requestAnimationFrame(processFrame);
       } catch (err) {
         console.error('Frame processing error: ' + err.message);
-        requestAnimationFrame(processFrame); // Continue despite error
+        requestAnimationFrame(processFrame);
       }
     }
 
