@@ -1,1 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Webcam FFT Audio</title>
+  <script src="https://cdn.jsdelivr.net/npm/fft.js@0.0.4/lib/fft.js"></script>
+</head>
+<body>
+  <video id="video" autoplay style="display: none;"></video>
+  <canvas id="canvas" width="320" height="240"></canvas>
+  <button onclick="startAudio()">Start Audio</button>
 
+  <script>
+    // Webcam setup
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let audioCtx;
+
+    async function setupWebcam() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      video.play();
+      processFrame();
+    }
+
+    // Audio setup
+    function startAudio() {
+      audioCtx = new AudioContext();
+      oscillator = audioCtx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+      oscillator.connect(audioCtx.destination);
+      oscillator.start();
+    }
+
+    // FFT setup
+    const width = canvas.width;
+    const height = canvas.height;
+    const fft = new FFT(width * height); // 1D FFT for simplicity, reshaped as 2D
+    let input = new Array(width * height).fill(0);
+    let output = new Array(width * height * 2).fill(0); // Complex output (real + imag)
+
+    function processFrame() {
+      // Draw frame to canvas
+      ctx.drawImage(video, 0, 0, width, height);
+      const imageData = ctx.getImageData(0, 0, width, height).data;
+
+      // Convert to grayscale and populate input array
+      for (let i = 0, j = 0; i < imageData.length; i += 4, j++) {
+        const r = imageData[i];
+        const g = imageData[i + 1];
+        const b = imageData[i + 2];
+        input[j] = 0.299 * r + 0.587 * g + 0.114 * b; // Luminance
+      }
+
+      // Perform FFT (simplified 1D for demo; ideally use 2D)
+      fft.forward(input, output);
+
+      // Analyze frequency components
+      let energy = 0;
+      const lowFreqCount = Math.floor(width * height / 10); // Low-frequency band
+      for (let i = 0; i < lowFreqCount * 2; i += 2) {
+        const real = output[i];
+        const imag = output[i + 1];
+        energy += Math.sqrt(real * real + imag * imag); // Magnitude
+      }
+      energy /= lowFreqCount;
+
+      // Map to audio (frequency between 100 Hz and 800 Hz)
+      if (audioCtx) {
+        const freq = 100 + (energy / 255) * 700; // Normalize energy
+        oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      }
+
+      // Continue processing
+      requestAnimationFrame(processFrame);
+    }
+
+    // Start webcam
+    setupWebcam();
+  </script>
+</body>
+</html>
