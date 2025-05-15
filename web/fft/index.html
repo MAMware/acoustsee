@@ -22,6 +22,7 @@
       overflow-y: auto; 
       font-family: monospace; 
       font-size: 14px; 
+      display: block;
     }
     button { 
       padding: 10px 20px; 
@@ -32,14 +33,15 @@
     button:disabled {
       cursor: not-allowed; 
       opacity: 0.5;
-      pointer-events: none; /* Prevent clicks on mobile */
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <video id="video" autoplay width="320" height="240" style="display: none;"></video>
+  <video id="video" autoplay width="320" height="240" style="display: none;" playsinline></video>
   <canvas id="canvas" width="320" height="240"></canvas>
   <button onclick="toggleAudio()" disabled>Start Audio</button>
+  <button onclick="toggleLog()">Toggle Log</button>
   <p id="error"></p>
   <div id="log"></div>
 
@@ -50,7 +52,7 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const errorDisplay = document.getElementById('error');
-    const audioButton = document.querySelector('button');
+    const audioButton = document.querySelector('button[onclick="toggleAudio()"]');
     const logDisplay = document.getElementById('log');
     let audioCtx = null;
     let oscillator = null;
@@ -78,6 +80,12 @@
       addLog('ERROR: ' + message);
     };
 
+    // Toggle log visibility
+    function toggleLog() {
+      logDisplay.style.display = logDisplay.style.display === 'none' ? 'block' : 'none';
+      console.log('Log display: ' + logDisplay.style.display);
+    }
+
     // Webcam setup
     async function setupWebcam() {
       try {
@@ -93,6 +101,7 @@
         video.play();
         video.oncanplay = () => {
           console.log('Video ready, starting frame processing');
+          console.log(`Video resolution: ${video.videoWidth}x${video.videoHeight}`);
           errorDisplay.textContent = '';
           audioButton.disabled = false;
 
@@ -106,8 +115,8 @@
             console.log(`Adjusted canvas height to ${canvas.height} for aspect ratio ${videoAspect}`);
           }
 
-          // Initialize FFT with power-of-two size
-          const fftSize = 65536; // 2^16
+          // Initialize FFT
+          const fftSize = 65536;
           if (typeof FFT === 'undefined') {
             console.error('FFT.js library not loaded');
             errorDisplay.textContent = 'Error: FFT.js library failed to load.';
@@ -164,61 +173,65 @@
 
     // FFT setup
     const width = canvas.width;
-    let height = canvas.height; // Adjusted dynamically
-    const fftSize = 65536; // 2^16
+    let height = canvas.height;
+    const fftSize = 65536;
     let input = new Array(fftSize).fill(0);
     let output = new Array(fftSize * 2).fill(0);
 
     // Frame processing
     let lastFrameTime = 0;
     function processFrame(timestamp) {
-      if (timestamp - lastFrameTime < 33) {
-        requestAnimationFrame(processFrame);
-        return;
-      }
-      lastFrameTime = timestamp;
+      try {
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+          console.log(`Video not ready, readyState: ${video.readyState}`);
+          requestAnimationFrame(processFrame);
+          return;
+        }
 
-      if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-        console.log('Video not ready, skipping frame');
-        requestAnimationFrame(processFrame);
-        return;
-      }
+        height = canvas.height;
+        ctx.drawImage(video, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height).data;
 
-      height = canvas.height; // Update height
-      ctx.drawImage(video, 0, 0, width, height);
-      const imageData = ctx.getImageData(0, 0, width, height).data;
-
-      // Subsample image data to fit fftSize
-      const pixelCount = width * height;
-      for (let i = 0, j = 0; i < fftSize && j < imageData.length; i++, j += Math.floor(pixelCount / fftSize) * 4) {
-        const r = imageData[j];
-        const g = imageData[j + 1];
-        const b = imageData[j + 2];
-        input[i] = 0.299 * r + 0.587 * g + 0.114 * b; // Grayscale
-      }
-
-      if (fft) {
-        fft.forward(input, output);
+        // Subsample for FFT
+        const pixelCount = width * height;
+        for (let i = 0, j = 0; i < fftSize && j < imageData.length; i++, j += Math.floor(pixelCount / fftSize) * 4) {
+          const r = imageData[j];
+          const g = imageData[j + 1];
+          const b = imageData[j + 2];
+          input[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+        }
 
         let energy = 0;
-        const lowFreqCount = Math.floor(fftSize / 10);
-        for (let i = 0; i < lowFreqCount * 2; i += 2) {
-          const real = output[i];
-          const imag = output[i + 1];
-          energy += Math.sqrt(real * real + imag * imag);
-        }
-        energy /= lowFreqCount;
+        if (fft) {
+          fft.forward(input, output);
+          const lowFreqCount = Math.floor(fftSize / 10);
+          for (let i = 0; i < lowFreqCount * 2; i += 2) {
+            const real = output[i];
+            const imag = output[i + 1];
+            energy += Math.sqrt(real * real + imag * imag);
+          }
+          energy /= lowFreqCount;
 
-        if (audioCtx && oscillator) {
-          const freq = 100 + (energy / 255) * 700;
-          oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
-          console.log('Frequency: ' + freq.toFixed(2) + ' Hz');
+          if (audioCtx && oscillator) {
+            const freq = 100 + (energy / 255) * 700;
+            oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
+            console.log('Frequency: ' + freq.toFixed(2) + ' Hz');
+          }
+        } else {
+          console.log('Skipping FFT: library not loaded');
         }
-      } else {
-        console.log('Skipping FFT: library not loaded');
+
+        // Visualize FFT energy
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, 20, height);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, height - (energy / 255 * height), 20, 20);
+
+        requestAnimationFrame(processFrame);
+      } catch (err) {
+        console.error('Frame processing error: ' + err.message);
+        requestAnimationFrame(processFrame); // Continue despite error
       }
-
-      requestAnimationFrame(processFrame);
     }
 
     // Initialize webcam
