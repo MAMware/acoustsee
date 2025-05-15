@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AcoustSee - Webcam FFT Audio</title>
-  <script src="https://cdn.jsdelivr.net/npm/fft.js@0.0.4/lib/fft.js"></script>
+  <title>Webcam FFT Audio TRYOUT</title>
   <style>
     video, canvas { 
       border: 1px solid black; 
@@ -32,6 +31,7 @@
   <button onclick="startAudio()">Start Audio</button>
   <p id="error"></p>
 
+  <script src="fft.js"></script>
   <script>
     // Global variables
     const video = document.getElementById('video');
@@ -52,7 +52,7 @@
         video.play();
         video.oncanplay = () => {
           console.log('Video ready, starting frame processing');
-          errorDisplay.textContent = ''; // Clear errors
+          errorDisplay.textContent = '';
           processFrame();
         };
       } catch (err) {
@@ -85,7 +85,14 @@
     // FFT setup
     const width = canvas.width;
     const height = canvas.height;
-    const fft = new FFT(width * height);
+    let fft = null;
+    if (typeof FFT === 'undefined') {
+      console.error('FFT.js library not loaded');
+      errorDisplay.textContent = 'Error: FFT.js library failed to load. Please check the fft.js file.';
+    } else {
+      fft = new FFT(width * height);
+      console.log('FFT initialized');
+    }
     let input = new Array(width * height).fill(0);
     let output = new Array(width * height * 2).fill(0);
 
@@ -114,21 +121,25 @@
         input[j] = 0.299 * r + 0.587 * g + 0.114 * b; // Grayscale
       }
 
-      fft.forward(input, output);
+      if (fft) {
+        fft.forward(input, output);
 
-      let energy = 0;
-      const lowFreqCount = Math.floor(width * height / 10);
-      for (let i = 0; i < lowFreqCount * 2; i += 2) {
-        const real = output[i];
-        const imag = output[i + 1];
-        energy += Math.sqrt(real * real + imag * imag);
-      }
-      energy /= lowFreqCount;
+        let energy = 0;
+        const lowFreqCount = Math.floor(width * height / 10);
+        for (let i = 0; i < lowFreqCount * 2; i += 2) {
+          const real = output[i];
+          const imag = output[i + 1];
+          energy += Math.sqrt(real * real + imag * imag);
+        }
+        energy /= lowFreqCount;
 
-      if (audioCtx && oscillator) {
-        const freq = 100 + (energy / 255) * 700; // Map to 100-800 Hz
-        oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
-        console.log('Frequency:', freq.toFixed(2), 'Hz');
+        if (audioCtx && oscillator) {
+          const freq = 100 + (energy / 255) * 700; // Map to 100-800 Hz
+          oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
+          console.log('Frequency:', freq.toFixed(2), 'Hz');
+        }
+      } else {
+        console.log('Skipping FFT: library not loaded');
       }
 
       requestAnimationFrame(processFrame);
