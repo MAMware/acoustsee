@@ -15,21 +15,24 @@
     #log { 
       margin: 10px; 
       padding: 10px; 
-      background: #f0f0f0; 
+      background: #fff; 
+      border: 1px solid #ccc; 
+      min-height: 100px; 
       max-height: 200px; 
       overflow-y: auto; 
       font-family: monospace; 
-      font-size: 12px; 
+      font-size: 14px; 
     }
     button { 
       padding: 10px 20px; 
       font-size: 16px; 
-      cursor: pointer;
+      cursor: pointer; 
       margin: 10px;
     }
     button:disabled {
-      cursor: not-allowed;
+      cursor: not-allowed; 
       opacity: 0.5;
+      pointer-events: none; /* Prevent clicks on mobile */
     }
   </style>
 </head>
@@ -53,17 +56,21 @@
     let oscillator = null;
     let gainNode = null;
     let videoStream = null;
+    let fft = null;
     const logs = [];
 
     // On-screen logging
     function addLog(message) {
       logs.push(`${new Date().toLocaleTimeString()}: ${message}`);
-      if (logs.length > 20) logs.shift(); // Keep last 20 logs
+      if (logs.length > 20) logs.shift();
       logDisplay.textContent = logs.join('\n');
       logDisplay.scrollTop = logDisplay.scrollHeight;
     }
 
-    // Override console for mobile
+    // Initialize log
+    addLog('AcoustSee started');
+
+    // Override console
     console.log = function(message) {
       addLog(message);
     };
@@ -75,15 +82,21 @@
     async function setupWebcam() {
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 30 } }
+          video: { 
+            width: { ideal: 320 }, 
+            height: { ideal: 240 }, 
+            frameRate: { ideal: 30 }, 
+            facingMode: 'user' 
+          }
         });
         video.srcObject = videoStream;
         video.play();
         video.oncanplay = () => {
           console.log('Video ready, starting frame processing');
           errorDisplay.textContent = '';
-          audioButton.disabled = false; // Enable audio button
-          // Adjust canvas to match video aspect ratio
+          audioButton.disabled = false;
+
+          // Adjust canvas for aspect ratio
           const videoWidth = video.videoWidth;
           const videoHeight = video.videoHeight;
           const canvasAspect = canvas.width / canvas.height;
@@ -92,6 +105,22 @@
             canvas.height = canvas.width / videoAspect;
             console.log(`Adjusted canvas height to ${canvas.height} for aspect ratio ${videoAspect}`);
           }
+
+          // Initialize FFT with power-of-two size
+          const fftSize = 65536; // 2^16
+          if (typeof FFT === 'undefined') {
+            console.error('FFT.js library not loaded');
+            errorDisplay.textContent = 'Error: FFT.js library failed to load.';
+          } else {
+            try {
+              fft = new FFT(fftSize);
+              console.log('FFT initialized with size ' + fftSize);
+            } catch (err) {
+              console.error('FFT initialization failed: ' + err.message);
+              errorDisplay.textContent = 'Error: FFT initialization failed.';
+            }
+          }
+
           processFrame();
         };
       } catch (err) {
@@ -103,6 +132,10 @@
 
     // Audio toggle
     function toggleAudio() {
+      if (audioButton.disabled) {
+        console.log('Audio button disabled, ignoring click');
+        return;
+      }
       if (!audioCtx) {
         audioCtx = new AudioContext();
         if (audioCtx.state === 'suspended') {
@@ -110,7 +143,7 @@
         }
         oscillator = audioCtx.createOscillator();
         gainNode = audioCtx.createGain();
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // 10% volume
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
         oscillator.connect(gainNode).connect(audioCtx.destination);
@@ -131,22 +164,15 @@
 
     // FFT setup
     const width = canvas.width;
-    let height = canvas.height; // Will be adjusted dynamically
-    let fft = null;
-    if (typeof FFT === 'undefined') {
-      console.error('FFT.js library not loaded');
-      errorDisplay.textContent = 'Error: FFT.js library failed to load. Please check the fft.js file.';
-    } else {
-      fft = new FFT(width * height);
-      console.log('FFT initialized');
-    }
-    let input = new Array(width * height).fill(0);
-    let output = new Array(width * height * 2).fill(0);
+    let height = canvas.height; // Adjusted dynamically
+    const fftSize = 65536; // 2^16
+    let input = new Array(fftSize).fill(0);
+    let output = new Array(fftSize * 2).fill(0);
 
     // Frame processing
     let lastFrameTime = 0;
     function processFrame(timestamp) {
-      if (timestamp - lastFrameTime < 33) { // Limit to ~30 FPS
+      if (timestamp - lastFrameTime < 33) {
         requestAnimationFrame(processFrame);
         return;
       }
@@ -158,22 +184,24 @@
         return;
       }
 
-      // Draw video with preserved aspect ratio
+      height = canvas.height; // Update height
       ctx.drawImage(video, 0, 0, width, height);
       const imageData = ctx.getImageData(0, 0, width, height).data;
 
-      for (let i = 0, j = 0; i < imageData.length; i += 4, j++) {
-        const r = imageData[i];
-        const g = imageData[i + 1];
-        const b = imageData[i + 2];
-        input[j] = 0.299 * r + 0.587 * g + 0.114 * b; // Grayscale
+      // Subsample image data to fit fftSize
+      const pixelCount = width * height;
+      for (let i = 0, j = 0; i < fftSize && j < imageData.length; i++, j += Math.floor(pixelCount / fftSize) * 4) {
+        const r = imageData[j];
+        const g = imageData[j + 1];
+        const b = imageData[j + 2];
+        input[i] = 0.299 * r + 0.587 * g + 0.114 * b; // Grayscale
       }
 
       if (fft) {
         fft.forward(input, output);
 
         let energy = 0;
-        const lowFreqCount = Math.floor(width * height / 10);
+        const lowFreqCount = Math.floor(fftSize / 10);
         for (let i = 0; i < lowFreqCount * 2; i += 2) {
           const real = output[i];
           const imag = output[i + 1];
@@ -182,7 +210,7 @@
         energy /= lowFreqCount;
 
         if (audioCtx && oscillator) {
-          const freq = 100 + (energy / 255) * 700; // Map to 100-800 Hz
+          const freq = 100 + (energy / 255) * 700;
           oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
           console.log('Frequency: ' + freq.toFixed(2) + ' Hz');
         }
