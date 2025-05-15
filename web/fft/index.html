@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Webcam FFT Audio TRYOUT</title>
+  <title>AcoustSee - Webcam FFT Audio</title>
   <style>
-    video, canvas { 
+    canvas { 
       border: 1px solid black; 
       margin: 10px; 
       width: 320px; 
@@ -26,9 +26,9 @@
   </style>
 </head>
 <body>
-  <video id="video" autoplay></video>
+  <video id="video" autoplay width="320" height="240" style="display: none;"></video>
   <canvas id="canvas" width="320" height="240"></canvas>
-  <button onclick="startAudio()">Start Audio</button>
+  <button onclick="toggleAudio()">Start Audio</button>
   <p id="error"></p>
 
   <script src="fft.js"></script>
@@ -38,6 +38,7 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const errorDisplay = document.getElementById('error');
+    const audioButton = document.querySelector('button');
     let audioCtx = null;
     let oscillator = null;
     let gainNode = null;
@@ -61,9 +62,10 @@
       }
     }
 
-    // Audio setup
-    function startAudio() {
+    // Audio toggle
+    function toggleAudio() {
       if (!audioCtx) {
+        // Start audio
         audioCtx = new AudioContext();
         if (audioCtx.state === 'suspended') {
           audioCtx.resume().then(() => console.log('AudioContext resumed'));
@@ -75,10 +77,18 @@
         oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
         oscillator.connect(gainNode).connect(audioCtx.destination);
         oscillator.start();
-        document.querySelector('button').disabled = true;
+        audioButton.textContent = 'Stop Audio';
         console.log('Audio started');
       } else {
-        console.log('Audio already started');
+        // Stop audio
+        oscillator.stop();
+        oscillator.disconnect();
+        audioCtx.close();
+        audioCtx = null;
+        oscillator = null;
+        gainNode = null;
+        audioButton.textContent = 'Start Audio';
+        console.log('Audio stopped');
       }
     }
 
