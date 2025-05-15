@@ -1,4 +1,3 @@
-// web/fft/fft.js
 (function (global, factory) {
   if (typeof exports === 'object' && typeof module !== 'undefined') {
     module.exports = factory();
@@ -17,7 +16,6 @@
 
     this._csize = size << 1;
 
-    // NOTE: Use of `var` is intentional for old V8 versions
     var table = new Array(this.size * 2);
     for (var i = 0; i < table.length; i += 2) {
       var angle = Math.PI * i / this.size;
@@ -26,18 +24,12 @@
     }
     this.table = table;
 
-    // Find size's power of two
     var power = 0;
     for (var t = 1; this.size > t; t <<= 1)
       power++;
 
-    // Calculate initial step's width:
-    //   * If we are full radix-4 - it is 2x smaller
-    //   * If we are full radix-2 - it is 4x smaller
-    //   * If we are mixed - it is 2x smaller
     var shift = power % 2 === 0 ? power - 1 : power;
 
-    // Build a bit-reversal table for an octets
     this._width = shift;
     this._bitrev = new Array(1 << shift);
     for (var j = 0; j < this._bitrev.length; j++) {
@@ -123,15 +115,10 @@
     this._data = null;
   };
 
-  // radix-4 implementation
-  //
-  // NOTE: Uses of `var` are intentional for older V8 version that do not
-  // support `let` and `const` with for-loop block scopes
   FFT.prototype._transform4 = function _transform4() {
     var out = this._out;
     var size = this._csize;
 
-    // Initial step (permute and transform)
     var width = this._width;
     var step = 1 << width;
     var len = (size / step) << 1;
@@ -140,43 +127,33 @@
     var t;
     var bitrev = this._bitrev;
 
-    // Handle optimized cases:
-    //  * 4-tuple (single transform)
-    //  * 8-tuple (dual transforms)
     if (len === 4) {
       for (outOff = 0, t = 0; outOff < size; outOff += len, t++) {
         var off = bitrev[t];
         this._singleTransform2(outOff, off, step);
       }
     } else {
-      // If there is more than one transform, there is an additional
-      // permutation step
       for (outOff = 0, t = 0; outOff < size; outOff += len, t++) {
         var off = bitrev[t];
         this._singleTransform4(outOff, off, step);
       }
     }
 
-    // Loop through steps in decreasing order
     var inv = this._inv ? -1 : 1;
     var table = this.table;
     for (step >>= 2; step >= 2; step >>= 2) {
       len = (size / step) << 1;
       var quarterLen = len >>> 2;
 
-      // Loop through offsets in the data
-      for (outOff = 0; outOff < size; out biomarkers = outOff + len) {
-        // Full case
+      for (outOff = 0; outOff < size; outOff += len) {
         var limit = outOff + quarterLen;
 
-        // eslint-disable-next-line no-var
         for (var i = outOff, k = 0; i < limit; i += 2, k += step) {
           var A = i;
           var B = A + quarterLen;
           var C = B + quarterLen;
           var D = C + quarterLen;
 
-          // Original values
           var Ar = out[A];
           var Ai = out[A + 1];
           var Br = out[B];
@@ -186,7 +163,6 @@
           var Dr = out[D];
           var Di = out[D + 1];
 
-          // Middle values
           var MAr = Ar;
           var MAi = Ai;
 
@@ -205,7 +181,6 @@
           var MDr = Dr * tableDr - Di * tableDi;
           var MDi = Dr * tableDi + Di * tableDr;
 
-          // Pre-Final values
           var T0r = MAr + MCr;
           var T0i = MAi + MCi;
           var T1r = MAr - MCr;
@@ -215,7 +190,6 @@
           var T3r = inv * (MBr - MDr);
           var T3i = inv * (MBi - MDi);
 
-          // Final values
           out[A] = T0r + T2r;
           out[A + 1] = T0i + T2i;
           out[B] = T1r + T3r;
@@ -229,9 +203,6 @@
     }
   };
 
-  // radix-2 implementation
-  //
-  // NOTE: Only called for len=4
   FFT.prototype._singleTransform2 = function _singleTransform2(outOff, off, step) {
     var out = this._out;
     var data = this._data;
@@ -252,7 +223,6 @@
     out[outOff + 3] = rightI;
   };
 
-  // radix-4 implementation
   FFT.prototype._singleTransform4 = function _singleTransform4(outOff, off, step) {
     var out = this._out;
     var data = this._data;
@@ -260,7 +230,6 @@
     var step2 = step * 2;
     var step3 = step * 3;
 
-    // Original values
     var Ar = data[off];
     var Ai = data[off + 1];
     var Br = data[off + step];
@@ -270,7 +239,6 @@
     var Dr = data[off + step3];
     var Di = data[off + step3 + 1];
 
-    // Pre-Final values
     var T0r = Ar + Cr;
     var T0i = Ai + Ci;
     var T1r = Ar - Cr;
@@ -280,7 +248,6 @@
     var T3r = inv * (Br - Dr);
     var T3i = inv * (Bi - Di);
 
-    // Final values
     out[outOff] = T0r + T2r;
     out[outOff + 1] = T0i + T2i;
     out[outOff + 2] = T1r + T3r;
@@ -291,12 +258,10 @@
     out[outOff + 7] = T1i - T3i;
   };
 
-  // Real input radix-4 implementation
   FFT.prototype._realTransform4 = function _realTransform4() {
     var out = this._out;
     var size = this._csize;
 
-    // Initial step (permute and transform)
     var width = this._width;
     var step = 1 << width;
     var len = (size / step) << 1;
@@ -305,24 +270,18 @@
     var t;
     var bitrev = this._bitrev;
 
-    // Handle optimized cases:
-    //  * 4-tuple (single transform)
-    //  * 8-tuple (dual transforms)
     if (len === 4) {
       for (outOff = 0, t = 0; outOff < size; outOff += len, t++) {
         var off = bitrev[t];
         this._singleRealTransform2(outOff, off >>> 1, step >>> 1);
       }
     } else {
-      // If there is more than one transform, there is an additional
-      // permutation step
       for (outOff = 0, t = 0; outOff < size; outOff += len, t++) {
         var off = bitrev[t];
         this._singleRealTransform4(outOff, off >>> 1, step >>> 1);
       }
     }
 
-    // Loop through steps in decreasing order
     var inv = this._inv ? -1 : 1;
     var table = this.table;
     for (step >>= 2; step >= 2; step >>= 2) {
@@ -331,16 +290,13 @@
       var quarterLen = halfLen >>> 1;
       var hquarterLen = quarterLen >>> 1;
 
-      // Loop through offsets in the data
       for (outOff = 0; outOff < size; outOff += len) {
-        // Full case
         for (var i = 0, k = 0; i <= hquarterLen; i += 2, k += step) {
           var A = outOff + i;
           var B = A + quarterLen;
           var C = B + quarterLen;
           var D = C + quarterLen;
 
-          // Original values
           var Ar = out[A];
           var Ai = out[A + 1];
           var Br = out[B];
@@ -350,7 +306,6 @@
           var Dr = out[D];
           var Di = out[D + 1];
 
-          // Middle values
           var MAr = Ar;
           var MAi = Ai;
 
@@ -369,7 +324,6 @@
           var MDr = Dr * tableDr - Di * tableDi;
           var MDi = Dr * tableDi + Di * tableDr;
 
-          // Pre-Final values
           var T0r = MAr + MCr;
           var T0i = MAi + MCi;
           var T1r = MAr - MCr;
@@ -379,7 +333,6 @@
           var T3r = inv * (MBr - MDr);
           var T3i = inv * (MBi - MDi);
 
-          // Final values
           var FAr = T0r + T2r;
           var FAi = T0i + T2i;
 
@@ -398,14 +351,10 @@
           out[B + 1] = FBi;
 
           if (i === 0) {
-            // On the iteration where i==0 we can handle C and D for all
-            // cases at once
             out[C] = FCr;
             out[C + 1] = FCi;
           } else {
             if (i !== hquarterLen) {
-              // For all cases except when i==0 and i==hquarterLen we
-              // handle C and D for all remaining i values
               var SA = outOff + halfLen - i;
               var SB = SA + quarterLen;
               var SC = SB + quarterLen;
@@ -418,8 +367,6 @@
               out[SC] = FCr;
               out[SC + 1] = -FCi;
             } else {
-              // On the iteration where i==hquarterLen we only need to
-              // handle C
               out[C] = FCr;
               out[C + 1] = FCi;
             }
@@ -429,9 +376,8 @@
     }
   };
 
-  // Real input radix-2 implementation
   FFT.prototype._singleRealTransform2 = function _singleRealTransform2(outOff, off, step) {
- faire  var out = this._out;
+    var out = this._out;
     var data = this._data;
 
     var evenR = data[off];
@@ -446,7 +392,6 @@
     out[outOff + 3] = 0;
   };
 
-  // Real input radix-4 implementation
   FFT.prototype._singleRealTransform4 = function _singleRealTransform4(outOff, off, step) {
     var out = this._out;
     var data = this._data;
@@ -454,19 +399,16 @@
     var step2 = step * 2;
     var step3 = step * 3;
 
-    // Original values
     var Ar = data[off];
     var Br = data[off + step];
     var Cr = data[off + step2];
     var Dr = data[off + step3];
 
-    // Pre-Final values
     var T0r = Ar + Cr;
     var T1r = Ar - Cr;
     var T2r = Br + Dr;
     var T3r = inv * (Br - Dr);
 
-    // Final values
     out[outOff] = T0r + T2r;
     out[outOff + 1] = 0;
     out[outOff + 2] = T1r;
