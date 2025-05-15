@@ -17,7 +17,7 @@ let stream = null;
 let audioInterval = null;
 let facingMode = 'user'; // Track camera facing mode
 const settings = {
-    updateInterval: 250, // ms (100, 250, 500)
+    updateInterval: 36, // ms (100, 250, 500)
     brownNoise: false,
     brownNoiseAmplitude: 0.01
 };
@@ -52,11 +52,11 @@ function initializeAudio() {
 // Map video frame to Hilbert curve, compute audio parameters
 function mapFrameToHilbert(frameData, width, height) {
     // Use 6x6 grid for faster processing
-    const gridSize = 6;
+    const gridSize = 48;
     const intensities = [];
     let xSum = 0, ySum = 0, brightCount = 0;
     // Traverse frame in a simplified Hilbert curve (zigzag for now)
-    for (let i = 0; i < 36; i++) {
+    for (let i = 0; i < 128; i++) {
         const x = (i % gridSize) * (width / gridSize);
         const y = Math.floor(i / gridSize) * (height / gridSize);
         const idx = (Math.floor(y) * width + Math.floor(x));
@@ -164,7 +164,7 @@ topLeft.addEventListener('dblclick', () => {
 topLeft.addEventListener('touchstart', (event) => {
     event.preventDefault();
     navigator.vibrate(200);
-    const intervals = [100, 250, 500];
+    const intervals = [36, 100, 250, 500];
     settings.updateInterval = intervals[(intervals.indexOf(settings.updateInterval) + 1) % 3] || 250;
     if (window.speechSynthesis) {
         const utterance = new SpeechSynthesisUtterance(`FPS set to ${1000 / settings.updateInterval}`);
@@ -229,8 +229,8 @@ bottomRight.addEventListener('touchstart', async (event) => {
         facingMode = 'user'; // Update facing mode
         videoFeed.srcObject = stream;
         videoFeed.style.display = 'block';
-        canvas.width = 128;
-        canvas.height = 96;
+        canvas.width = 64;
+        canvas.height = 44;
         if (window.speechSynthesis) {
             const utterance = new SpeechSynthesisUtterance('Navigation started');
             window.speechSynthesis.speak(utterance);
