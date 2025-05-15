@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Brown - Webcam FFT Audio</title>
+  <style>
+    canvas { 
+      border: 1px solid #333; 
+      margin: 10px; 
+      border-radius: 5px;
+    }
+    #error { 
+      color: #d32f2f; 
+      margin: 10px; 
+      font-family: 'Roboto', Arial, sans-serif;
+    }
+    #log { 
+      margin: 10px; 
+      padding: 10px; 
+      background: #f5f5f5; 
+      border: 1px solid #ccc; 
+      min-height: 100px; 
+      max-height: 200px; 
+      overflow-y: auto; 
+      font-family: 'Courier New', monospace; 
+      font-size: 14px; 
+      display: none;
+      border-radius: 5px;
+    }
+    button { 
+      padding: 10px 20px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      margin: 10px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-family: 'Roboto', Arial, sans-serif;
+    }
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed; 
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    #energy-label {
+      position: absolute;
+      left: 15px;
+      top: 15px;
+      color: white;
+      font-family: 'Roboto', Arial, sans-serif;
+      font-size: 12px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 3px 6px;
+      border-radius: 3px;
+    }
+    #toggleAudioTouch {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 100px;
+      height: 100px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="energy-label">Intensity</div>
+  <video id="video" autoplay width="320" height="240" style="display: none;" playsinline></video>
+  <canvas id="canvas" width="320" height="240"></canvas>
+  <button onclick="toggleAudio()" disabled>Start Audio</button>
+  <button onclick="toggleLog()">Toggle Log</button>
+  <div id="toggleAudioTouch"></div>
+  <p id="error"></p>
+  <div id="log"></div>
+
+  <script src="fft.js"></script>
+  <script>
+    // Global variables
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const errorDisplay = document.getElementById('error');
+    const audioButton = document.querySelector('button[onclick="toggleAudio()"]');
+    const logDisplay = document.getElementById('log');
+    let audioCtx = null;
+    let noise = null;
+    let gainNode = null;
+    let panner = null;
+    let filter = null;
+    let videoStream = null;
+    let fft = null;
+    let prevIntensity = 0;
+    const logs = [];
+
+    // On-screen logging
+    function addLog(message) {
+      logs.push(`${new Date().toLocaleTimeString()}: ${message}`);
+      if (logs.length > 20) logs.shift();
+      logDisplay.textContent = logs.join('\n');
+      logDisplay.scrollTop = logDisplay.scrollHeight;
+    }
+
+    // Initialize log
+    addLog('AcoustSee started - Log hidden by default');
+
+    // Override console
+    console.log = function(message) {
+      addLog(message);
+    };
+    console.error = function(message) {
+      addLog('ERROR: ' + message);
+    };
+
+    // Toggle log visibility
+    function toggleLog() {
+      logDisplay.style.display = logDisplay.style.display === 'none' ? 'block' : 'none';
+      console.log('Log display: ' + logDisplay.style.display);
+      if (window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(`Log ${logDisplay.style.display === 'block' ? 'shown' : 'hidden'}`);
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // Webcam setup
+    async function setupWebcam() {
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            width: { ideal: 320 }, 
+            height: { ideal: 240 }, 
+            frameRate: { ideal: 30 }, 
+            facingMode: 'user' 
+          }
+        });
+        video.srcObject = videoStream;
+        video.play();
+        video.oncanplay = () => {
+          console.log('Video ready, starting frame processing');
+          console.log(`Video resolution: ${video.videoWidth}x${video.videoHeight}`);
+          errorDisplay.textContent = '';
+          audioButton.disabled = false;
+          if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Camera started');
+            window.speechSynthesis.speak(utterance);
+          }
+
+          // Adjust canvas for aspect ratio
+          const videoWidth = video.videoWidth;
+          const videoHeight = video.videoHeight;
+          const canvasAspect = canvas.width / canvas.height;
+          const videoAspect = videoWidth / videoHeight;
+          if (Math.abs(canvasAspect - videoAspect) > 0.01) {
+            canvas.height = canvas.width / videoAspect;
+            console.log(`Adjusted canvas height to ${canvas.height} for aspect ratio ${videoAspect}`);
+          }
+
+          // Initialize FFT
+          const fftSize = 32768; // Reduced for mobile
+          if (typeof FFT === 'undefined') {
+            console.error('FFT.js library not loaded');
+            errorDisplay.textContent = 'Error: FFT.js library failed to load.';
+          } else {
+            try {
+              fft = new FFT(fftSize);
+              console.log('FFT initialized with size ' + fftSize);
+            } catch (err) {
+              console.error('FFT initialization failed: ' + err.message);
+              errorDisplay.textContent = 'Error: FFT initialization failed.';
+            }
+          }
+
+          processFrame();
+        };
+      } catch (err) {
+        console.error('Webcam access failed: ' + err.message);
+        errorDisplay.textContent = 'Error: No webcam detected or access denied. Audio disabled.';
+        audioButton.disabled = true;
+        if (window.speechSynthesis) {
+          const utterance = new SpeechSynthesisUtterance('Failed to access camera');
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    }
+
+    // Audio toggle
+    function toggleAudio() {
+      if (audioButton.disabled) {
+        console.log('Audio button disabled, ignoring click');
+        return;
+      }
+      if (!audioCtx) {
+        audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume().then(() => console.log('AudioContext resumed'));
+        }
+        // Create brown noise
+        const bufferSize = 2 * audioCtx.sampleRate;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        let lastOut = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          noiseData[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = noiseData[i];
+          noiseData[i] *= Math.pow(1 - i / bufferSize, 2); // Brown noise decay
+        }
+        noise = audioCtx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        noise.loop = true;
+        gainNode = audioCtx.createGain();
+        panner = audioCtx.createStereoPanner();
+        filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+        noise.connect(gainNode).connect(filter).connect(panner).connect(audioCtx.destination);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        noise.start();
+        audioButton.textContent = 'Stop Audio';
+        console.log('Audio started');
+        if (window.speechSynthesis) {
+          const utterance = new SpeechSynthesisUtterance('Audio started');
+          window.speechSynthesis.speak(utterance);
+        }
+      } else {
+        noise.stop();
+        noise.disconnect();
+        audioCtx.close();
+        audioCtx = null;
+        noise = null;
+        gainNode = null;
+        panner = null;
+        filter = null;
+        audioButton.textContent = 'Start Audio';
+        console.log('Audio stopped');
+        if (window.speechSynthesis) {
+          const utterance = new SpeechSynthesisUtterance('Audio stopped');
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    }
+
+    // FFT setup
+    const width = canvas.width;
+    let height = canvas.height;
+    const fftSize = 32768;
+    let input = new Array(fftSize).fill(0);
+    let output = new Array(fftSize * 2).fill(0);
+
+    // Frame processing
+    let lastFrameTime = 0;
+    function processFrame(timestamp) {
+      try {
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+          console.log(`Video not ready, readyState: ${video.readyState}`);
+          requestAnimationFrame(processFrame);
+          return;
+        }
+
+        height = canvas.height;
+        ctx.drawImage(video, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height).data;
+
+        // Subsample for FFT
+        const pixelCount = width * height;
+        for (let i = 0, j = 0; i < fftSize && j < imageData.length; i++, j += Math.floor(pixelCount / fftSize) * 4) {
+          const r = imageData[j];
+          const g = imageData[j + 1];
+          const b = imageData[j + 2];
+          input[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+        }
+
+        let intensity = 0;
+        if (fft) {
+          fft.realTransform(output, input);
+          console.log('FFT processed');
+          const lowFreqCount = Math.floor(fftSize / 10);
+          for (let i = 0; i < lowFreqCount * 2; i += 2) {
+            const real = output[i];
+            const imag = output[i + 1];
+            intensity += Math.sqrt(real * real + imag * imag);
+          }
+          intensity /= lowFreqCount;
+
+          // Compute panning
+          let brightXSum = 0, brightCount = 0;
+          for (let i = 0, j = 0; i < fftSize && j < imageData.length; i++, j += Math.floor(pixelCount / fftSize) * 4) {
+            const x = (j / 4) % width;
+            const gray = 0.299 * imageData[j] + 0.587 * imageData[j + 1] + 0.114 * imageData[j + 2];
+            if (gray > 128) {
+              brightXSum += x;
+              brightCount++;
+            }
+          }
+          const azimuth = brightCount ? (brightXSum / brightCount - width / 2) * 2 / width : 0;
+
+          // Audio modulation
+          if (audioCtx && noise) {
+            const amplitude = 0.2 - (intensity / 255) * 0.15; // 0.05-0.2, like main.js
+            const filterFreq = 500 + (intensity / 255) * 1500; // 500-2000 Hz
+            const isApproaching = intensity > prevIntensity + 10;
+            gainNode.gain.setTargetAtTime(amplitude, audioCtx.currentTime, 0.015);
+            filter.frequency.setTargetAtTime(filterFreq, audioCtx.currentTime, 0.015);
+            panner.pan.setValueAtTime(azimuth, audioCtx.currentTime);
+            console.log(`Intensity: ${intensity.toFixed(2)}, Amplitude: ${amplitude.toFixed(3)}, Filter: ${filterFreq.toFixed(0)} Hz, Pan: ${azimuth.toFixed(2)}${isApproaching ? ', Approaching' : ''}`);
+            if (isApproaching && window.speechSynthesis) {
+              const utterance = new SpeechSynthesisUtterance('Object approaching');
+              window.speechSynthesis.speak(utterance);
+            }
+            prevIntensity = intensity;
+          }
+        } else {
+          console.log('Skipping FFT: library not loaded');
+        }
+
+        // Visualize intensity
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, 20, height);
+        ctx.fillStyle = `hsl(${(intensity / 255) * 360}, 100%, 50%)`;
+        ctx.fillRect(0, height - (intensity / 255 * height), 20, 20);
+
+        requestAnimationFrame(processFrame);
+      } catch (err) {
+        console.error('Frame processing error: ' + err.message);
+        requestAnimationFrame(processFrame);
+      }
+    }
+
+    // Touch control for audio toggle
+    document.getElementById('toggleAudioTouch').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      toggleAudio();
+      if (window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(audioCtx ? 'Audio started' : 'Audio stopped');
+        window.speechSynthesis.speak(utterance);
+      }
+    });
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        toggleAudio();
+        if (window.speechSynthesis) {
+          const utterance = new SpeechSynthesisUtterance(audioCtx ? 'Audio started' : 'Audio stopped');
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    });
+
+    // Initialize webcam
+    setupWebcam();
+  </script>
+</body>
+</html>
