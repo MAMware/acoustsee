@@ -6,18 +6,26 @@
     canvas { 
       border: 1px solid black; 
       margin: 10px; 
-      width: 320px; 
-      height: 240px;
     }
     #error { 
       color: red; 
       margin: 10px; 
       font-family: Arial, sans-serif;
     }
+    #log { 
+      margin: 10px; 
+      padding: 10px; 
+      background: #f0f0f0; 
+      max-height: 200px; 
+      overflow-y: auto; 
+      font-family: monospace; 
+      font-size: 12px; 
+    }
     button { 
       padding: 10px 20px; 
       font-size: 16px; 
       cursor: pointer;
+      margin: 10px;
     }
     button:disabled {
       cursor: not-allowed;
@@ -28,8 +36,9 @@
 <body>
   <video id="video" autoplay width="320" height="240" style="display: none;"></video>
   <canvas id="canvas" width="320" height="240"></canvas>
-  <button onclick="toggleAudio()">Start Audio</button>
+  <button onclick="toggleAudio()" disabled>Start Audio</button>
   <p id="error"></p>
+  <div id="log"></div>
 
   <script src="fft.js"></script>
   <script>
@@ -39,33 +48,62 @@
     const ctx = canvas.getContext('2d');
     const errorDisplay = document.getElementById('error');
     const audioButton = document.querySelector('button');
+    const logDisplay = document.getElementById('log');
     let audioCtx = null;
     let oscillator = null;
     let gainNode = null;
+    let videoStream = null;
+    const logs = [];
+
+    // On-screen logging
+    function addLog(message) {
+      logs.push(`${new Date().toLocaleTimeString()}: ${message}`);
+      if (logs.length > 20) logs.shift(); // Keep last 20 logs
+      logDisplay.textContent = logs.join('\n');
+      logDisplay.scrollTop = logDisplay.scrollHeight;
+    }
+
+    // Override console for mobile
+    console.log = function(message) {
+      addLog(message);
+    };
+    console.error = function(message) {
+      addLog('ERROR: ' + message);
+    };
 
     // Webcam setup
     async function setupWebcam() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240, frameRate: 30 }
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 30 } }
         });
-        video.srcObject = stream;
+        video.srcObject = videoStream;
         video.play();
         video.oncanplay = () => {
           console.log('Video ready, starting frame processing');
           errorDisplay.textContent = '';
+          audioButton.disabled = false; // Enable audio button
+          // Adjust canvas to match video aspect ratio
+          const videoWidth = video.videoWidth;
+          const videoHeight = video.videoHeight;
+          const canvasAspect = canvas.width / canvas.height;
+          const videoAspect = videoWidth / videoHeight;
+          if (Math.abs(canvasAspect - videoAspect) > 0.01) {
+            canvas.height = canvas.width / videoAspect;
+            console.log(`Adjusted canvas height to ${canvas.height} for aspect ratio ${videoAspect}`);
+          }
           processFrame();
         };
       } catch (err) {
-        console.error('Webcam access failed:', err);
-        errorDisplay.textContent = 'Error accessing webcam: ' + err.message + '. Please allow camera access and ensure a webcam is connected.';
+        console.error('Webcam access failed: ' + err.message);
+        errorDisplay.textContent = 'Error: No webcam detected or access denied. Audio disabled.';
+        audioButton.disabled = true;
       }
     }
 
     // Audio toggle
     function toggleAudio() {
       if (!audioCtx) {
-        // Start audio
         audioCtx = new AudioContext();
         if (audioCtx.state === 'suspended') {
           audioCtx.resume().then(() => console.log('AudioContext resumed'));
@@ -80,7 +118,6 @@
         audioButton.textContent = 'Stop Audio';
         console.log('Audio started');
       } else {
-        // Stop audio
         oscillator.stop();
         oscillator.disconnect();
         audioCtx.close();
@@ -94,7 +131,7 @@
 
     // FFT setup
     const width = canvas.width;
-    const height = canvas.height;
+    let height = canvas.height; // Will be adjusted dynamically
     let fft = null;
     if (typeof FFT === 'undefined') {
       console.error('FFT.js library not loaded');
@@ -121,6 +158,7 @@
         return;
       }
 
+      // Draw video with preserved aspect ratio
       ctx.drawImage(video, 0, 0, width, height);
       const imageData = ctx.getImageData(0, 0, width, height).data;
 
@@ -146,7 +184,7 @@
         if (audioCtx && oscillator) {
           const freq = 100 + (energy / 255) * 700; // Map to 100-800 Hz
           oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
-          console.log('Frequency:', freq.toFixed(2), 'Hz');
+          console.log('Frequency: ' + freq.toFixed(2) + ' Hz');
         }
       } else {
         console.log('Skipping FFT: library not loaded');
