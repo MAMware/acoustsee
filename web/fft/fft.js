@@ -1,1 +1,481 @@
-var FFTJS=function(t){function r(e){if(i[e])return i[e].exports;var o=i[e]={i:e,l:!1,exports:{}};return t[e].call(o.exports,o,o.exports,r),o.l=!0,o.exports}var i={};return r.m=t,r.c=i,r.i=function(t){return t},r.d=function(t,i,e){r.o(t,i)||Object.defineProperty(t,i,{configurable:!1,enumerable:!0,get:e})},r.n=function(t){var i=t&&t.__esModule?function(){return t.default}:function(){return t};return r.d(i,"a",i),i},r.o=function(t,r){return Object.prototype.hasOwnProperty.call(t,r)},r.p="",r(r.s=0)}([function(t,r,i){"use strict";function e(t){if(this.size=0|t,this.size<=1||0!=(this.size&this.size-1))throw new Error("FFT size must be a power of two and bigger than 1");this._csize=t<<1;for(var r=new Array(2*this.size),i=0;i<r.length;i+=2){var e=Math.PI*i/this.size;r[i]=Math.cos(e),r[i+1]=-Math.sin(e)}this.table=r;for(var o=0,n=1;this.size>n;n<<=1)o++;this._width=o%2==0?o-1:o,this._bitrev=new Array(1<<this._width);for(var s=0;s<this._bitrev.length;s++){this._bitrev[s]=0;for(var a=0;a<this._width;a+=2){var h=this._width-a-2;this._bitrev[s]|=(s>>>a&3)<<h}}this._out=null,this._data=null,this._inv=0}t.exports=e,e.prototype.fromComplexArray=function(t,r){for(var i=r||new Array(t.length>>>1),e=0;e<t.length;e+=2)i[e>>>1]=t[e];return i},e.prototype.createComplexArray=function(){for(var t=new Array(this._csize),r=0;r<t.length;r++)t[r]=0;return t},e.prototype.toComplexArray=function(t,r){for(var i=r||this.createComplexArray(),e=0;e<i.length;e+=2)i[e]=t[e>>>1],i[e+1]=0;return i},e.prototype.completeSpectrum=function(t){for(var r=this._csize,i=r>>>1,e=2;e<i;e+=2)t[r-e]=t[e],t[r-e+1]=-t[e+1]},e.prototype.transform=function(t,r){if(t===r)throw new Error("Input and output buffers must be different");this._out=t,this._data=r,this._inv=0,this._transform4(),this._out=null,this._data=null},e.prototype.realTransform=function(t,r){if(t===r)throw new Error("Input and output buffers must be different");this._out=t,this._data=r,this._inv=0,this._realTransform4(),this._out=null,this._data=null},e.prototype.inverseTransform=function(t,r){if(t===r)throw new Error("Input and output buffers must be different");this._out=t,this._data=r,this._inv=1,this._transform4();for(var i=0;i<t.length;i++)t[i]/=this.size;this._out=null,this._data=null},e.prototype._transform4=function(){var t,r,i=this._out,e=this._csize,o=this._width,n=1<<o,s=e/n<<1,a=this._bitrev;if(4===s)for(t=0,r=0;t<e;t+=s,r++){var h=a[r];this._singleTransform2(t,h,n)}else for(t=0,r=0;t<e;t+=s,r++){var f=a[r];this._singleTransform4(t,f,n)}var u=this._inv?-1:1,_=this.table;for(n>>=2;n>=2;n>>=2){s=e/n<<1;var l=s>>>2;for(t=0;t<e;t+=s)for(var p=t+l,v=t,c=0;v<p;v+=2,c+=n){var d=v,m=d+l,y=m+l,b=y+l,w=i[d],g=i[d+1],z=i[m],T=i[m+1],x=i[y],A=i[y+1],C=i[b],E=i[b+1],F=w,I=g,M=_[c],R=u*_[c+1],O=z*M-T*R,P=z*R+T*M,j=_[2*c],S=u*_[2*c+1],J=x*j-A*S,k=x*S+A*j,q=_[3*c],B=u*_[3*c+1],D=C*q-E*B,G=C*B+E*q,H=F+J,K=I+k,L=F-J,N=I-k,Q=O+D,U=P+G,V=u*(O-D),W=u*(P-G),X=H+Q,Y=K+U,Z=H-Q,$=K-U,tt=L+W,rt=N-V,it=L-W,et=N+V;i[d]=X,i[d+1]=Y,i[m]=tt,i[m+1]=rt,i[y]=Z,i[y+1]=$,i[b]=it,i[b+1]=et}}},e.prototype._singleTransform2=function(t,r,i){var e=this._out,o=this._data,n=o[r],s=o[r+1],a=o[r+i],h=o[r+i+1],f=n+a,u=s+h,_=n-a,l=s-h;e[t]=f,e[t+1]=u,e[t+2]=_,e[t+3]=l},e.prototype._singleTransform4=function(t,r,i){var e=this._out,o=this._data,n=this._inv?-1:1,s=2*i,a=3*i,h=o[r],f=o[r+1],u=o[r+i],_=o[r+i+1],l=o[r+s],p=o[r+s+1],v=o[r+a],c=o[r+a+1],d=h+l,m=f+p,y=h-l,b=f-p,w=u+v,g=_+c,z=n*(u-v),T=n*(_-c),x=d+w,A=m+g,C=y+T,E=b-z,F=d-w,I=m-g,M=y-T,R=b+z;e[t]=x,e[t+1]=A,e[t+2]=C,e[t+3]=E,e[t+4]=F,e[t+5]=I,e[t+6]=M,e[t+7]=R},e.prototype._realTransform4=function(){var t,r,i=this._out,e=this._csize,o=this._width,n=1<<o,s=e/n<<1,a=this._bitrev;if(4===s)for(t=0,r=0;t<e;t+=s,r++){var h=a[r];this._singleRealTransform2(t,h>>>1,n>>>1)}else for(t=0,r=0;t<e;t+=s,r++){var f=a[r];this._singleRealTransform4(t,f>>>1,n>>>1)}var u=this._inv?-1:1,_=this.table;for(n>>=2;n>=2;n>>=2){s=e/n<<1;var l=s>>>1,p=l>>>1,v=p>>>1;for(t=0;t<e;t+=s)for(var c=0,d=0;c<=v;c+=2,d+=n){var m=t+c,y=m+p,b=y+p,w=b+p,g=i[m],z=i[m+1],T=i[y],x=i[y+1],A=i[b],C=i[b+1],E=i[w],F=i[w+1],I=g,M=z,R=_[d],O=u*_[d+1],P=T*R-x*O,j=T*O+x*R,S=_[2*d],J=u*_[2*d+1],k=A*S-C*J,q=A*J+C*S,B=_[3*d],D=u*_[3*d+1],G=E*B-F*D,H=E*D+F*B,K=I+k,L=M+q,N=I-k,Q=M-q,U=P+G,V=j+H,W=u*(P-G),X=u*(j-H),Y=K+U,Z=L+V,$=N+X,tt=Q-W;if(i[m]=Y,i[m+1]=Z,i[y]=$,i[y+1]=tt,0!==c){if(c!==v){var rt=N,it=-Q,et=K,ot=-L,nt=-u*X,st=-u*W,at=-u*V,ht=-u*U,ft=rt+nt,ut=it+st,_t=et+ht,lt=ot-at,pt=t+p-c,vt=t+l-c;i[pt]=ft,i[pt+1]=ut,i[vt]=_t,i[vt+1]=lt}}else{var ct=K-U,dt=L-V;i[b]=ct,i[b+1]=dt}}}},e.prototype._singleRealTransform2=function(t,r,i){var e=this._out,o=this._data,n=o[r],s=o[r+i],a=n+s,h=n-s;e[t]=a,e[t+1]=0,e[t+2]=h,e[t+3]=0},e.prototype._singleRealTransform4=function(t,r,i){var e=this._out,o=this._data,n=this._inv?-1:1,s=2*i,a=3*i,h=o[r],f=o[r+i],u=o[r+s],_=o[r+a],l=h+u,p=h-u,v=f+_,c=n*(f-_),d=l+v,m=p,y=-c,b=l-v,w=p,g=c;e[t]=d,e[t+1]=0,e[t+2]=m,e[t+3]=y,e[t+4]=b,e[t+5]=0,e[t+6]=w,e[t+7]=g}}]);
+// web/fft/fft.js
+(function (global, factory) {
+  if (typeof exports === 'object' && typeof module !== 'undefined') {
+    module.exports = factory();
+  } else if (typeof define === 'function' && define.amd) {
+    define(factory);
+  } else {
+    global.FFT = factory();
+  }
+}(this, function () {
+  'use strict';
+
+  function FFT(size) {
+    this.size = size | 0;
+    if (this.size <= 1 || (this.size & (this.size - 1)) !== 0)
+      throw new Error('FFT size must be a power of two and bigger than 1');
+
+    this._csize = size << 1;
+
+    // NOTE: Use of `var` is intentional for old V8 versions
+    var table = new Array(this.size * 2);
+    for (var i = 0; i < table.length; i += 2) {
+      var angle = Math.PI * i / this.size;
+      table[i] = Math.cos(angle);
+      table[i + 1] = -Math.sin(angle);
+    }
+    this.table = table;
+
+    // Find size's power of two
+    var power = 0;
+    for (var t = 1; this.size > t; t <<= 1)
+      power++;
+
+    // Calculate initial step's width:
+    //   * If we are full radix-4 - it is 2x smaller
+    //   * If we are full radix-2 - it is 4x smaller
+    //   * If we are mixed - it is 2x smaller
+    var shift = power % 2 === 0 ? power - 1 : power;
+
+    // Build a bit-reversal table for an octets
+    this._width = shift;
+    this._bitrev = new Array(1 << shift);
+    for (var j = 0; j < this._bitrev.length; j++) {
+      this._bitrev[j] = 0;
+      for (var shift = 0; shift < this._width; shift += 2) {
+        var revShift = this._width - shift - 2;
+        this._bitrev[j] |= ((j >>> shift) & 3) << revShift;
+      }
+    }
+
+    this._out = null;
+    this._data = null;
+    this._inv = 0;
+  }
+
+  FFT.prototype.fromComplexArray = function fromComplexArray(complex, storage) {
+    var res = storage || new Array(complex.length >>> 1);
+    for (var i = 0; i < complex.length; i += 2)
+      res[i >>> 1] = complex[i];
+    return res;
+  };
+
+  FFT.prototype.createComplexArray = function createComplexArray() {
+    var res = new Array(this._csize);
+    for (var i = 0; i < res.length; i++)
+      res[i] = 0;
+    return res;
+  };
+
+  FFT.prototype.toComplexArray = function toComplexArray(input, storage) {
+    var res = storage || this.createComplexArray();
+    for (var i = 0; i < res.length; i += 2) {
+      res[i] = input[i >>> 1];
+      res[i + 1] = 0;
+    }
+    return res;
+  };
+
+  FFT.prototype.completeSpectrum = function completeSpectrum(spectrum) {
+    var size = this._csize;
+    var half = size >>> 1;
+    for (var i = 2; i < half; i += 2) {
+      spectrum[size - i] = spectrum[i];
+      spectrum[size - i + 1] = -spectrum[i + 1];
+    }
+  };
+
+  FFT.prototype.transform = function transform(out, data) {
+    if (out === data)
+      throw new Error('Input and output buffers must be different');
+
+    this._out = out;
+    this._data = data;
+    this._inv = 0;
+    this._transform4();
+    this._out = null;
+    this._data = null;
+  };
+
+  FFT.prototype.realTransform = function realTransform(out, data) {
+    if (out === data)
+      throw new Error('Input and output buffers must be different');
+
+    this._out = out;
+    this._data = data;
+    this._inv = 0;
+    this._realTransform4();
+    this._out = null;
+    this._data = null;
+  };
+
+  FFT.prototype.inverseTransform = function inverseTransform(out, data) {
+    if (out === data)
+      throw new Error('Input and output buffers must be different');
+
+    this._out = out;
+    this._data = data;
+    this._inv = 1;
+    this._transform4();
+    for (var i = 0; i < out.length; i++)
+      out[i] /= this.size;
+    this._out = null;
+    this._data = null;
+  };
+
+  // radix-4 implementation
+  //
+  // NOTE: Uses of `var` are intentional for older V8 version that do not
+  // support `let` and `const` with for-loop block scopes
+  FFT.prototype._transform4 = function _transform4() {
+    var out = this._out;
+    var size = this._csize;
+
+    // Initial step (permute and transform)
+    var width = this._width;
+    var step = 1 << width;
+    var len = (size / step) << 1;
+
+    var outOff;
+    var t;
+    var bitrev = this._bitrev;
+
+    // Handle optimized cases:
+    //  * 4-tuple (single transform)
+    //  * 8-tuple (dual transforms)
+    if (len === 4) {
+      for (outOff = 0, t = 0; outOff < size; outOff += len, t++) {
+        var off = bitrev[t];
+        this._singleTransform2(outOff, off, step);
+      }
+    } else {
+      // If there is more than one transform, there is an additional
+      // permutation step
+      for (outOff = 0, t = 0; outOff < size; outOff += len, t++) {
+        var off = bitrev[t];
+        this._singleTransform4(outOff, off, step);
+      }
+    }
+
+    // Loop through steps in decreasing order
+    var inv = this._inv ? -1 : 1;
+    var table = this.table;
+    for (step >>= 2; step >= 2; step >>= 2) {
+      len = (size / step) << 1;
+      var quarterLen = len >>> 2;
+
+      // Loop through offsets in the data
+      for (outOff = 0; outOff < size; out biomarkers = outOff + len) {
+        // Full case
+        var limit = outOff + quarterLen;
+
+        // eslint-disable-next-line no-var
+        for (var i = outOff, k = 0; i < limit; i += 2, k += step) {
+          var A = i;
+          var B = A + quarterLen;
+          var C = B + quarterLen;
+          var D = C + quarterLen;
+
+          // Original values
+          var Ar = out[A];
+          var Ai = out[A + 1];
+          var Br = out[B];
+          var Bi = out[B + 1];
+          var Cr = out[C];
+          var Ci = out[C + 1];
+          var Dr = out[D];
+          var Di = out[D + 1];
+
+          // Middle values
+          var MAr = Ar;
+          var MAi = Ai;
+
+          var tableBr = table[k];
+          var tableBi = inv * table[k + 1];
+          var MBr = Br * tableBr - Bi * tableBi;
+          var MBi = Br * tableBi + Bi * tableBr;
+
+          var tableCr = table[2 * k];
+          var tableCi = inv * table[2 * k + 1];
+          var MCr = Cr * tableCr - Ci * tableCi;
+          var MCi = Cr * tableCi + Ci * tableCr;
+
+          var tableDr = table[3 * k];
+          var tableDi = inv * table[3 * k + 1];
+          var MDr = Dr * tableDr - Di * tableDi;
+          var MDi = Dr * tableDi + Di * tableDr;
+
+          // Pre-Final values
+          var T0r = MAr + MCr;
+          var T0i = MAi + MCi;
+          var T1r = MAr - MCr;
+          var T1i = MAi - MCi;
+          var T2r = MBr + MDr;
+          var T2i = MBi + MDi;
+          var T3r = inv * (MBr - MDr);
+          var T3i = inv * (MBi - MDi);
+
+          // Final values
+          out[A] = T0r + T2r;
+          out[A + 1] = T0i + T2i;
+          out[B] = T1r + T3r;
+          out[B + 1] = T1i + T3i;
+          out[C] = T0r - T2r;
+          out[C + 1] = T0i - T2i;
+          out[D] = T1r - T3r;
+          out[D + 1] = T1i - T3i;
+        }
+      }
+    }
+  };
+
+  // radix-2 implementation
+  //
+  // NOTE: Only called for len=4
+  FFT.prototype._singleTransform2 = function _singleTransform2(outOff, off, step) {
+    var out = this._out;
+    var data = this._data;
+
+    var evenR = data[off];
+    var evenI = data[off + 1];
+    var oddR = data[off + step];
+    var oddI = data[off + step + 1];
+
+    var leftR = evenR + oddR;
+    var leftI = evenI + oddI;
+    var rightR = evenR - oddR;
+    var rightI = evenI - oddI;
+
+    out[outOff] = leftR;
+    out[outOff + 1] = leftI;
+    out[outOff + 2] = rightR;
+    out[outOff + 3] = rightI;
+  };
+
+  // radix-4 implementation
+  FFT.prototype._singleTransform4 = function _singleTransform4(outOff, off, step) {
+    var out = this._out;
+    var data = this._data;
+    var inv = this._inv ? -1 : 1;
+    var step2 = step * 2;
+    var step3 = step * 3;
+
+    // Original values
+    var Ar = data[off];
+    var Ai = data[off + 1];
+    var Br = data[off + step];
+    var Bi = data[off + step + 1];
+    var Cr = data[off + step2];
+    var Ci = data[off + step2 + 1];
+    var Dr = data[off + step3];
+    var Di = data[off + step3 + 1];
+
+    // Pre-Final values
+    var T0r = Ar + Cr;
+    var T0i = Ai + Ci;
+    var T1r = Ar - Cr;
+    var T1i = Ai - Ci;
+    var T2r = Br + Dr;
+    var T2i = Bi + Di;
+    var T3r = inv * (Br - Dr);
+    var T3i = inv * (Bi - Di);
+
+    // Final values
+    out[outOff] = T0r + T2r;
+    out[outOff + 1] = T0i + T2i;
+    out[outOff + 2] = T1r + T3r;
+    out[outOff + 3] = T1i + T3i;
+    out[outOff + 4] = T0r - T2r;
+    out[outOff + 5] = T0i - T2i;
+    out[outOff + 6] = T1r - T3r;
+    out[outOff + 7] = T1i - T3i;
+  };
+
+  // Real input radix-4 implementation
+  FFT.prototype._realTransform4 = function _realTransform4() {
+    var out = this._out;
+    var size = this._csize;
+
+    // Initial step (permute and transform)
+    var width = this._width;
+    var step = 1 << width;
+    var len = (size / step) << 1;
+
+    var outOff;
+    var t;
+    var bitrev = this._bitrev;
+
+    // Handle optimized cases:
+    //  * 4-tuple (single transform)
+    //  * 8-tuple (dual transforms)
+    if (len === 4) {
+      for (outOff = 0, t = 0; outOff < size; outOff += len, t++) {
+        var off = bitrev[t];
+        this._singleRealTransform2(outOff, off >>> 1, step >>> 1);
+      }
+    } else {
+      // If there is more than one transform, there is an additional
+      // permutation step
+      for (outOff = 0, t = 0; outOff < size; outOff += len, t++) {
+        var off = bitrev[t];
+        this._singleRealTransform4(outOff, off >>> 1, step >>> 1);
+      }
+    }
+
+    // Loop through steps in decreasing order
+    var inv = this._inv ? -1 : 1;
+    var table = this.table;
+    for (step >>= 2; step >= 2; step >>= 2) {
+      len = (size / step) << 1;
+      var halfLen = len >>> 1;
+      var quarterLen = halfLen >>> 1;
+      var hquarterLen = quarterLen >>> 1;
+
+      // Loop through offsets in the data
+      for (outOff = 0; outOff < size; outOff += len) {
+        // Full case
+        for (var i = 0, k = 0; i <= hquarterLen; i += 2, k += step) {
+          var A = outOff + i;
+          var B = A + quarterLen;
+          var C = B + quarterLen;
+          var D = C + quarterLen;
+
+          // Original values
+          var Ar = out[A];
+          var Ai = out[A + 1];
+          var Br = out[B];
+          var Bi = out[B + 1];
+          var Cr = out[C];
+          var Ci = out[C + 1];
+          var Dr = out[D];
+          var Di = out[D + 1];
+
+          // Middle values
+          var MAr = Ar;
+          var MAi = Ai;
+
+          var tableBr = table[k];
+          var tableBi = inv * table[k + 1];
+          var MBr = Br * tableBr - Bi * tableBi;
+          var MBi = Br * tableBi + Bi * tableBr;
+
+          var tableCr = table[2 * k];
+          var tableCi = inv * table[2 * k + 1];
+          var MCr = Cr * tableCr - Ci * tableCi;
+          var MCi = Cr * tableCi + Ci * tableCr;
+
+          var tableDr = table[3 * k];
+          var tableDi = inv * table[3 * k + 1];
+          var MDr = Dr * tableDr - Di * tableDi;
+          var MDi = Dr * tableDi + Di * tableDr;
+
+          // Pre-Final values
+          var T0r = MAr + MCr;
+          var T0i = MAi + MCi;
+          var T1r = MAr - MCr;
+          var T1i = MAi - MCi;
+          var T2r = MBr + MDr;
+          var T2i = MBi + MDi;
+          var T3r = inv * (MBr - MDr);
+          var T3i = inv * (MBi - MDi);
+
+          // Final values
+          var FAr = T0r + T2r;
+          var FAi = T0i + T2i;
+
+          var FCr = T0r - T2r;
+          var FCi = T0i - T2i;
+
+          var FBr = T1r + T3r;
+          var FBi = T1i + T3i;
+
+          var FDr = T1r - T3r;
+          var FDi = T1i - T3i;
+
+          out[A] = FAr;
+          out[A + 1] = FAi;
+          out[B] = FBr;
+          out[B + 1] = FBi;
+
+          if (i === 0) {
+            // On the iteration where i==0 we can handle C and D for all
+            // cases at once
+            out[C] = FCr;
+            out[C + 1] = FCi;
+          } else {
+            if (i !== hquarterLen) {
+              // For all cases except when i==0 and i==hquarterLen we
+              // handle C and D for all remaining i values
+              var SA = outOff + halfLen - i;
+              var SB = SA + quarterLen;
+              var SC = SB + quarterLen;
+              var SD = SC + quarterLen;
+
+              out[SA] = FBr;
+              out[SA + 1] = -FBi;
+              out[SB] = FDr;
+              out[SB + 1] = -FDi;
+              out[SC] = FCr;
+              out[SC + 1] = -FCi;
+            } else {
+              // On the iteration where i==hquarterLen we only need to
+              // handle C
+              out[C] = FCr;
+              out[C + 1] = FCi;
+            }
+          }
+        }
+      }
+    }
+  };
+
+  // Real input radix-2 implementation
+  FFT.prototype._singleRealTransform2 = function _singleRealTransform2(outOff, off, step) {
+ faire  var out = this._out;
+    var data = this._data;
+
+    var evenR = data[off];
+    var oddR = data[off + step];
+
+    var leftR = evenR + oddR;
+    var rightR = evenR - oddR;
+
+    out[outOff] = leftR;
+    out[outOff + 1] = 0;
+    out[outOff + 2] = rightR;
+    out[outOff + 3] = 0;
+  };
+
+  // Real input radix-4 implementation
+  FFT.prototype._singleRealTransform4 = function _singleRealTransform4(outOff, off, step) {
+    var out = this._out;
+    var data = this._data;
+    var inv = this._inv ? -1 : 1;
+    var step2 = step * 2;
+    var step3 = step * 3;
+
+    // Original values
+    var Ar = data[off];
+    var Br = data[off + step];
+    var Cr = data[off + step2];
+    var Dr = data[off + step3];
+
+    // Pre-Final values
+    var T0r = Ar + Cr;
+    var T1r = Ar - Cr;
+    var T2r = Br + Dr;
+    var T3r = inv * (Br - Dr);
+
+    // Final values
+    out[outOff] = T0r + T2r;
+    out[outOff + 1] = 0;
+    out[outOff + 2] = T1r;
+    out[outOff + 3] = -T3r;
+    out[outOff + 4] = T0r - T2r;
+    out[outOff + 5] = 0;
+    out[outOff + 6] = T1r;
+    out[outOff + 7] = T3r;
+  };
+
+  return FFT;
+}));
