@@ -1,16 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Webcam FFT Audio</title>
+  <title>AcoustSee - Webcam FFT Audio</title>
   <script src="https://cdn.jsdelivr.net/npm/fft.js@0.0.4/lib/fft.js"></script>
   <style>
-    video, canvas { border: 1px solid black; margin: 10px; }
-    #error { color: red; margin: 10px; }
-    button { padding: 10px; font-size: 16px; }
+    video, canvas { 
+      border: 1px solid black; 
+      margin: 10px; 
+      width: 320px; 
+      height: 240px;
+    }
+    #error { 
+      color: red; 
+      margin: 10px; 
+      font-family: Arial, sans-serif;
+    }
+    button { 
+      padding: 10px 20px; 
+      font-size: 16px; 
+      cursor: pointer;
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
   </style>
 </head>
 <body>
-  <video id="video" autoplay width="320" height="240"></video>
+  <video id="video" autoplay></video>
   <canvas id="canvas" width="320" height="240"></canvas>
   <button onclick="startAudio()">Start Audio</button>
   <p id="error"></p>
@@ -23,6 +40,7 @@
     const errorDisplay = document.getElementById('error');
     let audioCtx = null;
     let oscillator = null;
+    let gainNode = null;
 
     // Webcam setup
     async function setupWebcam() {
@@ -33,7 +51,8 @@
         video.srcObject = stream;
         video.play();
         video.oncanplay = () => {
-          console.log('Video is ready');
+          console.log('Video ready, starting frame processing');
+          errorDisplay.textContent = ''; // Clear errors
           processFrame();
         };
       } catch (err) {
@@ -46,18 +65,20 @@
     function startAudio() {
       if (!audioCtx) {
         audioCtx = new AudioContext();
-        // Resume AudioContext if suspended (required by some browsers)
         if (audioCtx.state === 'suspended') {
-          audioCtx.resume();
+          audioCtx.resume().then(() => console.log('AudioContext resumed'));
         }
         oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // 10% volume to prevent loud output
+        gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // 10% volume
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
         oscillator.connect(gainNode).connect(audioCtx.destination);
         oscillator.start();
-        document.querySelector('button').disabled = true; // Prevent multiple clicks
+        document.querySelector('button').disabled = true;
+        console.log('Audio started');
+      } else {
+        console.log('Audio already started');
       }
     }
 
@@ -69,8 +90,16 @@
     let output = new Array(width * height * 2).fill(0);
 
     // Frame processing
-    function processFrame() {
+    let lastFrameTime = 0;
+    function processFrame(timestamp) {
+      if (timestamp - lastFrameTime < 33) { // Limit to ~30 FPS
+        requestAnimationFrame(processFrame);
+        return;
+      }
+      lastFrameTime = timestamp;
+
       if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        console.log('Video not ready, skipping frame');
         requestAnimationFrame(processFrame);
         return;
       }
@@ -98,7 +127,8 @@
 
       if (audioCtx && oscillator) {
         const freq = 100 + (energy / 255) * 700; // Map to 100-800 Hz
-        oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01); // Smooth transition
+        oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
+        console.log('Frequency:', freq.toFixed(2), 'Hz');
       }
 
       requestAnimationFrame(processFrame);
