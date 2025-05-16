@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcoustSee - Spatial Audio Navigation, a photon to phonon tool inspired by Euler´s tonal net </title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="topLeft" role="button" aria-label="Adjust FPS" tabindex="0">
+        <p>FPS</p>
+    </div>
+    <div id="topRight" role="button" aria-label="Toggle note mode" tabindex="0">
+        <p>Mode</p>
+    </div>
+    <div id="bottomLeft" role="button" aria-label="Adjust amplitude" tabindex="0">
+        <p>Volume</p>
+    </div>
+    <div id="bottomRight" role="button" aria-label="Start or stop navigation audio" tabindex="0">
+        <p>Start/Stop</p>
+    </div>
+    <div id="videoContainer">
+        <video id="videoFeed" autoplay></video>
+    </div>
+    <div id="debug" style="display: none; position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px;">
+        <p id="debugText"></p>
+    </div>
+    <canvas id="imageCanvas" width="64" height="48" style="display: none;"></canvas>
+    <script src="main.js"></script>
+</body>
+</html>
