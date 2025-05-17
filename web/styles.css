@@ -4,21 +4,22 @@ body {
     padding: 0;
     height: 100vh;
     position: relative;
-    background: #000; /* Black for battery saving */
+    background: #000;
     touch-action: manipulation;
 }
-#settingsBar {
+#videoContainer {
     position: absolute;
-    top: 10px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 10px;
-    z-index: 10;
 }
 button {
-    width: 60px;
-    height: 40px;
+    width: 80px;
+    height: 30px;
     border: 2px solid;
     border-radius: 5px;
     background: #333;
@@ -29,18 +30,10 @@ button {
     user-select: none;
 }
 #fpsBtn { border-color: blue; }
-#modeBtn { border-color: green; }
-#volumeBtn { border-color: red; }
+#modeBtn { border-color: green; position: absolute; left: -90px; top: 50%; transform: translateY(-50%); }
+#autoModeBtn { border-color: red; position: absolute; right: -90px; top: 50%; transform: translateY(-50%); }
 #startStopBtn { border-color: purple; }
 button:focus { background: #555; }
-#videoContainer {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 64px;
-    height: 48px;
-}
 #videoFeed {
     width: 64px;
     height: 48px;
