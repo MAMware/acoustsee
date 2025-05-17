@@ -3,9 +3,10 @@ let isAudioInitialized = false;
 let oscillators = [];
 let prevFrameDataLeft = null, prevFrameDataRight = null;
 let debugVisible = false;
+let lastSuggestionTime = 0;
 const fpsBtn = document.getElementById('fpsBtn');
 const modeBtn = document.getElementById('modeBtn');
-const volumeBtn = document.getElementById('volumeBtn');
+const autoModeBtn = document.getElementById('autoModeBtn');
 const startStopBtn = document.getElementById('startStopBtn');
 const videoFeed = document.getElementById('videoFeed');
 const canvas = document.getElementById('imageCanvas');
@@ -17,9 +18,9 @@ let audioInterval = null;
 let frameCount = 0, lastTime = performance.now();
 let skipFrame = false;
 const settings = {
-    updateInterval: 50, // ms (50, 100, 250)
-    dayNightMode: 'day', // day, night
-    maxAmplitude: 0.08 // 0.04, 0.08, 0.12
+    updateInterval: 50,
+    dayNightMode: 'day',
+    autoMode: true
 };
 
 // Initialize audio context and oscillators
@@ -30,7 +31,6 @@ function initializeAudio() {
         if (audioContext.state === 'suspended') {
             audioContext.resume();
         }
-        // Create oscillators for up to 32 notes (16 per side)
         for (let i = 0; i < 32; i++) {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -43,6 +43,14 @@ function initializeAudio() {
             osc.start();
             oscillators.push({ osc, gain, panner, active: false });
         }
+        // Test tone to confirm audio
+        const testOsc = audioContext.createOscillator();
+        const testGain = audioContext.createGain();
+        testOsc.frequency.setValueAtTime(440, audioContext.currentTime);
+        testGain.gain.setValueAtTime(0.1, audioContext.currentTime);
+        testOsc.connect(testGain).connect(audioContext.destination);
+        testOsc.start();
+        testOsc.stop(audioContext.currentTime + 0.5);
         isAudioInitialized = true;
         if (window.speechSynthesis) {
             const utterance = new SpeechSynthesisUtterance('Audio initialized');
@@ -50,17 +58,19 @@ function initializeAudio() {
         }
     } catch (error) {
         console.error('Audio Initialization Error:', error);
-        isAudioInitialized = true;
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Failed to initialize audio');
+            window.speechSynthesis.speak(utterance);
+        }
     }
 }
 
 // Build hexagonal Tonnetz grid (32x32 per half)
 const gridSize = 32;
-const notesPerOctave = 12; // Chromatic scale
+const notesPerOctave = 12;
 const octaves = 5;
-const minFreqDay = 200, maxFreqDay = 1600;
-const minFreqNight = 100, maxFreqNight = 800;
-let minFreq = minFreqDay, maxFreq = maxFreqDay;
+const minFreq = 100;
+const maxFreq = 3200;
 const frequencies = [];
 for (let octave = 0; octave < octaves; octave++) {
     for (let note = 0; note < notesPerOctave; note++) {
@@ -68,7 +78,6 @@ for (let octave = 0; octave < octaves; octave++) {
         if (freq <= maxFreq) frequencies.push(freq);
     }
 }
-// Circle of Fifths progression
 const circleOfFifths = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
 const tonnetzGrid = Array(gridSize).fill().map(() => Array(gridSize).fill(0));
 for (let y = 0; y < gridSize; y++) {
@@ -80,7 +89,7 @@ for (let y = 0; y < gridSize; y++) {
     }
 }
 
-// Detect motion and infer object type
+// Map frame to Tonnetz grid, detect motion
 function mapFrameToTonnetz(frameData, width, height, prevFrameData, panValue) {
     const gridWidth = width / gridSize;
     const gridHeight = height / gridSize;
@@ -90,7 +99,6 @@ function mapFrameToTonnetz(frameData, width, height, prevFrameData, panValue) {
     for (let i = 0; i < frameData.length; i++) avgIntensity += frameData[i];
     avgIntensity /= frameData.length;
 
-    // Detect motion
     if (prevFrameData) {
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
@@ -105,18 +113,17 @@ function mapFrameToTonnetz(frameData, width, height, prevFrameData, panValue) {
         }
     }
 
-    // Cluster regions to infer objects
+    // Cluster regions to reduce overlap
     const clusters = [];
     const visited = new Set();
     for (let region of movingRegions) {
         if (visited.has(`${region.gridX},${region.gridY}`)) continue;
         const cluster = { regions: [region], totalDelta: region.delta, avgX: region.x, avgY: region.y };
         visited.add(`${region.gridX},${region.gridY}`);
-        // Look for nearby regions (within 5x5 pixels)
         for (let other of movingRegions) {
             if (visited.has(`${other.gridX},${other.gridY}`)) continue;
             const dist = Math.sqrt((region.x - other.x) ** 2 + (region.y - other.y) ** 2);
-            if (dist < 5) {
+            if (dist < 3) {
                 cluster.regions.push(other);
                 cluster.totalDelta += other.delta;
                 cluster.avgX = (cluster.avgX * (cluster.regions.length - 1) + other.x) / cluster.regions.length;
@@ -127,7 +134,7 @@ function mapFrameToTonnetz(frameData, width, height, prevFrameData, panValue) {
         clusters.push(cluster);
     }
 
-    // Sort clusters by motion strength, take top 16
+    // Sort clusters, take top 16
     clusters.sort((a, b) => b.totalDelta - a.totalDelta);
     const notes = [];
     for (let i = 0; i < Math.min(16, clusters.length); i++) {
@@ -135,23 +142,11 @@ function mapFrameToTonnetz(frameData, width, height, prevFrameData, panValue) {
         const gridX = Math.floor(cluster.avgX / gridWidth);
         const gridY = Math.floor(cluster.avgY / gridHeight);
         const freq = tonnetzGrid[gridY][gridX];
-        const amplitude = Math.min(settings.maxAmplitude, 0.02 + (cluster.totalDelta / cluster.regions.length / 255) * 0.06);
-
-        // Infer object type based on motion and size
-        const size = cluster.regions.length;
-        const speed = cluster.totalDelta / cluster.regions.length;
-        const consistency = cluster.regions.reduce((sum, r) => sum + Math.abs(r.delta - speed), 0) / size;
-        let harmonics = [];
-        if (size > 50 && consistency < 20) { // Human: large, steady motion
-            harmonics = [freq * Math.pow(2, 4/12), freq * Math.pow(2, 7/12)]; // Major: third, fifth
-        } else if (size < 30 && consistency > 30) { // Cat: small, erratic motion
-            harmonics = [freq * Math.pow(2, 3/12), freq * Math.pow(2, 7/12)]; // Minor: third, fifth
-        } else if (size > 30 && speed > 50) { // Car: fast, linear motion
-            harmonics = [freq * Math.pow(2, 1/12), freq * Math.pow(2, 2/12)]; // Dissonant: half-step, whole-step
-        } else { // Default: neutral
-            harmonics = [freq * Math.pow(2, 7/12)]; // Fifth
-        }
-
+        const avgIntensity = cluster.regions.reduce((sum, r) => sum + r.intensity, 0) / cluster.regions.length;
+        const amplitude = settings.dayNightMode === 'day'
+            ? 0.02 + (avgIntensity / 255) * 0.06
+            : 0.08 - (avgIntensity / 255) * 0.06;
+        const harmonics = [freq * Math.pow(2, 7/12), freq * Math.pow(2, 4/12)]; // Fifth, major third
         notes.push({ freq, amplitude, harmonics, pan: panValue });
     }
 
@@ -165,7 +160,6 @@ function playAudio(frameData, width, height) {
     const startTime = performance.now();
     const halfWidth = width / 2;
 
-    // Split frame into left and right
     const leftFrame = new Uint8ClampedArray(halfWidth * height);
     const rightFrame = new Uint8ClampedArray(halfWidth * height);
     for (let y = 0; y < height; y++) {
@@ -175,51 +169,42 @@ function playAudio(frameData, width, height) {
         }
     }
 
-    // Process each half
     const leftResult = mapFrameToTonnetz(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
     const rightResult = mapFrameToTonnetz(rightFrame, halfWidth, height, prevFrameDataRight, 1);
     prevFrameDataLeft = leftResult.newFrameData;
     prevFrameDataRight = rightResult.newFrameData;
 
-    // Suggest day/night mode based on average intensity
-    const avgIntensity = (leftResult.avgIntensity + rightResult.avgIntensity) / 2;
-    if (avgIntensity < 100 && settings.dayNightMode !== 'night') {
-        if (window.speechSynthesis) {
-            const utterance = new SpeechSynthesisUtterance('Suggesting night mode due to low light');
-            window.speechSynthesis.speak(utterance);
+    // Suggest day/night mode
+    const now = performance.now();
+    if (settings.autoMode && now - lastSuggestionTime > 30000) {
+        const avgIntensity = (leftResult.avgIntensity + rightResult.avgIntensity) / 2;
+        if (avgIntensity < 100 && settings.dayNightMode !== 'night') {
+            settings.dayNightMode = 'night';
+            if (window.speechSynthesis) {
+                const utterance = new SpeechSynthesisUtterance('Switching to night mode');
+                window.speechSynthesis.speak(utterance);
+            }
+        } else if (avgIntensity > 150 && settings.dayNightMode !== 'day') {
+            settings.dayNightMode = 'day';
+            if (window.speechSynthesis) {
+                const utterance = new SpeechSynthesisUtterance('Switching to day mode');
+                window.speechSynthesis.speak(utterance);
+            }
         }
-    } else if (avgIntensity > 150 && settings.dayNightMode !== 'day') {
-        if (window.speechSynthesis) {
-            const utterance = new SpeechSynthesisUtterance('Suggesting day mode due to bright light');
-            window.speechSynthesis.speak(utterance);
-        }
+        lastSuggestionTime = now;
     }
 
-    // Update frequency range based on mode
-    minFreq = settings.dayNightMode === 'day' ? minFreqDay : minFreqNight;
-    maxFreq = settings.dayNightMode === 'day' ? maxFreqDay : maxFreqNight;
-    for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-            const octave = Math.floor((y / gridSize) * octaves);
-            const noteIndex = circleOfFifths[x % circleOfFifths.length];
-            const freqIndex = octave * notesPerOctave + noteIndex;
-            tonnetzGrid[y][x] = frequencies[freqIndex % frequencies.length] || frequencies[frequencies.length - 1];
-        }
-    }
-
-    // Update oscillators
     let oscIndex = 0;
     const allNotes = [...leftResult.notes, ...rightResult.notes];
     for (let i = 0; i < oscillators.length; i++) {
         const oscData = oscillators[i];
         if (i < allNotes.length) {
             const { freq, amplitude, harmonics, pan } = allNotes[i];
-            oscData.osc.type = settings.dayNightMode === 'day' ? (freq < 800 ? 'square' : 'triangle') : 'sine';
+            oscData.osc.type = freq < 400 ? 'square' : freq < 1000 ? 'triangle' : 'sine';
             oscData.osc.frequency.setTargetAtTime(freq, audioContext.currentTime, 0.015);
             oscData.gain.gain.setTargetAtTime(amplitude, audioContext.currentTime, 0.015);
             oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
             oscData.active = true;
-            // Add harmonics
             if (harmonics.length && oscIndex + harmonics.length < oscillators.length) {
                 for (let h = 0; h < harmonics.length; h++) {
                     oscIndex++;
@@ -237,7 +222,6 @@ function playAudio(frameData, width, height) {
         }
     }
 
-    // Performance metrics
     frameCount++;
     const now = performance.now();
     const elapsed = now - lastTime;
@@ -248,11 +232,11 @@ function playAudio(frameData, width, height) {
         if (debugVisible) {
             debugText.textContent = `Frame time: ${frameTime}ms\nFPS: ${fps.toFixed(1)}\nGrid: 32x32 (left), 32x32 (right)\nNotes: ${activeNotes || 'None'}`;
         }
+        console.log(`Debug: Frame time: ${frameTime}ms, FPS: ${fps.toFixed(1)}, Notes: ${activeNotes}`);
         frameCount = 0;
         lastTime = now;
     }
 
-    // Frame skipping
     skipFrame = (now - startTime) > 40;
 }
 
@@ -260,6 +244,7 @@ function playAudio(frameData, width, height) {
 fpsBtn.addEventListener('dblclick', () => {
     debugVisible = !debugVisible;
     debug.style.display = debugVisible ? 'block' : 'none';
+    console.log('Debug toggled:', debugVisible);
     navigator.vibrate(200);
     if (window.speechSynthesis) {
         const utterance = new SpeechSynthesisUtterance(`Debug ${debugVisible ? 'on' : 'off'}`);
@@ -294,14 +279,13 @@ modeBtn.addEventListener('touchstart', (event) => {
     }
 });
 
-// Settings: Amplitude
-volumeBtn.addEventListener('touchstart', (event) => {
+// Settings: Auto Mode
+autoModeBtn.addEventListener('touchstart', (event) => {
     event.preventDefault();
     navigator.vibrate(200);
-    const amplitudes = [0.04, 0.08, 0.12];
-    settings.maxAmplitude = amplitudes[(amplitudes.indexOf(settings.maxAmplitude) + 1) % 3] || 0.08;
+    settings.autoMode = !settings.autoMode;
     if (window.speechSynthesis) {
-        const utterance = new SpeechSynthesisUtterance(`Volume set to ${settings.maxAmplitude}`);
+        const utterance = new SpeechSynthesisUtterance(`Auto mode ${settings.autoMode ? 'on' : 'off'}`);
         window.speechSynthesis.speak(utterance);
     }
 });
@@ -325,7 +309,10 @@ startStopBtn.addEventListener('touchstart', async (event) => {
     event.preventDefault();
     navigator.vibrate(200);
     initializeAudio();
-    if (!isAudioInitialized) return;
+    if (!isAudioInitialized) {
+        console.error('Audio not initialized');
+        return;
+    }
     if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
