@@ -1,23 +1,24 @@
 ## Analysis
+(5/18/2024, first two graphs are not updated to last main.js)
 
 **Main Components:**
-  Audio Initialization: initializeAudio sets up the audio context and oscillators.
-  Tonnetz Grid: A 16x16 grid maps frequencies based on a circle of fifths for musical notes.
-  Frame Processing: mapFrameToTonnetz and playAudio process video frames to detect motion and map it to musical notes.
-  User Interactions: Touch events on topLeft, topRight, bottomLeft, and bottomRight adjust settings (FPS, note mode, amplitude) or start/stop navigation.
-  Frame Loop: processFrame captures video frames, converts them to grayscale, and triggers audio playback.
+-  Audio Initialization: initializeAudio sets up the audio context and oscillators.
+-  Tonnetz Grid: A 16x16 grid maps frequencies based on a circle of fifths for musical notes.
+-  Frame Processing: mapFrameToTonnetz and playAudio process video frames to detect motion and map it to musical notes.
+-  User Interactions: Touch events on topLeft, topRight, bottomLeft, and bottomRight adjust settings (FPS, note mode, amplitude) or start/stop navigation.
+-  Frame Loop: processFrame captures video frames, converts them to grayscale, and triggers audio playback.
 
 **Flow:**
-  The program starts with initialization (audio and grid setup).
-  User interactions (touch events) trigger settings changes or start/stop the video/audio loop.
-  The main loop (processFrame) processes video frames and generates audio based on motion.
-  Debug overlay toggles visibility and displays performance metrics.
+ - The program starts with initialization (audio and grid setup).
+ - User interactions (touch events) trigger settings changes or start/stop the video/audio loop.
+ - The main loop (processFrame) processes video frames and generates audio based on motion.
+ - Debug overlay toggles visibility and displays performance metrics.
 
 **Key Functions:**
-  initializeAudio: Sets up oscillators for sound generation.
-  mapFrameToTonnetz: Maps video frame motion to musical notes.
-  playAudio: Processes frames and updates oscillators.
-  processFrame: Drives the main video-to-audio loop.
+ - initializeAudio: Sets up oscillators for sound generation.
+ - mapFrameToTonnetz: Maps video frame motion to musical notes.
+ - playAudio: Processes frames and updates oscillators.
+ - processFrame: Drives the main video-to-audio loop.
 
 ```mermaid  
 graph TD
@@ -59,15 +60,18 @@ graph TD
 ```
 **The mapFrameToTonnetz function:**
 
-  Takes parameters: frameData (grayscale pixel data), width, height, prevFrameData (previous frame for motion detection), and panValue (stereo panning, -1 for left, 1 for right).0
-  Calculates grid dimensions (gridWidth, gridHeight) by dividing the frame into a 16x16 grid.
-  Creates a new newFrameData array to store the current frame.
-  Detects motion by comparing the current frame (frameData) with the previous frame (prevFrameData):
+  Takes parameters: 
+  - frameData (grayscale pixel data), width, height,
+  - prevFrameData (previous frame for motion detection),
+  - panValue (stereo panning, -1 for left, 1 for right).0
+ - Calculates grid dimensions (gridWidth, gridHeight) by dividing the frame into a 16x16 grid.
+ - Creates a new newFrameData array to store the current frame.
+ - Detects motion by comparing the current frame (frameData) with the previous frame (prevFrameData):
    - Iterates over each pixel in the frame.
    - Computes the absolute difference (delta) between corresponding pixels.
    - If delta > 30 (motion threshold), records the grid coordinates (gridX, gridY), intensity, and delta in movingRegions.
-  Sorts movingRegions by delta (motion strength) in descending order.
-  Selects up to 4 regions with the strongest motion.
+ - Sorts movingRegions by delta (motion strength) in descending order.
+ - Selects up to 4 regions with the strongest motion.
   For each selected region:
    - Retrieves the frequency from the tonnetzGrid using gridX and gridY.
    - Calculates amplitude based on delta (scaled between 0.02 and settings.maxAmplitude).
@@ -76,7 +80,7 @@ graph TD
      - Minor: Adds minor third and fifth (freq * 2^(3/12), freq * 2^(7/12)).
      - Dissonant: Adds tritone (freq * 2^(6/12)).
    - Stores the note data (freq, amplitude, harmonics, pan) in the notes array.
-  Returns an object containing notes and newFrameData.
+ - Returns an object containing notes and newFrameData.
 
 ```mermaid  
 graph TD
@@ -125,7 +129,7 @@ graph TD
 
 **The oscillator update logic in playAudio:**
 
-  Takes the allNotes array (combining notes from left and right frames) and iterates over the oscillators array.
+ - Takes the allNotes array (combining notes from left and right frames) and iterates over the oscillators array.
   For each oscillator (up to 8, indexed by oscIndex):
    - If the oscillator index is within the allNotes length:
      - Assigns the note's freq, amplitude, harmonics, and pan to the oscillator.
@@ -134,7 +138,7 @@ graph TD
      - If harmonics exist and there are enough oscillators, updates additional oscillators with harmonic frequencies and reduced amplitude (0.5x).
      - Marks the oscillator as active.
    - Otherwise, sets the gain to 0 and marks it as inactive.
-  Increments oscIndex to track the next available oscillator, accounting for harmonics.
+ - Increments oscIndex to track the next available oscillator, accounting for harmonics.
 
 
 ```mermaid
