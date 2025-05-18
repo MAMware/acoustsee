@@ -1,5 +1,5 @@
 ## Analysis
-(5/18/2024, first two graphs are not updated to last main.js)
+5/18/2024 note: first three graphs are not updated as per last html, css and main.js
 
 **Main Components:**
 -  Audio Initialization: initializeAudio sets up the audio context and oscillators.
@@ -60,27 +60,24 @@ graph TD
 ```
 **The mapFrameToTonnetz function:**
 
-  Takes parameters: 
-  - frameData (grayscale pixel data), width, height,
-  - prevFrameData (previous frame for motion detection),
-  - panValue (stereo panning, -1 for left, 1 for right).0
- - Calculates grid dimensions (gridWidth, gridHeight) by dividing the frame into a 16x16 grid.
- - Creates a new newFrameData array to store the current frame.
- - Detects motion by comparing the current frame (frameData) with the previous frame (prevFrameData):
+ - Takes parameters from `frameData` as grayscale pixel data among width and height. `prevFrameData` for previous frame for motion detection, `panValue` for stereo panning -1 for left, 1 for right.
+ - Calculates grid dimensions `gridWidth`, `gridHeight` by dividing the frame into a 16x16 grid.
+ - Creates a new `newFrameData` array to store the current frame.
+ - Detects motion by comparing the current frame `frameData` with the previous frame `prevFrameData`:
    - Iterates over each pixel in the frame.
    - Computes the absolute difference (delta) between corresponding pixels.
-   - If delta > 30 (motion threshold), records the grid coordinates (gridX, gridY), intensity, and delta in movingRegions.
- - Sorts movingRegions by delta (motion strength) in descending order.
+   - If delta > 30 (motion threshold), records the grid coordinates (gridX, gridY), intensity, and delta in `movingRegions`.
+ - Sorts `movingRegions` by delta (motion strength) in descending order.
  - Selects up to 4 regions with the strongest motion.
   For each selected region:
-   - Retrieves the frequency from the tonnetzGrid using gridX and gridY.
+   - Retrieves the frequency from the `tonnetzGrid` using gridX and gridY.
    - Calculates amplitude based on delta (scaled between 0.02 and settings.maxAmplitude).
    - Assigns harmonics based on settings.noteMode:
      - Major: Adds major third and fifth (freq * 2^(4/12), freq * 2^(7/12)).
      - Minor: Adds minor third and fifth (freq * 2^(3/12), freq * 2^(7/12)).
      - Dissonant: Adds tritone (freq * 2^(6/12)).
    - Stores the note data (freq, amplitude, harmonics, pan) in the notes array.
- - Returns an object containing notes and newFrameData.
+ - Returns an object containing notes and `newFrameData`.
 
 ```mermaid  
 graph TD
@@ -187,8 +184,8 @@ graph TD
     DD -->|No| EE[End Oscillator Updates]
 ```
 Original: 
-- Located in playAudio, starting around line 152.
-- allNotes is created by combining leftResult.notes and rightResult.notes.
+- Located in `playAudio`, starting around line 152.
+- `allNotes` is created by combining `leftResult.notes` and `rightResult.notes`.
 - Oscillator type is dynamically set based on frequency:
 square if freq < 400 Hz.
 triangle if freq < 1000 Hz.
@@ -197,9 +194,9 @@ sine otherwise.
 - Loop structure: Iterates over oscillators, assigning notes and harmonics, or silencing unused oscillators.
 
 Updated:
-- Located in playAudio, starting around line 152.
+- Located in `playAudio`, starting around line 152.
 Key differences:
-- allNotes is now sorted by amplitude in descending order: const allNotes = [...leftResult.notes, ...rightResult.notes].sort((a, b) => b.amplitude - a.amplitude);.
+- `allNotes` is now sorted by amplitude in descending order: `const allNotes = [...leftResult.notes, ...rightResult.notes].sort((a, b) => b.amplitude - a.amplitude);`.
 - Oscillator count increased to 32 (from 8).
 - Oscillator type is fixed to 'sine' (no frequency-based type selection).
 - Harmonic assignment logic remains the same (amplitude * 0.5 for harmonics).
