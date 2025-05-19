@@ -1,5 +1,5 @@
 # AcoustSee
-**A photon to phonon tool**
+**A photon to phonon tool** {#introduction}
 
 AcoustSee is an open-source project kickstarted by MAMware and coded by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
 
@@ -14,8 +14,38 @@ Imagine a person who is unable to see and is sitting at a park, with headphones 
 
 This kickstart aims to make a reality, we first started a prof of concept with static images in the python version and currently we moved to live video for a web version. Expanding and optimizing to mobile operating systems in the near future is also desired.
 
+## Table of Contents
+- [Introduction](#introduction)
+- [Installation](docs/INSTALL.md)
+- [Usage](#usage)
+- [Status](#status)
+- [Contributing](docs/CONTRIBUTING.md)
+- [To-Do List](docs/TO_DO.md)
+- [Changelog](docs/CHANGELOG.md)
+- [Diagrams](docs/DIAGRAMS.md)
+- [License](docs/LICENSE.md)
+- [FAQ](docs/FAQ.md)
+
+## Installation
+
+The current best performer can be run without installation from mamware.github.io/acustsee/web
+to test other releases pelase refer to install docs at https:/www.github.com/MAMware/acoustsee/docs/INSTALL.md
+
+## Usage
+
+Permisions to acces the camera by the browser are needed, al processing is done in your device and not a single bit of data is sent outside your local environment.
+
+Having the most up to date version of mobile web browsers is diserable. 
+
+Minimum version list: (to be filed)
+
+The webapp has is split in three parts. The lower half is dedicated for the start and stop of the navigation, top right is day/night toggle and top left is the frames per seconds selections that is usefull if your device stutters or generates artifacts due to processing skipping used, likely by cpu processing capabilties. 
+
+Most up to date and best performer is located at https://mamware.github.io/acustsee/web
+
+Privacy Note: All of the video processing is done at your device, not a single frame or any kind of data is sent to anyone or anywhere.
+
 ## Status
-**Work in Progress**  
 
 **Milestone 1**: (Completed)
 
@@ -26,6 +56,7 @@ This kickstart aims to make a reality, we first started a prof of concept with s
 - Minimun Viable Product. A javascript web version, to process privately the user live video feed, framing a "Hilbert curve" (it was a simplified zig zag) and synthetised sound from it trying to emulate a head related transfer function.
 
 **Milestone 3 (Current)**:
+**Work in Progress**  
 
 - Testing different approachs and with fast, raw iterations. The subfolders fft, htrf, tonnetz sections each approach.  
 - Current selected main soundscape generator comes from the Euler Tonnetz approach where the video frame split into left/right halves, mapped to the hexagonal Euler Tonnetz grid (32x32 per half, 2048 notes total).
