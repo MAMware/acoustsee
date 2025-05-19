@@ -1,5 +1,9 @@
+##Installation
 
-## Getting started with our first commit wich is a MVP Python Code
+The current best performer can be run without installation at mamware.github.io/acustsee/web
+to test the other approachs such as the fft one, you can run it from mamware.github.io/acustsee/web/fft or mamware.github.io/acustsee/web/tonnetz
+
+## To test our first commit wich is a Python script
 
 A simple proof-of-concept: process a static image with Gabor filters and output basic HRTF-like audio (left/right panning)
 
