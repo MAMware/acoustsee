@@ -1,5 +1,7 @@
 # AcoustSee
-**A photon to phonon tool** {#introduction}
+**photon to phonon code**
+
+## [Introduction](#introduction)
 
 AcoustSee is an open-source project kickstarted by MAMware and coded by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
 
@@ -9,29 +11,32 @@ This project was entirely coded by Grok at grok.com and x.com and we’re also s
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
-## Project Vision
+### Project Vision
+
 Imagine a person who is unable to see and is sitting at a park, with headphones on wich are paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, where children are playing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content and wen it swings closer its spectra complexity raises. 
 
 This kickstart aims to make a reality, we first started a prof of concept with static images in the python version and currently we moved to live video for a web version. Expanding and optimizing to mobile operating systems in the near future is also desired.
 
 ## Table of Contents
+
 - [Introduction](#introduction)
 - [Installation](docs/INSTALL.md)
 - [Usage](#usage)
 - [Status](#status)
+- [Project structure](#project_structure)
+- [Changelog](docs/CHANGELOG.md)
 - [Contributing](docs/CONTRIBUTING.md)
 - [To-Do List](docs/TO_DO.md)
-- [Changelog](docs/CHANGELOG.md)
 - [Diagrams](docs/DIAGRAMS.md)
 - [License](docs/LICENSE.md)
 - [FAQ](docs/FAQ.md)
 
-## Installation
+### [Installation](docs/INSTALL.md)
 
 The current best performer can be run without installation from mamware.github.io/acustsee/web
 to test other releases pelase refer to install docs at https:/www.github.com/MAMware/acoustsee/docs/INSTALL.md
 
-## Usage
+### [Usage](#usage)
 
 Permisions to acces the camera by the browser are needed, al processing is done in your device and not a single bit of data is sent outside your local environment.
 
@@ -45,7 +50,7 @@ Most up to date and best performer is located at https://mamware.github.io/acust
 
 Privacy Note: All of the video processing is done at your device, not a single frame or any kind of data is sent to anyone or anywhere.
 
-## Status
+### [Status](#status)
 
 **Milestone 1**: (Completed)
 
@@ -77,7 +82,7 @@ Consider:
 - Android/iOS app developtment if considerable performance gain can be achieved.
 
 
-## Project Structure
+## [Project structure](#project_structure)
 
 ```
 acoustsee/
@@ -105,9 +110,30 @@ acoustsee/
 └── README.md                  # This file, providing an overview of the project
 ```
 
-# Code Flow Diagrams
+### [Changelog](docs/CHANGELOG.md)
+
+- Current version is v0.7, follow the changelog link for log history and details
+
+### [Contributing](docs/CONTRIBUTING.md)
+
+- Please follow the link for the detailed contributing guidelines, branching strategy and examples.
+
+### [To-Do List](docs/TO_DO.md)
+
+- At this link (link) you will find the list for current to do (now at milestone 4).
+
+### [Code flow diagrams](docs/DIAGRAMS.md)
 
 - Process Frame Flow, Audio Generation Flow and Motion Detection (oscillator logic)
 
 https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
+
+### [License](docs/LICENSE.md)
+
+- Licence details
+  
+### [FAQ](docs/FAQ.md)
+
+- Follow the link for list of the Frecuently Asqued Questions.
+  
 
