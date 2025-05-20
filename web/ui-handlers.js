@@ -1,3 +1,5 @@
+// web/ui-handlers.js
+import { settings, stream, audioInterval, prevFrameDataLeft, prevFrameDataRight } from './state.js';
 import { initializeAudio, playAudio } from './audio-processor.js';
 import { mapFrameToTonnetz } from './tonnetz-grid.js';
 
