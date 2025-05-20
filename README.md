@@ -1,51 +1,74 @@
 # AcoustSee
-**A photon to phonon tool** {#introduction}
+
+**a photon to phonon code**
+
+
+## [Introduction](#introduction)
 
 AcoustSee is an open-source project kickstarted by MAMware and coded by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
 
-First we tested the concept with a Python script and still image, once validated we moved to do the processing of a live video with Hilbert curves inspired by 3Blue1Brown (the great Grant), among with te idea to take the advantaje of Head-Related Transfer Function (HRTF) to create spatial awarenes that maps objects positons into distinct sounds. 
+First we tested the concept with a Python script and still image, once validated we moved to do the processing of a live video with Hilbert curves inspired by 3Blue1Brown (the great Grant Sanderson), among with te idea to take the advantaje of Head-Related Transfer Function (HRTF) to create spatial awarenes that maps objects positons into distinct sounds. 
 
 This project was entirely coded by Grok at grok.com and x.com and we’re also sharing the step-by-step journey (conversation) to inspire others to contribute to accessibility tech.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
-## Project Vision
+### Project Vision
+
 Imagine a person who is unable to see and is sitting at a park, with headphones on wich are paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, where children are playing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content and wen it swings closer its spectra complexity raises. 
 
 This kickstart aims to make a reality, we first started a prof of concept with static images in the python version and currently we moved to live video for a web version. Expanding and optimizing to mobile operating systems in the near future is also desired.
 
 ## Table of Contents
+
 - [Introduction](#introduction)
 - [Installation](docs/INSTALL.md)
 - [Usage](#usage)
 - [Status](#status)
+- [Project structure](#project_structure)
+- [Changelog](docs/CHANGELOG.md)
 - [Contributing](docs/CONTRIBUTING.md)
 - [To-Do List](docs/TO_DO.md)
-- [Changelog](docs/CHANGELOG.md)
 - [Diagrams](docs/DIAGRAMS.md)
 - [License](docs/LICENSE.md)
 - [FAQ](docs/FAQ.md)
 
-## Installation
+### [Installation](docs/INSTALL.md)
 
-The current best performer can be run without installation from mamware.github.io/acustsee/web
-to test other releases pelase refer to install docs at https:/www.github.com/MAMware/acoustsee/docs/INSTALL.md
+The current best performer can be run without installation from 
+- https://mamware.github.io/acoustsee/web
+to test other versions pelase refer to install docs at
+- https:/www.github.com/MAMware/acoustsee/docs/INSTALL.md
 
-## Usage
+### [Usage](#usage)
 
-Permisions to acces the camera by the browser are needed, al processing is done in your device and not a single bit of data is sent outside your local environment.
+Dispite that al processing the is done in your device and not a single bit of data is sent outside your device, a permision to access the camera by the browser will be requested and only used by such browser in order to do the local processing of the webcam data generating the audio for the navigation.
 
 Having the most up to date version of mobile web browsers is diserable. 
 
-Minimum version list: (to be filed)
+Minimum version list (most from 2021 should work):
 
-The webapp has is split in three parts. The lower half is dedicated for the start and stop of the navigation, top right is day/night toggle and top left is the frames per seconds selections that is usefull if your device stutters or generates artifacts due to processing skipping used, likely by cpu processing capabilties. 
+| Browser             | Minimum Version for Full Support   | Notes                                                                          |
+| ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
+| Chrome for Android  | Chrome 47 (December 2015)          | Full support for getUserMedia, AudioContext, and createStereoPanner.           |
+| Safari on iOS       | iOS 14.5 (Safari 14.1, April 2021) | Supports unprefixed AudioContext and createStereoPanner. No vibration support. |
+| Firefox for Android | Firefox 50 (November 2016)         | Full support for all APIs, though SpeechSynthesis may be inconsistent.         |
+| Samsung Internet    | Samsung Internet 5.0 (2017)        | Based on Chromium, full support for all APIs.                                  |
+| Opera Mobile        | Opera 36 (2016)                    | Based on Chromium, full support for all APIs.                                  |
+| Edge for Android    | Edge 79 (January 2020)             | Based on Chromium, full support for all APIs.                                  |
 
-Most up to date and best performer is located at https://mamware.github.io/acustsee/web
+
+The User Interface of the webapp is split in four parts. 
+The lower half is dedicated for the start and stop of the navigation at the left of the device (right hand of the user if it is being wear as intenteded) and the right is dedicated to the languaje selection for the speech sinthetizer, 
+The top right is for the day/night toggle and the top left is the frames per seconds (FPS) toggle that is usefull if your device stutters or generates artifacts due to processing issues, likely by a cpu processor limitation. 
+A log view and copy feature is being considered at the moment.
+
+Most up to date and best performer is located at - 
+ https://mamware.github.io/acustsee/web
 
 Privacy Note: All of the video processing is done at your device, not a single frame or any kind of data is sent to anyone or anywhere.
 
-## Status
+### [Status](#status)
 
 **Milestone 1**: (Completed)
 
@@ -77,7 +100,7 @@ Consider:
 - Android/iOS app developtment if considerable performance gain can be achieved.
 
 
-## Project Structure
+## [Project structure](#project_structure)
 
 ```
 acoustsee/
@@ -105,9 +128,30 @@ acoustsee/
 └── README.md                  # This file, providing an overview of the project
 ```
 
-# Code Flow Diagrams
+### [Changelog](docs/CHANGELOG.md)
 
-- Process Frame Flow, Audio Generation Flow and Motion Detection (oscillator logic)
+- Current version is v0.7, follow the changelog link for log history and details
+
+### [Contributing](docs/CONTRIBUTING.md)
+
+- Please follow the link for the detailed contributing guidelines, branching strategy and examples.
+
+### [To-Do List](docs/TO_DO.md)
+
+- At this document you will find the list for current to do wich is now from milestone 4.
+
+### [Code flow diagrams](docs/DIAGRAMS.md)
+
+- Process Frame Flow, Audio Generation Flow and Motion Detection such as oscillator logic.
 
 https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
+
+### [License](docs/LICENSE.md)
+
+- GPL-3.0 license details
+  
+### [FAQ](docs/FAQ.md)
+
+- Follow the link for list of the Frecuently Asqued Questions.
+  
 

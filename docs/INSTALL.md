@@ -1,11 +1,49 @@
-##Installation
+## Installation
 
-The current best performer can be run without installation at mamware.github.io/acustsee/web
-to test the other approachs such as the fft one, you can run it from mamware.github.io/acustsee/web/fft or mamware.github.io/acustsee/web/tonnetz
+Please note that the current best performer can be run without installation directly from a internet browser, the latest best performer is hosted at: 
 
-## To test our first commit wich is a Python script
+- https://mamware.github.io/acoustsee/web
 
-A simple proof-of-concept: process a static image with Gabor filters and output basic HRTF-like audio (left/right panning)
+To test the other approaches such as 
+the Fourier inspired one, you can run it from 
+- https://mamware.github.io/acoustsee/web/fft
+
+and the Euler inspired one from
+- https://mamware.github.io/acustsee/web/tonnetz
+
+(a locally run web version is corrently being studied)
+
+### Project structure
+
+```
+acoustsee/
+├── src/                       # Contains the Python PoC code for still image processing and audio generation.
+├── web/                       # Contains HTML, CSS, and JavaScript files for the web interface folder for different approaches at the core logic
+│   ├── fft/                   # Experimenting with Fourier, fast. 
+│   │    ├── index.html
+│   │    ├── main.js
+│   │    ├── styles.css
+│   ├── hrft/                  # Experimenting the Head Related Transfer Function
+│   │    ├── index.html
+│   │    ├── main.js
+│   │    ├── styles.css
+│   ├── tonnetz/               # Experimenting with Euler, Tonnetz.
+│   │    ├── index.html
+│   │    ├── main.js
+│   │    ├── styles.css
+│   ├── index.html             # The current chosen version as a better performer (Tonnetz, 5/18/2025).
+│   ├── main.js
+│   ├── styles.css
+├── examples/                  # Still image and output container for the Python PoC
+├── tests/                     # Should contain unit tests (currently missing)
+├── docs/                      # Contains technical documentation (working)
+│    ├── DIAGRAMS.ms           # Wireframes the logic at main.js
+└── README.md                  # This file, providing an overview of the project
+```
+
+## To test our first commit wich is a Python script, either out of curiosit or educational purposes, follow the instrucctions below
+
+Our first iteration, a simple proof-of-concept: process a static image file and output basic left/right panned audio file.
 
 ## Setup
 
@@ -35,7 +73,7 @@ For headless environments (e.g., Codespaces):
 
 Try it with examples/wall_left.jpg to hear a basic left/right audio split!
 
-## Troubleshooting
+## Troubleshooting the python version installation
 - **Windows `pyo` Installation**:
   - Use Python 3.11 or 3.12 for best compatibility.
   - Install Microsoft Visual C++ Build Tools: [Download](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
