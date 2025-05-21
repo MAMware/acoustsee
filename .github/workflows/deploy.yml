@@ -1,0 +1,15 @@
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [ main, developing ]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web
+          publish_branch: ${{ github.ref_name == 'main' && 'gh-pages' || 'gh-pages-developing' }}
