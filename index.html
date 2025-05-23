@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing AcoustSee</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background: #f0f0f0; }
+        video, canvas { display: none; }
+        #debug { display: none; position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; }
+        button, select { margin: 5px; padding: 10px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <video id="videoFeed" autoplay playsinline></video>
+    <canvas id="imageCanvas"></canvas>
+    <button id="fpsBtn">Toggle FPS</button>
+    <button id="modeBtn">Toggle Day/Night</button>
+    <select id="gridSelect">
+        <option value="hex-tonnetz">Hexagonal Tonnetz</option>
+        <option value="circle-of-fifths">Circle of Fifths</option>
+    </select>
+    <select id="synthesisSelect">
+        <option value="sine-wave">Sine Wave</option>
+        <option value="fm-synthesis">FM Synthesis</option>
+    </select>
+    <button id="startStopBtn">Start/Stop</button>
+    <div id="debug"><pre id="debugText"></pre></div>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const version = urlParams.get('version') || 'modular';
+        if (version === 'mvp') {
+            const script = document.createElement('script');
+            script.src = '19525mainT.js';
+            document.body.appendChild(script);
+        } else {
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.src = 'main.js';
+            document.body.appendChild(script);
+        }
+    </script>
+</body>
+</html>
