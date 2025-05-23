@@ -2,13 +2,13 @@
 Welcome to `acoustsee`! We’re building spatial audio navigation for the visually impaired, and we’d love your help.
 
 ## How to contribute
-
+# Contributing to AcoustSee
 1. Fork the repo and create a feature branch from `developing`.
-2. Work in the `web/` directory for frontend changes.
-3. Test locally with `npm start` and verify on Chrome/Safari.
-4. Write unit tests in `tests/` and ensure `npm test` passes.
-5. Submit a PR to `developing` with a clear description.
-6. **Join the discussion**: Share ideas on GitHub or X (@MAMware).
+2. Work in `web/` for frontend changes.
+3. To add new synthesis methods, work in `web/synthesis-methods/`.
+4. Test locally with `npm start` and verify on Chrome/Safari.
+5. Add unit tests in `tests/` and run `npm test`.
+6. Submit a PR to `developing` with a clear description.
 
 ## Branches 
 
