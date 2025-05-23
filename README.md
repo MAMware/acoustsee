@@ -36,9 +36,8 @@ This kickstart aims to make a reality, we first started a prof of concept with s
 ### [Installation](docs/INSTALL.md)
 
 The current best performer can be run without installation from 
+
 - https://mamware.github.io/acoustsee/web
-to test other versions pelase refer to install docs at
-- https:/www.github.com/MAMware/acoustsee/docs/INSTALL.md
 
 ### [Usage](#usage)
 
@@ -64,7 +63,8 @@ The top right is for the day/night toggle and the top left is the frames per sec
 A log view and copy feature is being considered at the moment.
 
 Most up to date and best performer is located at - 
- https://mamware.github.io/acustsee/web
+
+https://mamware.github.io/acustsee/web
 
 Privacy Note: All of the video processing is done at your device, not a single frame or any kind of data is sent to anyone or anywhere.
 
@@ -78,29 +78,34 @@ Privacy Note: All of the video processing is done at your device, not a single f
 
 - Minimun Viable Product. A javascript web version, to process privately the user live video feed, framing a "Hilbert curve" (it was a simplified zig zag) and synthetised sound from it trying to emulate a head related transfer function.
 
-**Milestone 3 (Current)**:
-**Work in Progress**  
+**Milestone 3 (Completed)**:
 
-- Testing different approachs and with fast, raw iterations. The subfolders fft, htrf, tonnetz sections each approach.  
+- Tested different approachs and with fast, raw iterations. The subfolders fft, htrf, tonnetz sections each approach.  
 - Current selected main soundscape generator comes from the Euler Tonnetz approach where the video frame split into left/right halves, mapped to the hexagonal Euler Tonnetz grid (32x32 per half, 2048 notes total).
 - Has a day/night mode that inverts sound generation given the lighting conditions.
 - Sounds synthesis engine aims to approach real-time 50ms updates (toggleable to 100ms, 250ms) and up to 16 notes per side (32 total).
 - UI: Centered video, split the remaining screen into 3 sections, being the lower half for the start/top, to upper div has settings a the left for FPS and at next to it, at the right is the day/night toggle, (working on it).
+- Moved from the Trunk Based Development to a Single Responsability Principle (modular) approach.
+- Set up Github new branches for developing with CI/CD in place
 
-**Milestone 4 (Planned)**:
+**Milestone 4 (Current)**: **Work in Progress**  
 
+- New user interface with selectable grid, selectable synth engine, took out auto day and night mode.
+- New languajes for the speech sinthetizer
 - Detailed performance analisis and sectioned metrics.
-- Optimizations aiming the use of less resources and better performance.
 
 Consider:
-- Performance optimization for the web such as Web Workers and WebAssembly.
-- Testing true HRTF.
-- Gabor filters for motion detection.
+
+- Optimizations aiming the use of less resources and better performance, such as Web Workers and WebAssembly.
 - Reintroducing Hilbert curves.
+- Gabor filters for motion detection.
+- New grid types and synth engines
+- Voting system for grid and synth engines.
+- Testing true HRTF.
 - Android/iOS app developtment if considerable performance gain can be achieved.
 
 
-## [Project structure](#project_structure)
+## [Project structure](#project_structure) (old)
 
 ```
 acoustsee/
@@ -126,6 +131,8 @@ acoustsee/
 ├── docs/                      # Contains technical documentation (working)
 │    ├── DIAGRAMS.ms           # Wireframes the logic at main.js
 └── README.md                  # This file, providing an overview of the project
+
+
 ```
 
 ### [Changelog](docs/CHANGELOG.md)
