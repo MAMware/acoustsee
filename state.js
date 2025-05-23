@@ -1,8 +1,8 @@
-// web/state.js
 export const settings = {
     updateInterval: 50,
     dayNightMode: 'day',
-    autoMode: true
+    gridType: 'hex-tonnetz', // Default grid layout
+    synthesisEngine: 'sine-wave' // Default synthesis engine
 };
 export let stream = null;
 export let audioInterval = null;

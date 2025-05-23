@@ -1,3 +1,7 @@
+import { settings } from './state.js';
+import { playSineWave } from './synthesis-methods/engines/sine-wave.js';
+import { playFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
+
 export let audioContext;
 export let isAudioInitialized = false;
 export let oscillators = [];
@@ -10,18 +14,61 @@ export function initializeAudio() {
             audioContext.resume();
         }
         for (let i = 0; i < 32; i++) {
-            // ... oscillator setup ...
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const panner = audioContext.createStereoPanner();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(0, audioContext.currentTime);
+            gain.gain.setValueAtTime(0, audioContext.currentTime);
+            panner.pan.setValueAtTime(0, audioContext.currentTime);
+            osc.connect(gain).connect(panner).connect(audioContext.destination);
+            osc.start();
             oscillators.push({ osc, gain, panner, active: false });
         }
         isAudioInitialized = true;
-        // ... speech synthesis ...
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Audio initialized');
+            window.speechSynthesis.speak(utterance);
+        }
     } catch (error) {
         console.error('Audio Initialization Error:', error);
-        // ... error handling ...
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance('Failed to initialize audio');
+            window.speechSynthesis.speak(utterance);
+        }
     }
 }
 
-export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight, settings) {
-    // ... existing playAudio logic ...
+export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
+    if (!isAudioInitialized) return { prevFrameDataLeft, prevFrameDataRight };
+
+    const startTime = performance.now();
+    const halfWidth = width / 2;
+
+    const leftFrame = new Uint8ClampedArray(halfWidth * height);
+    const rightFrame = new Uint8ClampedArray(halfWidth * height);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < halfWidth; x++) {
+            leftFrame[y * halfWidth + x] = frameData[y * width + x];
+            rightFrame[y * halfWidth + x] = frameData[y * width + x + halfWidth];
+        }
+    }
+
+    const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
+    const rightResult = mapFrame(rightFrame, halfWidth, height, prevFrameDataRight, 1);
+    prevFrameDataLeft = leftResult.newFrameData;
+    prevFrameDataRight = rightResult.newFrameData;
+
+    const allNotes = [...leftResult.notes, ...rightResult.notes];
+    switch (settings.synthesisEngine) {
+        case 'fm-synthesis':
+            playFMSynthesis(allNotes);
+            break;
+        case 'sine-wave':
+        default:
+            playSineWave(allNotes);
+            break;
+    }
+
     return { prevFrameDataLeft, prevFrameDataRight };
 }
