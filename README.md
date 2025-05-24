@@ -5,19 +5,19 @@
 
 ## [Introduction](#introduction)
 
-AcoustSee is an open-source project kickstarted by MAMware and coded by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
+AcoustSee is an open-source project kickstarted by MAMware and coded entirely by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
 
-First we tested the concept with a Python script and still image, once validated we moved to do the processing of a live video with Hilbert curves inspired by 3Blue1Brown (the great Grant Sanderson), among with te idea to take the advantaje of Head-Related Transfer Function (HRTF) to create spatial awarenes that maps objects positons into distinct sounds. 
+First we (Grok and I) tested the concept with a Python script and still image, once validated we moved to do the processing of a live video with Hilbert curves inspired by 3Blue1Brown (the great Grant Sanderson), among with te idea to take the advantaje of Head-Related Transfer Function (HRTF) to create spatial awarenes that maps objects positons into distinct sounds. 
 
-This project was entirely coded by Grok at grok.com and x.com and we’re also sharing the step-by-step journey (conversation) to inspire others to contribute to accessibility tech.
+This project was entirely coded by Grok at both grok.com and x.com and we’re also sharing the step-by-step journey (conversation) to inspire others to contribute to accessibility tech.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
 ### Project Vision
 
-Imagine a person who is unable to see and is sitting at a park, with headphones on wich are paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, where children are playing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content and wen it swings closer its spectra complexity raises. 
+Imagine a person who is unable to see and it is sitting at a park, with headphones on, wich are paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, where children are playing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content and wen it swings closer its spectra complexity raises. 
 
-This kickstart aims to make a reality, we first started a prof of concept with static images in the python version and currently we moved to live video for a web version. Expanding and optimizing to mobile operating systems in the near future is also desired.
+This kickstart aims to make this imagination a reality and we first started a prof of concept using static images to a tone that identified right or left location. The python version is deprecated and was only a proof of concept. We are currently working on live video webapp. Expanding and optimizing to mobile operating systems in the near future will be considered too.
 
 ## Table of Contents
 
@@ -45,7 +45,7 @@ Dispite that al processing the is done in your device and not a single bit of da
 
 Having the most up to date version of mobile web browsers is diserable. 
 
-Minimum version list (most from 2021 should work):
+Most internet browsers from 2021 should work, following is a detailed list:
 
 | Browser             | Minimum Version for Full Support   | Notes                                                                          |
 | ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
@@ -57,16 +57,25 @@ Minimum version list (most from 2021 should work):
 | Edge for Android    | Edge 79 (January 2020)             | Based on Chromium, full support for all APIs.                                  |
 
 
-The User Interface of the webapp is split in four parts. 
-The lower half is dedicated for the start and stop of the navigation at the left of the device (right hand of the user if it is being wear as intenteded) and the right is dedicated to the languaje selection for the speech sinthetizer, 
-The top right is for the day/night toggle and the top left is the frames per seconds (FPS) toggle that is usefull if your device stutters or generates artifacts due to processing issues, likely by a cpu processor limitation. 
-A log view and copy feature is being considered at the moment.
+The webapp is designed (meant) to be used with a mobile phone where its front camera and screen should be facing to desired objetive to be transformed in to sound.
+
+The User Interface of the webapp (should be) is split into for isoceles trapezoids and center vertical rectangle. 
+
+The top trapezoid is (should be) where the setting toggle is, this toggle shifts the function of the lateral trapezoid a the left (dayNight toggle without shift) and right (languaje selectror for speech synthesis) for a cursor for options navigation such as grid and synth engine both versioned selector.
+
+The confirmation is done by pressing the center vertical rectagunlar square, that also works as webcam feed preview/canvas
+
+The start and stop of the navigation is donde by pressing the buttom trapezoid.
+
+A reintroduction of a frames per seconds (FPS) toggle that is usefull if your device stutters or generates artifacts due to processing issues, likely by a cpu processor limitation will be reconsidered as a configuration option, among the grid and synth engine selector.
+
+A console log live view and a copy feature is being considered too.
 
 Most up to date and best performer is located at - 
 
 https://mamware.github.io/acustsee/web
 
-Privacy Note: All of the video processing is done at your device, not a single frame or any kind of data is sent to anyone or anywhere.
+Privacy Note: All of the video processing is done at your device, not a single frame is sent to anyone or anywhere than that the ones that takes places at your own device processing logic.
 
 ### [Status](#status)
 
@@ -90,11 +99,11 @@ Privacy Note: All of the video processing is done at your device, not a single f
 
 **Milestone 4 (Current)**: **Work in Progress**  
 
-- New user interface with selectable grid, selectable synth engine, took out auto day and night mode.
-- New languajes for the speech sinthetizer
-- Detailed performance analisis and sectioned metrics.
+- New user interface with selectable grid, selectable synth engine, took out auto day and night mode. **Work in Progress** 
+- New languajes for the speech sinthetizer **Work in Progress** 
+- Detailed performance analisis and sectioned metrics. **Work in Progress** 
 
-Consider:
+Consider TO_DO:
 
 - Optimizations aiming the use of less resources and better performance, such as Web Workers and WebAssembly.
 - Reintroducing Hilbert curves.
@@ -105,7 +114,7 @@ Consider:
 - Android/iOS app developtment if considerable performance gain can be achieved.
 
 
-## [Project structure](#project_structure) (old)
+## [Project structure](#project_structure) (old, MVP TBD approach)
 
 ```
 acoustsee/
