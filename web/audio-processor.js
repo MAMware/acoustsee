@@ -1,4 +1,5 @@
 import { settings } from './state.js';
+import { mapFrame } from './grid-dispatcher.js';
 import { playSineWave } from './synthesis-methods/engines/sine-wave.js';
 import { playFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
 
