@@ -8,7 +8,7 @@ export let isAudioInitialized = false;
 export let oscillators = [];
 
 export async function initializeAudio(context) {
-    if (isAudioInitialized) return;
+    if (isAudioInitialized || !context) return;
     try {
         audioContext = context;
         if (audioContext.state === 'suspended') {
