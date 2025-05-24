@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Testing AcoustSee</title>
+    <title>AcoustSee</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background: #f0f0f0; }
         video, canvas { display: none; }
@@ -31,7 +31,7 @@
         const version = urlParams.get('version') || 'modular';
         if (version === 'mvp') {
             const script = document.createElement('script');
-            script.src = '19525mainT.js';
+            script.src = 'main.js';
             document.body.appendChild(script);
         } else {
             const script = document.createElement('script');
