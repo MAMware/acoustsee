@@ -1,6 +1,6 @@
 import { initializeAudio, playAudio, audioContext } from './audio-processor.js';
 import { mapFrame } from './grid-dispatcher.js';
-import { settings, setStream, setAudioInterval, skipFrame, setSkipFrame } from './state.js';
+import { settings, setStream, setAudioInterval, skipFrame, setSkipFrame, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight } from './state.js';
 
 const translations = {
     'en-US': {
@@ -54,7 +54,6 @@ export function setupUI() {
     const centerRectangle = document.getElementById('centerRectangle');
     const debug = document.getElementById('debug');
     const debugText = document.getElementById('debugText');
-    let frameCount = 0, lastTime = performance.now();
     let settingsMode = false;
 
     const updateUIText = () => {
@@ -119,11 +118,20 @@ export function setupUI() {
 
     startStopBtn.addEventListener('touchstart', async (event) => {
         event.preventDefault();
-        if (!audioContext || audioContext.state === 'suspended') {
-            await initializeAudio();
-            if (audioContext && audioContext.state === 'suspended') {
-                await audioContext.resume();
+        if (!audioContext) {
+            try {
+                const newContext = new (window.AudioContext || window.webkitAudioContext)();
+                await initializeAudio(newContext);
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+            } catch (err) {
+                console.error('Audio initialization failed:', err);
+                speak('audioError');
+                return;
             }
+        } else if (audioContext.state === 'suspended') {
+            await audioContext.resume();
         }
         if (!audioContext) {
             console.error('Audio not initialized');
@@ -192,7 +200,7 @@ export function processFrame() {
     }
     const videoFeed = document.getElementById('videoFeed');
     const canvas = document.getElementById('imageCanvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(videoFeed, 0, 0, 64, 48);
     const imageData = ctx.getImageData(0, 0, 64, 48);
     const grayData = new Uint8ClampedArray(64 * 48);
@@ -202,20 +210,7 @@ export function processFrame() {
     const { prevFrameDataLeft: newLeft, prevFrameDataRight: newRight } = playAudio(
         grayData, 64, 48, prevFrameDataLeft, prevFrameDataRight
     );
-    prevFrameDataLeft = newLeft;
-    prevFrameDataRight = newRight;
-
-    frameCount++;
-    const now = performance.now();
-    const elapsed = now - lastTime;
-    if (elapsed >= 1000) {
-        const fps = (frameCount / elapsed) * 1000;
-        const frameTime = (elapsed / frameCount).toFixed(1);
-        const activeNotes = allNotes.map(n => `${Math.round(n.pitch)}Hz (${n.pan > 0 ? 'R' : 'L'})`).join(', ');
-        if (debug.style.display === 'block') {
-            debugText.textContent = `Frame time: ${frameTime}ms\nFPS: ${fps.toFixed(1)}\nGrid: ${settings.gridType}\nNotes: ${activeNotes || 'None'}`;
-        }
-        frameCount = 0;
-        lastTime = now;
-    }
+    setPrevFrameDataLeft(newLeft);
+    setPrevFrameDataRight(newRight);
+}
 }
