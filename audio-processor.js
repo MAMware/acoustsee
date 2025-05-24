@@ -6,12 +6,12 @@ export let audioContext;
 export let isAudioInitialized = false;
 export let oscillators = [];
 
-export function initializeAudio() {
+export async function initializeAudio() {
     if (isAudioInitialized) return;
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === 'suspended') {
-            audioContext.resume();
+            await audioContext.resume();
         }
         for (let i = 0; i < 32; i++) {
             const osc = audioContext.createOscillator();

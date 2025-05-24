@@ -1,6 +1,6 @@
 import { initializeAudio, playAudio, audioContext } from './audio-processor.js';
 import { mapFrame } from './grid-dispatcher.js';
-import { settings, stream, audioInterval, prevFrameDataLeft, prevFrameDataRight } from './state.js';
+import { settings, setStream, setAudioInterval, prevFrameDataLeft, prevFrameDataRight } from './state.js';
 
 const translations = {
     'en-US': {
@@ -8,6 +8,7 @@ const translations = {
         modeBtn: 'Toggle Day/Night',
         gridSelect: 'Grid set to {grid}',
         synthesisSelect: 'Synthesis engine set to {engine}',
+        languageBtn: 'Language',
         languageSelect: 'Language set to {lang}',
         startStop: 'Navigation {state}',
         fpsBtn: 'FPS set to {fps}',
@@ -21,6 +22,7 @@ const translations = {
         modeBtn: 'Alternar Día/Noche',
         gridSelect: 'Cuadrícula establecida en {grid}',
         synthesisSelect: 'Motor de síntesis establecido en {engine}',
+        languageBtn: 'Idioma',
         languageSelect: 'Idioma establecido en {lang}',
         startStop: 'Navegación {state}',
         fpsBtn: 'FPS establecido en {fps}',
@@ -32,10 +34,20 @@ const translations = {
 };
 
 export function setupUI() {
-    const fpsBtn = document.getElementById('fpsBtn');
+    const fpsSelect = document.createElement('select');
+    fpsSelect.id = 'fpsSelect';
+    [50, 100, 250].forEach(interval => {
+        const option = document.createElement('option');
+        option.value = interval;
+        option.text = `${1000 / interval} FPS`;
+        fpsSelect.appendChild(option);
+    });
+    document.getElementById('settingsToggle').parentNode.appendChild(fpsSelect);
+
     const modeBtn = document.getElementById('modeBtn');
     const gridSelect = document.getElementById('gridSelect');
     const synthesisSelect = document.getElementById('synthesisSelect');
+    const languageBtn = document.getElementById('languageBtn');
     const languageSelect = document.getElementById('languageSelect');
     const startStopBtn = document.getElementById('startStopBtn');
     const settingsToggle = document.getElementById('settingsToggle');
@@ -46,42 +58,38 @@ export function setupUI() {
     let skipFrame = false;
     let settingsMode = false;
 
-    // Update button texts based on language
     const updateUIText = () => {
         const t = translations[settings.language || 'en-US'];
         settingsToggle.textContent = t.settingsToggle;
         modeBtn.textContent = t.modeBtn;
-        startStopBtn.textContent = t.startStop.replace('{state}', stream ? 'stopped' : 'started');
-        fpsBtn.textContent = t.fpsBtn.replace('{fps}', 1000 / settings.updateInterval);
+        languageBtn.textContent = t.languageBtn;
+        startStopBtn.textContent = t.startStop.replace('{state}', settings.stream ? 'stopped' : 'started');
     };
 
-    settingsToggle.addEventListener('click', () => {
+    settingsToggle.addEventListener('touchstart', (event) => {
+        event.preventDefault();
         settingsMode = !settingsMode;
         gridSelect.style.display = settingsMode ? 'block' : 'none';
         synthesisSelect.style.display = settingsMode ? 'block' : 'none';
+        fpsSelect.style.display = settingsMode ? 'block' : 'none';
         modeBtn.style.display = settingsMode ? 'none' : 'block';
-        languageSelect.style.display = settingsMode ? 'none' : 'block';
+        languageBtn.style.display = settingsMode ? 'none' : 'block';
+        languageSelect.style.display = settingsMode ? 'block' : 'none';
         speak(`settingsToggle`, { state: settingsMode ? 'on' : 'off' });
         updateUIText();
     });
 
-    fpsBtn.addEventListener('click', () => {
-        const intervals = [50, 100, 250];
-        settings.updateInterval = intervals[(intervals.indexOf(settings.updateInterval) + 1) % 3] || 50;
+    fpsSelect.addEventListener('change', (event) => {
+        settings.updateInterval = parseInt(event.target.value);
         speak(`fpsBtn`, { fps: 1000 / settings.updateInterval });
-        if (audioInterval) {
-            clearInterval(audioInterval);
-            audioInterval = setInterval(() => processFrame(), settings.updateInterval);
+        if (settings.audioInterval) {
+            clearInterval(settings.audioInterval);
+            setAudioInterval(setInterval(() => processFrame(), settings.updateInterval));
         }
-        updateUIText();
     });
 
-    fpsBtn.addEventListener('dblclick', () => {
-        debug.style.display = debug.style.display === 'block' ? 'none' : 'block';
-        speak(`debug`, { state: debug.style.display === 'block' ? 'on' : 'off' });
-    });
-
-    modeBtn.addEventListener('click', () => {
+    modeBtn.addEventListener('touchstart', (event) => {
+        event.preventDefault();
         settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
         speak(`modeBtn`, { mode: settings.dayNightMode });
     });
@@ -96,9 +104,17 @@ export function setupUI() {
         speak(`synthesisSelect`, { engine: settings.synthesisEngine });
     });
 
+    languageBtn.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        languageSelect.style.display = 'block';
+        languageBtn.style.display = 'none';
+    });
+
     languageSelect.addEventListener('change', (event) => {
         settings.language = event.target.value;
         speak(`languageSelect`, { lang: event.target.options[event.target.selectedIndex].text });
+        languageSelect.style.display = 'none';
+        languageBtn.style.display = 'block';
         updateUIText();
     });
 
@@ -106,29 +122,36 @@ export function setupUI() {
         event.preventDefault();
         if (!audioContext || audioContext.state === 'suspended') {
             await initializeAudio();
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
         }
         if (!audioContext) {
             console.error('Audio not initialized');
             speak('audioError');
             return;
         }
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            stream = null;
+        if (settings.stream) {
+            settings.stream.getTracks().forEach(track => track.stop());
+            setStream(null);
             document.getElementById('videoFeed').style.display = 'none';
-            clearInterval(audioInterval);
+            if (settings.audioInterval) {
+                clearInterval(settings.audioInterval);
+                setAudioInterval(null);
+            }
             speak('startStop', { state: 'stopped' });
             updateUIText();
             return;
         }
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-            document.getElementById('videoFeed').srcObject = stream;
+            const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            setStream(newStream);
+            document.getElementById('videoFeed').srcObject = newStream;
             document.getElementById('videoFeed').style.display = 'block';
             document.getElementById('imageCanvas').width = 64;
             document.getElementById('imageCanvas').height = 48;
             speak('startStop', { state: 'started' });
-            audioInterval = setInterval(() => processFrame(), settings.updateInterval);
+            setAudioInterval(setInterval(() => processFrame(), settings.updateInterval));
             updateUIText();
         } catch (err) {
             console.error('Camera access failed:', err);
@@ -136,10 +159,16 @@ export function setupUI() {
         }
     });
 
-    centerRectangle.addEventListener('click', () => {
+    centerRectangle.addEventListener('touchstart', (event) => {
+        event.preventDefault();
         if (settingsMode) {
             speak('settingsConfirm', { grid: settings.gridType, engine: settings.synthesisEngine });
         }
+    });
+
+    debug.addEventListener('dblclick', () => {
+        debug.style.display = debug.style.display === 'block' ? 'none' : 'block';
+        speak(`debug`, { state: debug.style.display === 'block' ? 'on' : 'off' });
     });
 
     function speak(key, params = {}) {
@@ -154,7 +183,6 @@ export function setupUI() {
         }
     }
 
-    // Initial UI text setup
     updateUIText();
 }
 
