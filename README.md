@@ -5,19 +5,19 @@
 
 ## [Introduction](#introduction)
 
-AcoustSee is an open-source project kickstarted by MAMware and coded by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
+AcoustSee is an open-source project kickstarted by MAMware and coded entirely by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
 
-First we tested the concept with a Python script and still image, once validated we moved to do the processing of a live video with Hilbert curves inspired by 3Blue1Brown (the great Grant Sanderson), among with te idea to take the advantaje of Head-Related Transfer Function (HRTF) to create spatial awarenes that maps objects positons into distinct sounds. 
+First we (Grok and I) tested the concept with a Python script and still image, once validated we moved to do the processing of a live video with Hilbert curves inspired by 3Blue1Brown (the great Grant Sanderson), among with te idea to take the advantaje of Head-Related Transfer Function (HRTF) to create spatial awarenes that maps objects positons into distinct sounds. 
 
-This project was entirely coded by Grok at grok.com and x.com and we’re also sharing the step-by-step journey (conversation) to inspire others to contribute to accessibility tech.
+This project was entirely coded by Grok at both grok.com and x.com and we’re also sharing the step-by-step journey (conversation) to inspire others to contribute to accessibility tech.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
 ### Project Vision
 
-Imagine a person who is unable to see and is sitting at a park, with headphones on wich are paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, where children are playing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content and wen it swings closer its spectra complexity raises. 
+Imagine a person who is unable to see and it is sitting at a park, with headphones on, wich are paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, where children are playing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content and wen it swings closer its spectra complexity raises. 
 
-This kickstart aims to make a reality, we first started a prof of concept with static images in the python version and currently we moved to live video for a web version. Expanding and optimizing to mobile operating systems in the near future is also desired.
+This kickstart aims to make this imagination a reality and we first started a prof of concept using static images to a tone that identified right or left location. The python version is deprecated and was only a proof of concept. We are currently working on live video webapp. Expanding and optimizing to mobile operating systems in the near future will be considered too.
 
 ## Table of Contents
 
@@ -114,7 +114,7 @@ Consider TO_DO:
 - Android/iOS app developtment if considerable performance gain can be achieved.
 
 
-## [Project structure](#project_structure) (old)
+## [Project structure](#project_structure) (old, MVP TBD approach)
 
 ```
 acoustsee/
