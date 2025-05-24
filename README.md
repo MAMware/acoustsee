@@ -114,39 +114,43 @@ Consider TO_DO:
 - Android/iOS app developtment if considerable performance gain can be achieved.
 
 
-## [Project structure](#project_structure) (old, MVP TBD approach)
+## [Project structure](#project_structure) (WIP)
 
 ```
 acoustsee/
-├── src/                       # Contains the Python PoC code for still image processing and audio generation.
-├── web/                       # Contains HTML, CSS, and JavaScript files for the web interface folder for different approaches at the core logic
-│   ├── fft/                   # Experimenting with Fourier, fast. 
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── hrft/                  # Experimenting the Head Related Transfer Function
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── tonnetz/               # Experimenting with Euler, Tonnetz.
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── index.html             # The current chosen version as a better performer (Tonnetz, 5/18/2025).
+├── .github/workflows/         # GitHub Actions for deployment
+│   ├── deploy.yml
+├── web/                       # Modular webapp
+│   ├── index.html
 │   ├── main.js
-│   ├── styles.css
-├── examples/                  # Still image and output container for the Python PoC
-├── tests/                     # Should contain unit tests (currently missing)
-├── docs/                      # Contains technical documentation (working)
-│    ├── DIAGRAMS.ms           # Wireframes the logic at main.js
-└── README.md                  # This file, providing an overview of the project
-
+│   ├── audio-processor.js
+│   ├── grid-selector.js
+│   ├── ui-handlers.js
+│   ├── state.js
+│   ├── synthesis-methods/
+│   │   ├── grids/
+│   │   │   ├── hex-tonnetz.js
+│   │   │   ├── circle-of-fifths.js
+│   │   ├── engines/
+│   │   │   ├── sine-wave.js
+│   │   │   ├── fm-synthesis.js
+│   ├── garbage/               # Deprecated files 
+├── tests/                     # Unit tests (TO_DO)
+├── docs/                      # Documentation
+│   ├── INSTALL.md
+│   ├── CHANGELOG.md
+│   ├── CONTRIBUTING.md
+│   ├── TO_DO.md
+│   ├── DIAGRAMS.md
+│   ├── LICENSE.md
+│   ├── FAQ.md
+├── README.md
 
 ```
 
 ### [Changelog](docs/CHANGELOG.md)
 
-- Current version is v0.7, follow the changelog link for log history and details
+- Current version is v0.8, follow the changelog link for log history and details
 
 ### [Contributing](docs/CONTRIBUTING.md)
 
