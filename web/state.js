@@ -9,3 +9,11 @@ export let stream = null;
 export let audioInterval = null;
 export let prevFrameDataLeft = null;
 export let prevFrameDataRight = null;
+
+export function setStream(newStream) {
+    stream = newStream;
+}
+
+export function setAudioInterval(newInterval) {
+    audioInterval = newInterval;
+}
