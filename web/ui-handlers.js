@@ -1,6 +1,6 @@
 import { initializeAudio, playAudio, audioContext } from './audio-processor.js';
 import { mapFrame } from './grid-dispatcher.js';
-import { settings, setStream, setAudioInterval, prevFrameDataLeft, prevFrameDataRight } from './state.js';
+import { settings, setStream, setAudioInterval, skipFrame, setSkipFrame } from './state.js';
 
 const translations = {
     'en-US': {
@@ -55,7 +55,6 @@ export function setupUI() {
     const debug = document.getElementById('debug');
     const debugText = document.getElementById('debugText');
     let frameCount = 0, lastTime = performance.now();
-    let skipFrame = false;
     let settingsMode = false;
 
     const updateUIText = () => {
@@ -74,7 +73,7 @@ export function setupUI() {
         fpsSelect.style.display = settingsMode ? 'block' : 'none';
         modeBtn.style.display = settingsMode ? 'none' : 'block';
         languageBtn.style.display = settingsMode ? 'none' : 'block';
-        languageSelect.style.display = settingsMode ? 'block' : 'none';
+        languageSelect.style.display = settingsMode ? 'none' : 'block';
         speak(`settingsToggle`, { state: settingsMode ? 'on' : 'off' });
         updateUIText();
     });
@@ -122,7 +121,7 @@ export function setupUI() {
         event.preventDefault();
         if (!audioContext || audioContext.state === 'suspended') {
             await initializeAudio();
-            if (audioContext.state === 'suspended') {
+            if (audioContext && audioContext.state === 'suspended') {
                 await audioContext.resume();
             }
         }
@@ -188,7 +187,7 @@ export function setupUI() {
 
 export function processFrame() {
     if (skipFrame) {
-        skipFrame = false;
+        setSkipFrame(false);
         return;
     }
     const videoFeed = document.getElementById('videoFeed');
@@ -219,4 +218,5 @@ export function processFrame() {
         frameCount = 0;
         lastTime = now;
     }
+}
 }
