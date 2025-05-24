@@ -6,10 +6,10 @@ export let audioContext = null;
 export let isAudioInitialized = false;
 export let oscillators = [];
 
-export async function initializeAudio() {
+export async function initializeAudio(context) {
     if (isAudioInitialized) return;
     try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContext = context;
         if (audioContext.state === 'suspended') {
             await audioContext.resume();
         }
