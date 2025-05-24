@@ -1,6 +1,35 @@
-import { initializeAudio, playAudio } from './audio-processor.js';
-import { mapFrame } from './grid-selector.js';
+import { initializeAudio, playAudio, audioContext } from './audio-processor.js';
+import { mapFrame } from './grid-dispatcher.js';
 import { settings, stream, audioInterval, prevFrameDataLeft, prevFrameDataRight } from './state.js';
+
+const translations = {
+    'en-US': {
+        settingsToggle: 'Toggle Settings',
+        modeBtn: 'Toggle Day/Night',
+        gridSelect: 'Grid set to {grid}',
+        synthesisSelect: 'Synthesis engine set to {engine}',
+        languageSelect: 'Language set to {lang}',
+        startStop: 'Navigation {state}',
+        fpsBtn: 'FPS set to {fps}',
+        debug: 'Debug {state}',
+        settingsConfirm: 'Settings confirmed: Grid {grid}, Synthesis {engine}',
+        audioError: 'Failed to initialize audio',
+        cameraError: 'Failed to access camera'
+    },
+    'es-ES': {
+        settingsToggle: 'Alternar Configuraciones',
+        modeBtn: 'Alternar Día/Noche',
+        gridSelect: 'Cuadrícula establecida en {grid}',
+        synthesisSelect: 'Motor de síntesis establecido en {engine}',
+        languageSelect: 'Idioma establecido en {lang}',
+        startStop: 'Navegación {state}',
+        fpsBtn: 'FPS establecido en {fps}',
+        debug: 'Depuración {state}',
+        settingsConfirm: 'Configuraciones confirmadas: Cuadrícula {grid}, Síntesis {engine}',
+        audioError: 'No se pudo inicializar el audio',
+        cameraError: 'No se pudo acceder a la cámara'
+    }
+};
 
 export function setupUI() {
     const fpsBtn = document.getElementById('fpsBtn');
@@ -10,11 +39,21 @@ export function setupUI() {
     const languageSelect = document.getElementById('languageSelect');
     const startStopBtn = document.getElementById('startStopBtn');
     const settingsToggle = document.getElementById('settingsToggle');
+    const centerRectangle = document.getElementById('centerRectangle');
     const debug = document.getElementById('debug');
     const debugText = document.getElementById('debugText');
     let frameCount = 0, lastTime = performance.now();
     let skipFrame = false;
     let settingsMode = false;
+
+    // Update button texts based on language
+    const updateUIText = () => {
+        const t = translations[settings.language || 'en-US'];
+        settingsToggle.textContent = t.settingsToggle;
+        modeBtn.textContent = t.modeBtn;
+        startStopBtn.textContent = t.startStop.replace('{state}', stream ? 'stopped' : 'started');
+        fpsBtn.textContent = t.fpsBtn.replace('{fps}', 1000 / settings.updateInterval);
+    };
 
     settingsToggle.addEventListener('click', () => {
         settingsMode = !settingsMode;
@@ -22,49 +61,55 @@ export function setupUI() {
         synthesisSelect.style.display = settingsMode ? 'block' : 'none';
         modeBtn.style.display = settingsMode ? 'none' : 'block';
         languageSelect.style.display = settingsMode ? 'none' : 'block';
-        speak(`Settings ${settingsMode ? 'on' : 'off'}`);
+        speak(`settingsToggle`, { state: settingsMode ? 'on' : 'off' });
+        updateUIText();
     });
 
     fpsBtn.addEventListener('click', () => {
         const intervals = [50, 100, 250];
         settings.updateInterval = intervals[(intervals.indexOf(settings.updateInterval) + 1) % 3] || 50;
-        speak(`FPS set to ${1000 / settings.updateInterval}`);
+        speak(`fpsBtn`, { fps: 1000 / settings.updateInterval });
         if (audioInterval) {
             clearInterval(audioInterval);
             audioInterval = setInterval(() => processFrame(), settings.updateInterval);
         }
+        updateUIText();
     });
 
     fpsBtn.addEventListener('dblclick', () => {
         debug.style.display = debug.style.display === 'block' ? 'none' : 'block';
-        speak(`Debug ${debug.style.display === 'block' ? 'on' : 'off'}`);
+        speak(`debug`, { state: debug.style.display === 'block' ? 'on' : 'off' });
     });
 
     modeBtn.addEventListener('click', () => {
         settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
-        speak(`Mode set to ${settings.dayNightMode}`);
+        speak(`modeBtn`, { mode: settings.dayNightMode });
     });
 
     gridSelect.addEventListener('change', (event) => {
         settings.gridType = event.target.value;
-        speak(`Grid set to ${settings.gridType}`);
+        speak(`gridSelect`, { grid: settings.gridType });
     });
 
     synthesisSelect.addEventListener('change', (event) => {
         settings.synthesisEngine = event.target.value;
-        speak(`Synthesis engine set to ${settings.synthesisEngine}`);
+        speak(`synthesisSelect`, { engine: settings.synthesisEngine });
     });
 
     languageSelect.addEventListener('change', (event) => {
         settings.language = event.target.value;
-        speak(`Language set to ${event.target.options[event.target.selectedIndex].text}`);
+        speak(`languageSelect`, { lang: event.target.options[event.target.selectedIndex].text });
+        updateUIText();
     });
 
-    startStopBtn.addEventListener('click', async () => {
-        initializeAudio();
+    startStopBtn.addEventListener('touchstart', async (event) => {
+        event.preventDefault();
+        if (!audioContext || audioContext.state === 'suspended') {
+            await initializeAudio();
+        }
         if (!audioContext) {
             console.error('Audio not initialized');
-            speak('Failed to initialize audio');
+            speak('audioError');
             return;
         }
         if (stream) {
@@ -72,7 +117,8 @@ export function setupUI() {
             stream = null;
             document.getElementById('videoFeed').style.display = 'none';
             clearInterval(audioInterval);
-            speak('Navigation stopped');
+            speak('startStop', { state: 'stopped' });
+            updateUIText();
             return;
         }
         try {
@@ -81,28 +127,35 @@ export function setupUI() {
             document.getElementById('videoFeed').style.display = 'block';
             document.getElementById('imageCanvas').width = 64;
             document.getElementById('imageCanvas').height = 48;
-            speak('Navigation started');
+            speak('startStop', { state: 'started' });
             audioInterval = setInterval(() => processFrame(), settings.updateInterval);
+            updateUIText();
         } catch (err) {
             console.error('Camera access failed:', err);
-            speak('Failed to access camera');
+            speak('cameraError');
         }
     });
 
     centerRectangle.addEventListener('click', () => {
         if (settingsMode) {
-            // Confirm settings selection
-            speak(`Settings confirmed: Grid ${settings.gridType}, Synthesis ${settings.synthesisEngine}`);
+            speak('settingsConfirm', { grid: settings.gridType, engine: settings.synthesisEngine });
         }
     });
 
-    function speak(text) {
+    function speak(key, params = {}) {
         if (window.speechSynthesis) {
+            let text = translations[settings.language || 'en-US'][key] || key;
+            for (const [param, value] of Object.entries(params)) {
+                text = text.replace(`{${param}}`, value);
+            }
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = settings.language || 'en-US';
             window.speechSynthesis.speak(utterance);
         }
     }
+
+    // Initial UI text setup
+    updateUIText();
 }
 
 export function processFrame() {
