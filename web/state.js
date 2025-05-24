@@ -24,3 +24,11 @@ export function setAudioInterval(newInterval) {
 export function setSkipFrame(value) {
     skipFrame = value;
 }
+
+export function setPrevFrameDataLeft(newLeft) {
+    prevFrameDataLeft = newLeft;
+}
+
+export function setPrevFrameDataRight(newRight) {
+    prevFrameDataRight = newRight;
+}
