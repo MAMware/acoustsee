@@ -2,7 +2,7 @@ import { settings } from './state.js';
 import { playSineWave } from './synthesis-methods/engines/sine-wave.js';
 import { playFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
 
-export let audioContext;
+export let audioContext = null;
 export let isAudioInitialized = false;
 export let oscillators = [];
 
@@ -28,12 +28,14 @@ export async function initializeAudio() {
         isAudioInitialized = true;
         if (window.speechSynthesis) {
             const utterance = new SpeechSynthesisUtterance('Audio initialized');
+            utterance.lang = settings.language || 'en-US';
             window.speechSynthesis.speak(utterance);
         }
     } catch (error) {
         console.error('Audio Initialization Error:', error);
         if (window.speechSynthesis) {
             const utterance = new SpeechSynthesisUtterance('Failed to initialize audio');
+            utterance.lang = settings.language || 'en-US';
             window.speechSynthesis.speak(utterance);
         }
     }
@@ -42,9 +44,7 @@ export async function initializeAudio() {
 export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
     if (!isAudioInitialized) return { prevFrameDataLeft, prevFrameDataRight };
 
-    const startTime = performance.now();
     const halfWidth = width / 2;
-
     const leftFrame = new Uint8ClampedArray(halfWidth * height);
     const rightFrame = new Uint8ClampedArray(halfWidth * height);
     for (let y = 0; y < height; y++) {
