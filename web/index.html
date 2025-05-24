@@ -11,6 +11,8 @@
             padding: 0;
             background: #f0f0f0;
             height: 100vh;
+            width: 56.25vh; /* 16:9 vertical: 100vh * 9/16 = 56.25vh */
+            margin: auto;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -23,29 +25,20 @@
             font-size: 16px;
             cursor: pointer;
             border: none;
+            height: 16%; /* ~8% of height for top section */
+            min-height: 60px;
         }
         .main-container {
             display: flex;
             flex: 1;
+            position: relative;
             min-height: 0;
         }
         .left-trapezoid {
             clip-path: polygon(0% 0%, 0% 100%, 100% 90%, 100% 10%);
             background: #ccc;
-            width: 20%;
-            min-width: 100px;
-            padding: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .right-trapezoid {
-            clip-path: polygon(100% 0%, 100% 100%, 0% 90%, 0% 10%);
-            background: #ccc;
-            width: 20%;
-            min-width: 100px;
+            width: 16%;
+            min-width: 80px;
             padding: 10px;
             font-size: 16px;
             cursor: pointer;
@@ -61,6 +54,18 @@
             align-items: center;
             min-height: 200px;
         }
+        .right-trapezoid {
+            clip-path: polygon(100% 0%, 100% 100%, 0% 90%, 0% 10%);
+            background: #ccc;
+            width: 16%;
+            min-width: 80px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .bottom-trapezoid {
             clip-path: polygon(0% 100%, 100% 100%, 90% 0%, 10% 0%);
             background: #ddd;
@@ -69,6 +74,8 @@
             font-size: 16px;
             cursor: pointer;
             border: none;
+            height: 16%; /* ~8% of height for bottom section */
+            min-height: 60px;
         }
         video {
             max-width: 75%;
@@ -85,7 +92,11 @@
             font-size: 16px;
             width: 100%;
             display: none;
+            position: absolute;
         }
+        #gridSelect { top: 10%; left: 5%; }
+        #languageSelect { top: 10%; right: 5%; }
+        #synthesisSelect { top: 75%; left: 5%; }
         #debug {
             display: none;
             position: absolute;
@@ -101,40 +112,44 @@
         @media (max-width: 600px) {
             .left-trapezoid, .right-trapezoid {
                 width: 25%;
-                min-width: 80px;
+                min-width: 60px;
                 font-size: 14px;
             }
             .top-trapezoid, .bottom-trapezoid {
                 font-size: 14px;
                 padding: 8px;
+                min-height: 50px;
+            }
+            body {
+                width: 60vh; /* Slightly adjusted for smaller screens */
             }
         }
     </style>
 </head>
 <body>
-    <button class="top-trapezoid" id="settingsToggle">Toggle Settings</button>
+    <button class="top-trapezoid" id="settingsToggle">Settings</button>
     <div class="main-container">
-        <div class="left-trapezoid" id="modeBtn">Toggle Day/Night</div>
-        <select id="gridSelect">
-            <option value="hex-tonnetz">Hexagonal Tonnetz</option>
-            <option value="circle-of-fifths">Circle of Fifths</option>
-        </select>
+        <div class="left-trapezoid" id="modeBtn">Daylight</div>
         <div class="center-rectangle" id="centerRectangle">
             <video id="videoFeed" autoplay playsinline></video>
             <canvas id="imageCanvas"></canvas>
         </div>
         <div class="right-trapezoid" id="languageBtn">Language</div>
-        <select id="languageSelect">
-            <option value="en-US">English</option>
-            <option value="es-ES">Español</option>
-        </select>
-        <select id="synthesisSelect">
-            <option value="sine-wave">Sine Wave</option>
-            <option value="fm-synthesis">FM Synthesis</option>
-        </select>
     </div>
     <button class="bottom-trapezoid" id="startStopBtn">Start/Stop</button>
     <div id="debug"><pre id="debugText"></pre></div>
+    <select id="gridSelect">
+        <option value="hex-tonnetz">Hexagonal Tonnetz</option>
+        <option value="circle-of-fifths">Circle of Fifths</option>
+    </select>
+    <select id="languageSelect">
+        <option value="en-US">English</option>
+        <option value="es-ES">Español</option>
+    </select>
+    <select id="synthesisSelect">
+        <option value="sine-wave">Sine Wave</option>
+        <option value="fm-synthesis">FM Synthesis</option>
+    </select>
     <script type="module" src="main.js"></script>
 </body>
 </html>
