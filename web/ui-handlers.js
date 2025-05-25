@@ -4,8 +4,8 @@ import { settings, setStream, setAudioInterval, skipFrame, setSkipFrame, prevFra
 
 const translations = {
     'en-US': {
-        settingsToggle: 'Toggle Settings',
-        modeBtn: 'Toggle Day/Night',
+        settingsToggle: 'Settings',
+        modeBtn: 'Daylight',
         gridSelect: 'Grid set to {grid}',
         synthesisSelect: 'Synthesis engine set to {engine}',
         languageBtn: 'Language',
@@ -18,8 +18,8 @@ const translations = {
         cameraError: 'Failed to access camera'
     },
     'es-ES': {
-        settingsToggle: 'Alternar Configuraciones',
-        modeBtn: 'Alternar Día/Noche',
+        settingsToggle: 'Configuraciones',
+        modeBtn: 'Luz del Día',
         gridSelect: 'Cuadrícula establecida en {grid}',
         synthesisSelect: 'Motor de síntesis establecido en {engine}',
         languageBtn: 'Idioma',
@@ -42,7 +42,7 @@ export function setupUI() {
         option.text = `${1000 / interval} FPS`;
         fpsSelect.appendChild(option);
     });
-    document.getElementById('settingsToggle').parentNode.appendChild(fpsSelect);
+    document.getElementById('settingsToggle').appendChild(fpsSelect);
 
     const modeBtn = document.getElementById('modeBtn');
     const gridSelect = document.getElementById('gridSelect');
@@ -58,9 +58,9 @@ export function setupUI() {
 
     const updateUIText = () => {
         const t = translations[settings.language || 'en-US'];
-        settingsToggle.textContent = t.settingsToggle;
-        modeBtn.textContent = t.modeBtn;
-        languageBtn.textContent = t.languageBtn;
+        settingsToggle.firstChild.textContent = t.settingsToggle;
+        modeBtn.firstChild.textContent = t.modeBtn;
+        languageBtn.firstChild.textContent = t.languageBtn;
         startStopBtn.textContent = t.startStop.replace('{state}', settings.stream ? 'stopped' : 'started');
     };
 
@@ -70,9 +70,7 @@ export function setupUI() {
         gridSelect.style.display = settingsMode ? 'block' : 'none';
         synthesisSelect.style.display = settingsMode ? 'block' : 'none';
         fpsSelect.style.display = settingsMode ? 'block' : 'none';
-        modeBtn.style.display = settingsMode ? 'none' : 'block';
-        languageBtn.style.display = settingsMode ? 'none' : 'block';
-        languageSelect.style.display = settingsMode ? 'none' : 'block';
+        languageSelect.style.display = settingsMode ? 'block' : 'none';
         speak(`settingsToggle`, { state: settingsMode ? 'on' : 'off' });
         updateUIText();
     });
@@ -90,6 +88,7 @@ export function setupUI() {
         event.preventDefault();
         settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
         speak(`modeBtn`, { mode: settings.dayNightMode });
+        updateUIText();
     });
 
     gridSelect.addEventListener('change', (event) => {
@@ -104,15 +103,13 @@ export function setupUI() {
 
     languageBtn.addEventListener('touchstart', (event) => {
         event.preventDefault();
-        languageSelect.style.display = 'block';
-        languageBtn.style.display = 'none';
+        languageSelect.style.display = settingsMode ? 'block' : 'none';
+        speak(`languageBtn`);
     });
 
     languageSelect.addEventListener('change', (event) => {
         settings.language = event.target.value;
         speak(`languageSelect`, { lang: event.target.options[event.target.selectedIndex].text });
-        languageSelect.style.display = 'none';
-        languageBtn.style.display = 'block';
         updateUIText();
     });
 
