@@ -2,7 +2,7 @@
 Welcome to `acoustsee`! We’re building spatial audio navigation for the visually impaired, and we’d love your help.
 
 ## How to contribute
-# Contributing to AcoustSee
+
 1. Fork the repo and create a feature branch from `developing`.
 2. Work in `web/` for frontend changes.
 3. To add new synthesis methods, work in `web/synthesis-methods/`.
