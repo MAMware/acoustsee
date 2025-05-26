@@ -12,48 +12,53 @@ export function createEventDispatcher() {
      */
     const handlers = {
         /**
-         * Toggles visibility of settings dropdowns based on settings mode.
+         * Updates UI text and ARIA labels based on settings mode and language.
          * @param {Object} payload - Event payload.
          * @param {boolean} payload.settingsMode - Whether settings mode is active.
          */
-        toggleSettings: ({ settingsMode }) => {
-            document.getElementById('gridSelect').style.display = settingsMode ? 'block' : 'none';
-            document.getElementById('synthesisSelect').style.display = settingsMode ? 'block' : 'none';
-            document.getElementById('fpsSelect').style.display = settingsMode ? 'block' : 'none';
-            document.getElementById('languageSelect').style.display = settingsMode ? 'block' : 'none';
-        },
-        /**
-         * Toggles visibility of the language dropdown.
-         * @param {Object} payload - Event payload.
-         * @param {boolean} payload.settingsMode - Whether settings mode is active.
-         */
-        toggleLanguageSelect: ({ settingsMode }) => {
-            document.getElementById('languageSelect').style.display = settingsMode ? 'block' : 'none';
-        },
-        /**
-         * Updates UI text based on the current language.
-         */
-        updateUI: () => {
-            // Translation mappings for UI elements
+        updateUI: ({ settingsMode }) => {
             const translations = {
                 'en-US': {
-                    settingsToggle: 'Settings',
-                    modeBtn: 'Daylight',
-                    languageBtn: 'Language',
+                    settingsToggle: settingsMode ? 'Exit Settings' : 'Settings',
+                    modeBtn: settingsMode ? 'Select Grid' : 'Daylight',
+                    languageBtn: settingsMode ? 'Select Synthesis' : 'Language',
                     startStop: 'Navigation {state}',
+                    gridSelect: { 'hex-tonnetz': 'Hexagonal Tonnetz', 'circle-of-fifths': 'Circle of Fifths' },
+                    synthesisSelect: { 'sine-wave': 'Sine Wave', 'fm-synthesis': 'FM Synthesis' },
+                    languageSelect: { 'en-US': 'English', 'es-ES': 'Spanish' }
                 },
                 'es-ES': {
-                    settingsToggle: 'Configuraciones',
-                    modeBtn: 'Luz del Día',
-                    languageBtn: 'Idioma',
+                    settingsToggle: settingsMode ? 'Salir de Configuraciones' : 'Configuraciones',
+                    modeBtn: settingsMode ? 'Seleccionar Cuadrícula' : 'Luz del Día',
+                    languageBtn: settingsMode ? 'Seleccionar Síntesis' : 'Idioma',
                     startStop: 'Navegación {state}',
+                    gridSelect: { 'hex-tonnetz': 'Tonnetz Hexagonal', 'circle-of-fifths': 'Círculo de Quintas' },
+                    synthesisSelect: { 'sine-wave': 'Onda Sinusoidal', 'fm-synthesis': 'Síntesis FM' },
+                    languageSelect: { 'en-US': 'Inglés', 'es-ES': 'Español' }
                 }
             };
             const t = translations[settings.language || 'en-US'];
-            document.getElementById('settingsToggle').firstChild.textContent = t.settingsToggle;
-            document.getElementById('modeBtn').firstChild.textContent = t.modeBtn;
-            document.getElementById('languageBtn').firstChild.textContent = t.languageBtn;
-            document.getElementById('startStopBtn').textContent = t.startStop.replace('{state}', settings.stream ? 'stopped' : 'started');
+            const elements = {
+                settingsToggle: document.getElementById('settingsToggle'),
+                modeBtn: document.getElementById('modeBtn'),
+                languageBtn: document.getElementById('languageBtn'),
+                startStopBtn: document.getElementById('startStopBtn')
+            };
+            if (elements.settingsToggle) {
+                elements.settingsToggle.textContent = t.settingsToggle;
+                elements.settingsToggle.setAttribute('aria-label', settingsMode ? 'Exit settings mode' : 'Toggle settings mode');
+            }
+            if (elements.modeBtn) {
+                elements.modeBtn.textContent = settingsMode ? t.gridSelect[settings.gridType] : t.modeBtn;
+                elements.modeBtn.setAttribute('aria-label', settingsMode ? `Select grid: ${t.gridSelect[settings.gridType]}` : 'Toggle day/night mode');
+            }
+            if (elements.languageBtn) {
+                elements.languageBtn.textContent = settingsMode ? t.synthesisSelect[settings.synthesisEngine] : t.languageSelect[settings.language || 'en-US'];
+                elements.languageBtn.setAttribute('aria-label', settingsMode ? `Select synthesis: ${t.synthesisSelect[settings.synthesisEngine]}` : 'Cycle language');
+            }
+            if (elements.startStopBtn) {
+                elements.startStopBtn.textContent = t.startStop.replace('{state}', settings.stream ? 'stopped' : 'started');
+            }
         },
         /**
          * Processes a video frame for audio synthesis.
