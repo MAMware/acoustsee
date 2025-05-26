@@ -1,0 +1,12 @@
+{
+    "settingsToggle": "Configuraciones {state}",
+    "modeBtn": "Modo {mode}",
+    "gridSelect": "Cuadrícula establecida en {grid}",
+    "synthesisSelect": "Motor de síntesis establecido en {engine}",
+    "languageBtn": "Idioma",
+    "languageSelect": "Idioma establecido en {lang}",
+    "startStop": "Navegación {state}",
+    "fpsBtn": "FPS establecido en {fps}",
+    "audioError": "No se pudo inicializar el audio",
+    "cameraError": "No se pudo acceder a la cámara"
+}

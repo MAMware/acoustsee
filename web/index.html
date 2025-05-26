@@ -3,36 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AcoustSee</title>
+    <title>AcoustSee - Spatial Audio Navigator</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <button class="top-trapezoid" id="settingsToggle">Settings
-        <select id="gridSelect">
-            <option value="hex-tonnetz">Hexagonal Tonnetz</option>
-            <option value="circle-of-fifths">Circle of Fifths</option>
-        </select>
-    </button>
+    <button class="top-trapezoid" id="settingsToggle" aria-label="Toggle settings menu" aria-expanded="false">Settings</button>
     <div class="main-container">
-        <div class="left-trapezoid" id="modeBtn">Daylight
-            <select id="synthesisSelect">
-                <option value="sine-wave">Sine Wave</option>
-                <option value="fm-synthesis">FM Synthesis</option>
-            </select>
+        <div class="left-trapezoid" id="modeBtn" role="button" tabindex="0" aria-label="Toggle day/night mode">Daylight</div>
+        <div class="center-rectangle" id="centerRectangle" aria-live="polite">
+            <video id="videoFeed" autoplay playsinline aria-label="Live video feed for audio synthesis"></video>
+            <canvas id="imageCanvas" aria-hidden="true"></canvas>
         </div>
-        <div class="center-rectangle" id="centerRectangle">
-            <video id="videoFeed" autoplay playsinline></video>
-            <canvas id="imageCanvas"></canvas>
-        </div>
-        <div class="right-trapezoid" id="languageBtn">Language
-            <select id="languageSelect">
-                <option value="en-US">English</option>
-                <option value="es-ES">Español</option>
-            </select>
-        </div>
+        <div class="right-trapezoid" id="languageBtn" role="button" tabindex="0" aria-label="Select language">Language</div>
     </div>
-    <button class="bottom-trapezoid" id="startStopBtn">Start/Stop</button>
-    <div id="debug"><pre id="debugText"></pre></div>
+    <button class="bottom-trapezoid" id="startStopBtn" aria-label="Start or stop navigation">Start/Stop</button>
+    <div id="debug" aria-hidden="true"><pre id="debugText"></pre></div>
+    <script type="module">
+        import { createSelect } from './ui/templates.js';
+        document.getElementById('settingsToggle').appendChild(createSelect('gridSelect', [
+            { value: 'hex-tonnetz', text: 'Hexagonal Tonnetz' },
+            { value: 'circle-of-fifths', text: 'Circle of Fifths' }
+        ], 'hex-tonnetz'));
+        document.getElementById('modeBtn').appendChild(createSelect('synthesisSelect', [
+            { value: 'sine-wave', text: 'Sine Wave' },
+            { value: 'fm-synthesis', text: 'FM Synthesis' }
+        ], 'sine-wave'));
+        document.getElementById('languageBtn').appendChild(createSelect('languageSelect', [
+            { value: 'en-US', text: 'English' },
+            { value: 'es-ES', text: 'Español' }
+        ], 'en-US'));
+    </script>
     <script type="module" src="main.js"></script>
 </body>
 </html>

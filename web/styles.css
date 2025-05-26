@@ -21,7 +21,7 @@ body {
     border: none;
     height: 16%;
     min-height: 60px;
-    color: #ffffff;
+    color: #ffffff; /* WCAG contrast ratio 4.5:1 against #000020 */
 }
 .main-container {
     display: flex;
@@ -106,15 +106,16 @@ select {
     color: #ffffff;
     padding: 10px;
 }
-button:focus, select:focus {
+button:focus, select:focus, [role="button"]:focus {
     outline: 2px solid #007bff;
+    outline-offset: 2px; /* WCAG 2.2 visible focus */
 }
 @media (max-width: 600px) {
     .left-trapezoid, .right-trapezoid {
         width: 25%;
         min-width: 60px;
         font-size: 14px;
-        transform: translateX(15%); /* Adjusted for smaller screens */
+        transform: translateX(15%);
     }
     .right-trapezoid {
         transform: translateX(-15%);

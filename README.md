@@ -35,107 +35,79 @@ This kickstart aims to make this imagination a reality and we first started a pr
 
 ### [Installation](docs/INSTALL.md)
 
-The current best performer can be run without installation from 
+The latest best performer can be run without installation directly from 
 
 - https://mamware.github.io/acoustsee/web
 
+For a mobile browser compability follow the #install link (docs/INSTALL.md) there you also find instruccion to run the first prof of concept made with Python
+
 ### [Usage](#usage)
 
-Dispite that al processing the is done in your device and not a single bit of data is sent outside your device, a permision to access the camera by the browser will be requested and only used by such browser in order to do the local processing of the webcam data generating the audio for the navigation.
+- Enter https://mamware.github.io/acoustsee/web
 
-Having the most up to date version of mobile web browsers is diserable. 
+- The webapp is designed with a mobile phone as main tech stake use case where its front camera (and screen) are facing the desired objetive to be transformed in to sound.
 
-Most internet browsers from 2021 should work, following is a detailed list:
+- The User Interface of the webapp is split into five regions, a top border rectangle where a settings button is and a bottom border rectangle where the start and stop navigation toggle is.
 
-| Browser             | Minimum Version for Full Support   | Notes                                                                          |
-| ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| Chrome for Android  | Chrome 47 (December 2015)          | Full support for getUserMedia, AudioContext, and createStereoPanner.           |
-| Safari on iOS       | iOS 14.5 (Safari 14.1, April 2021) | Supports unprefixed AudioContext and createStereoPanner. No vibration support. |
-| Firefox for Android | Firefox 50 (November 2016)         | Full support for all APIs, though SpeechSynthesis may be inconsistent.         |
-| Samsung Internet    | Samsung Internet 5.0 (2017)        | Based on Chromium, full support for all APIs.                                  |
-| Opera Mobile        | Opera 36 (2016)                    | Based on Chromium, full support for all APIs.                                  |
-| Edge for Android    | Edge 79 (January 2020)             | Based on Chromium, full support for all APIs.                                  |
+- Also there are big rectangular buttons at the left and right border of the device where the left (right if device is being weared for navigation) swichets betten day (or high light ambience) and night (or low light ambience). The right buttom switches between languajes.
 
+- The settings button toggles the funcion of the left and right button into advances options, like grid selector and synthesis method. 
+  
+- The processing of the camera is done privately on your device and not a single frame has to be sent outside your device, still a permision to access the camera by the browser will be requested by the browser to do the local processing of the webcam data into generating the audio for the navigation.
 
-The webapp is designed (meant) to be used with a mobile phone where its front camera and screen should be facing to desired objetive to be transformed in to sound.
+Having the most up to date version of mobile web browsers is diserable., yet most mobile internet browsers from 2021 should work, for a detailed list see
+(docs/INSTALL.md) 
 
-The User Interface of the webapp (should be) is split into for isoceles trapezoids and center vertical rectangle. 
-
-The top trapezoid is (should be) where the setting toggle is, this toggle shifts the function of the lateral trapezoid a the left (dayNight toggle without shift) and right (languaje selectror for speech synthesis) for a cursor for options navigation such as grid and synth engine both versioned selector.
-
-The confirmation is done by pressing the center vertical rectagunlar square, that also works as webcam feed preview/canvas
-
-The start and stop of the navigation is donde by pressing the buttom trapezoid.
-
-A reintroduction of a frames per seconds (FPS) toggle that is usefull if your device stutters or generates artifacts due to processing issues, likely by a cpu processor limitation will be reconsidered as a configuration option, among the grid and synth engine selector.
-
-A console log live view and a copy feature is being considered too.
-
-Most up to date and best performer is located at - 
-
-https://mamware.github.io/acustsee/web
-
-Privacy Note: All of the video processing is done at your device, not a single frame is sent to anyone or anywhere than that the ones that takes places at your own device processing logic.
 
 ### [Status](#status)
 
-**Milestone 1**: (Completed)
-
-- Proof of Concept. A Python code that handles statics image from an example folder and successfully generates a WAV file with basic stereo audio, left/right, panning.
-
-**Milestone 2**: (Completed) 
-
-- Minimun Viable Product. A javascript web version, to process privately the user live video feed, framing a "Hilbert curve" (it was a simplified zig zag) and synthetised sound from it trying to emulate a head related transfer function.
-
-**Milestone 3 (Completed)**:
-
-- Tested different approachs and with fast, raw iterations. The subfolders fft, htrf, tonnetz sections each approach.  
-- Current selected main soundscape generator comes from the Euler Tonnetz approach where the video frame split into left/right halves, mapped to the hexagonal Euler Tonnetz grid (32x32 per half, 2048 notes total).
-- Has a day/night mode that inverts sound generation given the lighting conditions.
-- Sounds synthesis engine aims to approach real-time 50ms updates (toggleable to 100ms, 250ms) and up to 16 notes per side (32 total).
-- UI: Centered video, split the remaining screen into 3 sections, being the lower half for the start/top, to upper div has settings a the left for FPS and at next to it, at the right is the day/night toggle, (working on it).
-- Moved from the Trunk Based Development to a Single Responsability Principle (modular) approach.
-- Set up Github new branches for developing with CI/CD in place
-
 **Milestone 4 (Current)**: **Work in Progress**  
 
-- New user interface with selectable grid, selectable synth engine, took out auto day and night mode. **Work in Progress** 
-- New languajes for the speech sinthetizer **Work in Progress** 
-- Detailed performance analisis and sectioned metrics. **Work in Progress** 
+- New user interface with selectable grid and synth engine
+- Adding Spanish to the speech sinthetizer 
+- Modular V3, educational purpose ready (JSDoc)
+- Splited the UI Logic, breaking ui-handlers.js into smaller modules to isolate trapezoid button handlers, settings dropdowns, and frame processing.
+- WCAG Contrast UI.
+- Dynamic memplates, creating templates.js module to generate UI elements  programmatically, reducing HTML duplication.
+- Centralized event management, introduced an event-dispatcher.js to route UI events to specific handlers, improving scalability.
 
-Consider TO_DO:
+### [Changelog](docs/CHANGELOG.md)
 
-- Optimizations aiming the use of less resources and better performance, such as Web Workers and WebAssembly.
-- Reintroducing Hilbert curves.
-- Gabor filters for motion detection.
-- New grid types and synth engines
-- Voting system for grid and synth engines.
-- Testing true HRTF.
-- Android/iOS app developtment if considerable performance gain can be achieved.
+- Current version is v0.9, follow the changelog link above for log history and details, see Changelog (docs/CHANGELOG.md) for past milestones
 
-
-## [Project structure](#project_structure) (WIP)
+### [Project structure](#project_structure)
 
 ```
+
 acoustsee/
-├── .github/workflows/         # GitHub Actions for deployment
-│   ├── deploy.yml
+├── .github/workflows/         # GitHub Actions for deployment (deprecated)
+│   └── deploy.yml 
 ├── web/                       # Modular webapp
 │   ├── index.html
+│   ├── styles.css
 │   ├── main.js
+│   ├── state.js
 │   ├── audio-processor.js
 │   ├── grid-selector.js
-│   ├── ui-handlers.js
-│   ├── state.js
-│   ├── synthesis-methods/
-│   │   ├── grids/
-│   │   │   ├── hex-tonnetz.js
-│   │   │   ├── circle-of-fifths.js
-│   │   ├── engines/
-│   │   │   ├── sine-wave.js
-│   │   │   ├── fm-synthesis.js
-│   ├── garbage/               # Deprecated files 
+│   ├── ui/
+│   │   ├── trapezoid-handlers.js  # Handles settingsToggle, modeBtn, languageBtn, startStopBtn
+│   │   ├── settings-handlers.js  # Manages gridSelect, synthesisSelect, languageSelect, fpsSelect
+│   │   ├── frame-processor.js    # Processes video frames (processFrame)
+│   │   ├── templates.js          # Generates UI elements (e.g., select dropdowns)
+│   │   └── event-dispatcher.js   # Routes events to handlers
+│   └──  synthesis-methods/
+│       ├── grids/
+│       │   ├── hex-tonnetz.js
+│       │   └── circle-of-fifths.js
+│       └── engines/
+│           ├── sine-wave.js
+│           └── fm-synthesis.js
+│   
 ├── tests/                     # Unit tests (TO_DO)
+│   ├── ui-handlers.test.js
+│   ├── trapezoid-handlers.test.js
+│   ├── settings-handlers.test.js
+│   └── frame-processor.test.js
 ├── docs/                      # Documentation
 │   ├── INSTALL.md
 │   ├── CHANGELOG.md
@@ -143,26 +115,42 @@ acoustsee/
 │   ├── TO_DO.md
 │   ├── DIAGRAMS.md
 │   ├── LICENSE.md
-│   ├── FAQ.md
-├── README.md
+│   └── FAQ.md
+├── history/               # Deprecated files
+├── garbage/               # Temporal files to be deleted
+└── README.md
 
 ```
 
-### [Changelog](docs/CHANGELOG.md)
-
-- Current version is v0.8, follow the changelog link for log history and details
-
 ### [Contributing](docs/CONTRIBUTING.md)
 
-- Please follow the link for the detailed contributing guidelines, branching strategy and examples.
+- Please follow the link above for the detailed contributing guidelines, branching strategy and examples.
 
 ### [To-Do List](docs/TO_DO.md)
 
-- At this document you will find the list for current to do wich is now from milestone 4.
+- At this document linked above, you will find the list for current TO TO list, we are now at milestone 4.
 
-### [Code flow diagrams](docs/DIAGRAMS.md)
+Resume of TO_DO:
 
-- Process Frame Flow, Audio Generation Flow and Motion Detection such as oscillator logic.
+- Mermaid diagrams to reflect current Modular Single Responsability Principle
+- Further Modularity: e.g., modularize audio-processor.js
+- New languajes for the speech sinthetizer
+- Haptic feedback via Vibration API
+- Console log on device screen for debuggin.
+- Optimizations aiming the use less resources and achieve better performance, ie: implementing Web Workers and using WebAssembly.
+- Reintroducing Hilbert curves.
+- Gabor filters for motion detection.
+- New grid types and synth engines
+- Voting system for grid and synth engines.
+- Consider making User selectable synth engine version.
+- Consider adding support for VST like plugins.
+- Testing true HRTF, loading CIPIC HRIR data.
+- New capabilities like screen/video capture to sound engine.
+- Android/iOS app developtment if considerable performance gain can be achieved.
+
+### [Code flow diagrams](docs/DIAGRAMS.md) 
+
+- Diagramas covered the Turnk Based Development approach wich as been now deprecated. Still you will the Process Frame Flow, Audio Generation Flow and Motion Detection such as oscillator logic at:
 
 https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
 
@@ -173,5 +161,3 @@ https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
 ### [FAQ](docs/FAQ.md)
 
 - Follow the link for list of the Frecuently Asqued Questions.
-  
-

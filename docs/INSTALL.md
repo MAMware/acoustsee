@@ -2,16 +2,21 @@
 
 Please note that the current best performer can be run without installation directly from a internet browser, the latest best performer is hosted at: 
 
-- https://mamware.github.io/acoustsee/web
+Browser compability list:
 
-To test the other approaches such as 
-the Fourier inspired one, you can run it from 
-- https://mamware.github.io/acoustsee/web/fft
 
-and the Euler inspired one from
-- https://mamware.github.io/acustsee/web/tonnetz
+| Browser             | Minimum Version for Full Support   | Notes                                                                          |
+| ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
+| Chrome for Android  | Chrome 47 (December 2015)          | Full support for getUserMedia, AudioContext, and createStereoPanner.           |
+| Safari on iOS       | iOS 14.5 (Safari 14.1, April 2021) | Supports unprefixed AudioContext and createStereoPanner. No vibration support. |
+| Firefox for Android | Firefox 50 (November 2016)         | Full support for all APIs, though SpeechSynthesis may be inconsistent.         |
+| Samsung Internet    | Samsung Internet 5.0 (2017)        | Based on Chromium, full support for all APIs.                                  |
+| Opera Mobile        | Opera 36 (2016)                    | Based on Chromium, full support for all APIs.                                  |
+| Edge for Android    | Edge 79 (January 2020)             | Based on Chromium, full support for all APIs.                                  |
 
-(a locally run web version is corrently being studied)
+Privacy Note: All of the video processing is done at your device, not a single frame is sent to anyone or anywhere than that the ones that takes places at your own device processing logic.
+
+
 
 ### Project structure
 
