@@ -39,7 +39,7 @@ The latest best performer can be run without installation directly from
 
 - https://mamware.github.io/acoustsee/web
 
-For a mobile browser companility list see (docs/INSTALL.md) there you also find instruccion to run the first prof of concept made with Python
+For a mobile browser compability follow the #install link (docs/INSTALL.md) there you also find instruccion to run the first prof of concept made with Python
 
 ### [Usage](#usage)
 
@@ -55,7 +55,8 @@ For a mobile browser companility list see (docs/INSTALL.md) there you also find 
   
 - The processing of the camera is done privately on your device and not a single frame has to be sent outside your device, still a permision to access the camera by the browser will be requested by the browser to do the local processing of the webcam data into generating the audio for the navigation.
 
-Having the most up to date version of mobile web browsers is diserable., yet most mobile internet browsers from 2021 should work, for a detailed list see (docs/INSTALL.md) 
+Having the most up to date version of mobile web browsers is diserable., yet most mobile internet browsers from 2021 should work, for a detailed list see
+(docs/INSTALL.md) 
 
 
 ### [Status](#status)
@@ -65,18 +66,19 @@ Having the most up to date version of mobile web browsers is diserable., yet mos
 - New user interface with selectable grid and synth engine
 - Adding Spanish to the speech sinthetizer 
 - Modular V3, educational purpose ready (JSDoc)
-- Split UI Logic: Breaking ui-handlers.js into smaller modules to isolate trapezoid button handlers, settings dropdowns, and frame processing.
-- WCAG Contrast UI
-- Dynamic Templates: Creating templates.js module to generate UI elements (e.g., <select> dropdowns) programmatically, reducing HTML duplication.
-- Centralized Event Management: Introduced an event-dispatcher.js to route UI events to specific handlers, improving scalability.
+- Splited the UI Logic, breaking ui-handlers.js into smaller modules to isolate trapezoid button handlers, settings dropdowns, and frame processing.
+- WCAG Contrast UI.
+- Dynamic memplates, creating templates.js module to generate UI elements  programmatically, reducing HTML duplication.
+- Centralized event management, introduced an event-dispatcher.js to route UI events to specific handlers, improving scalability.
 
 ### [Changelog](docs/CHANGELOG.md)
 
 - Current version is v0.9, follow the changelog link above for log history and details, see Changelog (docs/CHANGELOG.md) for past milestones
 
-## [Project structure](#project_structure) (WIP)
+### [Project structure](#project_structure)
 
 ```
+
 acoustsee/
 ├── .github/workflows/         # GitHub Actions for deployment (deprecated)
 │   └── deploy.yml 
@@ -117,6 +119,7 @@ acoustsee/
 ├── history/               # Deprecated files
 ├── garbage/               # Temporal files to be deleted
 └── README.md
+
 ```
 
 ### [Contributing](docs/CONTRIBUTING.md)
@@ -127,26 +130,27 @@ acoustsee/
 
 - At this document linked above, you will find the list for current TO TO list, we are now at milestone 4.
 
-#### Considering TO_DO:
+Resume of TO_DO:
 
 - Mermaid diagrams to reflect current Modular Single Responsability Principle
 - Further Modularity: e.g., modularize audio-processor.js
-- New languajes for the speech sinthetizer 
-- Optimizations aiming the use of less resources and better performance, such as Web Workers and WebAssembly.
+- New languajes for the speech sinthetizer
+- Haptic feedback via Vibration API
+- Console log on device screen for debuggin.
+- Optimizations aiming the use less resources and achieve better performance, ie: implementing Web Workers and using WebAssembly.
 - Reintroducing Hilbert curves.
 - Gabor filters for motion detection.
 - New grid types and synth engines
 - Voting system for grid and synth engines.
 - Consider making User selectable synth engine version.
 - Consider adding support for VST like plugins.
-- Testing true HRTF.
+- Testing true HRTF, loading CIPIC HRIR data.
 - New capabilities like screen/video capture to sound engine.
 - Android/iOS app developtment if considerable performance gain can be achieved.
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
-- Diagramas are based on the Turnk Based Development approach wich as been now deprecated
-- Process Frame Flow, Audio Generation Flow and Motion Detection such as oscillator logic.
+- Diagramas covered the Turnk Based Development approach wich as been now deprecated. Still you will the Process Frame Flow, Audio Generation Flow and Motion Detection such as oscillator logic at:
 
 https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
 
@@ -157,5 +161,3 @@ https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
 ### [FAQ](docs/FAQ.md)
 
 - Follow the link for list of the Frecuently Asqued Questions.
-  
-
