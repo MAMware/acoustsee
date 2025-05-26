@@ -99,18 +99,27 @@ Privacy Note: All of the video processing is done at your device, not a single f
 
 **Milestone 4 (Current)**: **Work in Progress**  
 
-- New user interface with selectable grid, selectable synth engine, took out auto day and night mode. **Work in Progress** 
-- New languajes for the speech sinthetizer **Work in Progress** 
-- Detailed performance analisis and sectioned metrics. **Work in Progress** 
+- New user interface with selectable grid and synth engine
+- Adding Spanish to the speech sinthetizer 
+- Modular V3, educational purpose ready (JSDoc)
+- Split UI Logic: Breaking ui-handlers.js into smaller modules to isolate trapezoid button handlers, settings dropdowns, and frame processing.
+- WCAG Contrast UI
+- Dynamic Templates: Creating templates.js module to generate UI elements (e.g., <select> dropdowns) programmatically, reducing HTML duplication.
+- Centralized Event Management: Introduced an event-dispatcher.js to route UI events to specific handlers, improving scalability. 
 
 Consider TO_DO:
 
+- Further Modularity: e.g., modularize audio-processor.js
+- New languajes for the speech sinthetizer 
 - Optimizations aiming the use of less resources and better performance, such as Web Workers and WebAssembly.
 - Reintroducing Hilbert curves.
 - Gabor filters for motion detection.
 - New grid types and synth engines
 - Voting system for grid and synth engines.
+- Consider making User selectable synth engine version.
+- Consider adding support for VST like plugins.
 - Testing true HRTF.
+- New capabilities like screen/video capture to sound engine.
 - Android/iOS app developtment if considerable performance gain can be achieved.
 
 
@@ -118,24 +127,34 @@ Consider TO_DO:
 
 ```
 acoustsee/
-├── .github/workflows/         # GitHub Actions for deployment
-│   ├── deploy.yml
+├── .github/workflows/         # GitHub Actions for deployment (deprecated)
+│   └── deploy.yml 
 ├── web/                       # Modular webapp
 │   ├── index.html
+│   ├── styles.css
 │   ├── main.js
+│   ├── state.js
 │   ├── audio-processor.js
 │   ├── grid-selector.js
-│   ├── ui-handlers.js
-│   ├── state.js
-│   ├── synthesis-methods/
-│   │   ├── grids/
-│   │   │   ├── hex-tonnetz.js
-│   │   │   ├── circle-of-fifths.js
-│   │   ├── engines/
-│   │   │   ├── sine-wave.js
-│   │   │   ├── fm-synthesis.js
-│   ├── garbage/               # Deprecated files 
+│   ├── ui/
+│   │   ├── trapezoid-handlers.js  # Handles settingsToggle, modeBtn, languageBtn, startStopBtn
+│   │   ├── settings-handlers.js  # Manages gridSelect, synthesisSelect, languageSelect, fpsSelect
+│   │   ├── frame-processor.js    # Processes video frames (processFrame)
+│   │   ├── templates.js          # Generates UI elements (e.g., select dropdowns)
+│   │   └── event-dispatcher.js   # Routes events to handlers
+│   └──  synthesis-methods/
+│       ├── grids/
+│       │   ├── hex-tonnetz.js
+│       │   └── circle-of-fifths.js
+│       └── engines/
+│           ├── sine-wave.js
+│           └── fm-synthesis.js
+│   
 ├── tests/                     # Unit tests (TO_DO)
+│   ├── ui-handlers.test.js
+│   ├── trapezoid-handlers.test.js
+│   ├── settings-handlers.test.js
+│   └── frame-processor.test.js
 ├── docs/                      # Documentation
 │   ├── INSTALL.md
 │   ├── CHANGELOG.md
@@ -143,22 +162,23 @@ acoustsee/
 │   ├── TO_DO.md
 │   ├── DIAGRAMS.md
 │   ├── LICENSE.md
-│   ├── FAQ.md
-├── README.md
-
+│   └── FAQ.md
+├── history/               # Deprecated files
+├── garbage/               # Temporal files to be deleted
+└── README.md
 ```
 
 ### [Changelog](docs/CHANGELOG.md)
 
-- Current version is v0.8, follow the changelog link for log history and details
+- Current version is v0.9, follow the changelog link above for log history and details
 
 ### [Contributing](docs/CONTRIBUTING.md)
 
-- Please follow the link for the detailed contributing guidelines, branching strategy and examples.
+- Please follow the link above for the detailed contributing guidelines, branching strategy and examples.
 
 ### [To-Do List](docs/TO_DO.md)
 
-- At this document you will find the list for current to do wich is now from milestone 4.
+- At this document linked above, you will find the list for current TO TO lis wich is now at milestone 4.
 
 ### [Code flow diagrams](docs/DIAGRAMS.md)
 
