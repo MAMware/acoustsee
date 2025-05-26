@@ -1,4 +1,4 @@
-import { initializeAudio, audioContext } from '../audio-processor.js';
+import { initializeAudio, audioContext, stopAudio } from '../audio-processor.js';
 import { settings, setStream, setAudioInterval } from '../state.js';
 import { speak } from './utils.js';
 
@@ -14,9 +14,6 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     const settingsToggle = document.getElementById('settingsToggle');
     let settingsMode = false;
 
-    /**
-     * Toggles settings mode, shifting button functions.
-     */
     settingsToggle.addEventListener('touchstart', (event) => {
         event.preventDefault();
         settingsMode = !settingsMode;
@@ -25,9 +22,6 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         speak('settingsToggle', { state: settingsMode ? 'on' : 'off' });
     });
 
-    /**
-     * Toggles day/night mode or selects grid in settings mode.
-     */
     modeBtn.addEventListener('touchstart', (event) => {
         event.preventDefault();
         if (settingsMode) {
@@ -40,16 +34,13 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         dispatchEvent('updateUI', { settingsMode });
     });
 
-    /**
-     * Cycles language or selects synthesis engine in settings mode.
-     */
     languageBtn.addEventListener('touchstart', (event) => {
         event.preventDefault();
         if (settingsMode) {
             settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
             speak('synthesisSelect', { engine: settings.synthesisEngine });
         } else {
-            const languages = ['en-US', 'es-ES']; // Add more via languages/*.json
+            const languages = ['en-US', 'es-ES'];
             const currentIndex = languages.indexOf(settings.language || 'en-US');
             settings.language = languages[(currentIndex + 1) % languages.length];
             speak('languageSelect', { lang: settings.language });
@@ -57,31 +48,8 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         dispatchEvent('updateUI', { settingsMode });
     });
 
-    /**
-     * Starts or stops video and audio processing.
-     */
     startStopBtn.addEventListener('touchstart', async (event) => {
         event.preventDefault();
-        if (!audioContext) {
-            try {
-                const newContext = new (window.AudioContext || window.webkitAudioContext)();
-                await initializeAudio(newContext);
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-            } catch (err) {
-                console.error('Audio initialization failed:', err);
-                speak('audioError');
-                return;
-            }
-        } else if (audioContext.state === 'suspended') {
-            await audioContext.resume();
-        }
-        if (!audioContext) {
-            console.error('Audio not initialized');
-            speak('audioError');
-            return;
-        }
         if (settings.stream) {
             settings.stream.getTracks().forEach(track => track.stop());
             setStream(null);
@@ -90,11 +58,19 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 clearInterval(settings.audioInterval);
                 setAudioInterval(null);
             }
+            stopAudio(); // Stop active audio nodes
             speak('startStop', { state: 'stopped' });
             dispatchEvent('updateUI', { settingsMode });
             return;
         }
         try {
+            if (!audioContext) {
+                const newContext = new (window.AudioContext || window.webkitAudioContext)();
+                initializeAudio(newContext);
+            }
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
             const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
             setStream(newStream);
             document.getElementById('videoFeed').srcObject = newStream;
@@ -105,7 +81,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             setAudioInterval(setInterval(() => dispatchEvent('processFrame'), settings.updateInterval));
             dispatchEvent('updateUI', { settingsMode });
         } catch (err) {
-            console.error('Camera access failed:', err);
+            console.error('Camera or audio failed:', err);
             speak('cameraError');
         }
     });
