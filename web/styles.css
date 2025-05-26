@@ -11,8 +11,7 @@ body {
     justify-content: space-between;
     color: #ffffff;
 }
-.top-trapezoid {
-    clip-path: polygon(0% 0%, 100% 0%, 79% 100%, 21% 100%);
+.top-rectangle, .bottom-rectangle {
     background: #000020;
     text-align: center;
     padding: 10px;
@@ -21,15 +20,14 @@ body {
     border: none;
     height: 16%;
     min-height: 60px;
-    color: #ffffff; /* WCAG contrast ratio 4.5:1 against #000020 */
+    color: #ffffff; /* WCAG contrast ratio 4.5:1 */
 }
 .main-container {
     display: flex;
     flex: 1;
     min-height: 0;
 }
-.left-trapezoid {
-    clip-path: polygon(0% 0%, 0% 100%, 100% 79%, 100% 21%);
+.left-rectangle, .right-rectangle {
     background: #000020;
     width: 16%;
     min-width: 80px;
@@ -40,8 +38,6 @@ body {
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    position: relative;
-    transform: translateX(10%);
 }
 .center-rectangle {
     background: #000030;
@@ -50,33 +46,6 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 200px;
-}
-.right-trapezoid {
-    clip-path: polygon(100% 0%, 100% 100%, 0% 79%, 0% 21%);
-    background: #000020;
-    width: 16%;
-    min-width: 80px;
-    padding: 10px;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    position: relative;
-    transform: translateX(-10%);
-}
-.bottom-trapezoid {
-    clip-path: polygon(0% 100%, 100% 100%, 79% 0%, 21% 0%);
-    background: #000020;
-    text-align: center;
-    padding: 10px;
-    font-size: 16px;
-    cursor: pointer;
-    border: none;
-    height: 16%;
-    min-height: 60px;
-    color: #ffffff;
 }
 video {
     max-width: 90%;
@@ -87,16 +56,6 @@ video {
 canvas {
     display: none;
 }
-select {
-    margin: 5px;
-    padding: 10px;
-    font-size: 16px;
-    width: 90%;
-    display: none;
-    color: #ffffff;
-    background: #000020;
-    border: 1px solid #ffffff;
-}
 #debug {
     display: none;
     position: absolute;
@@ -106,21 +65,17 @@ select {
     color: #ffffff;
     padding: 10px;
 }
-button:focus, select:focus, [role="button"]:focus {
+button:focus, [role="button"]:focus {
     outline: 2px solid #007bff;
     outline-offset: 2px; /* WCAG 2.2 visible focus */
 }
 @media (max-width: 600px) {
-    .left-trapezoid, .right-trapezoid {
+    .left-rectangle, .right-rectangle {
         width: 25%;
         min-width: 60px;
         font-size: 14px;
-        transform: translateX(15%);
     }
-    .right-trapezoid {
-        transform: translateX(-15%);
-    }
-    .top-trapezoid, .bottom-trapezoid {
+    .top-rectangle, .bottom-rectangle {
         font-size: 14px;
         padding: 8px;
         min-height: 50px;
