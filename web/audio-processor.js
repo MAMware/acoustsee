@@ -1,75 +1,68 @@
 import { settings } from './state.js';
-import { mapFrame } from './grid-dispatcher.js';
-import { playSineWave } from './synthesis-methods/engines/sine-wave.js';
-import { playFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
 
+/**
+ * Global AudioContext, initialized on user gesture.
+ */
 export let audioContext = null;
-export let isAudioInitialized = false;
-export let oscillators = [];
 
-export async function initializeAudio(context) {
-    if (isAudioInitialized || !context) return;
-    try {
-        audioContext = context;
-        if (audioContext.state === 'suspended') {
-            await audioContext.resume();
-        }
-        for (let i = 0; i < 32; i++) {
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            const panner = audioContext.createStereoPanner();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(0, audioContext.currentTime);
-            gain.gain.setValueAtTime(0, audioContext.currentTime);
-            panner.pan.setValueAtTime(0, audioContext.currentTime);
-            osc.connect(gain).connect(panner).connect(audioContext.destination);
-            osc.start();
-            oscillators.push({ osc, gain, panner, active: false });
-        }
-        isAudioInitialized = true;
-        if (window.speechSynthesis) {
-            const utterance = new SpeechSynthesisUtterance('Audio initialized');
-            utterance.lang = settings.language || 'en-US';
-            window.speechSynthesis.speak(utterance);
-        }
-    } catch (error) {
-        console.error('Audio Initialization Error:', error);
-        if (window.speechSynthesis) {
-            const utterance = new SpeechSynthesisUtterance('Failed to initialize audio');
-            utterance.lang = settings.language || 'en-US';
-            window.speechSynthesis.speak(utterance);
-        }
-    }
+/**
+ * Active audio nodes for stopping audio.
+ */
+let activeNodes = [];
+
+/**
+ * Initializes AudioContext after user gesture.
+ * @param {AudioContext} context - The AudioContext to initialize.
+ */
+export function initializeAudio(context) {
+    audioContext = context;
 }
 
-export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
-    if (!isAudioInitialized) return { prevFrameDataLeft, prevFrameDataRight };
-
-    const halfWidth = width / 2;
-    const leftFrame = new Uint8ClampedArray(halfWidth * height);
-    const rightFrame = new Uint8ClampedArray(halfWidth * height);
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < halfWidth; x++) {
-            leftFrame[y * halfWidth + x] = frameData[y * width + x];
-            rightFrame[y * halfWidth + x] = frameData[y * width + x + halfWidth];
+/**
+ * Stops all active audio nodes.
+ */
+export function stopAudio() {
+    activeNodes.forEach(node => {
+        try {
+            node.stop();
+            node.disconnect();
+        } catch (e) {
+            console.warn('Error stopping node:', e);
         }
-    }
+    });
+    activeNodes = [];
+}
 
-    const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
-    const rightResult = mapFrame(rightFrame, halfWidth, height, prevFrameDataRight, 1);
-    prevFrameDataLeft = leftResult.newFrameData;
-    prevFrameDataRight = rightResult.newFrameData;
+/**
+ * Plays audio based on frame data, grid, and synthesis engine.
+ * @param {Uint8ClampedArray} data - Grayscale frame data.
+ * @param {number} width - Frame width.
+ * @param {number} height - Frame height.
+ * @param {Float32Array} prevLeft - Previous left channel data.
+ * @param {Float32Array} prevRight - Previous right channel data.
+ * @returns {Object} Updated left and right channel data.
+ */
+export function playAudio(data, width, height, prevLeft, prevRight) {
+    if (!audioContext) return { prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
 
-    const allNotes = [...leftResult.notes, ...rightResult.notes];
-    switch (settings.synthesisEngine) {
-        case 'fm-synthesis':
-            playFMSynthesis(allNotes);
-            break;
-        case 'sine-wave':
-        default:
-            playSineWave(allNotes);
-            break;
-    }
+    const { gridType, synthesisEngine } = settings;
+    let mappedData;
 
-    return { prevFrameDataLeft, prevFrameDataRight };
+    // Dynamic imports for grids
+    import(`./synthesis-methods/grids/${gridType}.js`).then(module => {
+        mappedData = module.mapFrame(data, width, height);
+    }).catch(err => console.error('Grid import failed:', err));
+
+    // Create synthesis node
+    let sourceNode;
+    import(`./synthesis-methods/engines/${synthesisEngine}.js`).then(module => {
+        sourceNode = module.createSound(audioContext, mappedData);
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.5;
+        sourceNode.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        activeNodes.push(sourceNode, gainNode);
+    }).catch(err => console.error('Engine import failed:', err));
+
+    return { prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight }; // Update as needed
 }
