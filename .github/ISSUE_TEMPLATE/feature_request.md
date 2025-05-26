@@ -11,7 +11,7 @@ assignees: ''
 What feature would you like to add?
 
 **Use Case**
-Why is this feature useful? (e.g., accessibility, education)
+Why is this feature useful? (e.g., accessibility, education, improvement, new feature)
 
 **Proposed Solution**
 How could it be implemented?

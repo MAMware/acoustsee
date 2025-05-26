@@ -210,4 +210,3 @@ export function processFrame() {
     setPrevFrameDataLeft(newLeft);
     setPrevFrameDataRight(newRight);
 }
-}

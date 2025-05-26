@@ -24,7 +24,7 @@ If applicable, add screenshots.
 
 **Environment**
 - Browser: [e.g., Chrome 120]
-- OS: [e.g., Windows 13]
+- OS: [e.g., Android 13]
 - Device: [e.g., Desktop, Mobile]
 
 **Additional Context**
