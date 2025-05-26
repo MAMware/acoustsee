@@ -55,7 +55,7 @@ For a mobile browser compability follow the #install link (docs/INSTALL.md) ther
   
 - The processing of the camera is done privately on your device and not a single frame has to be sent outside your device, still a permision to access the camera by the browser will be requested by the browser to do the local processing of the webcam data into generating the audio for the navigation.
 
-Having the most up to date version of mobile web browsers is diserable., yet most mobile internet browsers from 2021 should work, for a detailed list see
+Having the most up to date version of mobile web browsers is diserable, yet most mobile internet browsers from 2021 should work, for a detailed list see
 (docs/INSTALL.md) 
 
 
@@ -73,7 +73,7 @@ Having the most up to date version of mobile web browsers is diserable., yet mos
 
 ### [Changelog](docs/CHANGELOG.md)
 
-- Current version is v0.9, follow the changelog link above for log history and details, see Changelog (docs/CHANGELOG.md) for past milestones
+- Current version is v0.9, follow link above for a log history, details and past milestones
 
 ### [Project structure](#project_structure)
 
@@ -128,7 +128,7 @@ acoustsee/
 
 ### [To-Do List](docs/TO_DO.md)
 
-- At this document linked above, you will find the list for current TO TO list, we are now at milestone 4.
+- At this document linked above, you will find the list for current TO TO list, we are now at milestone 4 (v0.9)
 
 Resume of TO_DO:
 
@@ -150,7 +150,7 @@ Resume of TO_DO:
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
-- Diagramas covered the Turnk Based Development approach wich as been now deprecated. Still you will the Process Frame Flow, Audio Generation Flow and Motion Detection such as oscillator logic at:
+- Diagramas covered the Turnk Based Development approach wich as been now deprecated. Still, you will find there the past Process Frame Flow, Audio Generation Flow and Motion Detection such as oscillator logic at:
 
 https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
 

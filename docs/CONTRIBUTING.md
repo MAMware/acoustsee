@@ -41,111 +41,73 @@ Once the changes in the `staging` branch pass all tests and reviews, a `pull req
 - **Release:**
 The `main` branch is then deployed to production.
 
-### Example Commands
+## Contribution Types
 
-Adding a New Language
+### Adding a New Language
+- Create a new file in `web/languages/` (e.g., `fr-FR.json`) based on `en-US.json`.
+- Update `web/ui/rectangle-handlers.js` to include the language in the `languages` array.
+- Example:
+  ```json
+  // web/languages/fr-FR.json
+  {
+      "settingsToggle": "Paramètres {state}",
+      "modeBtn": "Mode {mode}",
+      ...
+  }
+  ```
+  ```javascript
+  // web/ui/rectangle-handlers.js
+  const languages = ['en-US', 'es-ES', 'fr-FR'];
+  ```
 
-Create a new file in web/languages/ (e.g., fr-FR.json) based on en-US.json.
-Update web/index.html to add the language to languageSelect.
-Example:// web/languages/fr-FR.json
-{
-    "settingsToggle": "Paramètres {state}",
-    "modeBtn": "Mode {mode}",
-    ...
-}
+### Adding a New Grid or Synthesis Engine
+- Add a new file in `web/synthesis-methods/grids/` (e.g., `new-grid.js`) or `web/synthesis-methods/engines/` (e.g., `new-engine.js`).
+- Update `web/ui/rectangle-handlers.js` to include the new grid/engine in `settings.gridType` or `settings.synthesisEngine` logic.
+- Example:
+  ```javascript
+  // web/synthesis-methods/grids/new-grid.js
+  export function mapFrame(data, width, height) {
+      // Your mapping logic
+      return data;
+  }
+  ```
 
-<!-- Add to languageSelect in index.html -->
-document.getElementById('languageBtn').appendChild(createSelect('languageSelect', [
-    { value: 'en-US', text: 'English' },
-    { value: 'es-ES', text: 'Español' },
-    { value: 'fr-FR', text: 'Français' }
-], 'en-US'));
+### Fixing Bugs
+- Check [Issues](https://github.com/MAMware/acoustsee/issues) for open bugs.
+- Use the issue template to describe your fix.
 
+## Submitting Changes
 
+1. **Create a Branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+2. **Commit Changes**:
+   ```bash
+   git add .
+   git commit -m "Add feature: describe your change"
+   ```
+3. **Push and Create a PR**:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+   Open a Pull Request on GitHub, referencing the related issue.
 
-Fixing Bugs
+## Code Style
+- Use JSDoc comments for functions (see `web/ui/event-dispatcher.js`).
+- Follow ESLint rules (run `npm run lint`).
+- Keep code modular, placing UI logic in `web/ui/`.
 
-Check Issues for open bugs.
-Use the issue template to describe your fix.
-
-Adding Features
-
-Propose features (e.g., new synthesis engines) via an issue.
-Follow the modular structure in web/ui/ or web/synthesis-methods/.
-
-Submitting Changes
-
-Create a Branch:git checkout -b feature/your-feature-name
-
-
-Commit Changes:git add .
-git commit -m "Add feature: describe your change"
-
-
-Push and Create a PR:git push origin feature/your-feature-name
-
-Open a Pull Request on GitHub, referencing the related issue.
-
-Code Style
-
-Use JSDoc comments for functions (see web/ui/event-dispatcher.js).
-Follow ESLint rules (run npm run lint).
-Keep code modular, placing UI logic in web/ui/.
-
-Testing
-
-Add tests in tests/ for new features (see tests/trapezoid-handlers.test.js).
-Run tests:npm test
-
- Create the developing branch from main
-```sh
-git checkout -b developing main
-git push origin developing
-```
- Work on a feature branch
-```
-git checkout -b feature/new-feature developing
-```
-
- Push the feature branch to the remote repository
-```
-git push origin feature/new-feature
-```
-
- Create a pull request to merge feature/new-feature into developing
- - (This is done via the GitHub UI)
-
- Once the feature is merged into developing
-```
-git checkout developing
-git merge feature/new-feature
-git push origin developing
-```
-
- Periodically merge developing into staging for testing
-```
-git checkout -b staging developing
-git push origin staging
-```
-
- Provide the staging URL to end users for testing
- Once testing is complete, merge developing into main
-
-```
-git checkout main
-git merge developing
-git push origin main
-```
-
-## Setup
-- **Web**: Run `cd web; python3 -m http.server 8000`.
-- **Python**: See `INSTALL.md` for virtual environment setup.
-- **Docs**: Check `docs/` for future features.
-
+## Testing
+- Add tests in `tests/` for new features (see `tests/rectangle-handlers.test.js`).
+- Run tests:
+  ```bash
+  npm test
+  ```
 ## Code of Conduct
 Please be kind, inclusive, and collaborative. Let’s make accessibility tech awesome!
 
-Questions?
+## Questions?
+Reach out via [Issues](https://github.com/MAMware/acoustsee/issues).
 
-Reach out via Issues
 Happy contributing!

@@ -7,32 +7,17 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <button class="top-trapezoid" id="settingsToggle" aria-label="Toggle settings menu" aria-expanded="false">Settings</button>
+    <button class="top-rectangle" id="settingsToggle" aria-label="Toggle settings mode">Settings</button>
     <div class="main-container">
-        <div class="left-trapezoid" id="modeBtn" role="button" tabindex="0" aria-label="Toggle day/night mode">Daylight</div>
+        <div class="left-rectangle" id="modeBtn" role="button" aria-label="Toggle day/night mode or select grid in settings mode">Daylight</div>
         <div class="center-rectangle" id="centerRectangle" aria-live="polite">
             <video id="videoFeed" autoplay playsinline aria-label="Live video feed for audio synthesis"></video>
             <canvas id="imageCanvas" aria-hidden="true"></canvas>
         </div>
-        <div class="right-trapezoid" id="languageBtn" role="button" tabindex="0" aria-label="Select language">Language</div>
+        <div class="right-rectangle" id="languageBtn" role="button" aria-label="Cycle language or select synthesis engine in settings mode">Language</div>
     </div>
-    <button class="bottom-trapezoid" id="startStopBtn" aria-label="Start or stop navigation">Start/Stop</button>
+    <button class="bottom-rectangle" id="startStopBtn" aria-label="Start or stop navigation">Start/Stop</button>
     <div id="debug" aria-hidden="true"><pre id="debugText"></pre></div>
-    <script type="module">
-        import { createSelect } from './ui/templates.js';
-        document.getElementById('settingsToggle').appendChild(createSelect('gridSelect', [
-            { value: 'hex-tonnetz', text: 'Hexagonal Tonnetz' },
-            { value: 'circle-of-fifths', text: 'Circle of Fifths' }
-        ], 'hex-tonnetz'));
-        document.getElementById('modeBtn').appendChild(createSelect('synthesisSelect', [
-            { value: 'sine-wave', text: 'Sine Wave' },
-            { value: 'fm-synthesis', text: 'FM Synthesis' }
-        ], 'sine-wave'));
-        document.getElementById('languageBtn').appendChild(createSelect('languageSelect', [
-            { value: 'en-US', text: 'English' },
-            { value: 'es-ES', text: 'Español' }
-        ], 'en-US'));
-    </script>
     <script type="module" src="main.js"></script>
 </body>
 </html>
