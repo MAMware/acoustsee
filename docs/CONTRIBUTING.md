@@ -43,6 +43,60 @@ The `main` branch is then deployed to production.
 
 ### Example Commands
 
+Adding a New Language
+
+Create a new file in web/languages/ (e.g., fr-FR.json) based on en-US.json.
+Update web/index.html to add the language to languageSelect.
+Example:// web/languages/fr-FR.json
+{
+    "settingsToggle": "Paramètres {state}",
+    "modeBtn": "Mode {mode}",
+    ...
+}
+
+<!-- Add to languageSelect in index.html -->
+document.getElementById('languageBtn').appendChild(createSelect('languageSelect', [
+    { value: 'en-US', text: 'English' },
+    { value: 'es-ES', text: 'Español' },
+    { value: 'fr-FR', text: 'Français' }
+], 'en-US'));
+
+
+
+Fixing Bugs
+
+Check Issues for open bugs.
+Use the issue template to describe your fix.
+
+Adding Features
+
+Propose features (e.g., new synthesis engines) via an issue.
+Follow the modular structure in web/ui/ or web/synthesis-methods/.
+
+Submitting Changes
+
+Create a Branch:git checkout -b feature/your-feature-name
+
+
+Commit Changes:git add .
+git commit -m "Add feature: describe your change"
+
+
+Push and Create a PR:git push origin feature/your-feature-name
+
+Open a Pull Request on GitHub, referencing the related issue.
+
+Code Style
+
+Use JSDoc comments for functions (see web/ui/event-dispatcher.js).
+Follow ESLint rules (run npm run lint).
+Keep code modular, placing UI logic in web/ui/.
+
+Testing
+
+Add tests in tests/ for new features (see tests/trapezoid-handlers.test.js).
+Run tests:npm test
+
  Create the developing branch from main
 ```sh
 git checkout -b developing main
@@ -90,3 +144,8 @@ git push origin main
 
 ## Code of Conduct
 Please be kind, inclusive, and collaborative. Let’s make accessibility tech awesome!
+
+Questions?
+
+Reach out via Issues
+Happy contributing!
