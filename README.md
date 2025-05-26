@@ -73,15 +73,15 @@ Having the most up to date version of mobile web browsers is diserable, yet most
 
 ### [Changelog](docs/CHANGELOG.md)
 
-- Current version is v0.9, follow link above for a log history, details and past milestones
+- Current version is v0.9.7, follow link above for a log history, details and past milestones
 
 ### [Project structure](#project_structure)
 
 ```
 
 acoustsee/
-├── .github/workflows/         # GitHub Actions for deployment (deprecated)
-│   └── deploy.yml 
+├── .github/workflows/         
+│   └── deploy.yml             # GitHub Actions for deployment (deprecated)
 ├── web/                       # Modular webapp
 │   ├── index.html
 │   ├── styles.css
@@ -90,12 +90,13 @@ acoustsee/
 │   ├── audio-processor.js
 │   ├── grid-selector.js
 │   ├── ui/
-│   │   ├── trapezoid-handlers.js  # Handles settingsToggle, modeBtn, languageBtn, startStopBtn
+│   │   ├── rectangle-handlers.js # Handles settingsToggle, modeBtn, languageBtn, startStopBtn
+│   │   ├── trapezoid-handlers.js # Handles settingsToggle, modeBtn, languageBtn, startStopBtn (deprecated)
 │   │   ├── settings-handlers.js  # Manages gridSelect, synthesisSelect, languageSelect, fpsSelect
 │   │   ├── frame-processor.js    # Processes video frames (processFrame)
-│   │   ├── templates.js          # Generates UI elements (e.g., select dropdowns)
+│   │   ├── templates.js          # Generates UI elements (e.g., select dropdowns) DEPRECATED
 │   │   └── event-dispatcher.js   # Routes events to handlers
-│   └──  synthesis-methods/
+│   └── synthesis-methods/
 │       ├── grids/
 │       │   ├── hex-tonnetz.js
 │       │   └── circle-of-fifths.js
