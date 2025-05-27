@@ -9,22 +9,20 @@ export function createSound(audioContext, mappedData) {
     const modulator = audioContext.createOscillator();
     const modGain = audioContext.createGain();
 
-    // Default frequencies for audible output
-    carrier.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
-    modulator.frequency.setValueAtTime(220, audioContext.currentTime); // Modulator at half frequency
-    modGain.gain.setValueAtTime(100, audioContext.currentTime); // Modulation index
+    carrier.type = 'sine';
+    modulator.type = 'sine';
+    carrier.frequency.setValueAtTime(440, audioContext.currentTime);
+    modulator.frequency.setValueAtTime(220, audioContext.currentTime);
+    modGain.gain.setValueAtTime(100, audioContext.currentTime);
 
-    // Map frame data to frequency (example: scale to 100-1000 Hz)
+    // Map frame data to carrier frequency
     if (mappedData && mappedData.length > 0) {
         const avgValue = mappedData.reduce((sum, val) => sum + val, 0) / mappedData.length;
-        const freq = 100 + (avgValue * 900); // Scale to 100-1000 Hz
-        carrier.frequency.setValueAtTime(freq, audioContext.currentTime);
+        carrier.frequency.setValueAtTime(100 + avgValue * 900, audioContext.currentTime);
     }
 
-    // FM synthesis chain: modulator -> modGain -> carrier frequency
     modulator.connect(modGain);
     modGain.connect(carrier.frequency);
     carrier.start();
-
     return carrier;
 }
