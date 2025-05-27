@@ -24,13 +24,17 @@ export function initializeAudio(context) {
 export function stopAudio() {
     activeNodes.forEach(node => {
         try {
-            node.stop();
+            if (node.stop) node.stop();
             node.disconnect();
         } catch (e) {
             console.warn('Error stopping node:', e);
         }
     });
     activeNodes = [];
+    // Ensure AudioContext is suspended to reduce lag
+    if (audioContext && audioContext.state === 'running') {
+        audioContext.suspend().catch(err => console.warn('Suspend failed:', err));
+    }
 }
 
 /**
@@ -41,7 +45,7 @@ export function stopAudio() {
 function mapHexTonnetz(data) {
     const mapped = new Float32Array(data.length);
     for (let i = 0; i < data.length; i++) {
-        mapped[i] = data[i] / 255; // Normalize
+        mapped[i] = data[i] / 255;
     }
     return mapped;
 }
@@ -54,7 +58,7 @@ function mapHexTonnetz(data) {
 function mapCircleOfFifths(data) {
     const mapped = new Float32Array(data.length);
     for (let i = 0; i < data.length; i++) {
-        mapped[i] = (data[i] / 255) * 0.9; // Slight variation
+        mapped[i] = (data[i] / 255) * 0.9;
     }
     return mapped;
 }
@@ -69,7 +73,7 @@ function createSineWave(audioContext, mappedData) {
     const oscillator = audioContext.createOscillator();
     oscillator.type = 'sine';
     const freq = mappedData && mappedData.length > 0
-        ? 100 + (mappedData.reduce((sum, val) => sum + val, 0) / mappedData.length) * 900
+        ? 200 + (mappedData.reduce((sum, val) => sum + val, 0) / mappedData.length) * 400 // Smoother range
         : 440;
     oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
     oscillator.start();
@@ -91,11 +95,11 @@ function createFMSynthesis(audioContext, mappedData) {
     modulator.type = 'sine';
     carrier.frequency.setValueAtTime(440, audioContext.currentTime);
     modulator.frequency.setValueAtTime(220, audioContext.currentTime);
-    modGain.gain.setValueAtTime(100, audioContext.currentTime);
+    modGain.gain.setValueAtTime(50, audioContext.currentTime); // Reduced modulation
 
     if (mappedData && mappedData.length > 0) {
         const avgValue = mappedData.reduce((sum, val) => sum + val, 0) / mappedData.length;
-        carrier.frequency.setValueAtTime(100 + avgValue * 900, audioContext.currentTime);
+        carrier.frequency.setValueAtTime(200 + avgValue * 400, audioContext.currentTime);
     }
 
     modulator.connect(modGain);
@@ -116,6 +120,9 @@ function createFMSynthesis(audioContext, mappedData) {
 export function playAudio(data, width, height, prevLeft, prevRight) {
     if (!audioContext) return { prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
 
+    // Clear old nodes to prevent overlap
+    stopAudio();
+
     const { gridType, synthesisEngine } = settings;
     const gridMap = {
         'hex-tonnetz': mapHexTonnetz,
@@ -132,10 +139,10 @@ export function playAudio(data, width, height, prevLeft, prevRight) {
         const mappedData = mapFn(data, width, height);
         const sourceNode = createSoundFn(audioContext, mappedData);
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.5;
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
         sourceNode.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        activeNodes.push(sourceNode, gainNode);
+        activeNodes = [sourceNode, gainNode];
     } catch (err) {
         console.error('Audio processing failed:', err);
     }
