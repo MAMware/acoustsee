@@ -19,7 +19,7 @@ body {
     cursor: pointer;
     border: none;
     height: 16%;
-    min-height: 60px;
+    min-height: 50px;
     color: #ffffff;
 }
 .main-container {
@@ -31,7 +31,7 @@ body {
 .left-rectangle, .right-rectangle {
     background: #000020;
     width: 20%; /* Relative width to fit viewport */
-    min-width: 60px; /* Reduced to avoid overflow */
+    min-width: 50px; /* Reduced to avoid overflow */
     padding: 10px;
     font-size: 16px;
     cursor: pointer;
