@@ -1,32 +1,28 @@
-import { audioContext, oscillators } from '../../audio-processor.js';
+/**
+ * Creates an FM synthesis sound based on mapped frame data.
+ * @param {AudioContext} audioContext - The Web Audio API context.
+ * @param {Float32Array} mappedData - Mapped frame data for synthesis.
+ * @returns {AudioNode} The source node for the sound.
+ */
+export function createSound(audioContext, mappedData) {
+    const carrier = audioContext.createOscillator();
+    const modulator = audioContext.createOscillator();
+    const modGain = audioContext.createGain();
 
-export function playSineWave(notes) {
-    let oscIndex = 0;
-    const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
-    for (let i = 0; i < oscillators.length; i++) {
-        const oscData = oscillators[i];
-        if (i < allNotes.length) {
-            const { pitch, intensity, harmonics, pan } = allNotes[i];
-            oscData.osc.type = 'sine';
-            oscData.osc.frequency.setTargetAtTime(pitch, audioContext.currentTime, 0.015);
-            oscData.gain.gain.setTargetAtTime(intensity, audioContext.currentTime, 0.015);
-            oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
-            oscData.active = true;
-            if (harmonics.length && oscIndex + harmonics.length < oscillators.length) {
-                for (let h = 0; h < harmonics.length; h++) {
-                    oscIndex++;
-                    const harmonicOsc = oscillators[oscIndex];
-                    harmonicOsc.osc.type = 'sine';
-                    harmonicOsc.osc.frequency.setTargetAtTime(harmonics[h], audioContext.currentTime, 0.015);
-                    harmonicOsc.gain.gain.setTargetAtTime(intensity * 0.5, audioContext.currentTime, 0.015);
-                    harmonicOsc.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
-                    harmonicOsc.active = true;
-                }
-            }
-            oscIndex++;
-        } else {
-            oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
-            oscData.active = false;
-        }
+    carrier.type = 'sine';
+    modulator.type = 'sine';
+    carrier.frequency.setValueAtTime(440, audioContext.currentTime);
+    modulator.frequency.setValueAtTime(220, audioContext.currentTime);
+    modGain.gain.setValueAtTime(100, audioContext.currentTime);
+
+    // Map frame data to carrier frequency
+    if (mappedData && mappedData.length > 0) {
+        const avgValue = mappedData.reduce((sum, val) => sum + val, 0) / mappedData.length;
+        carrier.frequency.setValueAtTime(100 + avgValue * 900, audioContext.currentTime);
     }
+
+    modulator.connect(modGain);
+    modGain.connect(carrier.frequency);
+    carrier.start();
+    return carrier;
 }
