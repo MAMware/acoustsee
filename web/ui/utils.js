@@ -1,36 +1,39 @@
+/**
+ * Utility functions for UI interactions.
+ */
 import { settings } from '../state.js';
 
 /**
- * Loads translations from a JSON file based on language code.
- * @param {string} lang - Language code (e.g., 'en-US', 'es-ES').
- * @returns {Promise<Object>} Translations object.
+ * Speaks a message using Web Speech API based on element ID and state.
+ * @param {string} elementId - ID of the element triggering the speech.
+ * @param {Object} [state] - Optional state for dynamic messages.
  */
-async function loadTranslations(lang) {
-    try {
-        const response = await fetch(`languages/${lang}.json`);
-        if (!response.ok) throw new Error(`Failed to load ${lang}.json`);
-        return await response.json();
-    } catch (error) {
-        console.error('Translation load error:', error);
-        return {}; // Fallback to empty object
+export function speak(elementId, state = {}) {
+    const translations = {
+        'en-US': {
+            settingsToggle: `Settings ${state.state === 'on' ? 'enabled' : 'disabled'}`,
+            modeBtn: `Mode set to ${state.mode || 'day'}`,
+            gridSelect: `Grid set to ${state.grid === 'hex-tonnetz' ? 'hexagonal tonnetz' : 'circle of fifths'}`,
+            synthesisSelect: `Synthesis set to ${state.engine === 'sine-wave' ? 'sine wave' : 'FM synthesis'}`,
+            languageSelect: `Language set to ${state.lang === 'en-US' ? 'English' : 'Spanish'}`,
+            startStop: `Navigation ${state.state || 'started'}`,
+            cameraError: 'Failed to access camera'
+        },
+        'es-ES': {
+            settingsToggle: `Configuraciones ${state.state === 'on' ? 'activadas' : 'desactivadas'}`,
+            modeBtn: `Modo establecido en ${state.mode === 'day' ? 'día' : 'noche'}`,
+            gridSelect: `Cuadrícula establecida en ${state.grid === 'hex-tonnetz' ? 'tonnetz hexagonal' : 'círculo de quintas'}`,
+            synthesisSelect: `Síntesis establecida en ${state.engine === 'sine-wave' ? 'onda sinusoidal' : 'síntesis FM'}`,
+            languageSelect: `Idioma establecido en ${state.lang === 'en-US' ? 'inglés' : 'español'}`,
+            startStop: `Navegación ${state.state === 'started' ? 'iniciada' : 'detenida'}`,
+            cameraError: 'No se pudo acceder a la cámara'
+        }
+    };
+    const lang = settings.language || 'en-US';
+    const message = translations[lang][elementId] || '';
+    if (message) {
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.lang = lang;
+        window.speechSynthesis.speak(utterance);
     }
-}
-
-/**
- * Speaks text using the Web Speech API with translated strings.
- * @param {string} key - Translation key (e.g., 'settingsToggle').
- * @param {Object} [params={}] - Parameters to replace in the translation (e.g., { state: 'on' }).
- */
-export async function speak(key, params = {}) {
-    if (!window.speechSynthesis) return;
-    
-    const translations = await loadTranslations(settings.language || 'en-US');
-    let text = translations[key] || key;
-    for (const [param, value] of Object.entries(params)) {
-        text = text.replace(`{${param}}`, value);
-    }
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = settings.language || 'en-US';
-    window.speechSynthesis.speak(utterance);
 }

@@ -73,12 +73,12 @@ button:focus, [role="button"]:focus {
 @media (max-width: 600px) {
     .left-rectangle, .right-rectangle {
         width: 25%;
-        min-width: 50px;
+        min-width: 40px;
         font-size: 14px;
     }
     .top-rectangle, .bottom-rectangle {
         font-size: 14px;
         padding: 8px;
-        min-height: 50px;
+        min-height: 40px;
     }
 }
