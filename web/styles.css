@@ -4,21 +4,21 @@ body {
     padding: 0;
     background: #000000;
     height: 100vh;
-    width: 100vw;
+    width: 100vw; /* Full viewport width */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     color: #ffffff;
-    overflow: hidden;
+    overflow: hidden; /* Prevent scrolling */
 }
 .top-rectangle, .bottom-rectangle {
-    background: #003366;
+    background: #003366; /* Distinct blue for top/bottom, contrast 4.5:1 */
     text-align: center;
     padding: 10px;
     font-size: 16px;
     cursor: pointer;
     border: none;
-    height: 12vh; /* Balanced height */
+    height: 16%;
     min-height: 50px;
     color: #ffffff;
 }
@@ -26,12 +26,12 @@ body {
     display: flex;
     flex: 1;
     min-height: 0;
-    width: 100%;
+    width: 100%; /* Ensure container fits viewport */
 }
 .left-rectangle, .right-rectangle {
     background: #000020;
-    width: 20%;
-    min-width: 50px;
+    width: 20%; /* Relative width to fit viewport */
+    min-width: 50px; /* Reduced to avoid overflow */
     padding: 10px;
     font-size: 16px;
     cursor: pointer;
@@ -49,7 +49,7 @@ body {
     min-height: 200px;
 }
 video {
-    max-width: 100%;
+    max-width: 100%; /* Fit within center-rectangle */
     max-height: 100%;
     object-fit: contain;
     display: block;
@@ -68,7 +68,7 @@ canvas {
 }
 button:focus, [role="button"]:focus {
     outline: 2px solid #007bff;
-    outline-offset: 2px;
+    outline-offset: 2px; /* WCAG 2.2 visible focus */
 }
 @media (max-width: 600px) {
     .left-rectangle, .right-rectangle {
@@ -79,7 +79,6 @@ button:focus, [role="button"]:focus {
     .top-rectangle, .bottom-rectangle {
         font-size: 14px;
         padding: 8px;
-        height: 10vh; /* Slightly smaller on mobile */
         min-height: 40px;
     }
 }

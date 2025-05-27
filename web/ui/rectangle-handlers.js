@@ -48,7 +48,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         dispatchEvent('updateUI', { settingsMode });
     });
 
-    startStopBtn.addEventListener('touchstart', (event) => {
+    startStopBtn.addEventListener('touchstart', async (event) => {
         event.preventDefault();
         if (settings.stream) {
             settings.stream.getTracks().forEach(track => track.stop());
@@ -65,39 +65,28 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             dispatchEvent('updateUI', { settingsMode });
             return;
         }
-
-        // Initialize AudioContext synchronously within gesture
         try {
             if (!audioContext) {
                 const newContext = new (window.AudioContext || window.webkitAudioContext)();
                 initializeAudio(newContext);
             }
             if (audioContext.state === 'suspended') {
-                audioContext.resume().catch(err => console.error('Resume failed:', err));
+                await audioContext.resume();
             }
+            const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            setStream(newStream);
+            document.getElementById('videoFeed').srcObject = newStream;
+            document.getElementById('videoFeed').style.display = 'block';
+            document.getElementById('imageCanvas').width = 64;
+            document.getElementById('imageCanvas').height = 48;
+            startStopBtn.textContent = 'Stop';
+            startStopBtn.setAttribute('aria-label', 'Stop navigation');
+            speak('startStop', { state: 'started' });
+            setAudioInterval(setInterval(() => dispatchEvent('processFrame'), settings.updateInterval));
+            dispatchEvent('updateUI', { settingsMode });
         } catch (err) {
-            console.error('AudioContext setup failed:', err);
+            console.error('Camera or audio failed:', err);
             speak('cameraError');
-            return;
         }
-
-        // Async operations after AudioContext setup
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-            .then(newStream => {
-                setStream(newStream);
-                document.getElementById('videoFeed').srcObject = newStream;
-                document.getElementById('videoFeed').style.display = 'block';
-                document.getElementById('imageCanvas').width = 64;
-                document.getElementById('imageCanvas').height = 48;
-                startStopBtn.textContent = 'Stop';
-                startStopBtn.setAttribute('aria-label', 'Stop navigation');
-                speak('startStop', { state: 'started' });
-                setAudioInterval(setInterval(() => dispatchEvent('processFrame'), settings.updateInterval));
-                dispatchEvent('updateUI', { settingsMode });
-            })
-            .catch(err => {
-                console.error('Camera failed:', err);
-                speak('cameraError');
-            });
     });
 }
