@@ -37,27 +37,26 @@ This kickstart aims to make this imagination a reality and we first started a pr
 
 The latest best performer can be run without installation directly from 
 
-- https://mamware.github.io/acoustsee/web
+- https://mamware.github.io/acoustsee/present
 
 For a mobile browser compability follow the #install link (docs/INSTALL.md) there you also find instruccion to run the first prof of concept made with Python
-
-### [Usage](#usage)
-
-- Enter https://mamware.github.io/acoustsee/web
-
-- The webapp is designed with a mobile phone as main tech stake use case where its front camera (and screen) are facing the desired objetive to be transformed in to sound.
-
-- The User Interface of the webapp is split into five regions, a top border rectangle where a settings button is and a bottom border rectangle where the start and stop navigation toggle is.
-
-- Also there are big rectangular buttons at the left and right border of the device where the left (right if device is being weared for navigation) swichets betten day (or high light ambience) and night (or low light ambience). The right buttom switches between languajes.
-
-- The settings button toggles the funcion of the left and right button into advances options, like grid selector and synthesis method. 
-  
-- The processing of the camera is done privately on your device and not a single frame has to be sent outside your device, still a permision to access the camera by the browser will be requested by the browser to do the local processing of the webcam data into generating the audio for the navigation.
 
 Having the most up to date version of mobile web browsers is diserable, yet most mobile internet browsers from 2021 should work, for a detailed list see
 (docs/INSTALL.md) 
 
+### [Usage](#usage)
+
+- The webapp is designed with a mobile phone as main tech stake use case where its front camera (and screen) are facing the desired objetive to be transformed in to sound.
+
+- Enter https://mamware.github.io/acoustsee/present
+
+- The User Interface of the webapp is split into five regions, a top border rectangle where the settings button is and a bottom rectangle where the start and stop navigation toggle is.
+
+- There are big rectangular buttons at the side too, the left is the sensivity inverter and right cicles between languajes.
+
+- The settings button toggles the funcion of the left and right button into advances options, like grid selector for the left and synthesis method for the right. 
+  
+- IMPORTANT: The processing of the camera is done privately on your device and not a single frame has or is sent outside your device. A permision to access the camera by the browser will be requested in order to do the local processing and thus generate the audio for the navigation.
 
 ### [Status](#status)
 
@@ -80,9 +79,8 @@ Having the most up to date version of mobile web browsers is diserable, yet most
 ```
 
 acoustsee/
-├── .github/workflows/         
-│   └── deploy.yml             # GitHub Actions for deployment (deprecated)
-├── web/                       # Modular webapp
+
+├── present/                      # Current Stable Modular Webapp
 │   ├── index.html
 │   ├── styles.css
 │   ├── main.js
@@ -91,10 +89,8 @@ acoustsee/
 │   ├── grid-selector.js
 │   ├── ui/
 │   │   ├── rectangle-handlers.js # Handles settingsToggle, modeBtn, languageBtn, startStopBtn
-│   │   ├── trapezoid-handlers.js # Handles settingsToggle, modeBtn, languageBtn, startStopBtn (deprecated)
 │   │   ├── settings-handlers.js  # Manages gridSelect, synthesisSelect, languageSelect, fpsSelect
 │   │   ├── frame-processor.js    # Processes video frames (processFrame)
-│   │   ├── templates.js          # Generates UI elements (e.g., select dropdowns) DEPRECATED
 │   │   └── event-dispatcher.js   # Routes events to handlers
 │   └── synthesis-methods/
 │       ├── grids/
@@ -117,8 +113,8 @@ acoustsee/
 │   ├── DIAGRAMS.md
 │   ├── LICENSE.md
 │   └── FAQ.md
-├── history/               # Deprecated files
-├── garbage/               # Temporal files to be deleted
+├── past/                     # Deprecated files, for history revision
+├── future/                   # Dedicated for fast, live testing of new features
 └── README.md
 
 ```

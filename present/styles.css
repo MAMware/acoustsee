@@ -4,7 +4,7 @@ body {
     padding: 0;
     background: #000000;
     height: 100vh;
-    width: 100vh; /* 16:9 vertical: 100vh * 9/16 */
+    width: 100vw; /* 16:9 vertical: 100vh * 9/16 */
     margin: auto;
     display: flex;
     flex-direction: column;
@@ -18,7 +18,7 @@ body {
     font-size: 16px;
     cursor: pointer;
     border: none;
-    height: 12%;
+    height: 16vh;
     min-height: 50px;
     color: #ffffff; /* WCAG contrast ratio 4.5:1 */
 }
@@ -30,7 +30,7 @@ body {
 .left-rectangle, .right-rectangle {
     background: #000020;
     width: 13%;
-    min-width: 50px;
+    min-width: 30px;
     padding: 10px;
     font-size: 16px;
     cursor: pointer;
@@ -45,11 +45,11 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 200px;
+    min-height: 100px;
 }
 video {
-    max-width: 90%;
-    max-height: 90%;
+    max-width: 100%;
+    max-height: 100%;
     object-fit: contain;
     display: block;
 }
@@ -72,15 +72,13 @@ button:focus, [role="button"]:focus {
 @media (max-width: 600px) {
     .left-rectangle, .right-rectangle {
         width: 12%;
-        min-width: 40px;
+        min-width: 30px;
         font-size: 14px;
     }
     .top-rectangle, .bottom-rectangle {
         font-size: 14px;
         padding: 8px;
+        height: 10vh; /* Slightly smaller on mobile */
         min-height: 40px;
     }
-    body {
-        width: 60vh;
-    }
-}
+   
