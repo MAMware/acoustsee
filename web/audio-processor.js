@@ -1,4 +1,8 @@
 import { settings } from './state.js';
+import { mapFrame as mapHexTonnetz } from './synthesis-methods/grids/hex-tonnetz.js';
+import { mapFrame as mapCircleOfFifths } from './synthesis-methods/grids/circle-of-fifths.js';
+import { createSound as createSineWave } from './synthesis-methods/engines/sine-wave.js';
+import { createSound as createFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
 
 /**
  * Global AudioContext, initialized on user gesture.
@@ -46,23 +50,30 @@ export function playAudio(data, width, height, prevLeft, prevRight) {
     if (!audioContext) return { prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
 
     const { gridType, synthesisEngine } = settings;
-    let mappedData;
+    const gridMap = {
+        'hex-tonnetz': mapHexTonnetz,
+        'circle-of-fifths': mapCircleOfFifths
+    };
+    const engineMap = {
+        'sine-wave': createSineWave,
+        'fm-synthesis': createFMSynthesis
+    };
 
-    // Dynamic imports for grids
-    import(`./synthesis-methods/grids/${gridType}.js`).then(module => {
-        mappedData = module.mapFrame(data, width, height);
-    }).catch(err => console.error('Grid import failed:', err));
+    try {
+        const mapFn = gridMap[gridType];
+        const createSoundFn = engineMap[synthesisEngine];
+        if (!mapFn || !createSoundFn) throw new Error('Invalid grid or engine');
 
-    // Create synthesis node
-    let sourceNode;
-    import(`./synthesis-methods/engines/${synthesisEngine}.js`).then(module => {
-        sourceNode = module.createSound(audioContext, mappedData);
+        const mappedData = mapFn(data, width, height);
+        const sourceNode = createSoundFn(audioContext, mappedData);
         const gainNode = audioContext.createGain();
         gainNode.gain.value = 0.5;
         sourceNode.connect(gainNode);
         gainNode.connect(audioContext.destination);
         activeNodes.push(sourceNode, gainNode);
-    }).catch(err => console.error('Engine import failed:', err));
+    } catch (err) {
+        console.error('Audio processing failed:', err);
+    }
 
-    return { prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight }; // Update as needed
+    return { prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
 }
