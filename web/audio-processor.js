@@ -1,8 +1,4 @@
 import { settings } from './state.js';
-import { mapFrame as mapHexTonnetz } from './synthesis-methods/grids/hex-tonnetz.js';
-import { mapFrame as mapCircleOfFifths } from './synthesis-methods/grids/circle-of-fifths.js';
-import { createSound as createSineWave } from './synthesis-methods/engines/sine-wave.js';
-import { createSound as createFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
 
 /**
  * Global AudioContext, initialized on user gesture.
@@ -38,7 +34,7 @@ export function stopAudio() {
 }
 
 /**
- * Plays audio based on frame data, grid, and synthesis engine.
+ * Plays audio based on frame data (basic implementation).
  * @param {Uint8ClampedArray} data - Grayscale frame data.
  * @param {number} width - Frame width.
  * @param {number} height - Frame height.
@@ -49,31 +45,21 @@ export function stopAudio() {
 export function playAudio(data, width, height, prevLeft, prevRight) {
     if (!audioContext) return { prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
 
-    const { gridType, synthesisEngine } = settings;
-    const gridMap = {
-        'hex-tonnetz': mapHexTonnetz,
-        'circle-of-fifths': mapCircleOfFifths
-    };
-    const engineMap = {
-        'sine-wave': createSineWave,
-        'fm-synthesis': createFMSynthesis
-    };
-
-    try {
-        const mapFn = gridMap[gridType];
-        const createSoundFn = engineMap[synthesisEngine];
-        if (!mapFn || !createSoundFn) throw new Error('Invalid grid or engine');
-
-        const mappedData = mapFn(data, width, height);
-        const sourceNode = createSoundFn(audioContext, mappedData);
+    const { synthesisEngine } = settings;
+    if (synthesisEngine === 'sine-wave') {
+        const oscillator = audioContext.createOscillator();
+        oscillator.type = 'sine';
+        const freq = data && data.length > 0
+            ? 100 + (data.reduce((sum, val) => sum + val, 0) / data.length) * 3.53
+            : 440;
+        oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
         const gainNode = audioContext.createGain();
         gainNode.gain.value = 0.5;
-        sourceNode.connect(gainNode);
+        oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        activeNodes.push(sourceNode, gainNode);
-    } catch (err) {
-        console.error('Audio processing failed:', err);
+        oscillator.start();
+        activeNodes.push(oscillator, gainNode);
     }
-
+    // FM synthesis and grids not fully implemented
     return { prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
 }

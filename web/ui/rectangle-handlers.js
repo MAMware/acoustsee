@@ -3,7 +3,7 @@ import { settings, setStream, setAudioInterval } from '../state.js';
 import { speak } from './utils.js';
 
 /**
- * Sets up event listeners for rectangle buttons (settings, mode, language, start/stop).
+ * Sets up event listeners for rectangle buttons.
  * @param {Object} options - Configuration options.
  * @param {Function} options.dispatchEvent - Event dispatcher function.
  */
@@ -58,7 +58,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 clearInterval(settings.audioInterval);
                 setAudioInterval(null);
             }
-            stopAudio(); // Stop active audio nodes
+            stopAudio();
             speak('startStop', { state: 'stopped' });
             dispatchEvent('updateUI', { settingsMode });
             return;
