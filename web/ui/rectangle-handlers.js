@@ -59,6 +59,8 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 setAudioInterval(null);
             }
             stopAudio();
+            startStopBtn.textContent = 'Start';
+            startStopBtn.setAttribute('aria-label', 'Start navigation');
             speak('startStop', { state: 'stopped' });
             dispatchEvent('updateUI', { settingsMode });
             return;
@@ -77,6 +79,8 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             document.getElementById('videoFeed').style.display = 'block';
             document.getElementById('imageCanvas').width = 64;
             document.getElementById('imageCanvas').height = 48;
+            startStopBtn.textContent = 'Stop';
+            startStopBtn.setAttribute('aria-label', 'Stop navigation');
             speak('startStop', { state: 'started' });
             setAudioInterval(setInterval(() => dispatchEvent('processFrame'), settings.updateInterval));
             dispatchEvent('updateUI', { settingsMode });
