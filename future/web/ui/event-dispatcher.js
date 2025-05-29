@@ -3,13 +3,13 @@ import { processFrame } from './frame-processor.js';
 
 export function createEventDispatcher() {
     const handlers = {
-        updateUI: ({ settingsMode }) => {
+        updateUI: ({ settingsMode, streamActive }) => {
             const translations = {
                 'en-US': {
                     settingsToggle: settingsMode ? 'Exit Settings' : 'Settings',
                     modeBtn: settingsMode ? 'Select Grid' : 'Daylight',
                     languageBtn: settingsMode ? 'Select Synthesis' : 'Language',
-                    startStop: 'Navigation {state}',
+                    startStop: streamActive ? 'Stop' : 'Start',
                     gridSelect: { 'hex-tonnetz': 'Hexagonal Tonnetz', 'circle-of-fifths': 'Circle of Fifths' },
                     synthesisSelect: { 'sine-wave': 'Sine Wave', 'fm-synthesis': 'FM Synthesis' },
                     languageSelect: { 'en-US': 'English', 'es-ES': 'Spanish' }
@@ -18,7 +18,7 @@ export function createEventDispatcher() {
                     settingsToggle: settingsMode ? 'Salir de Configuraciones' : 'Configuraciones',
                     modeBtn: settingsMode ? 'Seleccionar Cuadrícula' : 'Luz del Día',
                     languageBtn: settingsMode ? 'Seleccionar Síntesis' : 'Idioma',
-                    startStop: 'Navegación {state}',
+                    startStop: streamActive ? 'Detener' : 'Iniciar',
                     gridSelect: { 'hex-tonnetz': 'Tonnetz Hexagonal', 'circle-of-fifths': 'Círculo de Quintas' },
                     synthesisSelect: { 'sine-wave': 'Onda Sinusoidal', 'fm-synthesis': 'Síntesis FM' },
                     languageSelect: { 'en-US': 'Inglés', 'es-ES': 'Español' }
@@ -44,13 +44,14 @@ export function createEventDispatcher() {
                 elements.languageBtn.setAttribute('aria-label', settingsMode ? `Select synthesis: ${t.synthesisSelect[settings.synthesisEngine]}` : 'Cycle language');
             }
             if (elements.startStopBtn) {
-                elements.startStopBtn.textContent = t.startStop.replace('{state}', settings.stream ? 'stopped' : 'started');
+                elements.startStopBtn.textContent = t.startStop;
+                elements.startStopBtn.setAttribute('aria-label', streamActive ? 'Stop navigation' : 'Start navigation');
             }
         },
         processFrame: () => processFrame(),
         updateFrameInterval: ({ interval }) => {
             if (settings.audioInterval) {
-                cancelAnimationFrame(settings.audioInterval); // Adaptado para requestAnimationFrame
+                cancelAnimationFrame(settings.audioInterval);
                 setAudioInterval(requestAnimationFrame(() => processFrame()));
             }
         },
@@ -58,7 +59,7 @@ export function createEventDispatcher() {
             const debug = document.getElementById('debug');
             debug.style.display = show ? 'block' : 'none';
             if (show) {
-                debug.querySelector('pre').textContent = `Settings: ${JSON.stringify(settings, null, 2)}`;
+                debug.querySelector('pre').textContent = `Settings: ${JSON.stringify(settings, null, 2)}\nStream: ${settings.stream ? 'Active' : 'Inactive'}`;
             }
         }
     };

@@ -2,17 +2,13 @@ import { initializeAudio, audioContext } from '../audio-processor.js';
 import { settings, setStream, setAudioInterval } from '../state.js';
 import { speak } from './utils.js';
 
-/**
- * Sets up event listeners for rectangle buttons (settings, mode, language, start/stop).
- * @param {Object} options - Configuration options.
- * @param {Function} options.dispatchEvent - Event dispatcher function.
- */
 export function setupRectangleHandlers({ dispatchEvent }) {
     const modeBtn = document.getElementById('modeBtn');
     const languageBtn = document.getElementById('languageBtn');
     const startStopBtn = document.getElementById('startStopBtn');
     const settingsToggle = document.getElementById('settingsToggle');
     let settingsMode = false;
+    let touchCount = 0;
 
     function updateButtonLabels(settingsMode) {
         modeBtn.textContent = settingsMode ? 'Select Grid' : 'Daylight';
@@ -24,6 +20,11 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     settingsToggle.addEventListener('touchstart', (event) => {
         event.preventDefault();
         if (navigator.vibrate) navigator.vibrate(50);
+        touchCount++;
+        if (touchCount === 2) {
+            touchCount = 0;
+            dispatchEvent('toggleDebug', { show: true });
+        }
         settingsMode = !settingsMode;
         settingsToggle.setAttribute('aria-label', settingsMode ? 'Exit settings mode' : 'Toggle settings mode');
         updateButtonLabels(settingsMode);
@@ -41,7 +42,6 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
             speak('modeBtn', { mode: settings.dayNightMode });
         }
-        updateButtonLabels(settingsMode);
         dispatchEvent('updateUI', { settingsMode });
     });
 
@@ -57,12 +57,12 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             settings.language = languages[(currentIndex + 1) % languages.length];
             speak('languageSelect', { lang: settings.language });
         }
-        updateButtonLabels(settingsMode);
         dispatchEvent('updateUI', { settingsMode });
     });
 
     let rafId;
     function processFrameLoop() {
+        if (!settings.stream) return; // Detener si no hay stream
         dispatchEvent('processFrame');
         rafId = requestAnimationFrame(processFrameLoop);
     }
@@ -93,16 +93,21 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         if (settings.stream) {
             settings.stream.getTracks().forEach(track => track.stop());
             setStream(null);
+            document.getElementById('videoFeed').srcObject = null;
             document.getElementById('videoFeed').style.display = 'none';
-            if (settings.audioInterval) {
+            if (rafId) {
                 cancelAnimationFrame(rafId);
+                rafId = null;
                 setAudioInterval(null);
             }
+            audioContext.suspend();
             speak('startStop', { state: 'stopped' });
-            dispatchEvent('updateUI', { settingsMode });
+            dispatchEvent('updateUI', { settingsMode, streamActive: false });
             return;
         }
         try {
+            const isLowEndDevice = navigator.hardwareConcurrency < 4;
+            settings.updateInterval = isLowEndDevice ? 100 : 50; // 10 FPS o 20 FPS
             const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
             setStream(newStream);
             const video = document.getElementById('videoFeed');
@@ -115,10 +120,16 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             speak('startStop', { state: 'started' });
             setAudioInterval('raf');
             processFrameLoop();
-            dispatchEvent('updateUI', { settingsMode });
+            dispatchEvent('updateUI', { settingsMode, streamActive: true });
         } catch (err) {
             console.error('Camera access failed:', err);
             speak('cameraError');
         }
+    });
+
+    document.getElementById('closeDebug').addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        if (navigator.vibrate) navigator.vibrate(50);
+        dispatchEvent('toggleDebug', { show: false });
     });
 }
