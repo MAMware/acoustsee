@@ -2,15 +2,6 @@ import { settings, setAudioInterval } from '../state.js';
 import { processFrame } from './frame-processor.js';
 
 export function createEventDispatcher() {
-
-
-
-
-
-
-+    let errorLog = [];
-    const maxErrors = 10;
-
     const handlers = {
         updateUI: ({ settingsMode, streamActive }) => {
             const translations = {
@@ -68,23 +59,9 @@ export function createEventDispatcher() {
             const debug = document.getElementById('debug');
             debug.style.display = show ? 'block' : 'none';
             if (show) {
-                const debugText = `Settings: ${JSON.stringify(settings, null, 2)}\nStream: ${settings.stream ? 'Active' : 'Inactive'}\nErrors:\n${errorLog.join('\n')}`;
-                debug.querySelector('pre').textContent = debugText;
+                debug.querySelector('pre').textContent = `Settings: ${JSON.stringify(settings, null, 2)}\nStream: ${settings.stream ? 'Active' : 'Inactive'}`;
             }
-        },
-        logError: ({ message }) => {
-            errorLog.push(`${new Date().toISOString()}: ${message}`);
-            if (errorLog.length > maxErrors) errorLog.shift();
-            if (document.getElementById('debug').style.display === 'block') {
-                handlers.toggleDebug({ show: true });
-            }
-            localStorage.setItem('acoustsee_errors', JSON.stringify(errorLog));
         }
-    };
-
-    // Capturar errores globales
-    window.onerror = (message, source, lineno, colno, error) => {
-        handlers.logError({ message: `${message} at ${source}:${lineno}:${colno}` });
     };
 
     return {

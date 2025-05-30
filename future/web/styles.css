@@ -20,13 +20,14 @@ body {
     flex: 0 0 auto;
     height: 16vh;
     min-height: 50px;
-    color: #ffffff; /* WCAG contrast ratio 4.5:1 */
+    color: #ffffff;
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
 }
 .main-container {
     display: flex;
+    flex-direction: row;
     flex: 1;
     min-height: 0;
 }
@@ -89,12 +90,12 @@ canvas {
 }
 button:focus, [role="button"]:focus {
     outline: 2px solid #007bff;
-    outline-offset: 2px; /* WCAG 2.2 visible focus */
+    outline-offset: 2px;
 }
 .top-rectangle:active, .bottom-rectangle:active,
 .left-rectangle:active, .right-rectangle:active {
     background: #1a1a4d;
-    transform: scale(0.98); /* Subtle press effect */
+    transform: scale(0.98);
 }
 @media (hover: hover) {
     .top-rectangle:hover, .bottom-rectangle:hover,

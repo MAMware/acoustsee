@@ -9,53 +9,32 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     const settingsToggle = document.getElementById('settingsToggle');
     let settingsMode = false;
     let touchCount = 0;
-    let isAudioInitialized = false;
-
-    function tryVibrate() {
-        if (navigator.vibrate) navigator.vibrate(50);
-    }
-
-    async function ensureAudioContext() {
-        if (!isAudioInitialized) {
-            try {
-                const newContext = new (window.AudioContext || window.webkitAudioContext)();
-                await initializeAudio(newContext);
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-                isAudioInitialized = true;
-            } catch (err) {
-                console.error('Audio initialization failed:', err);
-                speak('audioError');
-                dispatchEvent('logError', { message: `Audio initialization failed: ${err.message}` });
-            }
-        } else if (audioContext.state === 'suspended') {
-            await audioContext.resume();
-        }
-    }
 
     function updateButtonLabels(settingsMode) {
-        dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream });
+        modeBtn.textContent = settingsMode ? 'Select Grid' : 'Daylight';
+        modeBtn.setAttribute('aria-label', settingsMode ? 'Select grid type' : 'Toggle day/night mode');
+        languageBtn.textContent = settingsMode ? 'Select Engine' : 'Language';
+        languageBtn.setAttribute('aria-label', settingsMode ? 'Select synthesis engine' : 'Cycle languages');
     }
 
-    settingsToggle.addEventListener('touchstart', async (event) => {
+    settingsToggle.addEventListener('touchstart', (event) => {
         event.preventDefault();
-        await ensureAudioContext();
-        tryVibrate();
+        if (navigator.vibrate) navigator.vibrate(50);
         touchCount++;
         if (touchCount === 2) {
             touchCount = 0;
             dispatchEvent('toggleDebug', { show: true });
         }
         settingsMode = !settingsMode;
+        settingsToggle.setAttribute('aria-label', settingsMode ? 'Exit settings mode' : 'Toggle settings mode');
         updateButtonLabels(settingsMode);
         speak('settingsToggle', { state: settingsMode ? 'on' : 'off' });
+        dispatchEvent('updateUI', { settingsMode });
     });
 
-    modeBtn.addEventListener('touchstart', async (event) => {
+    modeBtn.addEventListener('touchstart', (event) => {
         event.preventDefault();
-        await ensureAudioContext();
-        tryVibrate();
+        if (navigator.vibrate) navigator.vibrate(50);
         if (settingsMode) {
             settings.gridType = settings.gridType === 'hex-tonnetz' ? 'circle-of-fifths' : 'hex-tonnetz';
             speak('gridSelect', { grid: settings.gridType });
@@ -63,13 +42,12 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
             speak('modeBtn', { mode: settings.dayNightMode });
         }
-        updateButtonLabels(settingsMode);
+        dispatchEvent('updateUI', { settingsMode });
     });
 
-    languageBtn.addEventListener('touchstart', async (event) => {
+    languageBtn.addEventListener('touchstart', (event) => {
         event.preventDefault();
-        await ensureAudioContext();
-        tryVibrate();
+        if (navigator.vibrate) navigator.vibrate(50);
         if (settingsMode) {
             settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
             speak('synthesisSelect', { engine: settings.synthesisEngine });
@@ -79,30 +57,44 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             settings.language = languages[(currentIndex + 1) % languages.length];
             speak('languageSelect', { lang: settings.language });
         }
-        updateButtonLabels(settingsMode);
+        dispatchEvent('updateUI', { settingsMode });
     });
 
     let rafId;
     function processFrameLoop() {
-        if (!settings.stream) return;
+        if (!settings.stream) return; // Detener si no hay stream
         dispatchEvent('processFrame');
         rafId = requestAnimationFrame(processFrameLoop);
     }
 
     startStopBtn.addEventListener('touchstart', async (event) => {
         event.preventDefault();
-        await ensureAudioContext();
-        tryVibrate();
+        if (navigator.vibrate) navigator.vibrate(50);
         if (!audioContext) {
-            dispatchEvent('logError', { message: 'AudioContext not initialized' });
+            try {
+                const newContext = new (window.AudioContext || window.webkitAudioContext)();
+                await initializeAudio(newContext);
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+            } catch (err) {
+                console.error('Audio initialization failed:', err);
+                speak('audioError');
+                return;
+            }
+        } else if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+        if (!audioContext) {
+            console.error('Audio not initialized');
+            speak('audioError');
             return;
         }
         if (settings.stream) {
             settings.stream.getTracks().forEach(track => track.stop());
             setStream(null);
-            const video = document.getElementById('videoFeed');
-            video.srcObject = null;
-            video.style.display = 'none';
+            document.getElementById('videoFeed').srcObject = null;
+            document.getElementById('videoFeed').style.display = 'none';
             if (rafId) {
                 cancelAnimationFrame(rafId);
                 rafId = null;
@@ -115,7 +107,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
         try {
             const isLowEndDevice = navigator.hardwareConcurrency < 4;
-            settings.updateInterval = isLowEndDevice ? 100 : 50;
+            settings.updateInterval = isLowEndDevice ? 100 : 50; // 10 FPS o 20 FPS
             const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
             setStream(newStream);
             const video = document.getElementById('videoFeed');
@@ -132,13 +124,12 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         } catch (err) {
             console.error('Camera access failed:', err);
             speak('cameraError');
-            dispatchEvent('logError', { message: `Camera access failed: ${err.message}` });
         }
     });
 
     document.getElementById('closeDebug').addEventListener('touchstart', (event) => {
         event.preventDefault();
-        tryVibrate();
+        if (navigator.vibrate) navigator.vibrate(50);
         dispatchEvent('toggleDebug', { show: false });
     });
 }
