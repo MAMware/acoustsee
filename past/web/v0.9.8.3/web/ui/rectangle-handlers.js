@@ -13,11 +13,8 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     let isAudioInitialized = false;
     let lastFrameTime = performance.now();
 
-    function tryVibrate(event) {
-        if (event.cancelable && navigator.vibrate) {
-            event.preventDefault();
-            navigator.vibrate(50);
-        }
+    function tryVibrate() {
+        if (navigator.vibrate) navigator.vibrate(50);
     }
 
     async function ensureAudioContext() {
@@ -33,19 +30,10 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 console.error('Audio initialization failed:', err);
                 speak('audioError');
                 dispatchEvent('logError', { message: `Audio initialization failed: ${err.message}` });
-                return false;
             }
         } else if (audioContext.state === 'suspended') {
-            try {
-                await audioContext.resume();
-            } catch (err) {
-                console.error('Audio resume failed:', err);
-                speak('audioError');
-                dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
-                return false;
-            }
+            await audioContext.resume();
         }
-        return true;
     }
 
     function updateButtonLabels(settingsMode) {
@@ -53,8 +41,9 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     }
 
     settingsToggle.addEventListener('touchstart', async (event) => {
-        tryVibrate(event);
+        event.preventDefault();
         await ensureAudioContext();
+        tryVibrate();
         touchCount++;
         if (touchCount === 2) {
             touchCount = 0;
@@ -66,8 +55,9 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     });
 
     modeBtn.addEventListener('touchstart', async (event) => {
-        tryVibrate(event);
+        event.preventDefault();
         await ensureAudioContext();
+        tryVibrate();
         if (settingsMode) {
             settings.gridType = settings.gridType === 'hex-tonnetz' ? 'circle-of-fifths' : 'hex-tonnetz';
             speak('gridSelect', { grid: settings.gridType });
@@ -79,8 +69,9 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     });
 
     languageBtn.addEventListener('touchstart', async (event) => {
-        tryVibrate(event);
+        event.preventDefault();
         await ensureAudioContext();
+        tryVibrate();
         if (settingsMode) {
             settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
             speak('synthesisSelect', { engine: settings.synthesisEngine });
@@ -108,6 +99,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         rafId = requestAnimationFrame(processFrameLoop);
     }
 
+    // Suspender recursos en segundo plano
     document.addEventListener('visibilitychange', () => {
         if (document.hidden && settings.stream) {
             audioContext.suspend();
@@ -122,6 +114,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
     });
 
+    // Suspender tras inactividad
     let inactivityTimeout;
     function resetInactivityTimeout() {
         clearTimeout(inactivityTimeout);
@@ -138,39 +131,35 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                     setAudioInterval(null);
                 }
                 dispatchEvent('updateUI', { settingsMode, streamActive: false });
-                loadingIndicator.style.display = 'none';
             }
-        }, 60000);
+        }, 60000); // 60 segundos
     }
 
     startStopBtn.addEventListener('touchstart', async (event) => {
-        tryVibrate(event);
+        event.preventDefault();
+        await ensureAudioContext();
+        tryVibrate();
         resetInactivityTimeout();
-        if (!await ensureAudioContext()) {
-            loadingIndicator.style.display = 'none';
+        if (!audioContext) {
+            dispatchEvent('logError', { message: 'AudioContext not initialized' });
             return;
         }
         if (settings.stream) {
             clearTimeout(inactivityTimeout);
-            try {
-                settings.stream.getTracks().forEach(track => track.stop());
-                setStream(null);
-                const video = document.getElementById('videoFeed');
-                video.srcObject = null;
-                video.style.display = 'none';
-                if (rafId) {
-                    cancelAnimationFrame(rafId);
-                    rafId = null;
-                    setAudioInterval(null);
-                }
-                await audioContext.suspend();
-                speak('startStop', { state: 'stopped' });
-                dispatchEvent('updateUI', { settingsMode, streamActive: false });
-                loadingIndicator.style.display = 'none';
-            } catch (err) {
-                console.error('Failed to stop stream:', err);
-                dispatchEvent('logError', { message: `Failed to stop stream: ${err.message}` });
+            settings.stream.getTracks().forEach(track => track.stop());
+            setStream(null);
+            const video = document.getElementById('videoFeed');
+            video.srcObject = null;
+            video.style.display = 'none';
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+                setAudioInterval(null);
             }
+            audioContext.suspend();
+            speak('startStop', { state: 'stopped' });
+            dispatchEvent('updateUI', { settingsMode, streamActive: false });
+            loadingIndicator.style.display = 'none';
             return;
         }
         loadingIndicator.style.display = 'block';
@@ -179,14 +168,13 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             settings.updateInterval = isLowEndDevice ? 100 : 50;
             const canvas = document.getElementById('imageCanvas');
             const centerRect = document.getElementById('centerRectangle');
-            canvas.width = isLowEndDevice ? 32 : 64;
+            canvas.width = isLowEndDevice ? 32 : 64; // Reducir resolución en dispositivos de baja potencia
             canvas.height = isLowEndDevice ? 24 : 48;
-            const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
+            const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
             setStream(newStream);
             const video = document.getElementById('videoFeed');
             video.srcObject = newStream;
             video.style.display = 'block';
-            await video.play();
             speak('startStop', { state: 'started' });
             setAudioInterval('raf');
             lastFrameTime = performance.now();
@@ -202,9 +190,11 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     });
 
     document.getElementById('closeDebug').addEventListener('touchstart', (event) => {
-        tryVibrate(event);
+        event.preventDefault();
+        tryVibrate();
         dispatchEvent('toggleDebug', { show: false });
     });
 
+    // Resetear inactividad en cualquier interacción
     document.addEventListener('touchstart', resetInactivityTimeout);
 }
