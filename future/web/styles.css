@@ -53,7 +53,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100px;
+    position: relative;
 }
 video {
     max-width: 100%;
@@ -63,6 +63,29 @@ video {
 }
 canvas {
     display: none;
+}
+#loadingIndicator {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.8);
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 16px;
+}
+#loadingIndicator::after {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-left: 10px;
+    border: 2px solid #ffffff;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
 }
 #debug {
     display: none;
@@ -117,17 +140,6 @@ button:focus, [role="button"]:focus {
         min-height: 48px;
     }
 }
-@media (max-width: 400px) {
-    .main-container {
-        flex-direction: column;
-    }
-    .left-rectangle, .right-rectangle {
-        width: 100%;
-        height: 48px;
-        min-height: 48px;
-        font-size: 14px;
-    }
-    .center-rectangle {
-        min-height: 60vh;
-    }
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }

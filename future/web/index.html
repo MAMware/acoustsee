@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AcoustSee-SpatialAudioNavigator</title>
+    <title>AcoustSee</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,8 +11,13 @@
     <div class="main-container">
         <button class="left-rectangle" id="modeBtn" aria-label="Toggle day/night mode">Daylight</button>
         <div class="center-rectangle" id="centerRectangle" aria-live="polite">
-            <video id="videoFeed" autoplay playsinline muted aria-label="Live video feed for audio synthesis">Your browser does not support the video tag.</video>
+            <video id="videoFeed" autoplay playsinline muted aria-label="Live video feed for audio synthesis">
+                <source src="video.mp4" type="video/mp4">
+                <source src="video.webm" type="video/webm">
+                Your browser does not support the video tag.
+            </video>
             <canvas id="imageCanvas" aria-hidden="true"></canvas>
+            <div id="loadingIndicator" aria-hidden="true">Loading...</div>
         </div>
         <button class="right-rectangle" id="languageBtn" aria-label="Cycle language">Language</button>
     </div>

@@ -1,5 +1,5 @@
 import { initializeAudio, audioContext } from '../audio-processor.js';
-import { settings, setStream, setAudioInterval } from '../state.js';
+import { settings, setStream, setAudioInterval, setSkipFrame } from '../state.js';
 import { speak } from './utils.js';
 
 export function setupRectangleHandlers({ dispatchEvent }) {
@@ -7,9 +7,11 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     const languageBtn = document.getElementById('languageBtn');
     const startStopBtn = document.getElementById('startStopBtn');
     const settingsToggle = document.getElementById('settingsToggle');
+    const loadingIndicator = document.getElementById('loadingIndicator');
     let settingsMode = false;
     let touchCount = 0;
     let isAudioInitialized = false;
+    let lastFrameTime = performance.now();
 
     function tryVibrate() {
         if (navigator.vibrate) navigator.vibrate(50);
@@ -83,21 +85,67 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     });
 
     let rafId;
-    function processFrameLoop() {
+    function processFrameLoop(timestamp) {
         if (!settings.stream) return;
+        const deltaTime = timestamp - lastFrameTime;
+        if (deltaTime < settings.updateInterval) {
+            rafId = requestAnimationFrame(processFrameLoop);
+            setSkipFrame(true);
+            return;
+        }
+        setSkipFrame(false);
+        lastFrameTime = timestamp;
         dispatchEvent('processFrame');
         rafId = requestAnimationFrame(processFrameLoop);
+    }
+
+    // Suspender recursos en segundo plano
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && settings.stream) {
+            audioContext.suspend();
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+                setAudioInterval(null);
+            }
+        } else if (!document.hidden && settings.stream) {
+            audioContext.resume();
+            processFrameLoop(performance.now());
+        }
+    });
+
+    // Suspender tras inactividad
+    let inactivityTimeout;
+    function resetInactivityTimeout() {
+        clearTimeout(inactivityTimeout);
+        inactivityTimeout = setTimeout(() => {
+            if (settings.stream) {
+                settings.stream.getTracks().forEach(track => track.stop());
+                setStream(null);
+                document.getElementById('videoFeed').srcObject = null;
+                document.getElementById('videoFeed').style.display = 'none';
+                audioContext.suspend();
+                if (rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                    setAudioInterval(null);
+                }
+                dispatchEvent('updateUI', { settingsMode, streamActive: false });
+            }
+        }, 60000); // 60 segundos
     }
 
     startStopBtn.addEventListener('touchstart', async (event) => {
         event.preventDefault();
         await ensureAudioContext();
         tryVibrate();
+        resetInactivityTimeout();
         if (!audioContext) {
             dispatchEvent('logError', { message: 'AudioContext not initialized' });
             return;
         }
         if (settings.stream) {
+            clearTimeout(inactivityTimeout);
             settings.stream.getTracks().forEach(track => track.stop());
             setStream(null);
             const video = document.getElementById('videoFeed');
@@ -111,28 +159,33 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             audioContext.suspend();
             speak('startStop', { state: 'stopped' });
             dispatchEvent('updateUI', { settingsMode, streamActive: false });
+            loadingIndicator.style.display = 'none';
             return;
         }
+        loadingIndicator.style.display = 'block';
         try {
             const isLowEndDevice = navigator.hardwareConcurrency < 4;
             settings.updateInterval = isLowEndDevice ? 100 : 50;
+            const canvas = document.getElementById('imageCanvas');
+            const centerRect = document.getElementById('centerRectangle');
+            canvas.width = isLowEndDevice ? 32 : 64; // Reducir resolución en dispositivos de baja potencia
+            canvas.height = isLowEndDevice ? 24 : 48;
             const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
             setStream(newStream);
             const video = document.getElementById('videoFeed');
-            const canvas = document.getElementById('imageCanvas');
-            const centerRect = document.getElementById('centerRectangle');
             video.srcObject = newStream;
             video.style.display = 'block';
-            canvas.width = centerRect.offsetWidth / 2;
-            canvas.height = centerRect.offsetHeight / 2;
             speak('startStop', { state: 'started' });
             setAudioInterval('raf');
-            processFrameLoop();
+            lastFrameTime = performance.now();
+            processFrameLoop(lastFrameTime);
             dispatchEvent('updateUI', { settingsMode, streamActive: true });
+            loadingIndicator.style.display = 'none';
         } catch (err) {
             console.error('Camera access failed:', err);
             speak('cameraError');
             dispatchEvent('logError', { message: `Camera access failed: ${err.message}` });
+            loadingIndicator.style.display = 'none';
         }
     });
 
@@ -141,4 +194,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         tryVibrate();
         dispatchEvent('toggleDebug', { show: false });
     });
+
+    // Resetear inactividad en cualquier interacción
+    document.addEventListener('touchstart', resetInactivityTimeout);
 }

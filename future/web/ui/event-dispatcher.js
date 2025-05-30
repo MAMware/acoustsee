@@ -2,37 +2,33 @@ import { settings, setAudioInterval } from '../state.js';
 import { processFrame } from './frame-processor.js';
 
 export function createEventDispatcher() {
-
-
-
-
-
-
-+    let errorLog = [];
+    const errorLog = [];
     const maxErrors = 10;
+
+    // Cache de traducciones
+    const translations = {
+        'en-US': {
+            settingsToggle: { true: 'Exit Settings', false: 'Settings' },
+            modeBtn: { true: 'Select Grid', false: 'Daylight' },
+            languageBtn: { true: 'Select Synthesis', false: 'Language' },
+            startStop: { true: 'Stop', false: 'Start' },
+            gridSelect: { 'hex-tonnetz': 'Hexagonal Tonnetz', 'circle-of-fifths': 'Circle of Fifths' },
+            synthesisSelect: { 'sine-wave': 'Sine Wave', 'fm-synthesis': 'FM Synthesis' },
+            languageSelect: { 'en-US': 'English', 'es-ES': 'Spanish' }
+        },
+        'es-ES': {
+            settingsToggle: { true: 'Salir de Configuraciones', false: 'Configuraciones' },
+            modeBtn: { true: 'Seleccionar Cuadrícula', false: 'Luz del Día' },
+            languageBtn: { true: 'Seleccionar Síntesis', false: 'Idioma' },
+            startStop: { true: 'Detener', false: 'Iniciar' },
+            gridSelect: { 'hex-tonnetz': 'Tonnetz Hexagonal', 'circle-of-fifths': 'Círculo de Quintas' },
+            synthesisSelect: { 'sine-wave': 'Onda Sinusoidal', 'fm-synthesis': 'Síntesis FM' },
+            languageSelect: { 'en-US': 'Inglés', 'es-ES': 'Español' }
+        }
+    };
 
     const handlers = {
         updateUI: ({ settingsMode, streamActive }) => {
-            const translations = {
-                'en-US': {
-                    settingsToggle: settingsMode ? 'Exit Settings' : 'Settings',
-                    modeBtn: settingsMode ? 'Select Grid' : 'Daylight',
-                    languageBtn: settingsMode ? 'Select Synthesis' : 'Language',
-                    startStop: streamActive ? 'Stop' : 'Start',
-                    gridSelect: { 'hex-tonnetz': 'Hexagonal Tonnetz', 'circle-of-fifths': 'Circle of Fifths' },
-                    synthesisSelect: { 'sine-wave': 'Sine Wave', 'fm-synthesis': 'FM Synthesis' },
-                    languageSelect: { 'en-US': 'English', 'es-ES': 'Spanish' }
-                },
-                'es-ES': {
-                    settingsToggle: settingsMode ? 'Salir de Configuraciones' : 'Configuraciones',
-                    modeBtn: settingsMode ? 'Seleccionar Cuadrícula' : 'Luz del Día',
-                    languageBtn: settingsMode ? 'Seleccionar Síntesis' : 'Idioma',
-                    startStop: streamActive ? 'Detener' : 'Iniciar',
-                    gridSelect: { 'hex-tonnetz': 'Tonnetz Hexagonal', 'circle-of-fifths': 'Círculo de Quintas' },
-                    synthesisSelect: { 'sine-wave': 'Onda Sinusoidal', 'fm-synthesis': 'Síntesis FM' },
-                    languageSelect: { 'en-US': 'Inglés', 'es-ES': 'Español' }
-                }
-            };
             const t = translations[settings.language || 'en-US'];
             const elements = {
                 settingsToggle: document.getElementById('settingsToggle'),
@@ -41,11 +37,11 @@ export function createEventDispatcher() {
                 startStopBtn: document.getElementById('startStopBtn')
             };
             if (elements.settingsToggle) {
-                elements.settingsToggle.textContent = t.settingsToggle;
+                elements.settingsToggle.textContent = t.settingsToggle[settingsMode];
                 elements.settingsToggle.setAttribute('aria-label', settingsMode ? 'Exit settings mode' : 'Toggle settings mode');
             }
             if (elements.modeBtn) {
-                elements.modeBtn.textContent = settingsMode ? t.gridSelect[settings.gridType] : t.modeBtn;
+                elements.modeBtn.textContent = settingsMode ? t.gridSelect[settings.gridType] : t.modeBtn[settingsMode];
                 elements.modeBtn.setAttribute('aria-label', settingsMode ? `Select grid: ${t.gridSelect[settings.gridType]}` : 'Toggle day/night mode');
             }
             if (elements.languageBtn) {
@@ -53,7 +49,7 @@ export function createEventDispatcher() {
                 elements.languageBtn.setAttribute('aria-label', settingsMode ? `Select synthesis: ${t.synthesisSelect[settings.synthesisEngine]}` : 'Cycle language');
             }
             if (elements.startStopBtn) {
-                elements.startStopBtn.textContent = t.startStop;
+                elements.startStopBtn.textContent = t.startStop[streamActive];
                 elements.startStopBtn.setAttribute('aria-label', streamActive ? 'Stop navigation' : 'Start navigation');
             }
         },
@@ -82,7 +78,6 @@ export function createEventDispatcher() {
         }
     };
 
-    // Capturar errores globales
     window.onerror = (message, source, lineno, colno, error) => {
         handlers.logError({ message: `${message} at ${source}:${lineno}:${colno}` });
     };
