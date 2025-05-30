@@ -1,5 +1,27 @@
 ## Efforts achieved
 
+v0.9.8.5
+
+Explicación de los cambios
+Ajuste del tamaño del video y diseño (styles.css):
+- Añadí max-height: 68vh a .main-container y max-width: 80% a .center-rectangle para limitar su expansión y balancear el diseño.
+Mantuve el <video> en 200x150px (150x112px en < 600px), que parece adecuado según la captura.
+overflow: hidden en body y .main-container previene el scroll, evitando conflictos con touchstart.
+Corrección del audio (rectangle-handlers.js):
+- Mejoré ensureAudioContext para asignar explícitamente audioContext y manejar errores de inicialización/resume.
+Añadí una verificación en todos los eventos touchstart para asegurar que AudioContext esté listo antes de proceder.
+Forcé video.play() para garantizar que el video y el audio se sincronicen tras iniciar el stream.
+Corrección del botón Stop (rectangle-handlers.js):
+- Añadí video.pause() y una verificación de errores en la lógica de parada para asegurar que el video y el audio se detengan.
+Simplifiqué la lógica de suspensión de audioContext con un try/catch para capturar fallos.
+Manejo de errores y depuración (rectangle-handlers.js, event-dispatcher.js):
+- Condicioné tryVibrate para ejecutarse solo si isAudioInitialized es true, evitando el error de navigator.vibrate.
+Actualicé event-dispatcher.js para usar settings.stream directamente en updateUI, asegurando que el estado del stream sea correcto en #debug.
+Evitar conflictos con touchstart:
+tryVibrate ahora verifica event.cancelable antes de llamar a preventDefault(), reduciendo el riesgo de ignorar el evento durante scroll.
+
+
+
 **Milestone 1**: (Completed)
 
 - Proof of Concept. A Python code that handles statics image from an example folder and successfully generates a WAV file with basic stereo audio, left/right, panning.
