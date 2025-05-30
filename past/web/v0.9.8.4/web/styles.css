@@ -32,7 +32,6 @@ body {
     flex: 1;
     min-height: 0;
     overflow: hidden; /* Evitar scroll */
-    max-height: 68vh; /* Limitar altura para evitar expansión excesiva */
 }
 .left-rectangle, .right-rectangle {
     background: #000020;
@@ -57,11 +56,9 @@ body {
     justify-content: center;
     align-items: center;
     position: relative;
-    max-width: 80%; /* Limitar ancho para balancear con laterales */
-    max-height: 100%; /* Ajustar altura máxima */
 }
 video {
-    width: 200px; /* Tamaño fijo para testers */
+    width: 200px; /* Tamaño reducido para testers */
     height: 150px;
     object-fit: contain;
     display: block;
@@ -145,7 +142,7 @@ button:focus, [role="button"]:focus {
         min-height: 48px;
     }
     video {
-        width: 150px;
+        width: 150px; /* Más pequeño en pantallas menores */
         height: 112px;
     }
 }

@@ -48,8 +48,8 @@ export function createEventDispatcher() {
                 elements.languageBtn.setAttribute('aria-label', settingsMode ? `Select synthesis: ${t.synthesisSelect[settings.synthesisEngine]}` : 'Cycle language');
             }
             if (elements.startStopBtn) {
-                elements.startStopBtn.textContent = t.startStop[!!settings.stream]; // Usar settings.stream directamente
-                elements.startStopBtn.setAttribute('aria-label', !!settings.stream ? 'Stop navigation' : 'Start navigation');
+                elements.startStopBtn.textContent = t.startStop[streamActive];
+                elements.startStopBtn.setAttribute('aria-label', streamActive ? 'Stop navigation' : 'Start navigation');
             }
         },
         processFrame: () => processFrame(),

@@ -14,7 +14,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     let lastFrameTime = performance.now();
 
     function tryVibrate(event) {
-        if (event.cancelable && navigator.vibrate) {
+        if (event.cancelable && navigator.vibrate && isAudioInitialized) {
             event.preventDefault();
             navigator.vibrate(50);
         }
@@ -25,9 +25,10 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             try {
                 const newContext = new (window.AudioContext || window.webkitAudioContext)();
                 await initializeAudio(newContext);
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
+                if (newContext.state === 'suspended') {
+                    await newContext.resume();
                 }
+                audioContext = newContext; // Asignar explícitamente
                 isAudioInitialized = true;
             } catch (err) {
                 console.error('Audio initialization failed:', err);
@@ -54,43 +55,46 @@ export function setupRectangleHandlers({ dispatchEvent }) {
 
     settingsToggle.addEventListener('touchstart', async (event) => {
         tryVibrate(event);
-        await ensureAudioContext();
-        touchCount++;
-        if (touchCount === 2) {
-            touchCount = 0;
-            dispatchEvent('toggleDebug', { show: true });
+        if (await ensureAudioContext()) {
+            touchCount++;
+            if (touchCount === 2) {
+                touchCount = 0;
+                dispatchEvent('toggleDebug', { show: true });
+            }
+            settingsMode = !settingsMode;
+            updateButtonLabels(settingsMode);
+            speak('settingsToggle', { state: settingsMode ? 'on' : 'off' });
         }
-        settingsMode = !settingsMode;
-        updateButtonLabels(settingsMode);
-        speak('settingsToggle', { state: settingsMode ? 'on' : 'off' });
     });
 
     modeBtn.addEventListener('touchstart', async (event) => {
         tryVibrate(event);
-        await ensureAudioContext();
-        if (settingsMode) {
-            settings.gridType = settings.gridType === 'hex-tonnetz' ? 'circle-of-fifths' : 'hex-tonnetz';
-            speak('gridSelect', { grid: settings.gridType });
-        } else {
-            settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
-            speak('modeBtn', { mode: settings.dayNightMode });
+        if (await ensureAudioContext()) {
+            if (settingsMode) {
+                settings.gridType = settings.gridType === 'hex-tonnetz' ? 'circle-of-fifths' : 'hex-tonnetz';
+                speak('gridSelect', { grid: settings.gridType });
+            } else {
+                settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
+                speak('modeBtn', { mode: settings.dayNightMode });
+            }
+            updateButtonLabels(settingsMode);
         }
-        updateButtonLabels(settingsMode);
     });
 
     languageBtn.addEventListener('touchstart', async (event) => {
         tryVibrate(event);
-        await ensureAudioContext();
-        if (settingsMode) {
-            settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
-            speak('synthesisSelect', { engine: settings.synthesisEngine });
-        } else {
-            const languages = ['en-US', 'es-ES'];
-            const currentIndex = languages.indexOf(settings.language || 'en-US');
-            settings.language = languages[(currentIndex + 1) % languages.length];
-            speak('languageSelect', { lang: settings.language });
+        if (await ensureAudioContext()) {
+            if (settingsMode) {
+                settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
+                speak('synthesisSelect', { engine: settings.synthesisEngine });
+            } else {
+                const languages = ['en-US', 'es-ES'];
+                const currentIndex = languages.indexOf(settings.language || 'en-US');
+                settings.language = languages[(currentIndex + 1) % languages.length];
+                speak('languageSelect', { lang: settings.language });
+            }
+            updateButtonLabels(settingsMode);
         }
-        updateButtonLabels(settingsMode);
     });
 
     let rafId;
@@ -146,58 +150,57 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     startStopBtn.addEventListener('touchstart', async (event) => {
         tryVibrate(event);
         resetInactivityTimeout();
-        if (!await ensureAudioContext()) {
-            loadingIndicator.style.display = 'none';
-            return;
-        }
-        if (settings.stream) {
-            clearTimeout(inactivityTimeout);
-            try {
-                settings.stream.getTracks().forEach(track => track.stop());
-                setStream(null);
-                const video = document.getElementById('videoFeed');
-                video.srcObject = null;
-                video.style.display = 'none';
-                if (rafId) {
-                    cancelAnimationFrame(rafId);
-                    rafId = null;
-                    setAudioInterval(null);
+        if (await ensureAudioContext()) {
+            if (settings.stream) {
+                clearTimeout(inactivityTimeout);
+                try {
+                    settings.stream.getTracks().forEach(track => track.stop());
+                    setStream(null);
+                    const video = document.getElementById('videoFeed');
+                    video.srcObject = null;
+                    video.pause(); // Asegurar que el video se detenga
+                    video.style.display = 'none';
+                    if (rafId) {
+                        cancelAnimationFrame(rafId);
+                        rafId = null;
+                        setAudioInterval(null);
+                    }
+                    await audioContext.suspend();
+                    speak('startStop', { state: 'stopped' });
+                    dispatchEvent('updateUI', { settingsMode, streamActive: false });
+                    loadingIndicator.style.display = 'none';
+                } catch (err) {
+                    console.error('Failed to stop stream:', err);
+                    dispatchEvent('logError', { message: `Failed to stop stream: ${err.message}` });
                 }
-                await audioContext.suspend();
-                speak('startStop', { state: 'stopped' });
-                dispatchEvent('updateUI', { settingsMode, streamActive: false });
+                return;
+            }
+            loadingIndicator.style.display = 'block';
+            try {
+                const isLowEndDevice = navigator.hardwareConcurrency < 4;
+                settings.updateInterval = isLowEndDevice ? 100 : 50;
+                const canvas = document.getElementById('imageCanvas');
+                const centerRect = document.getElementById('centerRectangle');
+                canvas.width = isLowEndDevice ? 32 : 64;
+                canvas.height = isLowEndDevice ? 24 : 48;
+                const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
+                setStream(newStream);
+                const video = document.getElementById('videoFeed');
+                video.srcObject = newStream;
+                video.play(); // Iniciar video explícitamente
+                video.style.display = 'block';
+                speak('startStop', { state: 'started' });
+                setAudioInterval('raf');
+                lastFrameTime = performance.now();
+                processFrameLoop(lastFrameTime);
+                dispatchEvent('updateUI', { settingsMode, streamActive: true });
                 loadingIndicator.style.display = 'none';
             } catch (err) {
-                console.error('Failed to stop stream:', err);
-                dispatchEvent('logError', { message: `Failed to stop stream: ${err.message}` });
+                console.error('Camera access failed:', err);
+                speak('cameraError');
+                dispatchEvent('logError', { message: `Camera access failed: ${err.message}` });
+                loadingIndicator.style.display = 'none';
             }
-            return;
-        }
-        loadingIndicator.style.display = 'block';
-        try {
-            const isLowEndDevice = navigator.hardwareConcurrency < 4;
-            settings.updateInterval = isLowEndDevice ? 100 : 50;
-            const canvas = document.getElementById('imageCanvas');
-            const centerRect = document.getElementById('centerRectangle');
-            canvas.width = isLowEndDevice ? 32 : 64;
-            canvas.height = isLowEndDevice ? 24 : 48;
-            const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
-            setStream(newStream);
-            const video = document.getElementById('videoFeed');
-            video.srcObject = newStream;
-            video.style.display = 'block';
-            await video.play();
-            speak('startStop', { state: 'started' });
-            setAudioInterval('raf');
-            lastFrameTime = performance.now();
-            processFrameLoop(lastFrameTime);
-            dispatchEvent('updateUI', { settingsMode, streamActive: true });
-            loadingIndicator.style.display = 'none';
-        } catch (err) {
-            console.error('Camera access failed:', err);
-            speak('cameraError');
-            dispatchEvent('logError', { message: `Camera access failed: ${err.message}` });
-            loadingIndicator.style.display = 'none';
         }
     });
 
