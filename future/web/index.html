@@ -7,25 +7,21 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <button class="top-rectangle" id="settingsToggle" aria-label="Toggle settings mode">Settings</button>
-    <div class="main-container">
-        <button class="left-rectangle" id="modeBtn" aria-label="Toggle day/night mode">Daylight</button>
-        <div class="center-rectangle" id="centerRectangle" aria-live="polite">
-            <video id="videoFeed" autoplay playsinline muted aria-label="Live video feed for audio synthesis">
-                <source src="video.mp4" type="video/mp4">
-                <source src="video.webm" type="video/webm">
-                Your browser does not support the video tag.
-            </video>
-            <canvas id="imageCanvas" aria-hidden="true"></canvas>
-            <div id="loadingIndicator" aria-hidden="true">Loading...</div>
+    <button id="settingsToggle" class="top-rectangle" role="button" aria-label="Toggle settings">Settings</button>
+    <button id="audioToggle" class="audio-rectangle" role="button" aria-label="Toggle audio">Turn Audio On</button>
+    <div id="main-container" class="main-container">
+        <button id="modeBtn" class="left-rectangle" role="button" aria-label="Toggle daylight mode">Daylight</button>
+        <div id="centerRectangle" class="center-rectangle">
+            <video id="videoFeed" autoplay muted playsinline></video>
+            <canvas id="imageCanvas"></canvas>
+            <div id="loadingIndicator">Loading...</div>
         </div>
-        <button class="right-rectangle" id="languageBtn" aria-label="Cycle language">Language</button>
+        <button id="languageBtn" class="right-rectangle" role="button" aria-label="Toggle language">English</button>
     </div>
-    <button class="bottom-rectangle" id="startStopBtn" aria-label="Start navigation">Start</button>
-    <div id="debug" aria-hidden="true">
-        <button id="closeDebug" aria-label="Close debug panel">X</button>
-        <pre id="debugText"></pre>
-    </div>
-    <script type="module" src="main.js"></script>
+    <button id="startStopBtn" class="bottom-rectangle" role="button" aria-label="Start or stop stream">Start</button>
+    <div id="debug"></div>
+    <button id="closeDebug" role="button" aria-label="Close debug panel">X</button>
+    <script type="module" src="event-dispatcher.js"></script>
+    <script type="module" src="rectangle-handlers.js"></script>
 </body>
 </html>
