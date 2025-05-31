@@ -5,15 +5,15 @@ export function playSineWave(notes) {
     const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
     for (let i = 0; i < oscillators.length; i++) {
         const oscData = oscillators[i];
-        if (i < allNotes.length) {
-            const { pitch, intensity, harmonics, pan } = allNotes[i];
+        if (oscIndex < allNotes.length && i < oscillators.length) {
+            const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
             oscData.osc.type = 'sine';
             oscData.osc.frequency.setTargetAtTime(pitch, audioContext.currentTime, 0.015);
             oscData.gain.gain.setTargetAtTime(intensity, audioContext.currentTime, 0.015);
             oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
             oscData.active = true;
             if (harmonics.length && oscIndex + harmonics.length < oscillators.length) {
-                for (let h = 0; h < harmonics.length; h++) {
+                for (let h = 0; h < harmonics.length && oscIndex + h < oscillators.length; h++) {
                     oscIndex++;
                     const harmonicOsc = oscillators[oscIndex];
                     harmonicOsc.osc.type = 'sine';
