@@ -1,4 +1,4 @@
-import { initializeAudio, audioContext } from '../audio-processor.js';
+import { initializeAudio, audioContext, isAudioInitialized } from '../audio-processor.js';
 import { settings, setStream, setAudioInterval, setSkipFrame } from '../state.js';
 import { speak } from './utils.js';
 
@@ -7,55 +7,77 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     const languageBtn = document.getElementById('languageBtn');
     const startStopBtn = document.getElementById('startStopBtn');
     const settingsToggle = document.getElementById('settingsToggle');
+    const audioToggle = document.getElementById('audioToggle');
     const loadingIndicator = document.getElementById('loadingIndicator');
     let settingsMode = false;
     let touchCount = 0;
-    let isAudioInitialized = false;
     let lastFrameTime = performance.now();
+    let audioEnabled = false;
 
     function tryVibrate(event) {
-        if (event.cancelable && navigator.vibrate && isAudioInitialized) {
+        if (event.cancelable && navigator.vibrate && isAudioInitialized && audioContext) {
             event.preventDefault();
             navigator.vibrate(50);
         }
     }
 
-    async function ensureAudioContext() {
-        if (!isAudioInitialized) {
+    function ensureAudioContext() {
+        if (!isAudioInitialized && !audioContext) {
             try {
                 const newContext = new (window.AudioContext || window.webkitAudioContext)();
-                await initializeAudio(newContext);
+                initializeAudio(newContext); // Solo inicializa el contexto
+                console.log('AudioContext initialized:', isAudioInitialized, newContext.state);
                 if (newContext.state === 'suspended') {
-                    await newContext.resume();
+                    newContext.resume().then(() => {
+                        console.log('AudioContext resumed:', newContext.state);
+                        audioEnabled = true;
+                        audioToggle.textContent = 'Audio On';
+                        speak('audioOn');
+                    }).catch(err => {
+                        console.error('Audio resume failed:', err);
+                        speak('audioError');
+                        dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
+                    });
+                } else {
+                    audioEnabled = true;
+                    audioToggle.textContent = 'Audio On';
+                    speak('audioOn');
                 }
-                audioContext = newContext; // Asignar explícitamente
-                isAudioInitialized = true;
             } catch (err) {
                 console.error('Audio initialization failed:', err);
                 speak('audioError');
                 dispatchEvent('logError', { message: `Audio initialization failed: ${err.message}` });
-                return false;
             }
-        } else if (audioContext.state === 'suspended') {
-            try {
-                await audioContext.resume();
-            } catch (err) {
+        } else if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                console.log('AudioContext resumed:', audioContext.state);
+                audioEnabled = true;
+                audioToggle.textContent = 'Audio On';
+                speak('audioOn');
+            }).catch(err => {
                 console.error('Audio resume failed:', err);
                 speak('audioError');
                 dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
-                return false;
-            }
+            });
         }
-        return true;
+        return isAudioInitialized;
     }
 
     function updateButtonLabels(settingsMode) {
         dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream });
     }
 
-    settingsToggle.addEventListener('touchstart', async (event) => {
+    audioToggle.addEventListener('touchstart', (event) => {
         tryVibrate(event);
-        if (await ensureAudioContext()) {
+        if (!audioEnabled) {
+            ensureAudioContext();
+            audioToggle.textContent = 'Activating Audio...'; // Feedback temporal
+        }
+    });
+
+    settingsToggle.addEventListener('touchstart', (event) => {
+        tryVibrate(event);
+        if (audioEnabled) {
             touchCount++;
             if (touchCount === 2) {
                 touchCount = 0;
@@ -67,9 +89,9 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
     });
 
-    modeBtn.addEventListener('touchstart', async (event) => {
+    modeBtn.addEventListener('touchstart', (event) => {
         tryVibrate(event);
-        if (await ensureAudioContext()) {
+        if (audioEnabled) {
             if (settingsMode) {
                 settings.gridType = settings.gridType === 'hex-tonnetz' ? 'circle-of-fifths' : 'hex-tonnetz';
                 speak('gridSelect', { grid: settings.gridType });
@@ -81,9 +103,9 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
     });
 
-    languageBtn.addEventListener('touchstart', async (event) => {
+    languageBtn.addEventListener('touchstart', (event) => {
         tryVibrate(event);
-        if (await ensureAudioContext()) {
+        if (audioEnabled) {
             if (settingsMode) {
                 settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
                 speak('synthesisSelect', { engine: settings.synthesisEngine });
@@ -99,7 +121,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
 
     let rafId;
     function processFrameLoop(timestamp) {
-        if (!settings.stream) return;
+        if (!settings.stream || !audioEnabled) return;
         const deltaTime = timestamp - lastFrameTime;
         if (deltaTime < settings.updateInterval) {
             rafId = requestAnimationFrame(processFrameLoop);
@@ -113,14 +135,14 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     }
 
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden && settings.stream) {
+        if (document.hidden && settings.stream && audioContext) {
             audioContext.suspend();
             if (rafId) {
                 cancelAnimationFrame(rafId);
                 rafId = null;
                 setAudioInterval(null);
             }
-        } else if (!document.hidden && settings.stream) {
+        } else if (!document.hidden && settings.stream && audioContext) {
             audioContext.resume();
             processFrameLoop(performance.now());
         }
@@ -130,7 +152,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     function resetInactivityTimeout() {
         clearTimeout(inactivityTimeout);
         inactivityTimeout = setTimeout(() => {
-            if (settings.stream) {
+            if (settings.stream && audioContext) {
                 settings.stream.getTracks().forEach(track => track.stop());
                 setStream(null);
                 document.getElementById('videoFeed').srcObject = null;
@@ -147,10 +169,10 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }, 60000);
     }
 
-    startStopBtn.addEventListener('touchstart', async (event) => {
+    startStopBtn.addEventListener('touchstart', (event) => {
         tryVibrate(event);
         resetInactivityTimeout();
-        if (await ensureAudioContext()) {
+        if (audioEnabled) {
             if (settings.stream) {
                 clearTimeout(inactivityTimeout);
                 try {
@@ -158,14 +180,14 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                     setStream(null);
                     const video = document.getElementById('videoFeed');
                     video.srcObject = null;
-                    video.pause(); // Asegurar que el video se detenga
+                    video.pause();
                     video.style.display = 'none';
                     if (rafId) {
                         cancelAnimationFrame(rafId);
                         rafId = null;
                         setAudioInterval(null);
                     }
-                    await audioContext.suspend();
+                    if (audioContext) audioContext.suspend();
                     speak('startStop', { state: 'stopped' });
                     dispatchEvent('updateUI', { settingsMode, streamActive: false });
                     loadingIndicator.style.display = 'none';
@@ -180,27 +202,34 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 const isLowEndDevice = navigator.hardwareConcurrency < 4;
                 settings.updateInterval = isLowEndDevice ? 100 : 50;
                 const canvas = document.getElementById('imageCanvas');
-                const centerRect = document.getElementById('centerRectangle');
                 canvas.width = isLowEndDevice ? 32 : 64;
                 canvas.height = isLowEndDevice ? 24 : 48;
-                const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
+                const newStream = navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
                 setStream(newStream);
                 const video = document.getElementById('videoFeed');
                 video.srcObject = newStream;
-                video.play(); // Iniciar video explícitamente
-                video.style.display = 'block';
-                speak('startStop', { state: 'started' });
-                setAudioInterval('raf');
-                lastFrameTime = performance.now();
-                processFrameLoop(lastFrameTime);
-                dispatchEvent('updateUI', { settingsMode, streamActive: true });
-                loadingIndicator.style.display = 'none';
+                video.play().then(() => {
+                    video.style.display = 'block';
+                    speak('startStop', { state: 'started' });
+                    setAudioInterval('raf');
+                    lastFrameTime = performance.now();
+                    processFrameLoop(lastFrameTime);
+                    dispatchEvent('updateUI', { settingsMode, streamActive: true });
+                    loadingIndicator.style.display = 'none';
+                }).catch(err => {
+                    console.error('Video play failed:', err);
+                    speak('cameraError');
+                    dispatchEvent('logError', { message: `Video play failed: ${err.message}` });
+                    loadingIndicator.style.display = 'none';
+                });
             } catch (err) {
                 console.error('Camera access failed:', err);
                 speak('cameraError');
                 dispatchEvent('logError', { message: `Camera access failed: ${err.message}` });
                 loadingIndicator.style.display = 'none';
             }
+        } else {
+            speak('audioNotEnabled');
         }
     });
 
