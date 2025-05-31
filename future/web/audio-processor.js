@@ -5,7 +5,7 @@ import { playFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
 
 export let audioContext = null;
 export let isAudioInitialized = false;
-export let oscillators = [];
+export let oscillators = []; // Pool fijo de osciladores
 
 export async function initializeAudio(context) {
     if (isAudioInitialized || !context) return;
@@ -14,7 +14,8 @@ export async function initializeAudio(context) {
         if (audioContext.state === 'suspended') {
             await audioContext.resume();
         }
-        for (let i = 0; i < 32; i++) {
+        // Inicializar pool fijo de 24 osciladores (ajustable según necesidades)
+        oscillators = Array(24).fill().map(() => {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
             const panner = audioContext.createStereoPanner();
@@ -24,8 +25,8 @@ export async function initializeAudio(context) {
             panner.pan.setValueAtTime(0, audioContext.currentTime);
             osc.connect(gain).connect(panner).connect(audioContext.destination);
             osc.start();
-            oscillators.push({ osc, gain, panner, active: false });
-        }
+            return { osc, gain, panner, active: false };
+        });
         isAudioInitialized = true;
         if (window.speechSynthesis) {
             const utterance = new SpeechSynthesisUtterance('Audio initialized');
@@ -43,7 +44,7 @@ export async function initializeAudio(context) {
 }
 
 export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
-    if (!isAudioInitialized) return { prevFrameDataLeft, prevFrameDataRight };
+    if (!isAudioInitialized || !audioContext) return { prevFrameDataLeft, prevFrameDataRight };
 
     const halfWidth = width / 2;
     const leftFrame = new Uint8ClampedArray(halfWidth * height);
@@ -60,7 +61,8 @@ export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrame
     prevFrameDataLeft = leftResult.newFrameData;
     prevFrameDataRight = rightResult.newFrameData;
 
-    const allNotes = [...leftResult.notes, ...rightResult.notes];
+    const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
+    // Delegar la síntesis a los módulos específicos
     switch (settings.synthesisEngine) {
         case 'fm-synthesis':
             playFMSynthesis(allNotes);
