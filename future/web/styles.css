@@ -11,7 +11,7 @@ body {
     color: #ffffff;
     overflow: hidden; /* Evitar scroll */
 }
-.top-rectangle, .bottom-rectangle {
+.top-rectangle, .bottom-rectangle, .audio-rectangle {
     background: #000020;
     text-align: center;
     padding: 10px;
@@ -19,8 +19,8 @@ body {
     cursor: pointer;
     border: none;
     flex: 0 0 auto;
-    height: 16vh;
-    min-height: 50px;
+    height: 10vh; /* Reducir altura para que quepan todos los elementos */
+    min-height: 40px;
     color: #ffffff;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -31,8 +31,8 @@ body {
     flex-direction: row;
     flex: 1;
     min-height: 0;
-    overflow: hidden; /* Evitar scroll */
-    max-height: 68vh; /* Limitar altura para evitar expansión excesiva */
+    overflow: hidden;
+    max-height: 70vh; /* Ajustar para dejar espacio a audioToggle */
 }
 .left-rectangle, .right-rectangle {
     background: #000020;
@@ -57,11 +57,11 @@ body {
     justify-content: center;
     align-items: center;
     position: relative;
-    max-width: 80%; /* Limitar ancho para balancear con laterales */
-    max-height: 100%; /* Ajustar altura máxima */
+    max-width: 74%; /* Reducir para balancear con laterales */
+    max-height: 80%; /* Limitar altura */
 }
 video {
-    width: 200px; /* Tamaño fijo para testers */
+    width: 200px;
     height: 150px;
     object-fit: contain;
     display: block;
@@ -120,13 +120,13 @@ button:focus, [role="button"]:focus {
     outline: 2px solid #007bff;
     outline-offset: 2px;
 }
-.top-rectangle:active, .bottom-rectangle:active,
+.top-rectangle:active, .bottom-rectangle:active, .audio-rectangle:active,
 .left-rectangle:active, .right-rectangle:active {
     background: #1a1a4d;
     transform: scale(0.98);
 }
 @media (hover: hover) {
-    .top-rectangle:hover, .bottom-rectangle:hover,
+    .top-rectangle:hover, .bottom-rectangle:hover, .audio-rectangle:hover,
     .left-rectangle:hover, .right-rectangle:hover {
         background: #1a1a4d;
     }
@@ -138,15 +138,21 @@ button:focus, [role="button"]:focus {
         font-size: 16px;
         padding: 12px;
     }
-    .top-rectangle, .bottom-rectangle {
+    .top-rectangle, .bottom-rectangle, .audio-rectangle {
         font-size: 16px;
         padding: 10px;
-        height: 12vh;
-        min-height: 48px;
+        height: 8vh; /* Aún más pequeño en pantallas pequeñas */
+        min-height: 36px;
+    }
+    .main-container {
+        max-height: 74vh; /* Ajustar para pantallas pequeñas */
     }
     video {
         width: 150px;
         height: 112px;
+    }
+    .center-rectangle {
+        max-height: 70%; /* Reducir aún más en pantallas pequeñas */
     }
 }
 @keyframes spin {
