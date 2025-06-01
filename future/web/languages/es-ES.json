@@ -1,12 +1,13 @@
 {
     "settingsToggle": "Configuraciones {state}",
-    "modeBtn": "Modo {mode}",
+    "modeBtn": "Modo establecido en {mode}",
     "gridSelect": "Cuadrícula establecida en {grid}",
-    "synthesisSelect": "Motor de síntesis establecido en {engine}",
-    "languageBtn": "Idioma",
+    "synthesisSelect": "Síntesis establecida en {engine}",
     "languageSelect": "Idioma establecido en {lang}",
     "startStop": "Navegación {state}",
-    "fpsBtn": "FPS establecido en {fps}",
-    "audioError": "No se pudo inicializar el audio",
-    "cameraError": "No se pudo acceder a la cámara"
+    "cameraError": "No se pudo acceder a la cámara",
+    "audioOn": "Audio activado",
+    "audioError": "Fallo en la inicialización del audio",
+    "audioNotEnabled": "Audio no activado, por favor active el audio primero",
+    "fpsBtn": "Velocidad de fotogramas establecida en {fps} FPS"
 }

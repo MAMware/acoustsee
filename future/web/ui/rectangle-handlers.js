@@ -9,6 +9,13 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     const settingsToggle = document.getElementById('settingsToggle');
     const audioToggle = document.getElementById('audioToggle');
     const loadingIndicator = document.getElementById('loadingIndicator');
+    console.log('DOM Elements - audioToggle:', audioToggle);
+    console.log('DOM Elements - startStopBtn:', startStopBtn);
+    console.log('DOM Elements - settingsToggle:', settingsToggle);
+    console.log('DOM Elements - modeBtn:', modeBtn);
+    console.log('DOM Elements - languageBtn:', languageBtn);
+    console.log('DOM Elements - loadingIndicator:', loadingIndicator);
+
     let settingsMode = false;
     let touchCount = 0;
     let lastFrameTime = performance.now();
@@ -25,7 +32,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         if (!isAudioInitialized && !audioContext) {
             try {
                 const newContext = new (window.AudioContext || window.webkitAudioContext)();
-                initializeAudio(newContext); // Solo inicializa el contexto
+                initializeAudio(newContext);
                 console.log('AudioContext initialized:', isAudioInitialized, newContext.state);
                 if (newContext.state === 'suspended') {
                     newContext.resume().then(() => {
@@ -68,14 +75,16 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     }
 
     audioToggle.addEventListener('touchstart', (event) => {
+        console.log('audioToggle touched');
         tryVibrate(event);
         if (!audioEnabled) {
             ensureAudioContext();
-            audioToggle.textContent = 'Activating Audio...'; // Feedback temporal
+            audioToggle.textContent = 'Activating Audio...';
         }
     });
 
     settingsToggle.addEventListener('touchstart', (event) => {
+        console.log('settingsToggle touched');
         tryVibrate(event);
         if (audioEnabled) {
             touchCount++;
@@ -90,6 +99,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     });
 
     modeBtn.addEventListener('touchstart', (event) => {
+        console.log('modeBtn touched');
         tryVibrate(event);
         if (audioEnabled) {
             if (settingsMode) {
@@ -104,6 +114,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     });
 
     languageBtn.addEventListener('touchstart', (event) => {
+        console.log('languageBtn touched');
         tryVibrate(event);
         if (audioEnabled) {
             if (settingsMode) {
@@ -170,6 +181,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     }
 
     startStopBtn.addEventListener('touchstart', (event) => {
+        console.log('startStopBtn touched');
         tryVibrate(event);
         resetInactivityTimeout();
         if (audioEnabled) {
@@ -234,6 +246,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     });
 
     document.getElementById('closeDebug').addEventListener('touchstart', (event) => {
+        console.log('closeDebug touched');
         tryVibrate(event);
         dispatchEvent('toggleDebug', { show: false });
     });

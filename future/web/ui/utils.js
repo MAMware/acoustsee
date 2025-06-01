@@ -4,36 +4,39 @@
 import { settings } from '../state.js';
 
 /**
+ * Fetches translations from a JSON file based on the current language.
+ * @param {string} lang - Language code (e.g., 'en-US', 'es-ES').
+ * @returns {Promise<Object>} Translation object.
+ */
+async function loadTranslations(lang) {
+    const response = await fetch(`./languages/${lang}.json`);
+    if (!response.ok) throw new Error(`Failed to load ${lang} translations`);
+    return response.json();
+}
+
+/**
  * Speaks a message using Web Speech API based on element ID and state.
  * @param {string} elementId - ID of the element triggering the speech.
  * @param {Object} [state] - Optional state for dynamic messages.
  */
 export function speak(elementId, state = {}) {
-    const translations = {
-        'en-US': {
-            settingsToggle: `Settings ${state.state === 'on' ? 'enabled' : 'disabled'}`,
-            modeBtn: `Mode set to ${state.mode || 'day'}`,
-            gridSelect: `Grid set to ${state.grid === 'hex-tonnetz' ? 'hexagonal tonnetz' : 'circle of fifths'}`,
-            synthesisSelect: `Synthesis set to ${state.engine === 'sine-wave' ? 'sine wave' : 'FM synthesis'}`,
-            languageSelect: `Language set to ${state.lang === 'en-US' ? 'English' : 'Spanish'}`,
-            startStop: `Navigation ${state.state || 'started'}`,
-            cameraError: 'Failed to access camera'
-        },
-        'es-ES': {
-            settingsToggle: `Configuraciones ${state.state === 'on' ? 'activadas' : 'desactivadas'}`,
-            modeBtn: `Modo establecido en ${state.mode === 'day' ? 'día' : 'noche'}`,
-            gridSelect: `Cuadrícula establecida en ${state.grid === 'hex-tonnetz' ? 'tonnetz hexagonal' : 'círculo de quintas'}`,
-            synthesisSelect: `Síntesis establecida en ${state.engine === 'sine-wave' ? 'onda sinusoidal' : 'síntesis FM'}`,
-            languageSelect: `Idioma establecido en ${state.lang === 'en-US' ? 'inglés' : 'español'}`,
-            startStop: `Navegación ${state.state === 'started' ? 'iniciada' : 'detenida'}`,
-            cameraError: 'No se pudo acceder a la cámara'
-        }
-    };
-    const lang = settings.language || 'en-US';
-    const message = translations[lang][elementId] || '';
+    let translations = {};
+    try {
+        translations = loadTranslations(settings.language || 'en-US');
+    } catch (error) {
+        console.error('Translation load failed:', error);
+        return; // Fallback to silence if JSON fails
+    }
+
+    const message = translations[elementId] || '';
     if (message) {
-        const utterance = new SpeechSynthesisUtterance(message);
-        utterance.lang = lang;
+        // Replace placeholders with state values
+        let finalMessage = message;
+        for (const [key, value] of Object.entries(state)) {
+            finalMessage = finalMessage.replace(`{${key}}`, value);
+        }
+        const utterance = new SpeechSynthesisUtterance(finalMessage);
+        utterance.lang = settings.language || 'en-US';
         window.speechSynthesis.speak(utterance);
     }
 }

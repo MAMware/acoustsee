@@ -1,12 +1,13 @@
 {
     "settingsToggle": "Settings {state}",
-    "modeBtn": "Mode {mode}",
+    "modeBtn": "Mode set to {mode}",
     "gridSelect": "Grid set to {grid}",
-    "synthesisSelect": "Synthesis engine set to {engine}",
-    "languageBtn": "Language",
+    "synthesisSelect": "Synthesis set to {engine}",
     "languageSelect": "Language set to {lang}",
     "startStop": "Navigation {state}",
-    "fpsBtn": "FPS set to {fps}",
-    "audioError": "Failed to initialize audio",
-    "cameraError": "Failed to access camera"
+    "cameraError": "Failed to access camera",
+    "audioOn": "Audio enabled",
+    "audioError": "Audio initialization failed",
+    "audioNotEnabled": "Audio not enabled, please enable audio first",
+    "fpsBtn": "Frame rate set to {fps} FPS"
 }

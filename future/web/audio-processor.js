@@ -1,11 +1,11 @@
-import { settings } from './state.js';
-import { mapFrame } from './grid-dispatcher.js';
+import { settings } from '../state.js';
+import { mapFrame } from '../grid-dispatcher.js'; 
 import { playSineWave } from './synthesis-methods/engines/sine-wave.js';
 import { playFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
 
 export let audioContext = null;
 export let isAudioInitialized = false;
-export let oscillators = []; // Pool fijo de osciladores
+export let oscillators = [];
 
 export async function initializeAudio(context) {
     if (isAudioInitialized || !context) return;
@@ -14,7 +14,6 @@ export async function initializeAudio(context) {
         if (audioContext.state === 'suspended') {
             await audioContext.resume();
         }
-        // Inicializar pool fijo de 24 osciladores (ajustable según necesidades)
         oscillators = Array(24).fill().map(() => {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -62,7 +61,6 @@ export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrame
     prevFrameDataRight = rightResult.newFrameData;
 
     const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
-    // Delegar la síntesis a los módulos específicos
     switch (settings.synthesisEngine) {
         case 'fm-synthesis':
             playFMSynthesis(allNotes);
