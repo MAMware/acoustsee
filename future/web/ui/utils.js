@@ -10,9 +10,14 @@ import { settings } from '../state.js';
  */
 async function loadTranslations(lang) {
     try {
+        console.log(`Attempting to load translations for ${lang}`); // Debug log
         const response = await fetch(`./languages/${lang}.json`);
-        if (!response.ok) throw new Error(`Failed to load ${lang} translations`);
-        return await response.json();
+        if (!response.ok) {
+            throw new Error(`Failed to load ${lang} translations: ${response.status}`);
+        }
+        const translations = await response.json();
+        console.log(`Translations loaded for ${lang}:`, translations); // Debug log
+        return translations;
     } catch (error) {
         console.error('Translation load failed:', error);
         return {}; // Fallback to empty translations
@@ -28,7 +33,7 @@ export async function speak(elementId, state = {}) {
     const lang = settings.language || 'en-US';
     const translations = await loadTranslations(lang);
     let message = translations[elementId] || '';
-    
+
     // Fallback message if translation is missing
     if (!message) {
         message = elementId; // Use elementId as fallback
@@ -39,7 +44,6 @@ export async function speak(elementId, state = {}) {
         // Replace placeholders with state values
         let finalMessage = message;
         for (const [key, value] of Object.entries(state)) {
-            // Map state values to human-readable text
             if (key === 'state') {
                 if (elementId === 'settingsToggle') {
                     finalMessage = finalMessage.replace(`{${key}}`, value === 'on' ? (lang === 'en-US' ? 'enabled' : 'activadas') : (lang === 'en-US' ? 'disabled' : 'desactivadas'));
@@ -58,8 +62,13 @@ export async function speak(elementId, state = {}) {
                 finalMessage = finalMessage.replace(`{${key}}`, value);
             }
         }
-        const utterance = new SpeechSynthesisUtterance(finalMessage);
-        utterance.lang = lang;
-        window.speechSynthesis.speak(utterance);
+        console.log(`Speaking message: ${finalMessage} in language: ${lang}`); // Debug log
+        try {
+            const utterance = new SpeechSynthesisUtterance(finalMessage);
+            utterance.lang = lang;
+            window.speechSynthesis.speak(utterance);
+        } catch (error) {
+            console.error('Speech synthesis failed:', error);
+        }
     }
 }
