@@ -214,17 +214,17 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 setStream(newStream);
                 const video = document.getElementById('videoFeed');
                 video.srcObject = newStream;
-                video.play().then(() => {
+                video.play().then(async () => { // Added async to then callback
                     video.style.display = 'block';
-                    await speak('startStop', { state: 'started' });
+                    await speak('startStop', { state: 'started' }); // Await inside async then
                     setAudioInterval('raf');
                     lastFrameTime = performance.now();
                     processFrameLoop(lastFrameTime);
                     dispatchEvent('updateUI', { settingsMode, streamActive: true });
                     loadingIndicator.style.display = 'none';
-                }).catch(err => {
+                }).catch(async (err) => { // Added async to catch callback
                     console.error('Video play failed:', err);
-                    await speak('cameraError');
+                    await speak('cameraError'); // Await inside async catch
                     dispatchEvent('logError', { message: `Video play failed: ${err.message}` });
                     loadingIndicator.style.display = 'none';
                 });
