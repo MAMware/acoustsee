@@ -31,23 +31,18 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
     }
 
-    function ensureAudioContext() {
+    async function ensureAudioContext() { // Marked as async
         if (!isAudioInitialized && !audioContext) {
             try {
                 const newContext = new (window.AudioContext || window.webkitAudioContext)();
                 initializeAudio(newContext);
                 console.log('AudioContext initialized:', isAudioInitialized, newContext.state);
                 if (newContext.state === 'suspended') {
-                    newContext.resume().then(() => {
-                        console.log('AudioContext resumed:', newContext.state);
-                        audioEnabled = true;
-                        audioToggle.textContent = 'Audio On';
-                        await speak('audioOn'); // Await speech
-                    }).catch(err => {
-                        console.error('Audio resume failed:', err);
-                        await speak('audioError'); // Await speech
-                        dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
-                    });
+                    await newContext.resume(); // Await resume
+                    console.log('AudioContext resumed:', newContext.state);
+                    audioEnabled = true;
+                    audioToggle.textContent = 'Audio On';
+                    await speak('audioOn'); // Await speech
                 } else {
                     audioEnabled = true;
                     audioToggle.textContent = 'Audio On';
@@ -60,16 +55,11 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 dispatchEvent('logError', { message: `Audio initialization failed: ${err.message}` });
             }
         } else if (audioContext && audioContext.state === 'suspended') {
-            audioContext.resume().then(() => {
-                console.log('AudioContext resumed:', audioContext.state);
-                audioEnabled = true;
-                audioToggle.textContent = 'Audio On';
-                await speak('audioOn'); // Await speech
-            }).catch(err => {
-                console.error('Audio resume failed:', err);
-                await speak('audioError'); // Await speech
-                dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
-            });
+            await audioContext.resume(); // Await resume
+            console.log('AudioContext resumed:', audioContext.state);
+            audioEnabled = true;
+            audioToggle.textContent = 'Audio On';
+            await speak('audioOn'); // Await speech
         }
         return isAudioInitialized;
     }
@@ -82,8 +72,8 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         console.log('audioToggle touched');
         tryVibrate(event);
         if (!audioEnabled) {
-            ensureAudioContext();
-            audioToggle.textContent = 'Activating Audio...';
+            await ensureAudioContext(); // Await the async function
+            audioToggle.textContent = 'Audio On'; // Moved here to ensure update after async completion
         }
     });
 
