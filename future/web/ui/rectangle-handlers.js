@@ -9,12 +9,15 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     const settingsToggle = document.getElementById('settingsToggle');
     const audioToggle = document.getElementById('audioToggle');
     const loadingIndicator = document.getElementById('loadingIndicator');
-    console.log('DOM Elements - audioToggle:', audioToggle);
-    console.log('DOM Elements - startStopBtn:', startStopBtn);
-    console.log('DOM Elements - settingsToggle:', settingsToggle);
-    console.log('DOM Elements - modeBtn:', modeBtn);
-    console.log('DOM Elements - languageBtn:', languageBtn);
-    console.log('DOM Elements - loadingIndicator:', loadingIndicator);
+    // Debug: Verify DOM elements with delay
+    setTimeout(() => {
+        console.log('DOM Elements - audioToggle:', audioToggle);
+        console.log('DOM Elements - startStopBtn:', startStopBtn);
+        console.log('DOM Elements - settingsToggle:', settingsToggle);
+        console.log('DOM Elements - modeBtn:', modeBtn);
+        console.log('DOM Elements - languageBtn:', languageBtn);
+        console.log('DOM Elements - loadingIndicator:', loadingIndicator);
+    }, 100); // Small delay to ensure DOM readiness
 
     let settingsMode = false;
     let touchCount = 0;
@@ -39,20 +42,21 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                         console.log('AudioContext resumed:', newContext.state);
                         audioEnabled = true;
                         audioToggle.textContent = 'Audio On';
-                        speak('audioOn');
+                        await speak('audioOn'); // Await speech
                     }).catch(err => {
                         console.error('Audio resume failed:', err);
-                        speak('audioError');
+                        await speak('audioError'); // Await speech
                         dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
                     });
                 } else {
                     audioEnabled = true;
                     audioToggle.textContent = 'Audio On';
-                    speak('audioOn');
+                    await speak('audioOn'); // Await speech
+                    console.log('AudioContext already running:', newContext.state); // Added log
                 }
             } catch (err) {
                 console.error('Audio initialization failed:', err);
-                speak('audioError');
+                await speak('audioError'); // Await speech
                 dispatchEvent('logError', { message: `Audio initialization failed: ${err.message}` });
             }
         } else if (audioContext && audioContext.state === 'suspended') {
@@ -60,10 +64,10 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 console.log('AudioContext resumed:', audioContext.state);
                 audioEnabled = true;
                 audioToggle.textContent = 'Audio On';
-                speak('audioOn');
+                await speak('audioOn'); // Await speech
             }).catch(err => {
                 console.error('Audio resume failed:', err);
-                speak('audioError');
+                await speak('audioError'); // Await speech
                 dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
             });
         }
@@ -74,7 +78,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream });
     }
 
-    audioToggle.addEventListener('touchstart', (event) => {
+    audioToggle.addEventListener('touchstart', async (event) => {
         console.log('audioToggle touched');
         tryVibrate(event);
         if (!audioEnabled) {
@@ -83,7 +87,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
     });
 
-    settingsToggle.addEventListener('touchstart', (event) => {
+    settingsToggle.addEventListener('touchstart', async (event) => {
         console.log('settingsToggle touched');
         tryVibrate(event);
         if (audioEnabled) {
@@ -94,37 +98,37 @@ export function setupRectangleHandlers({ dispatchEvent }) {
             }
             settingsMode = !settingsMode;
             updateButtonLabels(settingsMode);
-            speak('settingsToggle', { state: settingsMode ? 'on' : 'off' });
+            await speak('settingsToggle', { state: settingsMode ? 'on' : 'off' });
         }
     });
 
-    modeBtn.addEventListener('touchstart', (event) => {
+    modeBtn.addEventListener('touchstart', async (event) => {
         console.log('modeBtn touched');
         tryVibrate(event);
         if (audioEnabled) {
             if (settingsMode) {
                 settings.gridType = settings.gridType === 'hex-tonnetz' ? 'circle-of-fifths' : 'hex-tonnetz';
-                speak('gridSelect', { grid: settings.gridType });
+                await speak('gridSelect', { grid: settings.gridType });
             } else {
                 settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
-                speak('modeBtn', { mode: settings.dayNightMode });
+                await speak('modeBtn', { mode: settings.dayNightMode });
             }
             updateButtonLabels(settingsMode);
         }
     });
 
-    languageBtn.addEventListener('touchstart', (event) => {
+    languageBtn.addEventListener('touchstart', async (event) => {
         console.log('languageBtn touched');
         tryVibrate(event);
         if (audioEnabled) {
             if (settingsMode) {
                 settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
-                speak('synthesisSelect', { engine: settings.synthesisEngine });
+                await speak('synthesisSelect', { engine: settings.synthesisEngine });
             } else {
                 const languages = ['en-US', 'es-ES'];
                 const currentIndex = languages.indexOf(settings.language || 'en-US');
                 settings.language = languages[(currentIndex + 1) % languages.length];
-                speak('languageSelect', { lang: settings.language });
+                await speak('languageSelect', { lang: settings.language });
             }
             updateButtonLabels(settingsMode);
         }
@@ -180,7 +184,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }, 60000);
     }
 
-    startStopBtn.addEventListener('touchstart', (event) => {
+    startStopBtn.addEventListener('touchstart', async (event) => {
         console.log('startStopBtn touched');
         tryVibrate(event);
         resetInactivityTimeout();
@@ -200,7 +204,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                         setAudioInterval(null);
                     }
                     if (audioContext) audioContext.suspend();
-                    speak('startStop', { state: 'stopped' });
+                    await speak('startStop', { state: 'stopped' });
                     dispatchEvent('updateUI', { settingsMode, streamActive: false });
                     loadingIndicator.style.display = 'none';
                 } catch (err) {
@@ -216,13 +220,13 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 const canvas = document.getElementById('imageCanvas');
                 canvas.width = isLowEndDevice ? 32 : 64;
                 canvas.height = isLowEndDevice ? 24 : 48;
-                const newStream = navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
+                const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
                 setStream(newStream);
                 const video = document.getElementById('videoFeed');
                 video.srcObject = newStream;
                 video.play().then(() => {
                     video.style.display = 'block';
-                    speak('startStop', { state: 'started' });
+                    await speak('startStop', { state: 'started' });
                     setAudioInterval('raf');
                     lastFrameTime = performance.now();
                     processFrameLoop(lastFrameTime);
@@ -230,18 +234,18 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                     loadingIndicator.style.display = 'none';
                 }).catch(err => {
                     console.error('Video play failed:', err);
-                    speak('cameraError');
+                    await speak('cameraError');
                     dispatchEvent('logError', { message: `Video play failed: ${err.message}` });
                     loadingIndicator.style.display = 'none';
                 });
             } catch (err) {
                 console.error('Camera access failed:', err);
-                speak('cameraError');
+                await speak('cameraError');
                 dispatchEvent('logError', { message: `Camera access failed: ${err.message}` });
                 loadingIndicator.style.display = 'none';
             }
         } else {
-            speak('audioNotEnabled');
+            await speak('audioNotEnabled');
         }
     });
 
