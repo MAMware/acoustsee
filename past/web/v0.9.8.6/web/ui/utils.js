@@ -10,17 +10,17 @@ import { settings } from '../state.js';
  */
 async function loadTranslations(lang) {
     try {
-        console.log(`Attempting to load translations for ${lang}`); // Debug log
+        console.log(`Attempting to load translations for ${lang}`);
         const response = await fetch(`./languages/${lang}.json`);
         if (!response.ok) {
             throw new Error(`Failed to load ${lang} translations: ${response.status}`);
         }
         const translations = await response.json();
-        console.log(`Translations loaded for ${lang}:`, translations); // Debug log
+        console.log(`Translations loaded for ${lang}:`, translations);
         return translations;
     } catch (error) {
         console.error('Translation load failed:', error);
-        return {}; // Fallback to empty translations
+        return {};
     }
 }
 
@@ -34,14 +34,12 @@ export async function speak(elementId, state = {}) {
     const translations = await loadTranslations(lang);
     let message = translations[elementId] || '';
 
-    // Fallback message if translation is missing
     if (!message) {
-        message = elementId; // Use elementId as fallback
+        message = elementId;
         console.warn(`No translation found for ${elementId} in ${lang}`);
     }
 
     if (message) {
-        // Replace placeholders with state values
         let finalMessage = message;
         for (const [key, value] of Object.entries(state)) {
             if (key === 'state') {
@@ -62,19 +60,13 @@ export async function speak(elementId, state = {}) {
                 finalMessage = finalMessage.replace(`{${key}}`, value);
             }
         }
-        console.log(`Attempting to speak: ${finalMessage} in ${lang}`); // Debug log
+        console.log(`Speaking message: ${finalMessage} in language: ${lang}`);
         try {
             const utterance = new SpeechSynthesisUtterance(finalMessage);
             utterance.lang = lang;
-            utterance.volume = 1.0; // Ensure maximum volume
-            utterance.rate = 1.0;   // Normal speaking rate
-            const success = window.speechSynthesis.speak(utterance);
-            console.log(`Speech synthesis attempt: ${success ? 'Success' : 'Failed'}`); // Debug log
-            if (!success) {
-                console.error('Speech synthesis failed to initiate');
-            }
+            window.speechSynthesis.speak(utterance);
         } catch (error) {
-            console.error('Speech synthesis error:', error);
+            console.error('Speech synthesis failed:', error);
         }
     }
 }

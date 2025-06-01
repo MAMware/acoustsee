@@ -31,35 +31,35 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
     }
 
-    async function ensureAudioContext() {
+    async function ensureAudioContext() { // Marked as async
         if (!isAudioInitialized && !audioContext) {
             try {
                 const newContext = new (window.AudioContext || window.webkitAudioContext)();
                 initializeAudio(newContext);
                 console.log('AudioContext initialized:', isAudioInitialized, newContext.state);
                 if (newContext.state === 'suspended') {
-                    await newContext.resume();
+                    await newContext.resume(); // Await resume
                     console.log('AudioContext resumed:', newContext.state);
                     audioEnabled = true;
                     audioToggle.textContent = 'Audio On';
-                    await speak('audioOn');
+                    await speak('audioOn'); // Await speech
                 } else {
                     audioEnabled = true;
                     audioToggle.textContent = 'Audio On';
-                    await speak('audioOn');
-                    console.log('AudioContext already running:', newContext.state);
+                    await speak('audioOn'); // Await speech
+                    console.log('AudioContext already running:', newContext.state); // Added log
                 }
             } catch (err) {
                 console.error('Audio initialization failed:', err);
-                await speak('audioError');
+                await speak('audioError'); // Await speech
                 dispatchEvent('logError', { message: `Audio initialization failed: ${err.message}` });
             }
         } else if (audioContext && audioContext.state === 'suspended') {
-            await audioContext.resume();
+            await audioContext.resume(); // Await resume
             console.log('AudioContext resumed:', audioContext.state);
             audioEnabled = true;
             audioToggle.textContent = 'Audio On';
-            await speak('audioOn');
+            await speak('audioOn'); // Await speech
         }
         return isAudioInitialized;
     }
@@ -72,8 +72,8 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         console.log('audioToggle touched');
         tryVibrate(event);
         if (!audioEnabled) {
-            await ensureAudioContext();
-            audioToggle.textContent = 'Audio On';
+            await ensureAudioContext(); // Await the async function
+            audioToggle.textContent = 'Audio On'; // Moved here to ensure update after async completion
         }
     });
 
@@ -214,17 +214,17 @@ export function setupRectangleHandlers({ dispatchEvent }) {
                 setStream(newStream);
                 const video = document.getElementById('videoFeed');
                 video.srcObject = newStream;
-                video.play().then(async () => {
+                video.play().then(async () => { // Added async to then callback
                     video.style.display = 'block';
-                    await speak('startStop', { state: 'started' });
+                    await speak('startStop', { state: 'started' }); // Await inside async then
                     setAudioInterval('raf');
                     lastFrameTime = performance.now();
                     processFrameLoop(lastFrameTime);
                     dispatchEvent('updateUI', { settingsMode, streamActive: true });
                     loadingIndicator.style.display = 'none';
-                }).catch(async (err) => {
+                }).catch(async (err) => { // Added async to catch callback
                     console.error('Video play failed:', err);
-                    await speak('cameraError');
+                    await speak('cameraError'); // Await inside async catch
                     dispatchEvent('logError', { message: `Video play failed: ${err.message}` });
                     loadingIndicator.style.display = 'none';
                 });
