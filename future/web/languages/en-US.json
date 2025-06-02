@@ -9,5 +9,9 @@
     "audioOn": "Audio enabled",
     "audioError": "Audio initialization failed",
     "audioNotEnabled": "Audio not enabled, please enable audio first",
+    "cameraPermissionDenied": "Camera permission denied, please enable in settings",
+    "cameraInUse": "Camera is already in use by another application",
+    "cameraConstraintsError": "Camera settings not supported by this device",
+    "frameProcessingError": "Error processing video frame"
     "fpsBtn": "Frame rate set to {fps} FPS"
 }
