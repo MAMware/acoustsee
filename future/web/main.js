@@ -4,13 +4,14 @@
 import { setupRectangleHandlers } from './ui/rectangle-handlers.js';
 import { setupSettingsHandlers } from './ui/settings-handlers.js';
 import { createEventDispatcher } from './ui/event-dispatcher.js';
+import { initDOM } from './ui/dom.js';
 
-// Wait for DOM to load before initializing
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing AcoustSee');
-    const dispatcher = createEventDispatcher();
-    console.log('Dispatcher created:', dispatcher);
-    setupRectangleHandlers({ dispatchEvent: dispatcher.dispatchEvent });
-    setupSettingsHandlers({ dispatchEvent: dispatcher.dispatchEvent });
-    dispatcher.dispatchEvent('updateUI', { settingsMode: false, streamActive: false });
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('DOM loaded, initializing AcoustSee');
+  await initDOM(); // Initialize DOM elements
+  const dispatcher = createEventDispatcher();
+  console.log('Dispatcher created:', dispatcher);
+  setupRectangleHandlers({ dispatchEvent: dispatcher.dispatchEvent });
+  setupSettingsHandlers({ dispatchEvent: dispatcher.dispatchEvent });
+  dispatcher.dispatchEvent('updateUI', { settingsMode: false, streamActive: false });
 });
