@@ -1,6 +1,12 @@
 import { setAudioInterval } from '../state.js';
 import { processFrame } from './frame-processor.js';
 import { speak } from './utils.js'; // Use existing speak function with languages folder
+import { DOM, initDOM } from './dom.js';
+
+// Initialize DOM elements
+initDOM().then(() => {
+  console.log('DOM Elements initialized:', DOM);
+});
 
 /**
  * Creates an event dispatcher for handling UI updates and frame processing.
@@ -8,29 +14,7 @@ import { speak } from './utils.js'; // Use existing speak function with language
  * @returns {Object} An object with a dispatchEvent method to handle events.
  */
 export function createEventDispatcher(settings) {
-    // Wait for DOM to be fully loaded before querying elements
-    const initializeElements = () => {
-        return new Promise((resolve) => {
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                resolve();
-            } else {
-                document.addEventListener('DOMContentLoaded', resolve);
-            }
-        });
-    };
-
-    // Define DOM elements after ensuring readiness
-    let elements;
-    initializeElements().then(() => {
-        elements = {
-            settingsToggle: document.getElementById('settingsToggle'),
-            modeBtn: document.getElementById('modeBtn'),
-            languageBtn: document.getElementById('languageBtn'),
-            startStopBtn: document.getElementById('startStopBtn'),
-        };
-        // Debug: Log elements to confirm they are found
-        console.log('Event Dispatcher DOM Elements:', elements);
-    });
+    // Remove initializeElements and related code
 
     // Event handlers for different dispatched events
     const handlers = {
@@ -39,12 +23,13 @@ export function createEventDispatcher(settings) {
          * @param {Object} payload - Contains settingsMode and streamActive states.
          */
         updateUI: async ({ settingsMode, streamActive }) => {
-            if (!elements) return; // Prevent execution before DOM is ready
+            // Use DOM instead of elements
+            if (!DOM) return; // Prevent execution before DOM is ready
 
             const state = { state: settingsMode ? 'on' : 'off' };
             await speak('settingsToggle', state); // Speak the state change
             setTextAndAriaLabel(
-                elements.settingsToggle,
+                DOM.settingsToggle,
                 settingsMode ? 'Exit Settings' : 'Toggle Settings',
                 settingsMode ? 'Exit settings mode' : 'Toggle settings mode'
             );
@@ -52,7 +37,7 @@ export function createEventDispatcher(settings) {
             state.state = settingsMode ? settings.gridType : settings.dayNightMode;
             await speak('modeBtn', { mode: state.state });
             setTextAndAriaLabel(
-                elements.modeBtn,
+                DOM.modeBtn,
                 settingsMode ? (state.state === 'hex-tonnetz' ? 'Hex Tonnetz' : 'Circle of Fifths') : (state.state === 'day' ? 'Daylight' : 'Night'),
                 settingsMode ? `Select grid: ${state.state}` : `Toggle ${state.state} mode`
             );
@@ -60,15 +45,15 @@ export function createEventDispatcher(settings) {
             state.state = settingsMode ? settings.synthesisEngine : settings.language || 'en-US';
             await speak('languageSelect', { lang: state.state });
             setTextAndAriaLabel(
-                elements.languageBtn,
+                DOM.languageBtn,
                 settingsMode ? (state.state === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (state.state === 'en-US' ? 'English' : 'Spanish'),
                 settingsMode ? `Select synthesis: ${state.state}` : `Cycle to ${state.state}`
             );
 
-            if (elements.startStopBtn) {
+            if (DOM.startStopBtn) {
                 const startStopState = streamActive ? 'stopped' : 'started';
                 await speak('startStop', { state: startStopState });
-                elements.startStopBtn.textContent = startStopState === 'started' ? 'Start' : 'Stop';
+                DOM.startStopBtn.textContent = startStopState === 'started' ? 'Start' : 'Stop';
             }
         },
         /**
