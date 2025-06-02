@@ -9,5 +9,9 @@
     "audioOn": "Audio activado",
     "audioError": "Fallo en la inicialización del audio",
     "audioNotEnabled": "Audio no activado, por favor active el audio primero",
+    "cameraPermissionDenied": "Permiso de cámara denegado, por favor habilita en ajustes",
+    "cameraInUse": "La cámara ya está en uso por otra aplicación",
+    "cameraConstraintsError": "Configuración de cámara no soportada por este dispositivo",
+    "frameProcessingError": "Error al procesar el cuadro de video"
     "fpsBtn": "Velocidad de fotogramas establecida en {fps} FPS"
 }
