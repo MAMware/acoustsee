@@ -147,7 +147,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
         setSkipFrame(false);
         lastFrameTime = timestamp;
-        dispatchEvent('processFrame');
+        processFrame(DOM.videoFeed, DOM.imageCanvas);
         rafId = requestAnimationFrame(processFrameLoop);
     }
 
