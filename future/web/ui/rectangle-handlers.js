@@ -1,3 +1,4 @@
+import { processFrame } from './frame-processor.js';
 import { initializeAudio, audioContext, isAudioInitialized } from '../audio-processor.js';
 import { settings, setStream, setAudioInterval, setSkipFrame } from '../state.js';
 import { speak } from './utils.js';
@@ -138,17 +139,17 @@ export function setupRectangleHandlers({ dispatchEvent }) {
 
     let rafId;
     function processFrameLoop(timestamp) {
-        if (!settings.stream || !audioEnabled) return;
-        const deltaTime = timestamp - lastFrameTime;
-        if (deltaTime < settings.updateInterval) {
-            rafId = requestAnimationFrame(processFrameLoop);
-            setSkipFrame(true);
-            return;
-        }
-        setSkipFrame(false);
-        lastFrameTime = timestamp;
-        processFrame(DOM.videoFeed, DOM.imageCanvas);
+      if (!settings.stream || !audioEnabled) return;
+      const deltaTime = timestamp - lastFrameTime;
+      if (deltaTime < settings.updateInterval) {
         rafId = requestAnimationFrame(processFrameLoop);
+        setSkipFrame(true);
+        return;
+      }
+      setSkipFrame(false);
+      lastFrameTime = timestamp;
+      processFrame(DOM.videoFeed, DOM.imageCanvas); // Pass parameters explicitly
+      rafId = requestAnimationFrame(processFrameLoop);
     }
 
     document.addEventListener('visibilitychange', () => {
