@@ -49,49 +49,77 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         }
         return isAudioInitialized;
     }
-
-    function updateButtonLabels(settingsMode) {
-        dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream });
-    }
-
-    DOM.audioToggle.addEventListener('touchstart', async (event) => {
-        console.log('audioToggle touched');
-        tryVibrate(event);
-        if (!audioEnabled) {
-            await ensureAudioContext();
-            DOM.audioToggle.textContent = 'Audio On';
+    startStopBtn.addEventListener('touchstart', async (event) => {
+      console.log('startStopBtn touched');
+      tryVibrate(event);
+      resetInactivityTimeout();
+      if (!audioEnabled) {
+        await speak('audioNotEnabled');
+        return;
+      }
+      if (settings.stream) {
+    // Existing stop logic unchanged
+        try {
+          settings.stream.getTracks().forEach(track => track.stop());
+          setStream(null);
+          if (DOM.videoFeed) {
+            DOM.videoFeed.srcObject = null;
+            DOM.videoFeed.pause();
+            DOM.videoFeed.style.display = 'none';
+          }
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+            setAudioInterval(null);
+          }
+          if (audioContext) await audioContext.suspend();
+          await speak('startStop', { state: 'stopped' });
+          dispatchEvent('updateUI', { settingsMode, streamActive: false });
+          if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
+        } catch (err) {
+          console.error('Failed to stop stream:', err);
+          await speak('cameraError');
+          dispatchEvent('logError', { message: `Failed to stop stream: ${err.message}` });
         }
-    });
-
-    DOM.settingsToggle.addEventListener('touchstart', async (event) => {
-        console.log('settingsToggle touched');
-        tryVibrate(event);
-        if (audioEnabled) {
-            touchCount++;
-            if (touchCount === 2) {
-                touchCount = 0;
-                dispatchEvent('toggleDebug', { show: true });
-            }
-            settingsMode = !settingsMode;
-            updateButtonLabels(settingsMode);
-            await speak('settingsToggle', { state: settingsMode ? 'on' : 'off' });
+        return;
+      }
+      if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'block';
+      try {
+        const isLowEndDevice = navigator.hardwareConcurrency < 4;
+        settings.updateInterval = isLowEndDevice ? 100 : 50;
+        if (DOM.imageCanvas) {
+          DOM.imageCanvas.width = isLowEndDevice ? 32 : 64;
+          DOM.imageCanvas.height = isLowEndDevice ? 24 : 48;
         }
-    });
-
-    DOM.modeBtn.addEventListener('touchstart', async (event) => {
-        console.log('modeBtn touched');
-        tryVibrate(event);
-        if (audioEnabled) {
-            if (settingsMode) {
-                settings.gridType = settings.gridType === 'hex-tonnetz' ? 'circle-of-fifths' : 'hex-tonnetz';
-                await speak('gridSelect', { grid: settings.gridType });
-            } else {
-                settings.dayNightMode = settings.dayNightMode === 'day' ? 'night' : 'day';
-                await speak('modeBtn', { mode: settings.dayNightMode });
-            }
-            updateButtonLabels(settingsMode);
+        const constraints = {
+          video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } }
+        };
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        setStream(newStream);
+        if (DOM.videoFeed) {
+          DOM.videoFeed.srcObject = newStream;
+          await DOM.videoFeed.play();
+          DOM.videoFeed.style.display = 'block';
+          await speak('startStop', { state: 'started' });
+          setAudioInterval('raf');
+          lastFrameTime = performance.now();
+          processFrameLoop(lastFrameTime);
+          dispatchEvent('updateUI', { settingsMode, streamActive: true });
+          if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
+        } else {
+          throw new Error('Video element not found');
         }
-    });
+      } catch (err) {
+        console.error('Camera access failed:', err.name, err.message);
+        let errorMessage = 'cameraError';
+        if (err.name === 'NotAllowedError') errorMessage = 'Camera permission denied';
+        else if (err.name === 'OverconstrainedError') errorMessage = 'Camera constraints not supported';
+        else if (err.name === 'NotReadableError') errorMessage = 'Camera already in use';
+        await speak(errorMessage);
+        dispatchEvent('logError', { message: `Camera access failed: ${err.name} - ${err.message}` });
+        if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
+      }
+});
 
     DOM.languageBtn.addEventListener('touchstart', async (event) => {
         console.log('languageBtn touched');
