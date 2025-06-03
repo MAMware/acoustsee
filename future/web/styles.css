@@ -57,8 +57,8 @@ body {
     justify-content: center;
     align-items: center;
     position: relative;
-    max-width: 74%; /* Reducir para balancear con laterales */
-    max-height: 80%; /* Limitar altura */
+    max-width: 60%; /* Reducir para balancear con laterales */
+    max-height: 60%; /* Limitar altura */
 }
 video {
     width: 200px;
@@ -157,4 +157,27 @@ button:focus, [role="button"]:focus {
 }
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+#emailDebug {
+  position: absolute;
+  top: 5px;
+  right: 50px; /* Position to the left of closeDebug */
+  background: #007bff;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+#emailDebug:active {
+  background: #0056b3;
+  transform: scale(0.98);
+}
+@media (max-width: 600px) {
+  #emailDebug {
+    padding: 4px 8px;
+    font-size: 12px;
+    right: 45px;
+  }
 }
