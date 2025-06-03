@@ -99,18 +99,19 @@ export function createEventDispatcher() {
   };
 
   // Assign global dispatchEvent for global access
-  dispatchEvent = (eventName, payload = {}) => {
-    if (handlers[eventName]) {
+dispatchEvent = (eventName, payload = {}) => {
+  if (handlers[eventName]) {
+    try {
       handlers[eventName](payload);
     } catch (err) {
-        console.error(`Error in handler ${eventName}:`, err.message);
-        handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
-      }
-    } else {
-      console.error(`No handler found for event: ${eventName}`);
-      handlers.logError({ message: `No handler for event: ${eventName}` });
+      console.error(`Error in handler ${eventName}:`, err.message);
+      handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
     }
-  };
+  } else {
+    console.error(`No handler found for event: ${eventName}`);
+    handlers.logError({ message: `No handler for event: ${eventName}` });
+  }
+};
 
   // Return for local use
   return { dispatchEvent };
