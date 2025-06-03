@@ -8,7 +8,8 @@ export const DOM = {
   imageCanvas: null,
   loadingIndicator: null,
   debug: null,
-  closeDebug: null
+  closeDebug: null,
+  emailDebug: null 
 };
 
 export function initDOM() {
@@ -36,8 +37,8 @@ function assignDOMElements() {
   DOM.loadingIndicator = document.getElementById('loadingIndicator');
   DOM.debug = document.getElementById('debug');
   DOM.closeDebug = document.getElementById('closeDebug');
+  DOM.emailDebug = document.getElementById('emailDebug');
 
-  // Log missing elements
   Object.entries(DOM).forEach(([key, value]) => {
     if (!value) console.warn(`DOM element ${key} not found`);
   });
