@@ -12,8 +12,8 @@
   "cameraPermissionDenied": "Permiso de cámara denegado, por favor habilita en ajustes",
   "cameraInUse": "La cámara ya está en uso por otra aplicación",
   "cameraConstraintsError": "Configuración de cámara no soportada por este dispositivo",
-  "frameProcessingError": "Error al procesar el cuadro de video"
-  "fpsBtn": "Velocidad de fotogramas establecida en {fps} FPS"
+  "frameProcessingError": "Error al procesar el cuadro de video",
+  "fpsBtn": "Velocidad de fotogramas establecida en {fps} FPS",
   "emailDebug": "Correo de registro de errores {state}",
-  "emailError": "No se pudo generar el correo de registro de errores"
+  "emailError": "No se pudo generar el correo de registro de errores",
 }
