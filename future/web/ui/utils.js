@@ -11,7 +11,7 @@ import { settings } from '../state.js';
 async function loadTranslations(lang) {
     try {
         console.log(`Attempting to load translations for ${lang}`); // Debug log
-        const response = await fetch(`../languages/${lang}.json`);
+        const response = await fetch(`../web/languages/${lang}.json`);
         if (!response.ok) {
             throw new Error(`Failed to load ${lang} translations: ${response.status}`);
         }
