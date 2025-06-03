@@ -11,7 +11,7 @@ import { settings } from '../state.js';
 async function loadTranslations(lang) {
     try {
         console.log(`Attempting to load translations for ${lang}`); // Debug log
-        const response = await fetch(`./languages/${lang}.json`);
+        const response = await fetch(`../languages/${lang}.json`);
         if (!response.ok) {
             throw new Error(`Failed to load ${lang} translations: ${response.status}`);
         }
@@ -32,7 +32,7 @@ async function loadTranslations(lang) {
 export async function speak(elementId, state = {}) {
     const lang = settings.language || 'en-US';
     const translations = await loadTranslations(lang);
-    let message = translations[elementId] || '';
+    let message = translations[elementId] || elementId;
 
     // Fallback message if translation is missing
     if (!message) {
@@ -41,37 +41,41 @@ export async function speak(elementId, state = {}) {
     }
 
     if (message) {
-        // Replace placeholders with state values
+        // Replace placeholders with state values (uses replaceAll for all occurrences)
         let finalMessage = message;
         for (const [key, value] of Object.entries(state)) {
             if (key === 'state') {
-                if (elementId === 'settingsToggle') {
-                    finalMessage = finalMessage.replace(`{${key}}`, value === 'on' ? (lang === 'en-US' ? 'enabled' : 'activadas') : (lang === 'en-US' ? 'disabled' : 'desactivadas'));
+                if (elementId === 'emailDebug') {
+                    finalMessage = finalMessage.replaceAll(`{${key}}`, value === 'sent' ? (lang === 'en-US' ? 'sent' : 'enviado') : value);
+                } else if (elementId === 'settingsToggle') {
+                    finalMessage = finalMessage.replaceAll(`{${key}}`, value === 'on' ? (lang === 'en-US' ? 'enabled' : 'activadas') : (lang === 'en-US' ? 'disabled' : 'desactivadas'));
                 } else if (elementId === 'startStop') {
-                    finalMessage = finalMessage.replace(`{${key}}`, value === 'started' ? (lang === 'en-US' ? 'started' : 'iniciada') : (lang === 'en-US' ? 'stopped' : 'detenida'));
+                    finalMessage = finalMessage.replaceAll(`{${key}}`, value === 'started' ? (lang === 'en-US' ? 'started' : 'iniciada') : (lang === 'en-US' ? 'stopped' : 'detenida'));
+                } else {
+                    finalMessage = finalMessage.replaceAll(`{${key}}`, value);
                 }
             } else if (key === 'mode') {
-                finalMessage = finalMessage.replace(`{${key}}`, value === 'day' ? (lang === 'en-US' ? 'day' : 'día') : (lang === 'en-US' ? 'night' : 'noche'));
+                finalMessage = finalMessage.replaceAll(`{${key}}`, value === 'day' ? (lang === 'en-US' ? 'day' : 'día') : (lang === 'en-US' ? 'night' : 'noche'));
             } else if (key === 'grid') {
-                finalMessage = finalMessage.replace(`{${key}}`, value === 'hex-tonnetz' ? (lang === 'en-US' ? 'hexagonal tonnetz' : 'tonnetz hexagonal') : (lang === 'en-US' ? 'circle of fifths' : 'círculo de quintas'));
+                finalMessage = finalMessage.replaceAll(`{${key}}`, value === 'hex-tonnetz' ? (lang === 'en-US' ? 'hexagonal tonnetz' : 'tonnetz hexagonal') : (lang === 'en-US' ? 'circle of fifths' : 'círculo de quintas'));
             } else if (key === 'engine') {
-                finalMessage = finalMessage.replace(`{${key}}`, value === 'sine-wave' ? (lang === 'en-US' ? 'sine wave' : 'onda sinusoidal') : (lang === 'en-US' ? 'FM synthesis' : 'síntesis FM'));
+                finalMessage = finalMessage.replaceAll(`{${key}}`, value === 'sine-wave' ? (lang === 'en-US' ? 'sine wave' : 'onda sinusoidal') : (lang === 'en-US' ? 'FM synthesis' : 'síntesis FM'));
             } else if (key === 'lang') {
-                finalMessage = finalMessage.replace(`{${key}}`, value === 'en-US' ? (lang === 'en-US' ? 'English' : 'inglés') : (lang === 'en-US' ? 'Spanish' : 'español'));
+                finalMessage = finalMessage.replaceAll(`{${key}}`, value === 'en-US' ? (lang === 'en-US' ? 'English' : 'inglés') : (lang === 'en-US' ? 'Spanish' : 'español'));
             } else {
-                finalMessage = finalMessage.replace(`{${key}}`, value);
+                finalMessage = finalMessage.replaceAll(`{${key}}`, value);
             }
         }
         console.log(`Attempting to speak: ${finalMessage} in ${lang}`); // Debug log
         try {
-            const utterance = new SpeechSynthesisUtterance(finalMessage);
-            utterance.lang = lang;
-            utterance.volume = 1.0; // Ensure maximum volume
-            utterance.rate = 1.0;   // Normal speaking rate
-            const success = window.speechSynthesis.speak(utterance);
-            console.log(`Speech synthesis attempt: ${success ? 'Success' : 'Failed'}`); // Debug log
-            if (!success) {
-                console.error('Speech synthesis failed to initiate');
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(finalMessage);
+                utterance.lang = lang;
+                utterance.volume = 1.0; // Maximum volume
+                utterance.rate = 1.0;   // Normal speaking rate
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.warn('Speech synthesis not supported in this browser.');
             }
         } catch (error) {
             console.error('Speech synthesis error:', error);
