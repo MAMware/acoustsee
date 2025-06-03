@@ -111,4 +111,11 @@ export function createEventDispatcher() {
  * @param {string} text - Text content to set.
  * @param {string} ariaLabel - Aria-label to set.
  */
-function setTextAndAriaLabel
+function setTextAndAriaLabel(element, text, ariaLabel) {
+  if (element) {
+    element.textContent = text;
+    element.setAttribute('aria-label', ariaLabel);
+  } else {
+    console.warn(`Element not found for text update: ${text}`);
+  }
+}
