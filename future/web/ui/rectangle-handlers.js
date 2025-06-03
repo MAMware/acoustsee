@@ -49,40 +49,67 @@ export function setupRectangleHandlers({ dispatchEvent }) {
       return true;
     }
     startStopBtn.addEventListener('touchstart', async (event) => {
-      console.log('startStopBtn touched');
-      tryVibrate(event);
-      resetInactivityTimeout();
-      if (!audioEnabled) {
-        await speak('audioNotEnabled');
-        return;
+  console.debug('startStopBtn touched');
+  if (!DOM.startStopBtn) {
+    console.error('startStopBtn element not found');
+    window.dispatchEvent('logError', { message: 'startStopBtn element not found' });
+    return;
+  }
+  tryVibrate(event);
+  resetInactivityTimeout();
+  try {
+    if (!audioEnabled) {
+      await speak('audioNotEnabled');
+      window.dispatchEvent('logError', { message: 'Audio not enabled' });
+      return;
+    }
+    if (settings.stream) {
+      settings.stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+      if (DOM.videoFeed) {
+        DOM.videoFeed.srcObject = null;
+        DOM.videoFeed.pause();
+        DOM.videoFeed.style.display = 'none';
       }
-      if (settings.stream) {
-    // Existing stop logic unchanged
-        try {
-          settings.stream.getTracks().forEach(track => track.stop());
-          setStream(null);
-          if (DOM.videoFeed) {
-            DOM.videoFeed.srcObject = null;
-            DOM.videoFeed.pause();
-            DOM.videoFeed.style.display = 'none';
-          }
-          if (rafId) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
-            setAudioInterval(null);
-          }
-          if (audioContext) await audioContext.suspend();
-          await speak('startStop', { state: 'stopped' });
-          dispatchEvent('updateUI', { settingsMode, streamActive: false });
-          if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
-        } catch (err) {
-          console.error('Failed to stop stream:', err);
-          await speak('cameraError');
-          dispatchEvent('logError', { message: `Failed to stop stream: ${err.message}` });
-        }
-        return;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+        setAudioInterval(null);
       }
+      if (audioContext) await audioContext.suspend();
+      await speak('startStop', { state: 'stopped' });
+      dispatchEvent('updateUI', { settingsMode, streamActive: false });
+      if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
+    } else {
       if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'block';
+      const isLowEndDevice = navigator.hardwareConcurrency < 4;
+      settings.updateInterval = isLowEndDevice ? 100 : 50;
+      if (DOM.imageCanvas) {
+        DOM.imageCanvas.width = isLowEndDevice ? 24 : 48;
+        DOM.imageCanvas.height = isLowEndDevice ? 18 : 36;
+      }
+      const constraints = {
+        video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } }
+      };
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      setStream(newStream);
+      if (DOM.videoFeed) {
+        DOM.videoFeed.srcObject = newStream;
+        await DOM.videoFeed.play();
+        DOM.videoFeed.style.display = 'block';
+        await speak('startStop', { state: 'started' });
+        setAudioInterval('raf');
+        lastFrameTime = performance.now();
+        processFrameLoop(lastFrameTime);
+        dispatchEvent('updateUI', { settingsMode, streamActive: true });
+        if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
+      }
+    }
+  } catch (err) {
+    console.error('startStopBtn error:', err.message);
+    window.dispatchEvent('logError', { message: `startStopBtn error: ${err.message}` });
+    await speak('cameraError');
+    if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
       try {
         const isLowEndDevice = navigator.hardwareConcurrency < 4;
         settings.updateInterval = isLowEndDevice ? 100 : 50;
