@@ -1,7 +1,7 @@
 // Export dispatchEvent for global access (needed for mailto: feature and frame-processor.js)
 export let dispatchEvent = null;
 
-import { setAudioInterval } from '../state.js';
+import { setAudioInterval, settings } from '../state.js';
 import { processFrame } from './frame-processor.js';
 import { speak } from './utils.js';
 import { DOM } from './dom.js'; // Use cached DOM elements
@@ -21,6 +21,7 @@ export function createEventDispatcher() {
       // Check critical DOM elements to prevent null errors
       if (!DOM.settingsToggle || !DOM.modeBtn || !DOM.languageBtn || !DOM.startStopBtn) {
         console.error('Missing critical DOM elements for UI update');
+        dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
         return;
       }
 
@@ -72,15 +73,19 @@ export function createEventDispatcher() {
      * Toggles the visibility of the debug panel and logs errors.
      * @param {Object} payload - Contains show flag and optional message.
      */
-    toggleDebug: ({ show, message }) => {
+     toggleDebug: ({ show, message }) => {
       if (DOM.debug) {
         DOM.debug.style.display = show ? 'block' : 'none';
         if (message && show) {
           const pre = DOM.debug.querySelector('pre');
           if (pre) {
-            pre.textContent += `${message}\n`;
+            pre.textContent += `${new Date().toISOString()} - ${message}\n`;
+          } else {
+            console.error('Debug pre element not found');
           }
         }
+      } else {
+        console.error('Debug element not found');
       }
     },
     /**
@@ -88,6 +93,7 @@ export function createEventDispatcher() {
      * @param {Object} payload - Contains the error message.
      */
     logError: ({ message }) => {
+      console.error('Logging error:', message);
       handlers.toggleDebug({ show: true, message });
     },
   };
@@ -96,8 +102,13 @@ export function createEventDispatcher() {
   dispatchEvent = (eventName, payload = {}) => {
     if (handlers[eventName]) {
       handlers[eventName](payload);
+    } catch (err) {
+        console.error(`Error in handler ${eventName}:`, err.message);
+        handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
+      }
     } else {
       console.error(`No handler found for event: ${eventName}`);
+      handlers.logError({ message: `No handler for event: ${eventName}` });
     }
   };
 
