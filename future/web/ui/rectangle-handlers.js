@@ -254,6 +254,23 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         tryVibrate(event);
         dispatchEvent('toggleDebug', { show: false });
     });
+    DOM.emailDebug?.addEventListener('touchstart', async (event) => {
+        console.log('emailDebug touched');
+        tryVibrate(event);
+        try {
+          const debugPre = DOM.debug?.querySelector('pre');
+          const logContent = debugPre?.textContent || 'No errors logged';
+          const subject = encodeURIComponent('AcoustSee Error Log');
+          const body = encodeURIComponent(`Error Log from AcoustSee:\n\n${logContent}\n\nDevice Info: ${navigator.userAgent}`);
+          const mailtoLink = `mailto:your-email@example.com?subject=${subject}&body=${body}`;
+          window.location.href = mailtoLink;
+          await speak('emailDebug', { state: 'sent' });
+        } catch (err) {
+         console.error('Error generating email log:', err);
+         dispatchEvent('logError', { message: `Error generating email log: ${err.message}` });
+         await speak('emailError');
+        }
+      });
 
     document.addEventListener('touchstart', resetInactivityTimeout);
 
