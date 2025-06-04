@@ -22,11 +22,8 @@ export function setupRectangleHandlers({ dispatchEvent }) {
   async function ensureAudioContext() {
     if (!isAudioInitialized && !audioContext) {
       try {
-        const newContext = new (window.AudioContext || window.webkitAudioContext)();
-        if (newContext.state === 'suspended') {
-          await newContext.resume();
-        }
-        await initializeAudio(newContext);
+        // Defer AudioContext creation to the event handler to ensure user gesture context
+        await initializeAudio(audioContext);
         audioEnabled = true;
         if (DOM.audioToggle) DOM.audioToggle.textContent = 'Audio On';
         await speak('audioOn');
@@ -91,7 +88,7 @@ export function setupRectangleHandlers({ dispatchEvent }) {
   }
 
   // audioToggle event listener
-  DOM.audioToggle?.addEventListener('touchstart', async (event) => {
+  DOM.audioToggle?.addEventListener('touchstart', (event) => {
     if (!DOM.audioToggle) {
       console.error('audioToggle element not found');
       dispatchEvent('logError', { message: 'audioToggle element not found' });
@@ -99,11 +96,26 @@ export function setupRectangleHandlers({ dispatchEvent }) {
     }
     tryVibrate(event);
     if (!audioEnabled) {
-      await ensureAudioContext();
+      // Create and resume AudioContext directly in the event handler to ensure user gesture
+      let newContext;
+      try {
+        newContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (newContext.state === 'suspended') {
+          newContext.resume(); // Synchronous resume within user gesture context
+        }
+      } catch (err) {
+        console.error('AudioContext creation/resume failed:', err.message);
+        dispatchEvent('logError', { message: `AudioContext creation/resume failed: ${err.message}` });
+        speak('audioError');
+        return;
+      }
+      // Update global audioContext and proceed with initialization
+      audioContext = newContext;
+      ensureAudioContext();
     }
   });
 
-  // startStopBtn event listener (keep only one)
+  // startStopBtn event listener
   DOM.startStopBtn?.addEventListener('touchstart', async (event) => {
     if (!DOM.startStopBtn) {
       console.error('startStopBtn element not found');
@@ -224,7 +236,6 @@ export function setupRectangleHandlers({ dispatchEvent }) {
 
   document.addEventListener('touchstart', resetInactivityTimeout);
 
-  // Optional: Debug logging of DOM elements (keep for initialization check, remove excessive logs)
   setTimeout(() => {
     Object.entries(DOM).forEach(([key, value]) => {
       console.log(`DOM Element - ${key}:`, value);
