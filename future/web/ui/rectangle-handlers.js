@@ -103,12 +103,15 @@ export function setupRectangleHandlers({ dispatchEvent }) {
         if (newContext.state === 'suspended') {
           newContext.resume(); // Synchronous resume within user gesture context
         }
-        setAudioContext(newContext); // Update via setter
+        if (typeof setAudioContext !== 'function') {
+          throw new Error('setAudioContext is not defined');
+        }
+        setAudioContext(newContext);
         ensureAudioContext();
       } catch (err) {
         console.error('AudioContext creation/resume failed:', err.message);
         dispatchEvent('logError', { message: `AudioContext creation/resume failed: ${err.message}` });
-        speak('audioError');
+        speak('audioError', { message: 'Please tap again to enable audio' });
         return;
       }
     }
