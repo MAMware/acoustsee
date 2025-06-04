@@ -5,7 +5,7 @@
 
 ## [Introduction](#introduction)
 
-AcoustSee is an open-source project kickstarted with its first milestones coded entirely by xAI Grok with the aim to transform a visual environments into a intuitive soundscape thus  mpowering the user to experience the visual world just by audio cues.
+AcoustSee aims to transform a visual environment into a intuitive soundscape, empowering the user to experience the visual world by audio cues.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
@@ -15,9 +15,7 @@ Synesthesia is the translation from a visual to a sound, with this concept in mi
 
 Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content, lower volume and wen it swings closer its spectra complexity raises. 
 
-This project aims to make this imagination into a reality. 
-First started a prof of concept using static images to a tone that identified right or left location and now we are currently working on live videofeed web app. 
-
+This project aims to make this imagination into a reality, with its first milestones coded entirely by xAI Grok and open the open source community to enhace humanity. 
 
 ## Table of Contents
 
@@ -46,32 +44,34 @@ Unstable versions currently being developed can be found at
 
 - https://mamware.github.io/acoustsee/future
 
-Having the most up to date version of mobile web browsers is diserable, yet most mobile internet browsers from 2021 should work.
+To use it, having the most up to date version of mobile web browsers is diserable, yet most mobile internet browsers from 2021 should work.
 
-For a mobile browser compability follow [Usage](docs/USAGE.md) there you also find instruccion to run the first prof of concept made with Python
+For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) there you also find instruccions to run the first prof of concept made with Python
 
-### Harware needed:
+### Hardware needed:
 
-
-A mobile phone/cellphone with a front camera
+A mobile phone/cellphone from 2021 and up, with a front facing camera and headphones.
 
 ### Steps to initialize
 
-- The webapp is designed to be used with a mobile phone where its front camera (and screen) are facing the desired objetive to be transformed in to sound.
+- The webapp is designed to be used with a mobile phone where its front camera (and screen) are facing the desired objetive to be transformed in to sound, wearing the mobile phone like a necklage is its first use case in mind.
 
-- Enter https://mamware.github.io/acoustsee/present  (or your version of preference)
+- Enter https://mamware.github.io/acoustsee/present  (or your version of preference from [Usage](docs/USAGE.md))
 
-- The User Interface of the webapp is split into five regions, a top border rectangle where the settings button is and a bottom rectangle where the start and stop navigation toggle is.
+- The User Interface of the webapp is split into five regions,
+  - Center rectangle: Audio enabler, a touchplace holder that enables the webpage to produce sound. 
+  - Top border rectangle: Settings SHIFTer button 
+  - Bottom rectangle: Start and Stop button 
+  - Left rectangle: Day and night switch for light logic inversion
+  - Right rectangle: Languaje switcher
+  - SHIFTed left rectangle (settings enabled): Grid selector, changes how the camera frames or "grids" the environment
+  - SHIFTed right rectangle (settings enabled): Audio engine selector, changes how the sound synthetizer reacts to the selected grid.   
 
-- There are big rectangular buttons at the side too, the left is the sensivity inverter and right cicles between languajes.
-
-- The settings button toggles the funcion of the left and right button into advances options, like grid selector for the left and synthesis method for the right. 
-  
-IMPORTANT: The processing of the camera is done privately on your device and not a single frame has or is sent outside your device. A permision to access the camera by the browser will be requested in order to do the local processing and thus generate the audio for the navigation.
+IMPORTANT: The processing of the camera is done privately on your device and not a single frame is sent outside your device processor. A permision to access the camera by the browser will be requested in order to do this local processing and thus generate the audio for the navigation.
 
 ### [Status](#status)
 
-**Milestone 4 (Current)**: **Work in Progress**  /future
+**Milestone 4 (Current)**: **Developing in Progress**  /future
 
 - New user interface with selectable grid and synth engine
 - Adding Spanish to the speech sinthetizer 
