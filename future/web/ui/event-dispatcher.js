@@ -80,6 +80,7 @@ export function createEventDispatcher() {
           const pre = DOM.debug.querySelector('pre');
           if (pre) {
             pre.textContent += `${new Date().toISOString()} - ${message}\n`;
+            pre.scrollTop = pre.scrollHeight; // Auto-scroll to latest error
           } else {
             console.error('Debug pre element not found');
           }
