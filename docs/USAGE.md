@@ -1,6 +1,8 @@
-## Installation
+## USAGE
 
-Please note that the current best performer can be run without installation directly from a internet browser, the latest best performer is hosted at: 
+Please note that the current best performer can be run without installation directly from a internet browser, the latest stable version is hosted at: 
+
+https://mamware.github.io/acoustsee/present
 
 Browser compability list:
 
@@ -18,7 +20,9 @@ Privacy Note: All of the video processing is done at your device, not a single f
 
 
 
-### Project structure
+
+
+### Project structure for TBD version
 
 ```
 acoustsee/
