@@ -5,25 +5,24 @@
 
 ## [Introduction](#introduction)
 
-AcoustSee is an open-source project kickstarted by MAMware and coded entirely by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
-
-First we (Grok and I) tested the concept with a Python script and still image, once validated we moved to do the processing of a live video with Hilbert curves inspired by 3Blue1Brown (the great Grant Sanderson), among with te idea to take the advantaje of Head-Related Transfer Function (HRTF) to create spatial awarenes that maps objects positons into distinct sounds. 
-
-This project was entirely coded by Grok at both grok.com and x.com and we’re also sharing the step-by-step journey (conversation) to inspire others to contribute to accessibility tech.
+AcoustSee is an open-source project kickstarted with its first milestones coded entirely by xAI Grok with the aim to transform a visual environments into a intuitive soundscape thus  mpowering the user to experience the visual world just by audio cues.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
 ### Project Vision
 
-Imagine a person who is unable to see and it is sitting at a park, with headphones on, wich are paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, where children are playing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content and wen it swings closer its spectra complexity raises. 
+Synesthesia is the translation from a visual to a sound, with this concept in mind my approach was to aid a user in real time by taking a camera imput into a just a soundscape, where a sidewalk could have a distintive soundscape being heard at both hear, a wall at the left being hear with another distintive sound at the left ear, a car, a hole... a light... and so on... you catch where im going? No?, lets try further.
 
-This kickstart aims to make this imagination a reality and we first started a prof of concept using static images to a tone that identified right or left location. The python version is deprecated and was only a proof of concept. We are currently working on live video webapp. Expanding and optimizing to mobile operating systems in the near future will be considered too.
+Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content, lower volume and wen it swings closer its spectra complexity raises. 
+
+This project aims to make this imagination into a reality. 
+First started a prof of concept using static images to a tone that identified right or left location and now we are currently working on live videofeed web app. 
+
 
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Installation](docs/INSTALL.md)
-- [Usage](#usage)
+- [Usage](docs/USAGE.md)
 - [Status](#status)
 - [Project structure](#project_structure)
 - [Changelog](docs/CHANGELOG.md)
@@ -33,35 +32,46 @@ This kickstart aims to make this imagination a reality and we first started a pr
 - [License](docs/LICENSE.md)
 - [FAQ](docs/FAQ.md)
 
-### [Installation](docs/INSTALL.md)
+### [Usage](docs/USAGE.md)
 
-The latest best performer can be run without installation directly from 
+The latest stable version can be run from 
 
-- https://mamware.github.io/acoustsee/web
+- https://mamware.github.io/acoustsee/present
 
-For a mobile browser compability follow the #install link (docs/INSTALL.md) there you also find instruccion to run the first prof of concept made with Python
+Previous versions can be found at
 
-### [Usage](#usage)
+- https://mamware.github.io/acoustsee/past
 
-- Enter https://mamware.github.io/acoustsee/web
+Unstable versions currently being developed can be found at
 
-- The webapp is designed with a mobile phone as main tech stake use case where its front camera (and screen) are facing the desired objetive to be transformed in to sound.
+- https://mamware.github.io/acoustsee/future
 
-- The User Interface of the webapp is split into five regions, a top border rectangle where a settings button is and a bottom border rectangle where the start and stop navigation toggle is.
+Having the most up to date version of mobile web browsers is diserable, yet most mobile internet browsers from 2021 should work.
 
-- Also there are big rectangular buttons at the left and right border of the device where the left (right if device is being weared for navigation) swichets betten day (or high light ambience) and night (or low light ambience). The right buttom switches between languajes.
+For a mobile browser compability follow [Usage](docs/USAGE.md) there you also find instruccion to run the first prof of concept made with Python
 
-- The settings button toggles the funcion of the left and right button into advances options, like grid selector and synthesis method. 
+### Harware needed:
+
+
+A mobile phone/cellphone with a front camera
+
+### Steps to initialize
+
+- The webapp is designed to be used with a mobile phone where its front camera (and screen) are facing the desired objetive to be transformed in to sound.
+
+- Enter https://mamware.github.io/acoustsee/present  (or your version of preference)
+
+- The User Interface of the webapp is split into five regions, a top border rectangle where the settings button is and a bottom rectangle where the start and stop navigation toggle is.
+
+- There are big rectangular buttons at the side too, the left is the sensivity inverter and right cicles between languajes.
+
+- The settings button toggles the funcion of the left and right button into advances options, like grid selector for the left and synthesis method for the right. 
   
-- The processing of the camera is done privately on your device and not a single frame has to be sent outside your device, still a permision to access the camera by the browser will be requested by the browser to do the local processing of the webcam data into generating the audio for the navigation.
+IMPORTANT: The processing of the camera is done privately on your device and not a single frame has or is sent outside your device. A permision to access the camera by the browser will be requested in order to do the local processing and thus generate the audio for the navigation.
 
-Having the most up to date version of mobile web browsers is diserable, yet most mobile internet browsers from 2021 should work, for a detailed list see
-(docs/INSTALL.md) 
+### [Status](#status) at developing branch
 
-
-### [Status](#status)
-
-**Milestone 4 (Current)**: **Work in Progress**  
+**Milestone 4 (Current)**: **Work in Progress**  /future
 
 - New user interface with selectable grid and synth engine
 - Adding Spanish to the speech sinthetizer 
@@ -80,9 +90,8 @@ Having the most up to date version of mobile web browsers is diserable, yet most
 ```
 
 acoustsee/
-├── .github/workflows/         
-│   └── deploy.yml             # GitHub Actions for deployment (deprecated)
-├── web/                       # Modular webapp
+
+├── present/                      # Current Stable Modular Webapp
 │   ├── index.html
 │   ├── styles.css
 │   ├── main.js
@@ -91,10 +100,8 @@ acoustsee/
 │   ├── grid-selector.js
 │   ├── ui/
 │   │   ├── rectangle-handlers.js # Handles settingsToggle, modeBtn, languageBtn, startStopBtn
-│   │   ├── trapezoid-handlers.js # Handles settingsToggle, modeBtn, languageBtn, startStopBtn (deprecated)
 │   │   ├── settings-handlers.js  # Manages gridSelect, synthesisSelect, languageSelect, fpsSelect
 │   │   ├── frame-processor.js    # Processes video frames (processFrame)
-│   │   ├── templates.js          # Generates UI elements (e.g., select dropdowns) DEPRECATED
 │   │   └── event-dispatcher.js   # Routes events to handlers
 │   └── synthesis-methods/
 │       ├── grids/
@@ -110,15 +117,15 @@ acoustsee/
 │   ├── settings-handlers.test.js
 │   └── frame-processor.test.js
 ├── docs/                      # Documentation
-│   ├── INSTALL.md
+│   ├── USAGE.md
 │   ├── CHANGELOG.md
 │   ├── CONTRIBUTING.md
 │   ├── TO_DO.md
 │   ├── DIAGRAMS.md
 │   ├── LICENSE.md
 │   └── FAQ.md
-├── history/               # Deprecated files
-├── garbage/               # Temporal files to be deleted
+├── past/                     # Historic repository, older versions.
+├── future/                   # Meant to be used for fast, live testing of new features and improvements
 └── README.md
 
 ```
@@ -133,11 +140,11 @@ acoustsee/
 
 Resume of TO_DO:
 
-- Mermaid diagrams to reflect current Modular Single Responsability Principle
-- Further Modularity: e.g., modularize audio-processor.js
+- Haptic feedback via Vibration API (in progress at v0.9.8.8)
+- Console log on device screen and mail to feature for debuggin. (in progress at v0.9.8.8)
 - New languajes for the speech sinthetizer
-- Haptic feedback via Vibration API
-- Console log on device screen for debuggin.
+- Audio imput from camera into the headphones among the synthetized sound from camera.
+- Further Modularity: e.g., modularize audio-processor.js
 - Optimizations aiming the use less resources and achieve better performance, ie: implementing Web Workers and using WebAssembly.
 - Reintroducing Hilbert curves.
 - Gabor filters for motion detection.
@@ -148,17 +155,25 @@ Resume of TO_DO:
 - Testing true HRTF, loading CIPIC HRIR data.
 - New capabilities like screen/video capture to sound engine.
 - Android/iOS app developtment if considerable performance gain can be achieved.
+- Mermaid diagrams to reflect current Modular Single Responsability Principle
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
-- Diagramas covered the Turnk Based Development approach wich as been now deprecated. Still, you will find there the past Process Frame Flow, Audio Generation Flow and Motion Detection such as oscillator logic at:
+Diagrams covering the Turnk Based Development approach. 
 
-https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
+Reflecting:  
+  - Process Frame Flow
+  - Audio Generation Flow
+  - Motion Detection such as oscillator logic.
 
 ### [License](docs/LICENSE.md)
 
 - GPL-3.0 license details
   
+### [FAQ](docs/FAQ.md)
+
+- Follow the link for list of the Frecuently Asqued Questions.
+
 ### [FAQ](docs/FAQ.md)
 
 - Follow the link for list of the Frecuently Asqued Questions.
