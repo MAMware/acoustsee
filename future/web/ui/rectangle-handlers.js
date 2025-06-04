@@ -12,6 +12,11 @@ export function setupRectangleHandlers({ dispatchEvent }) {
   let rafId;
   let inactivityTimeout;
 
+  // Ensure debug panel is hidden on load
+  if (DOM.debug) {
+    DOM.debug.style.display = 'none';
+  }
+  
   function tryVibrate(event) {
     if (event.cancelable && navigator.vibrate && isAudioInitialized && audioContext) {
       event.preventDefault();
