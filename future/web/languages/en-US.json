@@ -15,5 +15,5 @@
   "frameProcessingError": "Error processing video frame",
   "fpsBtn": "Frame rate set to {fps} FPS",
   "emailDebug": "Error log email {state}",
-  "emailError": "Failed to generate error log email",
+  "emailError": "Failed to generate error log email"
 }
