@@ -7,6 +7,10 @@ export let audioContext = null;
 export let isAudioInitialized = false;
 export let oscillators = [];
 
+export function setAudioContext(newContext) {
+  audioContext = newContext;
+}
+
 export async function initializeAudio(context) {
   if (isAudioInitialized || !context) return false;
   try {
@@ -35,7 +39,6 @@ export async function initializeAudio(context) {
     return true;
   } catch (error) {
     console.error('Audio Initialization Error:', error.message);
-    // Optionally log to debug panel (remove if you prefer less logging)
     if (window.dispatchEvent) {
       window.dispatchEvent('logError', { message: `Audio init error: ${error.message}` });
     }
