@@ -15,5 +15,6 @@
   "frameProcessingError": "Error al procesar el cuadro de video",
   "fpsBtn": "Velocidad de fotogramas establecida en {fps} FPS",
   "emailDebug": "Correo de registro de errores {state}",
+  "audioError": "Error de audio, por favor toca de nuevo para activar el audio",
   "emailError": "No se pudo generar el correo de registro de errores"
 }
