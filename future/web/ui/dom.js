@@ -1,4 +1,4 @@
-export const DOM = {
+let DOM = {
   settingsToggle: null,
   audioToggle: null,
   modeBtn: null,
@@ -16,11 +16,11 @@ export function initDOM() {
   return new Promise((resolve) => {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       assignDOMElements();
-      resolve();
+      resolve(DOM);
     } else {
       document.addEventListener('DOMContentLoaded', () => {
         assignDOMElements();
-        resolve();
+        resolve(DOM);
       });
     }
   });
