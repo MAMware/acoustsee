@@ -5,17 +5,18 @@
 
 ## [Introduction](#introduction)
 
-AcoustSee aims to transform a visual environment into a intuitive soundscape, empowering the user to experience the visual world by audio cues.
+This AcoustSee repository contains javascript algorithms tgat aims to transform a visual environment, from a camera for example, into a intuitive soundscape in a synesthesia transform, empowering the user to experience the visual world by audio cues.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
 ### Project Vision
 
-Synesthesia is the translation from a visual to a sound, with this concept in mind my approach was to aid a user in real time by taking a camera imput into a just a soundscape, where a sidewalk could have a distintive soundscape being heard at both hear, a wall at the left being hear with another distintive sound at the left ear, a car, a hole... a light... and so on... you catch where im going? No?, lets try further.
+Our synesthesia ins this project is the translation from a visual to a sound, with a user experiencie for a visually challenged user. With this concept in mind the approach is to aid a user navigation and synthesia acustical visual perception in real time. 
+Taking a camera imput into a soundscape, where a sidewalk could have a distintive spcetrum signature that is being heard by both hears, a wall at the left with its own distintive spectrum signature syntheses another sounds, a car, a hole... a light... and so on... you catch where im going? No?, lets try another example.
 
 Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content, lower volume and wen it swings closer its spectra complexity raises. 
 
-This project aims to make this imagination into a reality, with its first milestones coded entirely by xAI Grok and open the open source community to enhace humanity. 
+This project aims to make this imagination into a reality, with its first milestones coded entirely by xAI Grok and now to the open source community to enhace humanity perception. 
 
 ## Table of Contents
 
