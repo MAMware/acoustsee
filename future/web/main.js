@@ -5,10 +5,15 @@ import { setupRectangleHandlers } from './ui/rectangle-handlers.js';
 import { setupSettingsHandlers } from './ui/settings-handlers.js';
 import { createEventDispatcher } from './ui/event-dispatcher.js';
 import { initDOM } from './ui/dom.js';
+import { setDOM, setDispatchEvent } from './context.js';
 
 console.log('main.js: Starting initialization');
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const DOM = await initDOM();
+  setDOM(DOM);
+  const { dispatchEvent } = createEventDispatcher(DOM);
+  setDispatchEvent(dispatchEvent);
   console.log('DOM loaded, initializing AcoustSee');
   try {
     // Wait for DOM elements to be assigned and get the DOM object
