@@ -12,6 +12,12 @@ export function setupRectangleHandlers({ dispatchEvent, DOM }) {
 
   console.log('setupRectangleHandlers: Starting setup');
 
+  // Ensure DOM is defined
+  if (!DOM) {
+    console.error('DOM is undefined in setupRectangleHandlers');
+    return;
+  }
+
   // Ensure debug panel is hidden on load
   if (DOM.debug) {
     DOM.debug.style.display = 'none';
