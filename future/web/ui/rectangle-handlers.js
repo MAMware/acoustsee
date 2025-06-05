@@ -121,20 +121,25 @@ export function setupRectangleHandlers({ dispatchEvent, DOM }) {
         let newContext;
         try {
           console.log('Creating new AudioContext');
-          newContext = new (window.AudioContext || window.webkitAudioContext)();
+          const newContext = new (window.AudioContext || window.webkitAudioContext)();
+          console.log('AudioContext state:', newContext.state);
           if (newContext.state === 'suspended') {
-            console.log('Resuming AudioContext');
-            newContext.resume();
+            console.log('Resuming AudioContext immediately after user gesture');
+            await newContext.resume(); // Resume immediately after creation
+            console.log('AudioContext resumed, state:', newContext.state);
           }
           if (typeof setAudioContext !== 'function') {
             throw new Error('setAudioContext is not defined');
+          }        
+         setAudioContext(newContext);
+          const audioInitSuccess = await ensureAudioContext();
+          if (!audioInitSuccess) {
+            throw new Error('Failed to initialize audio after context creation');
           }
-          setAudioContext(newContext);
-          ensureAudioContext();
         } catch (err) {
           console.error('AudioContext creation/resume failed:', err.message);
           dispatchEvent('logError', { message: `AudioContext creation/resume failed: ${err.message}` });
-          speak('audioError', { message: 'Please tap again to enable audio' });
+          await speak('audioError', { message: 'Please tap again to enable audio' });
           return;
         }
       }
