@@ -3,21 +3,24 @@
  * Placed in ui/ due to interaction with videoFeed and imageCanvas elements.
  */
 import { playAudio } from '../audio-processor.js';
-import { skipFrame, setSkipFrame, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, frameCount, lastTime } from '../state.js';
-import { DOM } from './dom.js';
+import { skipFrame, setSkipFrame, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, frameCount, lastTime, settings } from '../state.js';
+
 
 /**
  * Processes a single video frame, converting it to grayscale and passing to audio synthesis.
  * @param {HTMLVideoElement} videoFeed - The video element providing frames.
  * @param {HTMLCanvasElement} canvas - The canvas for drawing frames.
  */
-export function processFrame(videoFeed = DOM.videoFeed, canvas = DOM.imageCanvas) {
+export function processFrame(videoFeed, canvas, DOM) {
   if (skipFrame) {
     setSkipFrame(false);
     return;
   }
-  if (!videoFeed || !canvas) {
-    console.error('Missing videoFeed or canvas elements');
+  if (!videoFeed || !canvas || !DOM) {
+    console.error('Missing required parameters in processFrame:', { videoFeed, canvas, DOM });
+    if (DOM && window.dispatchEvent) {
+      window.dispatchEvent('logError', { message: 'Missing videoFeed, canvas, or DOM in processFrame' });
+    }
     return;
   }
   const currentTime = performance.now();
