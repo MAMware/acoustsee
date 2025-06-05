@@ -4,14 +4,18 @@ export let dispatchEvent = null;
 import { setAudioInterval, settings } from '../state.js';
 import { processFrame } from './frame-processor.js';
 import { speak } from './utils.js';
-import { DOM } from './dom.js'; // Use cached DOM elements
-
 /**
  * Creates an event dispatcher for handling UI updates and frame processing.
  * @returns {Object} An object with a dispatchEvent method to handle events.
  */
-export function createEventDispatcher() {
-  // Event handlers for different dispatched events
+export function createEventDispatcher(DOM) {
+  console.log('createEventDispatcher: Initializing event dispatcher');
+ // Ensure DOM is defined
+  if (!DOM) {
+    console.error('DOM is undefined in createEventDispatcher');
+    return { dispatchEvent: () => console.error('dispatchEvent not initialized due to undefined DOM') };
+  }
+  
   const handlers = {
     /**
      * Updates UI text and aria-labels based on settings mode, using speak for accessibility.
@@ -74,13 +78,14 @@ export function createEventDispatcher() {
      * @param {Object} payload - Contains show flag and optional message.
      */
      toggleDebug: ({ show, message }) => {
+      console.log('toggleDebug handler called:', { show, message });
       if (DOM.debug) {
         DOM.debug.style.display = show ? 'block' : 'none';
         if (message && show) {
           const pre = DOM.debug.querySelector('pre');
           if (pre) {
             pre.textContent += `${new Date().toISOString()} - ${message}\n`;
-            pre.scrollTop = pre.scrollHeight; // Auto-scroll to latest error
+            pre.scrollTop = pre.scrollHeight;
           } else {
             console.error('Debug pre element not found');
           }
@@ -114,7 +119,7 @@ export function createEventDispatcher() {
    }
  };
 
-  // Return for local use
+  console.log('createEventDispatcher: Dispatcher initialized');
   return { dispatchEvent };
 }
 
