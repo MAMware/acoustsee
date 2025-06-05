@@ -12,6 +12,12 @@ export function setupSettingsHandlers({ dispatchEvent, DOM }) {
     console.log('setupSettingsHandlers: Starting setup');
     let settingsMode = false;
 
+    // Ensure DOM is defined
+    if (!DOM) {
+        console.error('DOM is undefined in setupSettingsHandlers');
+        return;
+    }
+
     // FPS selection (optional, can be reintroduced if needed)
     const fpsSelect = document.createElement('select');
     fpsSelect.id = 'fpsSelect';
