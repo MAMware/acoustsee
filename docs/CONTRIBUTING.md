@@ -114,6 +114,74 @@ The `main` branch is then deployed to production.
   ```bash
   npm test
   ```
+
+## Current Dependency Map
+
+main.js:
+Imports: setupRectangleHandlers (./ui/rectangle-handlers.js), setupSettingsHandlers (./ui/settings-handlers.js), createEventDispatcher (./ui/event-dispatcher.js), initDOM (./ui/dom.js)
+
+Exports: None
+
+Dependencies: Passes DOM to setupRectangleHandlers, setupSettingsHandlers, createEventDispatcher
+
+dom.js:
+Imports: None
+
+Exports: initDOM (returns DOM object)
+
+Dependencies: None
+
+rectangle-handlers.js:
+Imports: processFrame (./frame-processor.js), initializeAudio, isAudioInitialized, setAudioContext (../audio-processor.js), settings, setStream, setAudioInterval, setSkipFrame (../state.js), speak (./utils.js)
+
+Exports: setupRectangleHandlers
+
+Dependencies: Receives DOM and dispatchEvent, passes DOM to processFrame
+
+settings-handlers.js:
+Imports: settings (../state.js), speak (./utils.js)
+
+Exports: setupSettingsHandlers
+
+Dependencies: Receives DOM and dispatchEvent
+
+event-dispatcher.js:
+Imports: setAudioInterval, settings (../state.js), processFrame (./frame-processor.js), speak (./utils.js)
+
+Exports: dispatchEvent, createEventDispatcher
+
+Dependencies: Receives DOM, passes DOM to processFrame
+
+frame-processor.js:
+Imports: playAudio (../audio-processor.js), skipFrame, setSkipFrame, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, frameCount, lastTime, settings (../state.js)
+
+Exports: processFrame
+
+Dependencies: Receives DOM as a parameter
+
+state.js:
+Imports: None
+
+Exports: settings, skipFrame, prevFrameDataLeft, prevFrameDataRight, frameCount, lastTime, setStream, setAudioInterval, setSkipFrame, setPrevFrameDataLeft, setPrevFrameDataRight
+
+Dependencies: None
+
+audio-processor.js (assumed):
+Imports: Unknown (likely settings from ../state.js)
+
+Exports: playAudio, initializeAudio, isAudioInitialized, setAudioContext
+
+Dependencies: Unknown
+
+utils.js:
+Imports: Unknown
+
+Exports: speak
+
+Dependencies: Unknown
+
+
+
 ## Code of Conduct
 Please be kind, inclusive, and collaborative. Let’s make accessibility tech awesome!
 
