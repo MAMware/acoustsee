@@ -1,5 +1,5 @@
 import { processFrame } from './frame-processor.js';
-import { initializeAudio, isAudioInitialized, setAudioContext } from '../audio-processor.js';
+import { initializeAudio, isAudioInitialized, setAudioContext, audioContext } from '../audio-processor.js';
 import { settings, setStream, setAudioInterval, setSkipFrame } from '../state.js';
 import { speak } from './utils.js';
 
@@ -37,7 +37,13 @@ export function setupRectangleHandlers({ dispatchEvent, DOM }) {
     if (!isAudioInitialized) {
       try {
         console.log('ensureAudioContext: Initializing audio');
-        await initializeAudio(audioContext);
+        if (!audioContext) {
+          throw new Error('audioContext is not initialized. Please tap audio toggle again.');
+        }
+        const initSuccess = await initializeAudio(audioContext);
+        if (!initSuccess) {
+          throw new Error('Audio initialization failed');
+        }
         audioEnabled = true;
         if (DOM.audioToggle) DOM.audioToggle.textContent = 'Audio On';
         await speak('audioOn');
@@ -109,7 +115,7 @@ export function setupRectangleHandlers({ dispatchEvent, DOM }) {
     setSkipFrame(false);
     lastFrameTime = timestamp;
     console.log('Processing frame at:', timestamp);
-    processFrame(DOM.videoFeed, DOM.imageCanvas);
+    processFrame(DOM.videoFeed, DOM.imageCanvas, DOM);
     rafId = requestAnimationFrame(processFrameLoop);
   }
 
@@ -117,31 +123,52 @@ export function setupRectangleHandlers({ dispatchEvent, DOM }) {
     DOM.audioToggle.addEventListener('touchstart', (event) => {
       console.log('audioToggle touched');
       tryVibrate(event);
-      if (!audioEnabled) {
-        let newContext;
-        try {
-          console.log('Creating new AudioContext');
-          const newContext = new (window.AudioContext || window.webkitAudioContext)();
-          console.log('AudioContext state:', newContext.state);
-          if (newContext.state === 'suspended') {
-            console.log('Resuming AudioContext immediately after user gesture');
-            await newContext.resume(); // Resume immediately after creation
+      if (audioEnabled) {
+        console.log('Audio already enabled');
+        return;
+      }
+      try {
+        console.log('Creating new AudioContext');
+        const newContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('AudioContext state after creation:', newContext.state);
+        // Synchronously resume within the user gesture
+        if (newContext.state === 'suspended') {
+          console.log('Resuming AudioContext synchronously after user gesture');
+          newContext.resume().then(() => {
             console.log('AudioContext resumed, state:', newContext.state);
-          }
-          if (typeof setAudioContext !== 'function') {
-            throw new Error('setAudioContext is not defined');
-          }        
-         setAudioContext(newContext);
-          const audioInitSuccess = await ensureAudioContext();
-          if (!audioInitSuccess) {
-            throw new Error('Failed to initialize audio after context creation');
-          }
-        } catch (err) {
-          console.error('AudioContext creation/resume failed:', err.message);
-          dispatchEvent('logError', { message: `AudioContext creation/resume failed: ${err.message}` });
-          await speak('audioError', { message: 'Please tap again to enable audio' });
-          return;
+            if (newContext.state !== 'running') {
+              throw new Error('AudioContext failed to resume');
+            }
+            if (typeof setAudioContext !== 'function') {
+              throw new Error('setAudioContext is not defined');
+            }
+            setAudioContext(newContext);
+            // Now that context is set, initialize asynchronously
+            ensureAudioContext().catch(err => {
+              console.error('Async audio initialization failed:', err.message);
+              dispatchEvent('logError', { message: `Async audio init failed: ${err.message}` });
+              speak('audioError', { message: 'Please tap again to enable audio' });
+            });
+          }).catch(err => {
+            console.error('AudioContext resume failed:', err.message);
+            dispatchEvent('logError', { message: `AudioContext resume failed: ${err.message}` });
+            speak('audioError', { message: 'Please tap again to enable audio' });
+          });
+        } else if (newContext.state === 'running') {
+          console.log('AudioContext is already running');
+          setAudioContext(newContext);
+          ensureAudioContext().catch(err => {
+            console.error('Async audio initialization failed:', err.message);
+            dispatchEvent('logError', { message: `Async audio init failed: ${err.message}` });
+            speak('audioError', { message: 'Please tap again to enable audio' });
+          });
+        } else {
+          throw new Error(`Unexpected AudioContext state: ${newContext.state}`);
         }
+      } catch (err) {
+        console.error('AudioContext creation failed:', err.message);
+        dispatchEvent('logError', { message: `AudioContext creation failed: ${err.message}` });
+        speak('audioError', { message: 'Please tap again to enable audio' });
       }
     });
     console.log('audioToggle event listener attached');
