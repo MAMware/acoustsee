@@ -82,10 +82,8 @@ export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrame
     }
   }
 
-  const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
+const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
   const rightResult = mapFrame(rightFrame, halfWidth, height, prevFrameDataRight, 1);
-  prevFrameDataLeft = leftResult.newFrameData;
-  prevFrameDataRight = rightResult.newFrameData;
 
   const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
   switch (settings.synthesisEngine) {
@@ -98,5 +96,8 @@ export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrame
       break;
   }
 
-  return { prevFrameDataLeft, prevFrameDataRight };
+  return {
+    prevFrameDataLeft: leftResult.newFrameData,
+    prevFrameDataRight: rightResult.newFrameData,
+  };
 }
