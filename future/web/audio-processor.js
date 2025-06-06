@@ -1,5 +1,5 @@
 import { settings } from './state.js';
-import { mapFrame } from './grid-dispatcher.js'; 
+import { mapFrame } from './grid-dispatcher.js';
 import { playSineWave } from './synthesis-methods/engines/sine-wave.js';
 import { playFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
 
@@ -9,14 +9,22 @@ export let oscillators = [];
 
 export function setAudioContext(newContext) {
   audioContext = newContext;
+  isAudioInitialized = false; // Reset state when setting a new context
 }
 
 export async function initializeAudio(context) {
-  if (isAudioInitialized || !context) return false;
+  if (isAudioInitialized || !context) {
+    console.warn('initializeAudio: Already initialized or no context provided');
+    return false;
+  }
   try {
     audioContext = context;
     if (audioContext.state === 'suspended') {
+      console.log('initializeAudio: Resuming AudioContext');
       await audioContext.resume();
+    }
+    if (audioContext.state !== 'running') {
+      throw new Error(`AudioContext is not running, state: ${audioContext.state}`);
     }
     oscillators = Array(24).fill().map(() => {
       const osc = audioContext.createOscillator();
@@ -36,6 +44,7 @@ export async function initializeAudio(context) {
       utterance.lang = settings.language || 'en-US';
       window.speechSynthesis.speak(utterance);
     }
+    console.log('initializeAudio: Audio initialized successfully');
     return true;
   } catch (error) {
     console.error('Audio Initialization Error:', error.message);
@@ -54,7 +63,14 @@ export async function initializeAudio(context) {
 }
 
 export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
-  if (!isAudioInitialized || !audioContext) return { prevFrameDataLeft, prevFrameDataRight };
+  if (!isAudioInitialized || !audioContext || audioContext.state !== 'running') {
+    console.warn('playAudio: Audio not initialized or context not running', {
+      isAudioInitialized,
+      audioContext: !!audioContext,
+      state: audioContext?.state,
+    });
+    return { prevFrameDataLeft, prevFrameDataRight };
+  }
 
   const halfWidth = width / 2;
   const leftFrame = new Uint8ClampedArray(halfWidth * height);
