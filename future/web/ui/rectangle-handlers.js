@@ -8,7 +8,7 @@ export function setupRectangleHandlers({ dispatchEvent, DOM }) {
   let lastFrameTime = performance.now();
   let audioEnabled = false;
   let rafId;
-  let inactivityTimeout;
+  //let inactivityTimeout;
 
   console.log('setupRectangleHandlers: Starting setup');
 
@@ -75,31 +75,31 @@ export function setupRectangleHandlers({ dispatchEvent, DOM }) {
     return true;
   }
 
-  function resetInactivityTimeout() {
-    clearTimeout(inactivityTimeout);
-    inactivityTimeout = setTimeout(() => {
-      if (settings.stream && audioContext) {
-        console.log('Inactivity timeout: Stopping stream');
-        settings.stream.getTracks().forEach(track => {
-          console.log('Stopping track:', track);
-          track.stop();
-        });
-        setStream(null);
-        if (DOM.videoFeed) {
-          DOM.videoFeed.srcObject = null;
-          DOM.videoFeed.style.display = 'none';
-        }
-        audioContext.suspend();
-        if (rafId) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-          setAudioInterval(null);
-        }
-        dispatchEvent('updateUI', { settingsMode: false, streamActive: false });
-        if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
-      }
-    }, 60000);
-  }
+  //function resetInactivityTimeout() {
+  //  clearTimeout(inactivityTimeout);
+  //  inactivityTimeout = setTimeout(() => {
+  //    if (settings.stream && audioContext) {
+  //      console.log('Inactivity timeout: Stopping stream');
+  //      settings.stream.getTracks().forEach(track => {
+  //        console.log('Stopping track:', track);
+  //        track.stop();
+  //      });
+  //      setStream(null);
+  //      if (DOM.videoFeed) {
+  //        DOM.videoFeed.srcObject = null;
+  //        DOM.videoFeed.style.display = 'none';
+  //      }
+  //      audioContext.suspend();
+  //      if (rafId) {
+  //        cancelAnimationFrame(rafId);
+  //        rafId = null;
+  //        setAudioInterval(null);
+  //      }
+  //      dispatchEvent('updateUI', { settingsMode: false, streamActive: false });
+  //      if (DOM.loadingIndicator) DOM.loadingIndicator.style.display = 'none';
+  //    }
+  //  }, 60000);
+ // }
 
   function processFrameLoop(timestamp) {
     if (!settings.stream || !audioEnabled) {
@@ -307,27 +307,27 @@ export function setupRectangleHandlers({ dispatchEvent, DOM }) {
     console.error('emailDebug element not found');
   }
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && settings.stream && audioContext) {
-      audioContext.suspend();
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-        setAudioInterval(null);
-      }
-    } else if (!document.hidden && settings.stream && audioContext) {
-      audioContext.resume();
-      processFrameLoop(performance.now());
-    }
-  });
+ // document.addEventListener('visibilitychange', () => {
+ //   if (document.hidden && settings.stream && audioContext) {
+ //     audioContext.suspend();
+ //     if (rafId) {
+ //       cancelAnimationFrame(rafId);
+ //       rafId = null;
+ //       setAudioInterval(null);
+ //     }
+ //   } else if (!document.hidden && settings.stream && audioContext) {
+ //     audioContext.resume();
+ //     processFrameLoop(performance.now());
+ //   }
+ // });
 
-  document.addEventListener('touchstart', resetInactivityTimeout);
+//  document.addEventListener('touchstart', resetInactivityTimeout);
 
-  setTimeout(() => {
-    Object.entries(DOM).forEach(([key, value]) => {
-      console.log(`DOM Element - ${key}:`, value);
-    });
-  }, 100);
+//  setTimeout(() => {
+//    Object.entries(DOM).forEach(([key, value]) => {
+//      console.log(`DOM Element - ${key}:`, value);
+//    });
+//  }, 100);
 
   console.log('setupRectangleHandlers: Setup complete');
 }
