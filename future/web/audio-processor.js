@@ -82,7 +82,7 @@ export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrame
     }
   }
 
-const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
+  const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
   const rightResult = mapFrame(rightFrame, halfWidth, height, prevFrameDataRight, 1);
 
   const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
@@ -100,4 +100,29 @@ const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1)
     prevFrameDataLeft: leftResult.newFrameData,
     prevFrameDataRight: rightResult.newFrameData,
   };
+}
+
+export async function cleanupAudio() {
+  if (!isAudioInitialized || !audioContext) {
+    console.warn('cleanupAudio: No audio context to clean up');
+    return;
+  }
+  try {
+    oscillators.forEach(({ osc, gain, panner }) => {
+      gain.gain.setValueAtTime(0, audioContext.currentTime);
+      osc.stop(audioContext.currentTime + 0.1);
+      osc.disconnect();
+      gain.disconnect();
+      panner.disconnect();
+    });
+    oscillators = [];
+    isAudioInitialized = false;
+    audioContext = null;
+    console.log('cleanupAudio: Audio resources cleaned up successfully');
+  } catch (error) {
+    console.error('Audio Cleanup Error:', error.message);
+    if (window.dispatchEvent) {
+      window.dispatchEvent('logError', { message: `Audio cleanup error: ${error.message}` });
+    }
+  }
 }
