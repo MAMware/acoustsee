@@ -1,4 +1,4 @@
-import { audioContext, oscillators } from '../../audio-processor.js';
+import { audioContext, oscillators } from './audio-processor.js';
 
 export function playFMSynthesis(notes) {
     let oscIndex = 0;
