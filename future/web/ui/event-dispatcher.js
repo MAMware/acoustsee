@@ -1,28 +1,18 @@
-// Export dispatchEvent for global access (needed for mailto: feature and frame-processor.js)
 export let dispatchEvent = null;
 
 import { setAudioInterval, settings } from '../state.js';
 import { processFrame } from './frame-processor.js';
 import { speak } from './utils.js';
-/**
- * Creates an event dispatcher for handling UI updates and frame processing.
- * @returns {Object} An object with a dispatchEvent method to handle events.
- */
+
 export function createEventDispatcher(DOM) {
   console.log('createEventDispatcher: Initializing event dispatcher');
- // Ensure DOM is defined
   if (!DOM) {
     console.error('DOM is undefined in createEventDispatcher');
     return { dispatchEvent: () => console.error('dispatchEvent not initialized due to undefined DOM') };
   }
-  
+
   const handlers = {
-    /**
-     * Updates UI text and aria-labels based on settings mode, using speak for accessibility.
-     * @param {Object} payload - Contains settingsMode and streamActive states.
-     */
     updateUI: async ({ settingsMode, streamActive }) => {
-      // Check critical DOM elements to prevent null errors
       if (!DOM.settingsToggle || !DOM.modeBtn || !DOM.languageBtn || !DOM.startStopBtn) {
         console.error('Missing critical DOM elements for UI update');
         dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
@@ -59,25 +49,28 @@ export function createEventDispatcher(DOM) {
         DOM.startStopBtn.textContent = startStopState === 'started' ? 'Start' : 'Stop';
       }
     },
-    /**
-     * Processes a single video frame for audio synthesis.
-     */
-    processFrame: () => processFrame(),
-    /**
-     * Updates the frame processing interval for audio synthesis.
-     * @param {Object} payload - Contains the new interval value.
-     */
+    processFrame: () => {
+      try {
+        processFrame();
+      } catch (err) {
+        console.error('Process frame error:', err.message);
+        dispatchEvent('logError', { message: `Process frame error: ${err.message}` });
+      }
+    },
     updateFrameInterval: ({ interval }) => {
       if (settings.audioInterval) {
         clearInterval(settings.audioInterval);
-        setAudioInterval(setInterval(() => processFrame(), interval));
+        setAudioInterval(setInterval(() => {
+          try {
+            processFrame();
+          } catch (err) {
+            console.error('Process frame error:', err.message);
+            dispatchEvent('logError', { message: `Process frame error: ${err.message}` });
+          }
+        }, interval));
       }
     },
-    /**
-     * Toggles the visibility of the debug panel and logs errors.
-     * @param {Object} payload - Contains show flag and optional message.
-     */
-     toggleDebug: ({ show, message }) => {
+    toggleDebug: ({ show, message }) => {
       console.log('toggleDebug handler called:', { show, message });
       if (DOM.debug) {
         DOM.debug.style.display = show ? 'block' : 'none';
@@ -94,41 +87,30 @@ export function createEventDispatcher(DOM) {
         console.error('Debug element not found');
       }
     },
-    /**
-     * Logs errors to the debug panel.
-     * @param {Object} payload - Contains the error message.
-     */
     logError: ({ message }) => {
       console.error('Logging error:', message);
       handlers.toggleDebug({ show: true, message });
     },
   };
 
-  // Assign global dispatchEvent for global access
- dispatchEvent = (eventName, payload = {}) => {
-   if (handlers[eventName]) {
-     try {
-       handlers[eventName](payload);
-     } catch (err) {
-       console.error(`Error in handler ${eventName}:`, err.message);
-       handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
-     }
-   } else {
-     console.error(`No handler found for event: ${eventName}`);
-     handlers.logError({ message: `No handler for event: ${eventName}` });
-   }
- };
+  dispatchEvent = (eventName, payload = {}) => {
+    if (handlers[eventName]) {
+      try {
+        handlers[eventName](payload);
+      } catch (err) {
+        console.error(`Error in handler ${eventName}:`, err.message);
+        handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
+      }
+    } else {
+      console.error(`No handler found for event: ${eventName}`);
+      handlers.logError({ message: `No handler for event: ${eventName}` });
+    }
+  };
 
   console.log('createEventDispatcher: Dispatcher initialized');
   return { dispatchEvent };
 }
 
-/**
- * Sets text content and aria-label for an element, with null check.
- * @param {HTMLElement} element - DOM element to update.
- * @param {string} text - Text content to set.
- * @param {string} ariaLabel - Aria-label to set.
- */
 function setTextAndAriaLabel(element, text, ariaLabel) {
   if (element) {
     element.textContent = text;
