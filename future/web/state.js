@@ -5,7 +5,8 @@ export const settings = {
   synthesisEngine: 'sine-wave',
   stream: null,
   gridType: 'circle-of-fifths',
-  dayNightMode: 'day'
+  dayNightMode: 'day',
+  isSettingsMode: false
 };
 
 export let skipFrame = false;
