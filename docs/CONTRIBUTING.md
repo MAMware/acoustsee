@@ -115,6 +115,143 @@ The `main` branch is then deployed to production.
   npm test
   ```
 
+Below is a curated to-do list to onboard collaborators, aligning with SWEBOK 4 (Software Engineering Body of Knowledge, 4th Edition), adopting  naming conventions, ensuring correct modularity, and sets a solid ground for AcoustSee. 
+
+Each item includes a rationale tied to open-source success and a Mermaid diagram where relevant to visualize structure or process. 
+
+Adopt SWEBOK 4 Practices for Maintainability and Quality
+
+Objective: Align AcoustSee with SWEBOK 4 to ensure robust software engineering practices, making it easier for contributors to maintain and extend the codebase.
+
+To-Do:
+
+- Software Design (SWEBOK 4, Chapter 3):
+    - Document the architecture using a modular design, separating concerns (e.g., UI, audio processing, state management).
+    - Use context.js for dependency injection to decouple modules, as seen in your codebase.
+- Software Testing (SWEBOK 4, Chapter 5):
+    - Create unit tests for critical modules (e.g., rectangle-handlers.js, audio-processor.js) using Jest or Mocha.
+    - Add integration tests for the frame-to-audio pipeline (e.g., frame-processor.js → grid-dispatcher.js → audio-processor.js).
+- Software Maintenance (SWEBOK 4, Chapter 7):
+    - Set up a CONTRIBUTING.md file with guidelines for code reviews, testing, and issue reporting.
+    - Use GitHub Actions for CI/CD to automate linting, testing, and deployment.
+
+Rationale: SWEBOK 4 ensures a standardized approach, attracting skilled contributors familiar with industry best practices, testing and CI/CD.
+
+**Mermaid Diagram**: High-Level Architecture
+
+```mermaid
+classDiagram
+    class Main {
+        +init() void
+    }
+    class Context {
+        +getDOM() Object
+        +getDispatchEvent() Function
+    }
+    class State {
+        +settings Object
+        +setStream(stream) void
+    }
+    class EventDispatcher {
+        +dispatchEvent(eventName, payload) void
+    }
+    class DOM {
+        +initDOM() Promise~Object~
+    }
+    class RectangleHandlers {
+        +setupRectangleHandlers() void
+    }
+    class AudioProcessor {
+        +initializeAudio(context) Promise~boolean~
+        +playAudio(frameData, width, height) Object
+    }
+    class FrameProcessor {
+        +processFrame() void
+    }
+    class Utils {
+        +speak(elementId, state) Promise~void~
+    }
+    Main --> Context
+    Main --> DOM
+    Main --> EventDispatcher
+    Main --> RectangleHandlers
+    RectangleHandlers --> Context
+    RectangleHandlers --> State
+    RectangleHandlers --> AudioProcessor
+    RectangleHandlers --> Utils
+    AudioProcessor --> State
+    AudioProcessor --> FrameProcessor
+    EventDispatcher --> FrameProcessor
+    EventDispatcher --> Utils
+    FrameProcessor --> DOM
+```
+Modular architecture separating UI (DOM, Utils), state (State), events (EventDispatcher), and audio processing (AudioProcessor, FrameProcessor).
+
+
+
+
+Set up Jest for unit tests and GitHub Actions for CI/CD.
+
+Standard Naming Conventions 
+
+Objective: Adopt consistent naming conventions to improve code readability and maintainability, aligning with open-source standards.
+
+File and Module naming:
+    Use kebab-case for files (e.g., rectangle-handlers.js, audio-processor.js),
+    Refactor service files to PascalCase (e.g., Context.js, EventDispatcher.js) to distinguish them from utilities.
+    Keep camelCase for functions and variables (e.g., setupRectangleHandlers, settings.language)
+
+Translation Files:
+    Ensure languages/en-US.json, languages/es-ES.json use consistent locale codes (e.g., en-US, not en-us).
+
+Documentation:
+    Add JSDoc comments to exports (e.g., speak, initializeAudio) for clarity.
+
+Enhance Modularity for Scalability
+Objective: Restructure AcoustSee for correct modularity, reducing coupling and enabling easier contributions.
+
+To-Do:
+
+Refactor Dependencies:
+Centralize dependency injection in Context.js (e.g., getDOM, getDispatchEvent) to avoid direct imports of DOM or dispatchEvent.
+Move shared constants (e.g., updateInterval, audioInterval) to a config.js module.
+
+Isolate Audio Pipeline:
+Create a dedicated audio/ folder for audio-processor.js, grid-dispatcher.js, sine-wave.js, fm-synthesis.js, hex-tonnetz.js, circle-of-fifths.js.
+Export a single AudioService from audio/index.js to simplify imports.
+
+Decouple UI and Logic:
+Move settings-handlers.js, utils.js, frame-processor.js to ui/handlers/ for clarity.
+Use event-driven communication via EventDispatcher.js for all UI-logic interactions.
+
+Build Tooling:
+Use Vite or Webpack to bundle modules, ensuring correct path resolution (e.g., ../languages/${lang}.json).
+Configure a base path (e.g., /acoustsee/future/web/) to avoid hardcoded paths.
+
+**Audio pipeline**
+
+```mermaid
+graph LR
+    A[RectangleHandlers] -->|dispatchEvent('processFrame')| B[EventDispatcher]
+    B --> C[FrameProcessor]
+    C --> D[AudioService]
+    D --> E[AudioProcessor]
+    D --> F[GridDispatcher]
+    F --> G[HexTonnetz]
+    F --> H[CircleOfFifths]
+    E --> I[SineWave]
+    E --> J[FMSynthesis]
+    D -->|playAudio()| K[Audio Output]
+```
+Modular audio pipeline with AudioService as the entry point.
+
+TO-DO:
+
+Create audio/ folder and AudioService module.
+Refactor imports to use Context.js exclusively.
+Set up Vite with a base path in vite.config.js.
+
+
 ## Current Dependency Map
 
 main.js:
