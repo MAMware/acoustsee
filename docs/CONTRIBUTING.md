@@ -3,22 +3,19 @@ Welcome to `acoustsee`! We’re building spatial audio navigation for the visual
 
 ## How to contribute
 
-1. The `developing` is our playground.
-2. There, you can work in `future` folder wich is meant as palceholder to play around new ideas and radical changes.
-3. IE: To add new synthesis methods artifacts, you place them at `future/web/synthesis-methods/`.
-4. Try this artificts at the `present` folder among the consolidated files from the `past` folder.
-4. You can test locally with `npm start` and verify.
+1. The `developing` branch is our zone(branch).
+2. There, you can work new artifacts in `future` folder, meant as placeholder to play around new ideas and radical changes.
+4. Try this artificts among the consolidated files from the `past` folder.
 5. You could add unit tests in `tests/` and run `npm test`.
 6. Submit a PR to `developing` with a clear description.
 
 Q: Wich is the content and purpuse of the other folders?
-A: At this `developing` branch root you wil find the folders:
-    `past` #Integrating content from both of the `past` and `present` folders from the `main` branch.
-    `present` #Here we ca integrate from our `past` and  `future`. 
-    `future`  #Here we bring artifacts of our wild ideas, new features anything to make radical changes. 
 
-
--the folder `present` at the `developing` branch wil make the `future` of the `staging` branch, so once your PR gets approbed, your `future` while make make it to the while at the `main` folder contains the present and past from the main branch.
+A:
+  `past` #Consolidated files from the `main` branch, usefull to have them at hand for vibe developing technics.
+  `future`  #The playground, a place holder for your new features or to make radical changes. 
+  `present` #Here you can PR the integration resulted from your `future`. // (Considering removing it for simplicity and moving this folder as the staging branch)
+ 
 
 ## Branches 
 
