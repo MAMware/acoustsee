@@ -5,18 +5,18 @@
 
 ## [Introduction](#introduction)
 
-This AcoustSee repository contains javascript algorithms tgat aims to transform a visual environment, from a camera for example, into a intuitive soundscape in a synesthesia transform, empowering the user to experience the visual world by audio cues.
+The content in this repository aims to transform a visual environment into a intuitive soundscape, in a synesthesic transform, empowering the user to experience the visual world by synthetic audio cues in real time.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
 ### Project Vision
 
-Our synesthesia ins this project is the translation from a visual to a sound, with a user experiencie for a visually challenged user. With this concept in mind the approach is to aid a user navigation and synthesia acustical visual perception in real time. 
-Taking a camera imput into a soundscape, where a sidewalk could have a distintive spcetrum signature that is being heard by both hears, a wall at the left with its own distintive spectrum signature syntheses another sounds, a car, a hole... a light... and so on... you catch where im going? No?, lets try another example.
+The synesthesia at project is the translation from a photon to a phonon, with a tech stack that should be easy to get for a regular user, in this case a visually challenged one. 
+This repo holds code that when loaded into a mobile phone browser translates its camera imput into a stereo soundscape, where a sidewalk that the user is waling on could have a distintive spectrum signature that is being hear by both hears, a wall at the left with its should make its  distintive sound signature, a car, a hole... a light... and so on... 
 
-Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content, lower volume and wen it swings closer its spectra complexity raises. 
+>Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has a less broad harmonic content and a lower volume and wen it swings closer its spectra complexity raises, broader and louder. 
 
-This project aims to make this imagination into a reality, with its first milestones coded entirely by xAI Grok and now to the open source community to enhace humanity perception. 
+This project aims to make this imagination into a reality, with its first milestones coded entirely by xAI Grok is now ready to welcome contributors from open source community to enhace in a afordable way, perception. 
 
 ## Table of Contents
 
@@ -33,25 +33,25 @@ This project aims to make this imagination into a reality, with its first milest
 
 ### [Usage](docs/USAGE.md)
 
-The latest stable version can be run from 
+The latest stable proof of concept can be run from 
 
 - https://mamware.github.io/acoustsee/present
 
-Previous versions can be found at
+Previous versions and other approachs can be found at
 
 - https://mamware.github.io/acoustsee/past
 
-Unstable versions currently being developed can be found at
+Unstable versions currently being developed adn tested can be found at
 
 - https://mamware.github.io/acoustsee/future
 
-To use it, having the most up to date version of mobile web browsers is diserable, yet most mobile internet browsers from 2021 should work.
+To use it, having the most up to date version of mobile web browsers is diserable yet most mobile internet browsers from 2021 should work.
 
-For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) there you also find instruccions to run the first prof of concept made with Python
+For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) there you also find instruccions to run the first command line PoC made with Python
 
 ### Hardware needed:
 
-A mobile phone/cellphone from 2021 and up, with a front facing camera and headphones.
+A mobile phone/cellphone from 2021 and up, with a front facing camera and stereo headphones with mic.
 
 ### Steps to initialize
 
@@ -72,19 +72,16 @@ IMPORTANT: The processing of the camera is done privately on your device and not
 
 ### [Status](#status)
 
-**Milestone 4 (Current)**: **Developing in Progress**  /future
+**Milestone 4 (Current)**: **Developing in Progress**  at /future folder from developing branch
 
-- New user interface with selectable grid and synth engine
-- Adding Spanish to the speech sinthetizer 
-- Modular V3, educational purpose ready (JSDoc)
-- Splited the UI Logic, breaking ui-handlers.js into smaller modules to isolate trapezoid button handlers, settings dropdowns, and frame processing.
-- WCAG Contrast UI.
-- Dynamic memplates, creating templates.js module to generate UI elements  programmatically, reducing HTML duplication.
-- Centralized event management, introduced an event-dispatcher.js to route UI events to specific handlers, improving scalability.
-
+- Current effort is at setting the repository with the most confortable structure for developers, with niche experts in mind, to have a fast way to understand how we do what we do and be able to contribute in a fast and simple way.
+- We should refactor dependencies, isolate the audio pipeline and decouple UI and logic.
+- Make WCAG contrast UI.
+- Code should be educational purpose ready (JSDoc)
+  
 ### [Changelog](docs/CHANGELOG.md)
 
-- Current version is v0.9.7, follow link above for a log history, details and past milestones
+- Current version is v0.4.7, follow link above for a the history change log, details and past milestones achieved.
 
 ### [Project structure](#project_structure)
 
@@ -125,7 +122,7 @@ acoustsee/
 │   ├── DIAGRAMS.md
 │   ├── LICENSE.md
 │   └── FAQ.md
-├── past/                     # Historic repository, older versions.
+├── past/                     # Historic folder for older versions.
 ├── future/                   # Meant to be used for fast, live testing of new features and improvements
 └── README.md
 
@@ -137,12 +134,12 @@ acoustsee/
 
 ### [To-Do List](docs/TO_DO.md)
 
-- At this document linked above, you will find the list for current TO TO list, we are now at milestone 4 (v0.9)
+- At this document linked above, you will find the list for current TO TO list, we are now at milestone 4 (v0.4.X)
 
 Resume of TO_DO:
 
-- Haptic feedback via Vibration API (in progress at v0.9.8.8)
-- Console log on device screen and mail to feature for debuggin. (in progress at v0.9.8.8)
+- Haptic feedback via Vibration API 
+- Console log on device screen and mail to feature for debuggin. 
 - New languajes for the speech sinthetizer
 - Audio imput from camera into the headphones among the synthetized sound from camera.
 - Further Modularity: e.g., modularize audio-processor.js
