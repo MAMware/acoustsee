@@ -255,7 +255,7 @@ This feature map highlights where the kernel (pattern) is most present in the or
 ---
 
 ### Visual Summary
-
+```
 | Step | Description                                                                           
 |------|
 |  1   | Select a small kernel (e.g., 3x3) 
@@ -265,7 +265,7 @@ This feature map highlights where the kernel (pattern) is most present in the or
 |  5   | When reaching the end of a row, move down by `stride` rows 
 |  6   | Repeat until kernel has covered the entire image 
 |  7   | Result is a new, smaller matrix: the **feature map** 
-
+```
 ---
 
 ### Key Concepts
@@ -811,7 +811,7 @@ Synthesizing a **novel view**—i.e., generating what a scene would look like fr
 **Input**: RGB image + predicted or known depth
 **Output**: Synthesized view from a nearby virtual camera
 
-### ✔ Method:
+### Method:
 
 Use the depth map to **project pixels to 3D**, then re-project to the target camera pose.
 
@@ -879,7 +879,7 @@ $$
 **Input**: Multiple posed images (monocular or stereo)
 **Output**: Synthesized views from arbitrary camera positions
 
-### ✔Method:
+### Method:
 
 1. Represent scene as a neural function:
 
