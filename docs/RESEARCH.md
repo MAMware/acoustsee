@@ -163,7 +163,7 @@ Using a 2x2 kernel and stride of 1 with no padding, transposed convolution can p
  ```
 This output is formed by broadcasting each input pixel through the kernel, effectively "expanding" the input.
 
-Certainly! Let's **deep dive** into this sentence:
+## **Deep dive** 
 
 > "The kernel slides across the input with a defined stride (step size), computing dot products between the kernel and local regions of the input."
 
@@ -256,15 +256,15 @@ This feature map highlights where the kernel (pattern) is most present in the or
 
 ### Visual Summary
 
-| Step | Description |
-|------|-------------|
-| 1 | Select a small kernel (e.g., 3x3) |
-| 2 | Place it at the top-left of the input image |
-| 3 | Multiply each input pixel with the corresponding kernel value, sum them → dot product |
-| 4 | Move kernel by `stride` pixels to the right |
-| 5 | When reaching the end of a row, move down by `stride` rows |
-| 6 | Repeat until kernel has covered the entire image |
-| 7 | Result is a new, smaller matrix: the **feature map** |
+| Step | Description                                                                           
+|------|
+|  1   | Select a small kernel (e.g., 3x3) 
+|  2   | Place it at the top-left of the input image 
+|  3   | Multiply each input pixel with the corresponding kernel value, sum them → dot product 
+|  4   | Move kernel by `stride` pixels to the right 
+|  5   | When reaching the end of a row, move down by `stride` rows 
+|  6   | Repeat until kernel has covered the entire image 
+|  7   | Result is a new, smaller matrix: the **feature map** 
 
 ---
 
@@ -614,3 +614,355 @@ $$
 $$
 
 This feature map highlights areas of the image where edges or abrupt changes in intensity occur, which the CNN can use to detect patterns relevant to the task, such as object boundaries. During training, the CNN learns optimal filter values to maximize the detection of task-relevant features.
+
+## Depth estimation** or **Stereo vision**
+
+Where disparity (often the inverse of depth) is predicted, and losses are crafted to be **invariant to scale and shift**—which is crucial in many monocular depth prediction settings where absolute depth cannot be recovered.
+
+Let’s break this down into key ideas:
+
+---
+
+## **1. Prediction in Disparity Space**
+
+* **Disparity**: In stereo vision, disparity is the difference in the horizontal position of a pixel in the left and right images. It’s inversely related to depth:
+
+  $$
+  d = \frac{f \cdot B}{Z}
+  $$
+
+  where:
+
+  * $d$: disparity
+  * $f$: focal length
+  * $B$: baseline (distance between cameras)
+  * $Z$: depth
+
+* **Inverse Depth Up to Scale and Shift**: In monocular depth estimation, the predicted inverse depth (disparity) is **only accurate up to a global scale and shift**, because without stereo or known camera motion, absolute depth can’t be recovered.
+
+---
+
+## **2. Scale- and Shift-Invariant Dense Losses**
+
+These are loss functions that are:
+
+* **Dense**: Evaluate every pixel (not sparse or point-wise)
+* **Invariant to scale and shift**: So that predicted depth maps don’t have to match the absolute depth values exactly — only the **structure** of the scene needs to be correct (e.g., depth relationships between pixels)
+
+### Common examples:
+
+#### a) **Scale-and-Shift-Invariant MSE**
+
+From *"Dense Depth Estimation Without Dense Ground Truth" (Watson et al., CVPR 2019)*:
+
+$$
+\min_{\alpha, \beta} \| \alpha \hat{d} + \beta - d \|^2
+$$
+
+* Here, $\hat{d}$ is the predicted disparity/depth
+* $d$ is ground truth
+* $\alpha$, $\beta$ are optimal scale and shift to align the prediction with ground truth before computing the error
+
+#### b) **Gradient and SSIM Losses**
+
+Losses based on:
+
+* **Image gradients** (to preserve edges and structure)
+* **SSIM (Structural Similarity Index)**, which compares local luminance, contrast, and structure
+
+These help the model focus on *relative* depth structure rather than exact values.
+
+---
+
+## **Use Case Summary**
+
+This approach is most useful when:
+
+* Training with **monocular images** (where scale is ambiguous)
+* Evaluating or supervising using **depth maps or disparities** that might be scaled or shifted relative to the ground truth
+
+---
+
+**Geometry of disparity and inverse depth**
+---
+
+## **Q: Can disparity be computed using an image split in half (left/right parts), or must it be from two different cameras?**
+
+### Short Answer:
+
+**Disparity estimation assumes two views of the same scene from **different perspectives** (i.e., different camera centers). Just splitting a single image in half does *not* give you valid disparity — unless you simulate the geometric effect of a second viewpoint.**
+
+---
+
+## Let’s understand this mathematically.
+
+### 1. **What is Disparity?**
+
+Disparity is defined as:
+
+$$
+d(u, v) = x_L(u, v) - x_R(u, v)
+$$
+
+Where:
+
+* $x_L(u, v)$: horizontal coordinate in the left image
+* $x_R(u, v)$: matching horizontal coordinate in the right image (same 3D point)
+
+In **pinhole camera model**, disparity relates to depth via:
+
+$$
+Z = \frac{f \cdot B}{d}
+\quad\Leftrightarrow\quad
+d = \frac{f \cdot B}{Z}
+$$
+
+Where:
+
+* $Z$: depth (distance from camera to point in 3D)
+* $f$: focal length
+* $B$: baseline (distance between camera centers)
+* $d$: disparity
+
+So, disparity arises *because* two cameras are located at different positions — **parallax** causes the same 3D point to project to different positions in the two images.
+
+---
+
+### 2. **What if I split a single image in half?**
+
+Let’s suppose you take a single image $I$ and split it into:
+
+* $I_L$: left half
+* $I_R$: right half
+
+Now you try to compute disparity between $I_L$ and $I_R$.
+
+#### Why this is **invalid geometrically**:
+
+There is **no camera motion** between $I_L$ and $I_R$. Both halves are from the **same optical center**. Every pixel was projected through the same pinhole.
+
+* There’s no *true parallax*.
+* There’s no *triangulation* baseline $B$.
+* Any difference between $I_L$ and $I_R$ would be **due to scene content variation**, not geometry.
+
+#### Mathematical contradiction:
+
+Suppose we try to use disparity formula:
+
+$$
+Z = \frac{f \cdot B}{d}
+$$
+
+But since $B = 0$ (no second camera), we get:
+
+$$
+Z = \frac{f \cdot 0}{d} = 0
+$$
+
+Or, you might say $d = 0$ (since pixel positions don’t change), which implies $Z \to \infty$ — again, nonsensical.
+
+---
+
+### 3. **Can we simulate disparity with a synthetic shift?**
+
+You *can* simulate stereo data from a single image by:
+
+* Assuming a proxy depth map or plane
+* Shifting pixels **as if** they came from another camera
+
+But this requires:
+
+* Knowledge of scene depth
+* Geometry-based image warping
+
+In that case, you're synthesizing a **novel view** from a slightly shifted camera pose (i.e., generating stereo).
+
+---
+
+### 4. **Why real stereo or multi-view is needed for disparity?**
+
+Because the disparity is a **proxy for depth**, and depth arises from the triangulation of multiple rays intersecting in 3D space. Without a baseline $B$, the rays are all the same — there's no triangle to form.
+
+This also explains why **monocular depth estimation** models:
+
+* Predict **inverse depth up to scale and shift**
+* Must be trained using stereo pairs or known 3D priors to learn geometric cues
+
+---
+
+## Summary:
+
+| Scenario                              | Disparity Meaningful?     | Why?                                          |
+| ------------------------------------- | ------------------------- | --------------------------------------------- |
+| Two images from different cameras     |  Yes                     | Different viewpoints ⇒ parallax ⇒ depth       |
+| Image split in half                   |  No                      | No baseline ⇒ no parallax ⇒ no disparity      |
+| Synthesized second view from depth    |  Yes (simulated)         | Artificial parallax from known geometry       |
+| Monocular with learning (no GT depth) | ⚠ Only up to scale/shift | Learned statistical priors, not true geometry |
+
+---
+Synthesizing a **novel view**—i.e., generating what a scene would look like from a different (virtual) camera viewpoint—is a core problem in **computer vision and graphics**, especially in **view synthesis**, **stereo simulation**, and **NeRF-style rendering**.
+
+Let’s organize the main approaches **by input and technique**:
+
+---
+
+##  1. **Depth-based Image Warping**
+
+**Input**: RGB image + predicted or known depth
+**Output**: Synthesized view from a nearby virtual camera
+
+### ✔ Method:
+
+Use the depth map to **project pixels to 3D**, then re-project to the target camera pose.
+
+#### Steps:
+
+1. For each pixel $(u,v)$, use depth $Z(u,v)$ to compute 3D point in world space:
+
+   $$
+   \mathbf{X} = Z(u,v) \cdot K^{-1} [u, v, 1]^T
+   $$
+
+   where $K$ is the intrinsic matrix.
+
+2. Transform the 3D point using relative pose $[R|t]$ to the new view.
+
+3. Reproject into the target view’s image plane:
+
+   $$
+   [u', v', 1]^T \propto K' \cdot (R \cdot \mathbf{X} + t)
+   $$
+
+4. Use **backward warping** (resampling source image at target pixel locations) for image synthesis.
+
+###  Pros:
+
+* Simple, fast
+* Works well for small viewpoint changes
+
+###  Cons:
+
+* Missing data (occlusions)
+* Artifacts near depth edges
+* Assumes Lambertian surfaces
+
+---
+
+##  2. **Multi-Plane Images (MPIs)**
+
+**Input**: Single or few RGB images
+**Output**: Novel view synthesized using a stack of semi-transparent depth layers
+
+### ✔ Method:
+
+1. Discretize scene into fronto-parallel planes at fixed depths
+2. Learn per-plane **RGB + alpha (opacity)** layers
+3. Composite the layers from back to front to render novel views via **plane sweep** and blending
+
+ **Introduced in**:
+*“Stereo Magnification” (Zhou et al., SIGGRAPH 2018)*
+
+###  Pros:
+
+* Differentiable rendering
+* Handles view extrapolation better than depth warping
+
+###  Cons:
+
+* Requires training
+* Limited depth fidelity (discrete planes)
+
+---
+
+##  3. **Neural Rendering / NeRF (Neural Radiance Fields)**
+
+**Input**: Multiple posed images (monocular or stereo)
+**Output**: Synthesized views from arbitrary camera positions
+
+### ✔ Method:
+
+1. Represent scene as a neural function:
+
+   $$
+   F(\mathbf{x}, \mathbf{d}) \rightarrow (c, \sigma)
+   $$
+
+   where:
+
+   * $\mathbf{x}$: 3D location
+   * $\mathbf{d}$: viewing direction
+   * $c$: color
+   * $\sigma$: density
+
+2. Render images via **volume rendering** along camera rays.
+
+ **Introduced in**:
+*“NeRF: Representing Scenes as Neural Radiance Fields for View Synthesis” (Mildenhall et al., ECCV 2020)*
+
+###  Pros:
+
+* Extremely high-quality rendering
+* Supports complex geometry and view-dependent lighting
+
+###  Cons:
+
+* Expensive to train and render
+* Needs many views with accurate camera poses
+
+---
+
+##  4. **Flow-based View Synthesis**
+
+**Input**: Source image(s), predicted optical flow (or disparity)
+**Output**: Warp source images to target view using learned flow fields
+
+ Examples:
+
+* *DeepStereo (Flynn et al.)*
+* *SynSin (Wiles et al.)*
+
+###  Method:
+
+* Predict a dense pixel correspondence (flow or disparity) between views
+* Warp source image using this mapping
+* Fill holes with learned refinement network
+
+---
+
+##  5. **Image-to-Image Translation with Pose Conditioning**
+
+**Input**: Source image + target pose or viewpoint
+**Output**: Synthesized novel view
+
+ Examples:
+
+* *Pix2Pix-style models with pose*
+* *ViewNet, GQN (Generative Query Networks)*
+
+### ✔ Method:
+
+* Train a conditional GAN or autoencoder that learns to “imagine” the new view
+* Implicitly encodes scene geometry
+
+###  Limitation:
+
+* Poor geometric consistency
+* Generalizes poorly outside training distribution
+
+---
+
+##  Summary Table
+
+| Method                | Requires Depth? | Requires Multiple Views? | Pros                       | Cons                             |
+| --------------------- | --------------- | ------------------------ | -------------------------- | -------------------------------- |
+| Depth-based Warping   | Yes             |  Single View OK          | Simple, geometric          | Artifacts, no occlusion handling |
+| MPI                   | No (learned)    |  Few views preferred     | Layered representation     | Discrete planes, training needed |
+| NeRF                  | No              |  Yes (many)              | Photorealistic synthesis   | Slow, memory-heavy               |
+| Flow-based Synthesis  | No              |  Usually                 | Uses pixel correspondences | Warping artifacts                |
+| Pose-conditioned GANs | No              | No (can be single view)  | Fully learned              | Low fidelity, hallucination      |
+
+---
+
+
+
+
