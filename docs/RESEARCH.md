@@ -802,7 +802,7 @@ This also explains why **monocular depth estimation** models:
 ---
 Synthesizing a **novel view**—i.e., generating what a scene would look like from a different (virtual) camera viewpoint—is a core problem in **computer vision and graphics**, especially in **view synthesis**, **stereo simulation**, and **NeRF-style rendering**.
 
-Let’s organize the main approaches **by input and technique**:
+## Main approaches **by input and technique**:
 
 ---
 
@@ -817,11 +817,11 @@ Use the depth map to **project pixels to 3D**, then re-project to the target cam
 
 #### Steps:
 
-1. For each pixel $(u,v)$, use depth $Z(u,v)$ to compute 3D point in world space:
+1. For each pixel $(u,v)$ , use depth $Z(u,v)$ to compute 3D point in world space:
 
-   $$
-   \mathbf{X} = Z(u,v) \cdot K^{-1} [u, v, 1]^T
-   $$
+$$
+\mathbf{X} = Z(u,v) \cdot K^{-1} [u, v, 1]^T
+$$
 
    where $K$ is the intrinsic matrix.
 
@@ -829,9 +829,9 @@ Use the depth map to **project pixels to 3D**, then re-project to the target cam
 
 3. Reproject into the target view’s image plane:
 
-   $$
-   [u', v', 1]^T \propto K' \cdot (R \cdot \mathbf{X} + t)
-   $$
+$$
+[u', v', 1]^T \propto K' \cdot (R \cdot \mathbf{X} + t)
+$$
 
 4. Use **backward warping** (resampling source image at target pixel locations) for image synthesis.
 
@@ -853,7 +853,7 @@ Use the depth map to **project pixels to 3D**, then re-project to the target cam
 **Input**: Single or few RGB images
 **Output**: Novel view synthesized using a stack of semi-transparent depth layers
 
-### ✔ Method:
+### Method:
 
 1. Discretize scene into fronto-parallel planes at fixed depths
 2. Learn per-plane **RGB + alpha (opacity)** layers
@@ -879,20 +879,20 @@ Use the depth map to **project pixels to 3D**, then re-project to the target cam
 **Input**: Multiple posed images (monocular or stereo)
 **Output**: Synthesized views from arbitrary camera positions
 
-### ✔ Method:
+### ✔Method:
 
 1. Represent scene as a neural function:
 
-   $$
-   F(\mathbf{x}, \mathbf{d}) \rightarrow (c, \sigma)
-   $$
+$$
+F(\mathbf{x}, \mathbf{d}) \rightarrow (c, \sigma)
+$$
 
    where:
 
-   * $\mathbf{x}$: 3D location
-   * $\mathbf{d}$: viewing direction
-   * $c$: color
-   * $\sigma$: density
+   * $\mathbf{x}$ : 3D location
+   * $\mathbf{d}$ : viewing direction
+   * $c$ : color
+   * $\sigma$ : density
 
 2. Render images via **volume rendering** along camera rays.
 
@@ -939,7 +939,7 @@ Use the depth map to **project pixels to 3D**, then re-project to the target cam
 * *Pix2Pix-style models with pose*
 * *ViewNet, GQN (Generative Query Networks)*
 
-### ✔ Method:
+###  Method:
 
 * Train a conditional GAN or autoencoder that learns to “imagine” the new view
 * Implicitly encodes scene geometry
@@ -963,6 +963,8 @@ Use the depth map to **project pixels to 3D**, then re-project to the target cam
 
 ---
 
+This research is a conversation between MAMware and the LLMs from Qwen3.5 and ChatGPT4.o
 
+https://chatgpt.com/share/68528d78-b030-800c-b2a5-c486bdf1c090
 
 
