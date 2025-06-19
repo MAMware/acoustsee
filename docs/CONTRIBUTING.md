@@ -3,17 +3,17 @@ Welcome to `acoustsee`! We’re building spatial audio navigation for the visual
 
 ## How to contribute
 
-1. The `developing` branch is our zone(branch).
-2. There, you can work new artifacts in `future` folder, meant as placeholder to play around new ideas and radical changes.
-4. Try this artificts among the consolidated files from the `past` folder.
+1. The `developing` branch is our zone that rapid deploys to GitHub Pages for easy and broad testing.
+2. At `developing` branch, you can create new artifacts in `future` folder, meant as placeholder to play around new ideas and radical changes, where you could create a folder name of your liking and do as you like inside it.
+4. You can compare your new artifacts among the consolidated files from the `past` or `present` folder.
 5. You could add unit tests in `tests/` and run `npm test`.
 6. Submit a PR to `developing` with a clear description.
 
 Q: Wich is the content and purpuse of the other folders?
 
 A:
-  `past` #Consolidated files from the `main` branch, usefull to have them at hand for vibe developing technics.
-  `future`  #The playground, a place holder for your new features or to make radical changes. 
+  `past` #Historical files, usefull to have them at hand for easy comparsion to vibe a new develop.
+  `future`  #Our playground, a place holder for your new features or to make radical changes. 
   `present` #Here you can PR the integration resulted from your `future`. // (Considering removing it for simplicity and moving this folder as the staging branch)
  
 
