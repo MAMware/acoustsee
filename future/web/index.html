@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcoustSee</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="main-container" class="main-container">
+        <!-- Top Edge Button -->
+        <button id="settingsToggle" class="edge-button top-rectangle" role="button" aria-label="Toggle settings">Settings</button>
+        
+        <!-- Left Edge Button -->
+        <button id="modeBtn" class="edge-button left-rectangle" role="button" aria-label="Toggle daylight mode">Daylight</button>
+        
+        <!-- Right Edge Button -->
+        <button id="languageBtn" class="edge-button right-rectangle" role="button" aria-label="Toggle language">English</button>
+        
+        <!-- Bottom Edge Button -->
+        <button id="startStopBtn" class="edge-button bottom-rectangle" role="button" aria-label="Start or stop stream">Start</button>
+        
+        <!-- Center Area -->
+        <div id="centerRectangle" class="center-rectangle">
+            <video id="videoFeed" autoplay muted playsinline></video>
+            <canvas id="imageCanvas"></canvas>
+            <div id="loadingIndicator" class="loading-indicator">Loading...</div>
+        </div>
+        
+        <!-- Audio Toggle as a Floating Button (e.g., bottom-right) -->
+        <button id="audioToggle" class="edge-button audio-rectangle" role="button" aria-label="Toggle audio">Turn Audio On</button>
+    </div>
+
+    <!-- Debug Panel -->
+    <div id="debug" class="debug-panel">
+        <pre></pre>
+        <button id="emailDebug" class="debug-button" role="button" aria-label="Email error log">Email Log</button>
+        <button id="closeDebug" class="debug-button" role="button" aria-label="Close debug panel">X</button>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "settingsToggle": "Settings {state}",
+  "modeBtn": "Mode set to {mode}",
+  "gridSelect": "Grid set to {grid}",
+  "synthesisSelect": "Synthesis set to {engine}",
+  "languageSelect": "Language set to {lang}",
+  "startStop": "Navigation {state}",
+  "cameraError": "Failed to access camera",
+  "audioOn": "Audio enabled",
+  "audioError": "Audio initialization failed",
+  "audioNotEnabled": "Audio not enabled, please enable audio first",
+  "cameraPermissionDenied": "Camera permission denied, please enable in settings",
+  "cameraInUse": "Camera is already in use by another application",
+  "cameraConstraintsError": "Camera settings not supported by this device",
+  "frameProcessingError": "Error processing video frame",
+  "fpsBtn": "Frame rate set to {fps} FPS",
+  "emailDebug": "Error log email {state}",
+  "audioError": "Audio error, please tap again to enable audio",
+  "emailError": "Failed to generate error log email"
+}

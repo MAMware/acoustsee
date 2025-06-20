@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcoustSee</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button id="settingsToggle" class="top-rectangle" role="button" aria-label="Toggle settings">Settings</button>
+    <button id="audioToggle" class="audio-rectangle" role="button" aria-label="Toggle audio">Turn Audio On</button>
+    <div id="main-container" class="main-container">
+        <button id="modeBtn" class="left-rectangle" role="button" aria-label="Toggle daylight mode">Daylight</button>
+        <div id="centerRectangle" class="center-rectangle">
+            <video id="videoFeed" autoplay muted playsinline></video>
+            <canvas id="imageCanvas"></canvas>
+            <div id="loadingIndicator">Loading...</div>
+        </div>
+        <button id="languageBtn" class="right-rectangle" role="button" aria-label="Toggle language">English</button>
+    </div>
+    <button id="startStopBtn" class="bottom-rectangle" role="button" aria-label="Start or stop stream">Start</button>
+    <div id="debug" style="display: none;">
+        <pre></pre> <!-- Added pre element for debug text -->
+    </div>
+    <button id="closeDebug" role="button" aria-label="Close debug panel">X</button>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

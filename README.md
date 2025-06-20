@@ -1,113 +1,173 @@
 # AcoustSee
-**A photon to phonon tool** {#introduction}
 
-AcoustSee is an open-source project kickstarted by MAMware and coded by xAI Grok with the aim to transform visual environments into intuitive soundscapes,  empowering the user to experience the visual world by audio cues.
+**a photon to phonon code**
 
-First we tested the concept with a Python script and still image, once validated we moved to do the processing of a live video with Hilbert curves inspired by 3Blue1Brown (the great Grant), among with te idea to take the advantaje of Head-Related Transfer Function (HRTF) to create spatial awarenes that maps objects positons into distinct sounds. 
 
-This project was entirely coded by Grok at grok.com and x.com and we’re also sharing the step-by-step journey (conversation) to inspire others to contribute to accessibility tech.
+## [Introduction](#introduction)
+
+The content in this repository aims to transform a visual environment into a intuitive soundscape, in a synesthesic transform, empowering the user to experience the visual world by synthetic audio cues in real time.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
-## Project Vision
-Imagine a person who is unable to see and is sitting at a park, with headphones on wich are paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, where children are playing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has less harmonics content and wen it swings closer its spectra complexity raises. 
+### Project Vision
 
-This kickstart aims to make a reality, we first started a prof of concept with static images in the python version and currently we moved to live video for a web version. Expanding and optimizing to mobile operating systems in the near future is also desired.
+The synesthesia at project is the translation from a photon to a phonon, with a tech stack that should be easy to get for a regular user, in this case a visually challenged one. 
+This repo holds code that when loaded into a mobile phone browser translates its camera imput into a stereo soundscape, where a sidewalk that the user is waling on could have a distintive spectrum signature that is being hear by both hears, a wall at the left with its should make its  distintive sound signature, a car, a hole... a light... and so on... 
+
+>Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has a less broad harmonic content and a lower volume and wen it swings closer its spectra complexity raises, broader and louder. 
+
+This project aims to make this imagination into a reality, with its first milestones coded entirely by xAI Grok is now ready to welcome contributors from open source community to enhace in a afordable way, perception. 
 
 ## Table of Contents
+
 - [Introduction](#introduction)
-- [Installation](docs/INSTALL.md)
-- [Usage](#usage)
+- [Usage](docs/USAGE.md)
 - [Status](#status)
+- [Project structure](#project_structure)
+- [Changelog](docs/CHANGELOG.md)
 - [Contributing](docs/CONTRIBUTING.md)
 - [To-Do List](docs/TO_DO.md)
-- [Changelog](docs/CHANGELOG.md)
 - [Diagrams](docs/DIAGRAMS.md)
 - [License](docs/LICENSE.md)
 - [FAQ](docs/FAQ.md)
 
-## Installation
+### [Usage](docs/USAGE.md)
 
-The current best performer can be run without installation from mamware.github.io/acustsee/web
-to test other releases pelase refer to install docs at https:/www.github.com/MAMware/acoustsee/docs/INSTALL.md
+The latest stable proof of concept can be run from 
 
-## Usage
+- https://mamware.github.io/acoustsee/present
 
-Permisions to acces the camera by the browser are needed, al processing is done in your device and not a single bit of data is sent outside your local environment.
+Previous versions and other approachs can be found at
 
-Having the most up to date version of mobile web browsers is diserable. 
+- https://mamware.github.io/acoustsee/past
 
-Minimum version list: (to be filed)
+Unstable versions currently being developed adn tested can be found at
 
-The webapp has is split in three parts. The lower half is dedicated for the start and stop of the navigation, top right is day/night toggle and top left is the frames per seconds selections that is usefull if your device stutters or generates artifacts due to processing skipping used, likely by cpu processing capabilties. 
+- https://mamware.github.io/acoustsee/future
 
-Most up to date and best performer is located at https://mamware.github.io/acustsee/web
+To use it, having the most up to date version of mobile web browsers is diserable yet most mobile internet browsers from 2021 should work.
 
-Privacy Note: All of the video processing is done at your device, not a single frame or any kind of data is sent to anyone or anywhere.
+For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) there you also find instruccions to run the first command line PoC made with Python
 
-## Status
+### Hardware needed:
 
-**Milestone 1**: (Completed)
+A mobile phone/cellphone from 2021 and up, with a front facing camera and stereo headphones with mic.
 
-- Proof of Concept. A Python code that handles statics image from an example folder and successfully generates a WAV file with basic stereo audio, left/right, panning.
+### Steps to initialize
 
-**Milestone 2**: (Completed) 
+- The webapp is designed to be used with a mobile phone where its front camera (and screen) are facing the desired objetive to be transformed in to sound, wearing the mobile phone like a necklage is its first use case in mind.
 
-- Minimun Viable Product. A javascript web version, to process privately the user live video feed, framing a "Hilbert curve" (it was a simplified zig zag) and synthetised sound from it trying to emulate a head related transfer function.
+- Enter https://mamware.github.io/acoustsee/present  (or your version of preference from [Usage](docs/USAGE.md))
 
-**Milestone 3 (Current)**:
-**Work in Progress**  
+- The User Interface of the webapp is split into five regions,
+  - Center rectangle: Audio enabler, a touchplace holder that enables the webpage to produce sound. 
+  - Top border rectangle: Settings SHIFTer button 
+  - Bottom rectangle: Start and Stop button 
+  - Left rectangle: Day and night switch for light logic inversion
+  - Right rectangle: Languaje switcher
+  - SHIFTed left rectangle (settings enabled): Grid selector, changes how the camera frames or "grids" the environment
+  - SHIFTed right rectangle (settings enabled): Audio engine selector, changes how the sound synthetizer reacts to the selected grid.   
 
-- Testing different approachs and with fast, raw iterations. The subfolders fft, htrf, tonnetz sections each approach.  
-- Current selected main soundscape generator comes from the Euler Tonnetz approach where the video frame split into left/right halves, mapped to the hexagonal Euler Tonnetz grid (32x32 per half, 2048 notes total).
-- Has a day/night mode that inverts sound generation given the lighting conditions.
-- Sounds synthesis engine aims to approach real-time 50ms updates (toggleable to 100ms, 250ms) and up to 16 notes per side (32 total).
-- UI: Centered video, split the remaining screen into 3 sections, being the lower half for the start/top, to upper div has settings a the left for FPS and at next to it, at the right is the day/night toggle, (working on it).
+IMPORTANT: The processing of the camera is done privately on your device and not a single frame is sent outside your device processor. A permision to access the camera by the browser will be requested in order to do this local processing and thus generate the audio for the navigation.
 
-**Milestone 4 (Planned)**:
+### [Status](#status) 
 
-- Detailed performance analisis and sectioned metrics.
-- Optimizations aiming the use of less resources and better performance.
+**Milestone 4 (Current)**: **Developing in Progress**  at /future folder from developing branch
 
-Consider:
-- Performance optimization for the web such as Web Workers and WebAssembly.
-- Testing true HRTF.
-- Gabor filters for motion detection.
-- Reintroducing Hilbert curves.
-- Android/iOS app developtment if considerable performance gain can be achieved.
+- Current effort is at setting the repository with the most confortable structure for developers, with niche experts in mind, to have a fast way to understand how we do what we do and be able to contribute in a fast and simple way.
+- We should refactor dependencies, isolate the audio pipeline and decouple UI and logic.
+- Make WCAG contrast UI.
+- Code should be educational purpose ready (JSDoc)
+  
+### [Changelog](docs/CHANGELOG.md)
 
+- Current version is v0.4.7, follow link above for a the history change log, details and past milestones achieved.
 
-## Project Structure
+### [Project structure](#project_structure)
 
 ```
+
 acoustsee/
-├── src/                       # Contains the Python PoC code for still image processing and audio generation.
-├── web/                       # Contains HTML, CSS, and JavaScript files for the web interface folder for different approaches at the core logic
-│   ├── fft/                   # Experimenting with Fourier, fast. 
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── hrft/                  # Experimenting the Head Related Transfer Function
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── tonnetz/               # Experimenting with Euler, Tonnetz.
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── index.html             # The current chosen version as a better performer (Tonnetz, 5/18/2025).
-│   ├── main.js
+
+├── present/                      # Current Stable Modular Webapp
+│   ├── index.html
 │   ├── styles.css
-├── examples/                  # Still image and output container for the Python PoC
-├── tests/                     # Should contain unit tests (currently missing)
-├── docs/                      # Contains technical documentation (working)
-│    ├── DIAGRAMS.ms           # Wireframes the logic at main.js
-└── README.md                  # This file, providing an overview of the project
+│   ├── main.js
+│   ├── state.js
+│   ├── audio-processor.js
+│   ├── grid-selector.js
+│   ├── ui/
+│   │   ├── rectangle-handlers.js # Handles settingsToggle, modeBtn, languageBtn, startStopBtn
+│   │   ├── settings-handlers.js  # Manages gridSelect, synthesisSelect, languageSelect, fpsSelect
+│   │   ├── frame-processor.js    # Processes video frames (processFrame)
+│   │   └── event-dispatcher.js   # Routes events to handlers
+│   └── synthesis-methods/
+│       ├── grids/
+│       │   ├── hex-tonnetz.js
+│       │   └── circle-of-fifths.js
+│       └── engines/
+│           ├── sine-wave.js
+│           └── fm-synthesis.js
+│   
+├── tests/                     # Unit tests (TO_DO)
+│   ├── ui-handlers.test.js
+│   ├── trapezoid-handlers.test.js
+│   ├── settings-handlers.test.js
+│   └── frame-processor.test.js
+├── docs/                      # Documentation
+│   ├── USAGE.md
+│   ├── CHANGELOG.md
+│   ├── CONTRIBUTING.md
+│   ├── TO_DO.md
+│   ├── DIAGRAMS.md
+│   ├── LICENSE.md
+│   └── FAQ.md
+├── past/                     # Historic folder for older versions.
+├── future/                   # Meant to be used for fast, live testing of new features and improvements
+└── README.md
+
 ```
 
-# Code Flow Diagrams
+### [Contributing](docs/CONTRIBUTING.md)
 
-- Process Frame Flow, Audio Generation Flow and Motion Detection (oscillator logic)
+- Please follow the link above for the detailed contributing guidelines, branching strategy and examples.
 
-https://github.com/MAMware/acoustsee/blob/main/docs/DIAGRAMS.md
+### [To-Do List](docs/TO_DO.md)
 
+- At this document linked above, you will find the list for current TO TO list, we are now at milestone 4 (v0.4.X)
+
+Resume of TO_DO:
+
+- Haptic feedback via Vibration API 
+- Console log on device screen and mail to feature for debuggin. 
+- New languajes for the speech sinthetizer
+- Audio imput from camera into the headphones among the synthetized sound from camera.
+- Further Modularity: e.g., modularize audio-processor.js
+- Optimizations aiming the use less resources and achieve better performance, ie: implementing Web Workers and using WebAssembly.
+- Reintroducing Hilbert curves.
+- Gabor filters for motion detection.
+- New grid types and synth engines
+- Voting system for grid and synth engines.
+- Consider making User selectable synth engine version.
+- Consider adding support for VST like plugins.
+- Testing true HRTF, loading CIPIC HRIR data.
+- New capabilities like screen/video capture to sound engine.
+- Android/iOS app developtment if considerable performance gain can be achieved.
+- Mermaid diagrams to reflect current Modular Single Responsability Principle
+
+### [Code flow diagrams](docs/DIAGRAMS.md) 
+
+Diagrams covering the Turnk Based Development approach. 
+
+Reflecting:  
+  - Process Frame Flow
+  - Audio Generation Flow
+  - Motion Detection such as oscillator logic.
+
+### [License](docs/LICENSE.md)
+
+- GPL-3.0 license details
+  
+### [FAQ](docs/FAQ.md)
+
+- Follow the link for list of the Frecuently Asqued Questions.

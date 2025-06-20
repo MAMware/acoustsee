@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcoustSee</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="top-rectangle" id="settingsToggle" aria-label="Settings mode">Settings</button>
+    <div class="main-container">
+        <div class="left-rectangle" id="modeBtn" role="button" aria-label="Toggle day/night mode or select grid in settings mode">Daylight</div>
+        <div class="center-rectangle" id="centerRectangle" aria-live="polite">
+            <video id="videoFeed" autoplay playsinline aria-label="Live video feed for audio synthesis"></video>
+            <canvas id="imageCanvas" aria-hidden="true"></canvas>
+        </div>
+        <div class="right-rectangle" id="languageBtn" role="button" aria-label="Cycle languages or select synthesis engine in settings mode">Language</div>
+    </div>
+    <button class="bottom-rectangle" id="startStopBtn" aria-label="Start or stop navigation">Start/Stop</button>
+    <div id="debug" aria-hidden="true"><pre id="debugText"></pre></div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
