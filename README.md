@@ -70,7 +70,7 @@ A mobile phone/cellphone from 2021 and up, with a front facing camera and stereo
 
 IMPORTANT: The processing of the camera is done privately on your device and not a single frame is sent outside your device processor. A permision to access the camera by the browser will be requested in order to do this local processing and thus generate the audio for the navigation.
 
-### [Status](#status)
+### [Status](#status) 
 
 **Milestone 4 (Current)**: **Developing in Progress**  at /future folder from developing branch
 
