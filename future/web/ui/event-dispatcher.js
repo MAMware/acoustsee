@@ -3,6 +3,7 @@ export let dispatchEvent = null;
 import { setAudioInterval, settings } from '../state.js';
 import { processFrame } from './frame-processor.js';
 import { speak } from './utils.js';
+import { getDOM } from '../context.js';
 
 export function createEventDispatcher(DOM) {
   console.log('createEventDispatcher: Initializing event dispatcher');
@@ -51,7 +52,8 @@ export function createEventDispatcher(DOM) {
     },
     processFrame: () => {
       try {
-        processFrame();
+        const DOM = getDOM();
+        processFrame(DOM.videoFeed, DOM.imageCanvas, DOM);
       } catch (err) {
         console.error('Process frame error:', err.message);
         dispatchEvent('logError', { message: `Process frame error: ${err.message}` });
