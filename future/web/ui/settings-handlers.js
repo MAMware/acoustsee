@@ -75,12 +75,22 @@ export function setupSettingsHandlers({ dispatchEvent, DOM }) {
       console.log('fpsBtn touched');
       tryVibrate(event);
       try {
-        const fpsOptions = [20, 30, 60];
-        const currentFps = 1000 / settings.updateInterval;
-        const nextFps = fpsOptions[(fpsOptions.indexOf(currentFps) + 1) % fpsOptions.length];
-        settings.updateInterval = 1000 / nextFps;
+        if (settings.autoFPS) {
+          settings.autoFPS = false;
+          settings.updateInterval = 1000 / 20; // Default to 20 FPS
+        } else {
+          const fpsOptions = [20, 30, 60];
+          const currentFps = 1000 / settings.updateInterval;
+          const currentIndex = fpsOptions.indexOf(currentFps);
+          if (currentIndex === fpsOptions.length - 1) {
+            settings.autoFPS = true; // Switch to Auto
+          } else {
+            const nextFps = fpsOptions[currentIndex + 1];
+            settings.updateInterval = 1000 / nextFps;
+          }
+        }
         dispatchEvent('updateFrameInterval', { interval: settings.updateInterval });
-        await speak('fpsBtn', { fps: nextFps });
+        await speak('fpsBtn', { fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval) });
       } catch (err) {
         console.error('fpsBtn error:', err.message);
         dispatchEvent('logError', { message: `fpsBtn error: ${err.message}` });
@@ -91,5 +101,5 @@ export function setupSettingsHandlers({ dispatchEvent, DOM }) {
   } else {
     console.error('fpsBtn element not found');
   }
-  console.log('setupSettingsHandlers: Setup complete');
+    console.log('setupSettingsHandlers: Setup complete');
 }
