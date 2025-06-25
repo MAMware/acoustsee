@@ -49,7 +49,17 @@ export function createEventDispatcher(DOM) {
         await speak('startStop', { state: startStopState });
         DOM.startStopBtn.textContent = startStopState === 'started' ? 'Start' : 'Stop';
       }
-    },
+
+      if (DOM.fpsBtn) {
+        const fps = 1000 / settings.updateInterval;
+        await speak('fpsBtn', { fps });
+        setTextAndAriaLabel(
+          DOM.fpsBtn,
+          `${fps} FPS`,
+          `Select frame rate: ${fps} FPS`
+        );
+      }
+},
     processFrame: () => {
       try {
         const DOM = getDOM();
