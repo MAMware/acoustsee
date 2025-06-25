@@ -3,9 +3,8 @@
  * Placed in ui/ due to interaction with videoFeed and imageCanvas elements.
  */
 import { playAudio } from '../audio-processor.js';
-import { skipFrame, setSkipFrame, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, frameCount, lastTime, settings } from '../state.js';
-
-
+import { skipFrame, setSkipFrame, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, frameCount, lastTime, settings, setAudioInterval } from '../state.js';
+import { getDispatchEvent } from '../context.js';
 /**
  * Processes a single video frame, converting it to grayscale and passing to audio synthesis.
  * @param {HTMLVideoElement} videoFeed - The video element providing frames.
