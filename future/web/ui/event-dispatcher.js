@@ -18,21 +18,8 @@ export function createEventDispatcher(DOM) {
         console.error('Missing critical DOM elements for UI update');
         dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
         return;
-    emailDebug: async () => {
-      try {
-        const pre = DOM.debug.querySelector('pre');
-        const logContent = pre ? pre.textContent : 'No logs available';
-        const mailto = `mailto:?subject=AcoustSee Error Log&body=${encodeURIComponent(logContent)}`;
-        window.location.href = mailto;
-        await speak('emailDebug', { state: 'sent' });
-      } catch (err) {
-        console.error('Email debug error:', err.message);
-        dispatchEvent('logError', { message: `Email debug error: ${err.message}` });
-        await speak('emailDebug', { state: 'error' });
       }
-}        
-      
-
+        
       const state = { state: settingsMode ? 'on' : 'off' };
       await speak('settingsToggle', state);
       setTextAndAriaLabel(
@@ -57,11 +44,11 @@ export function createEventDispatcher(DOM) {
      settingsMode ? `Select synthesis engine: ${state.state}` : `Select language: ${state.state}`
      );
 
-      if (DOM.startStopBtn) {
-        const startStopState = streamActive ? 'stopped' : 'started';
-        await speak('startStop', { state: startStopState });
-        DOM.startStopBtn.textContent = startStopState === 'started' ? 'Start' : 'Stop';
-      }
+     if (DOM.startStopBtn) {
+      const startStopState = streamActive ? 'stopped' : 'started';
+      await speak('startStop', { state: startStopState });
+      DOM.startStopBtn.textContent = startStopState === 'started' ? 'Start' : 'Stop';
+     }
       if (DOM.fpsBtn) {
         const fpsLabel = settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`;
         await speak('fpsBtn', { fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval) });
@@ -71,8 +58,8 @@ export function createEventDispatcher(DOM) {
           `Select frame rate: ${fpsLabel}`
         );
       }
+    },  
 
-      },
     processFrame: () => {
       try {
         const DOM = getDOM();
@@ -115,6 +102,19 @@ export function createEventDispatcher(DOM) {
     logError: ({ message }) => {
       console.error('Logging error:', message);
       handlers.toggleDebug({ show: true, message });
+    },
+     emailDebug: async () => {
+      try {
+        const pre = DOM.debug.querySelector('pre');
+        const logContent = pre ? pre.textContent : 'No logs available';
+        const mailto = `mailto:?subject=AcoustSee Error Log&body=${encodeURIComponent(logContent)}`;
+        window.location.href = mailto;
+        await speak('emailDebug', { state: 'sent' });
+      } catch (err) {
+        console.error('Email debug error:', err.message);
+        dispatchEvent('logError', { message: `Email debug error: ${err.message}` });
+        await speak('emailDebug', { state: 'error' });
+      }
     },
   };
 
