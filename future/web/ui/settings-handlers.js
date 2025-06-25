@@ -69,6 +69,27 @@ export function setupSettingsHandlers({ dispatchEvent, DOM }) {
   } else {
     console.error('modeBtn element not found');
   }
-
+  if (DOM.fpsBtn) {
+    DOM.fpsBtn.addEventListener('touchstart', async (event) => {
+      if (event.cancelable) event.preventDefault();
+      console.log('fpsBtn touched');
+      tryVibrate(event);
+      try {
+        const fpsOptions = [20, 30, 60];
+        const currentFps = 1000 / settings.updateInterval;
+        const nextFps = fpsOptions[(fpsOptions.indexOf(currentFps) + 1) % fpsOptions.length];
+        settings.updateInterval = 1000 / nextFps;
+        dispatchEvent('updateFrameInterval', { interval: settings.updateInterval });
+        await speak('fpsBtn', { fps: nextFps });
+      } catch (err) {
+        console.error('fpsBtn error:', err.message);
+        dispatchEvent('logError', { message: `fpsBtn error: ${err.message}` });
+        await speak('fpsError');
+      }
+    });
+    console.log('fpsBtn event listener attached');
+  } else {
+    console.error('fpsBtn element not found');
+  }
   console.log('setupSettingsHandlers: Setup complete');
 }
