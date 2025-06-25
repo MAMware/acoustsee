@@ -36,13 +36,13 @@ export function createEventDispatcher(DOM) {
         settingsMode ? `Select grid: ${state.state}` : `Toggle ${state.state} mode`
       );
 
-      state.state = settingsMode ? settings.synthesisEngine : settings.language || 'en-US';
-      await speak('languageSelect', { lang: state.state });
-      setTextAndAriaLabel(
-        DOM.languageBtn,
-        settingsMode ? (state.state === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (state.state === 'en-US' ? 'English' : 'Spanish'),
-        settingsMode ? `Select synthesis: ${state.state}` : `Cycle to ${state.state}`
-      );
+     state.state = settingsMode ? settings.synthesisEngine : settings.language || 'en-US';
+     await speak('languageSelect', { lang: state.state });
+     setTextAndAriaLabel(
+     DOM.languageBtn,
+     settingsMode ? (state.state === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (state.state === 'en-US' ? 'English' : 'Spanish'),
+     settingsMode ? `Select synthesis engine: ${state.state}` : `Select language: ${state.state}`
+     );
 
       if (DOM.startStopBtn) {
         const startStopState = streamActive ? 'stopped' : 'started';
