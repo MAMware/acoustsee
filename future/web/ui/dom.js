@@ -1,10 +1,13 @@
 let DOM = {
-  settingsToggle: null,
-  audioToggle: null,
-  modeBtn: null,
-  languageBtn: null,
-  startStopBtn: null,
-  fpsBtn: null,
+  powerOn: null,
+  splashScreen: null,
+  mainContainer: null,
+  button1: null,
+  button2: null,
+  button3: null,
+  button4: null,
+  button5: null,
+  button6: null,
   videoFeed: null,
   imageCanvas: null,
   loadingIndicator: null,
@@ -38,12 +41,15 @@ export function initDOM() {
 }
 
 function assignDOMElements() {
-  DOM.settingsToggle = document.getElementById('settingsToggle');
-  DOM.audioToggle = document.getElementById('audioToggle');
-  DOM.modeBtn = document.getElementById('modeBtn');
-  DOM.languageBtn = document.getElementById('languageBtn');
-  DOM.startStopBtn = document.getElementById('startStopBtn');
-  DOM.fpsBtn = document.getElementById('fpsBtn');
+  DOM.powerOn = document.getElementById('powerOn');
+  DOM.splashScreen = document.getElementById('splashScreen');
+  DOM.mainContainer = document.getElementById('mainContainer');
+  DOM.button1 = document.getElementById('button1');
+  DOM.button2 = document.getElementById('button2');
+  DOM.button3 = document.getElementById('button3');
+  DOM.button4 = document.getElementById('button4');
+  DOM.button5 = document.getElementById('button5');
+  DOM.button6 = document.getElementById('button6');
   DOM.videoFeed = document.getElementById('videoFeed');
   DOM.imageCanvas = document.getElementById('imageCanvas');
   DOM.loadingIndicator = document.getElementById('loadingIndicator');
