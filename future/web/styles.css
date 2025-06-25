@@ -37,6 +37,7 @@ body {
 .right-rectangle { top: 20%; right: 0; }
 .bottom-rectangle { bottom: 0; left: 40%; }
 .audio-rectangle { bottom: 10%; right: 10%; width: 15%; height: 8%; }
+.fps-rectangle { bottom: 10%; left: 10%; width: 15%; height: 8%; }
 
 .center-rectangle {
     position: relative;
