@@ -4,6 +4,7 @@ let DOM = {
   modeBtn: null,
   languageBtn: null,
   startStopBtn: null,
+  fpsBtn: null,
   videoFeed: null,
   imageCanvas: null,
   loadingIndicator: null,
@@ -42,6 +43,7 @@ function assignDOMElements() {
   DOM.modeBtn = document.getElementById('modeBtn');
   DOM.languageBtn = document.getElementById('languageBtn');
   DOM.startStopBtn = document.getElementById('startStopBtn');
+  DOM.fpsBtn = document.getElementById('fpsBtn');
   DOM.videoFeed = document.getElementById('videoFeed');
   DOM.imageCanvas = document.getElementById('imageCanvas');
   DOM.loadingIndicator = document.getElementById('loadingIndicator');
