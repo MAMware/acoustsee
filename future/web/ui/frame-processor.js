@@ -30,6 +30,7 @@ export function processFrame(videoFeed, canvas, DOM) {
     return;
   }
   try {
+    const frameProcessingStart = performance.now();
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -43,10 +44,28 @@ export function processFrame(videoFeed, canvas, DOM) {
     setPrevFrameDataLeft(newLeft);
     setPrevFrameDataRight(newRight);
     frameCount++;
+    // Auto FPS adjustment
+    if (settings.autoFPS) {
+      console.time('autoFPS');
+      const frameProcessingTime = performance.now() - frameProcessingStart;
+      // Adjust updateInterval: target 16ms (60 FPS) to 50ms (20 FPS)
+      if (frameProcessingTime > 40) {
+        settings.updateInterval = Math.min(settings.updateInterval + 10, 50); // Lower FPS
+      } else if (frameProcessingTime < 20 && settings.updateInterval > 16) {
+        settings.updateInterval = Math.max(settings.updateInterval - 10, 16); // Raise FPS
+      }
+      // Update audio interval
+      if (settings.audioInterval) {
+        clearInterval(settings.audioInterval);
+        setAudioInterval(setInterval(() => {
+          dispatchEvent('processFrame');
+        }, settings.updateInterval));
+      }
+      console.timeEnd('autoFPS');
+    }
     lastTime = currentTime;
   } catch (err) {
     console.error('Frame processing error:', err);
-    // Use dispatchEvent from rectangle-handlers.js if available
     if (window.dispatchEvent) {
       window.dispatchEvent('logError', { message: `Frame processing error: ${err.message}` });
     }
