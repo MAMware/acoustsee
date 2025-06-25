@@ -126,3 +126,7 @@ export async function cleanupAudio() {
     }
   }
 }
+
+export async function stopAudio() {
+  await cleanupAudio();
+}
