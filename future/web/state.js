@@ -1,6 +1,7 @@
 export const settings = {
   audioInterval: null,
   updateInterval: 50,
+  autoFPS: false, // Auto FPS mode
   language: 'en-US',
   synthesisEngine: 'sine-wave',
   stream: null,
