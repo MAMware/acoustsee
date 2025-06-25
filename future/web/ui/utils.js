@@ -1,5 +1,6 @@
 import { settings } from '../state.js';
 import { getDispatchEvent } from '../context.js';
+import { getDOM } from '../context.js';
 
 let translationCache = {};
 
@@ -64,21 +65,32 @@ export async function speak(elementId, state = {}) {
     }
     console.log(`Speaking: ${finalMessage} in ${lang}`);
     try {
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(finalMessage);
-        utterance.lang = lang;
-        utterance.volume = 1.0;
-        utterance.rate = 1.0;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        console.warn('Speech synthesis not supported');
-        const dispatchEvent = getDispatchEvent();
-        dispatchEvent('logError', { message: 'Speech synthesis not supported' });
-      }
-    } catch (error) {
-      console.error('Speech synthesis error:', error.message);
-      const dispatchEvent = getDispatchEvent();
-      dispatchEvent('logError', { message: `Speech synthesis error: ${error.message}` });
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(finalMessage);
+    utterance.lang = lang;
+    utterance.volume = 1.0;
+    utterance.rate = 1.0;
+    window.speechSynthesis.speak(utterance);
+  } else {
+    console.warn('Speech synthesis not supported');
+    const dispatchEvent = getDispatchEvent();
+    dispatchEvent('logError', { message: 'Speech synthesis not supported' });
+    const DOM = getDOM();
+    if (DOM.loadingIndicator) {
+      DOM.loadingIndicator.textContent = 'Speech synthesis not supported';
+      DOM.loadingIndicator.style.display = 'block';
+      setTimeout(() => DOM.loadingIndicator.style.display = 'none', 3000);
     }
+  }
+} catch (error) {
+  console.error('Speech synthesis error:', error.message);
+  const dispatchEvent = getDispatchEvent();
+  dispatchEvent('logError', { message: `Speech synthesis error: ${error.message}` });
+  const DOM = getDOM();
+  if (DOM.loadingIndicator) {
+    DOM.loadingIndicator.textContent = `Speech error: ${error.message}`;
+    DOM.loadingIndicator.style.display = 'block';
+    setTimeout(() => DOM.loadingIndicator.style.display = 'none', 3000);
+  }
   }
 }
