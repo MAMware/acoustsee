@@ -62,17 +62,17 @@ export function createEventDispatcher(DOM) {
         await speak('startStop', { state: startStopState });
         DOM.startStopBtn.textContent = startStopState === 'started' ? 'Start' : 'Stop';
       }
-
       if (DOM.fpsBtn) {
-        const fps = 1000 / settings.updateInterval;
-        await speak('fpsBtn', { fps });
+        const fpsLabel = settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`;
+        await speak('fpsBtn', { fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval) });
         setTextAndAriaLabel(
           DOM.fpsBtn,
-          `${fps} FPS`,
-          `Select frame rate: ${fps} FPS`
+          fpsLabel,
+          `Select frame rate: ${fpsLabel}`
         );
       }
-},
+
+      },
     processFrame: () => {
       try {
         const DOM = getDOM();
