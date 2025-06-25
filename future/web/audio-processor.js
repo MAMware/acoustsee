@@ -114,6 +114,15 @@ export async function cleanupAudio() {
       osc.disconnect();
       gain.disconnect();
       panner.disconnect();
+      // Clean up FM modulators
+      if (osc.frequency?.connectedNodes) {
+        osc.frequency.connectedNodes.forEach(node => {
+          if (node instanceof OscillatorNode) {
+            node.stop(audioContext.currentTime + 0.1);
+            node.disconnect();
+          }
+        });
+      }
     });
     oscillators = [];
     isAudioInitialized = false;
