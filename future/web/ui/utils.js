@@ -12,7 +12,7 @@ async function loadTranslations(lang) {
 
   try {
     console.log(`Fetching translations for ${lang}`);
-    const response = await fetch(`../languages/${lang}.json`);
+    const response = await fetch(`../web/languages/${lang}.json`);
     if (!response.ok) {
       throw new Error(
         `Failed to load ${lang} translations: ${response.status}`,
