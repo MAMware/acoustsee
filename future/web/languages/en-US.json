@@ -17,5 +17,10 @@
   "fpsError": "Failed to set frame rate",
   "emailDebug": "Error log email {state}",
   "audioError": "Audio error, please tap again to enable audio",
-  "emailError": "Failed to generate error log email"
+  "emailError": "Failed to generate error log email",
+  "saveSettings": "Settings {state}",
+  "loadSettings": "Settings {state}",
+  "viewDebug": "Debug log {state}",
+  "saveError": "Failed to save settings",
+  "loadError": "Failed to load settings"
 }
