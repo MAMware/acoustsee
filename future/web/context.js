@@ -7,7 +7,7 @@ export function setDOM(dom) {
 }
 
 export function getDOM() {
-  if (!DOM) console.error('DOM not initialized');
+  if (!DOM) console.error("DOM not initialized");
   return DOM;
 }
 
@@ -16,6 +16,6 @@ export function setDispatchEvent(dispatcher) {
 }
 
 export function getDispatchEvent() {
-  if (!dispatchEvent) console.error('dispatchEvent not initialized');
+  if (!dispatchEvent) console.error("dispatchEvent not initialized");
   return dispatchEvent;
 }

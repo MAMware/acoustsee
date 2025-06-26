@@ -2,12 +2,12 @@ export const settings = {
   audioInterval: null,
   updateInterval: 50,
   autoFPS: false, // Auto FPS mode
-  language: 'en-US',
-  synthesisEngine: 'sine-wave',
+  language: "en-US",
+  synthesisEngine: "sine-wave",
   stream: null,
-  gridType: 'circle-of-fifths',
-  dayNightMode: 'day',
-  isSettingsMode: false
+  gridType: "circle-of-fifths",
+  dayNightMode: "day",
+  isSettingsMode: false,
 };
 
 export let skipFrame = false;

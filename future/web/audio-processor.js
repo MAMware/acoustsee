@@ -1,7 +1,7 @@
-import { settings } from './state.js';
-import { mapFrame } from './grid-dispatcher.js';
-import { playSineWave } from './synthesis-methods/engines/sine-wave.js';
-import { playFMSynthesis } from './synthesis-methods/engines/fm-synthesis.js';
+import { settings } from "./state.js";
+import { mapFrame } from "./grid-dispatcher.js";
+import { playSineWave } from "./synthesis-methods/engines/sine-wave.js";
+import { playFMSynthesis } from "./synthesis-methods/engines/fm-synthesis.js";
 
 export let audioContext = null;
 export let isAudioInitialized = false;
@@ -14,57 +14,75 @@ export function setAudioContext(newContext) {
 
 export async function initializeAudio(context) {
   if (isAudioInitialized || !context) {
-    console.warn('initializeAudio: Already initialized or no context provided');
+    console.warn("initializeAudio: Already initialized or no context provided");
     return false;
   }
   try {
     audioContext = context;
-    if (audioContext.state === 'suspended') {
-      console.log('initializeAudio: Resuming AudioContext');
+    if (audioContext.state === "suspended") {
+      console.log("initializeAudio: Resuming AudioContext");
       await audioContext.resume();
     }
-    if (audioContext.state !== 'running') {
-      throw new Error(`AudioContext is not running, state: ${audioContext.state}`);
+    if (audioContext.state !== "running") {
+      throw new Error(
+        `AudioContext is not running, state: ${audioContext.state}`,
+      );
     }
-    oscillators = Array(24).fill().map(() => {
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const panner = audioContext.createStereoPanner();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(0, audioContext.currentTime);
-      gain.gain.setValueAtTime(0, audioContext.currentTime);
-      panner.pan.setValueAtTime(0, audioContext.currentTime);
-      osc.connect(gain).connect(panner).connect(audioContext.destination);
-      osc.start();
-      return { osc, gain, panner, active: false };
-    });
+    oscillators = Array(24)
+      .fill()
+      .map(() => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const panner = audioContext.createStereoPanner();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(0, audioContext.currentTime);
+        gain.gain.setValueAtTime(0, audioContext.currentTime);
+        panner.pan.setValueAtTime(0, audioContext.currentTime);
+        osc.connect(gain).connect(panner).connect(audioContext.destination);
+        osc.start();
+        return { osc, gain, panner, active: false };
+      });
     isAudioInitialized = true;
     if (window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance('Audio initialized');
-      utterance.lang = settings.language || 'en-US';
+      const utterance = new SpeechSynthesisUtterance("Audio initialized");
+      utterance.lang = settings.language || "en-US";
       window.speechSynthesis.speak(utterance);
     }
-    console.log('initializeAudio: Audio initialized successfully');
+    console.log("initializeAudio: Audio initialized successfully");
     return true;
   } catch (error) {
-    console.error('Audio Initialization Error:', error.message);
+    console.error("Audio Initialization Error:", error.message);
     if (window.dispatchEvent) {
-      window.dispatchEvent('logError', { message: `Audio init error: ${error.message}` });
+      window.dispatchEvent("logError", {
+        message: `Audio init error: ${error.message}`,
+      });
     }
     isAudioInitialized = false;
     audioContext = null;
     if (window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance('Failed to initialize audio');
-      utterance.lang = settings.language || 'en-US';
+      const utterance = new SpeechSynthesisUtterance(
+        "Failed to initialize audio",
+      );
+      utterance.lang = settings.language || "en-US";
       window.speechSynthesis.speak(utterance);
     }
     return false;
   }
 }
 
-export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
-  if (!isAudioInitialized || !audioContext || audioContext.state !== 'running') {
-    console.warn('playAudio: Audio not initialized or context not running', {
+export function playAudio(
+  frameData,
+  width,
+  height,
+  prevFrameDataLeft,
+  prevFrameDataRight,
+) {
+  if (
+    !isAudioInitialized ||
+    !audioContext ||
+    audioContext.state !== "running"
+  ) {
+    console.warn("playAudio: Audio not initialized or context not running", {
       isAudioInitialized,
       audioContext: !!audioContext,
       state: audioContext?.state,
@@ -82,15 +100,27 @@ export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrame
     }
   }
 
-  const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
-  const rightResult = mapFrame(rightFrame, halfWidth, height, prevFrameDataRight, 1);
+  const leftResult = mapFrame(
+    leftFrame,
+    halfWidth,
+    height,
+    prevFrameDataLeft,
+    -1,
+  );
+  const rightResult = mapFrame(
+    rightFrame,
+    halfWidth,
+    height,
+    prevFrameDataRight,
+    1,
+  );
 
   const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
   switch (settings.synthesisEngine) {
-    case 'fm-synthesis':
+    case "fm-synthesis":
       playFMSynthesis(allNotes);
       break;
-    case 'sine-wave':
+    case "sine-wave":
     default:
       playSineWave(allNotes);
       break;
@@ -104,7 +134,7 @@ export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrame
 
 export async function cleanupAudio() {
   if (!isAudioInitialized || !audioContext) {
-    console.warn('cleanupAudio: No audio context to clean up');
+    console.warn("cleanupAudio: No audio context to clean up");
     return;
   }
   try {
@@ -116,7 +146,7 @@ export async function cleanupAudio() {
       panner.disconnect();
       // Clean up FM modulators
       if (osc.frequency?.connectedNodes) {
-        osc.frequency.connectedNodes.forEach(node => {
+        osc.frequency.connectedNodes.forEach((node) => {
           if (node instanceof OscillatorNode) {
             node.stop(audioContext.currentTime + 0.1);
             node.disconnect();
@@ -127,11 +157,13 @@ export async function cleanupAudio() {
     oscillators = [];
     isAudioInitialized = false;
     audioContext = null;
-    console.log('cleanupAudio: Audio resources cleaned up successfully');
+    console.log("cleanupAudio: Audio resources cleaned up successfully");
   } catch (error) {
-    console.error('Audio Cleanup Error:', error.message);
+    console.error("Audio Cleanup Error:", error.message);
     if (window.dispatchEvent) {
-      window.dispatchEvent('logError', { message: `Audio cleanup error: ${error.message}` });
+      window.dispatchEvent("logError", {
+        message: `Audio cleanup error: ${error.message}`,
+      });
     }
   }
 }

@@ -26,7 +26,7 @@ body {
 .power-on-button {
   font-size: 48px;
   padding: 20px;
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border: none;
   border-radius: 10px;
@@ -47,7 +47,7 @@ body {
 .grid-button {
   font-size: 18px;
   padding: 10px;
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   border: none;
   border-radius: 5px;
@@ -71,7 +71,8 @@ body {
   align-items: center;
 }
 
-#videoFeed, #imageCanvas {
+#videoFeed,
+#imageCanvas {
   width: 100%;
   height: 100%;
   object-fit: cover;
