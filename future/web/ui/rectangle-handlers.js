@@ -10,108 +10,114 @@ export function setupRectangleHandlers() {
   const DOM = getDOM();
   const dispatchEvent = getDispatchEvent();
 
-  if (!DOM || !DOM.audioToggle || !DOM.videoFeed) {
+  if (!DOM || !DOM.powerOn || !DOM.splashScreen || !DOM.mainContainer || !DOM.button1 || !DOM.button2 || !DOM.videoFeed) {
     console.error('Critical DOM elements missing in rectangle-handlers');
     dispatchEvent('logError', { message: 'Critical DOM elements missing in rectangle-handlers' });
     return;
   }
 
-  const audioToggle = DOM.audioToggle;
-
-  async function audioToggleHandler() {
+  // Power On: Initialize Audio Context
+  DOM.powerOn.addEventListener('click', async () => {
     try {
-      if (!isAudioContextInitialized) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        if (!audioContext) {
-          throw new Error('AudioContext creation failed');
-        }
-
-        await initializeAudio(audioContext);
-        isAudioContextInitialized = true;
-
-        if (settings.stream) {
-          await setStream(settings.stream);
-          setAudioInterval(setInterval(() => {
-            dispatchEvent('processFrame');
-          }, settings.updateInterval));
-        }
-
-        audioToggle.textContent = 'Turn Audio Off';
-        audioToggle.setAttribute('aria-label', 'Turn audio off');
-        await speak('audioToggle', { state: 'on' });
-        dispatchEvent('updateUI', { settingsMode: false, streamActive: true });
-      } else {
-        if (audioContext.state === 'running') {
-          await audioContext.suspend();
-          audioToggle.textContent = 'Turn Audio On';
-          audioToggle.setAttribute('aria-label', 'Turn audio on');
-          await speak('audioToggle', { state: 'off' });
-        } else if (audioContext.state === 'suspended') {
-          await audioContext.resume();
-          audioToggle.textContent = 'Turn Audio Off';
-          audioToggle.setAttribute('aria-label', 'Turn audio off');
-          await speak('audioToggle', { state: 'on' });
-        }
-        dispatchEvent('updateUI', { settingsMode: false, streamActive: audioContext.state === 'running' });
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (!audioContext) {
+        throw new Error('AudioContext creation failed');
       }
+      await initializeAudio(audioContext);
+      isAudioContextInitialized = true;
+      DOM.splashScreen.style.display = 'none';
+      DOM.mainContainer.style.display = 'grid';
+      await speak('audioOn');
+      dispatchEvent('updateUI', { settingsMode: false, streamActive: false });
     } catch (err) {
-      console.error('Audio toggle error:', err.message);
-      dispatchEvent('logError', { message: `Audio toggle error: ${err.message}` });
-      await speak('audioToggle', { state: 'error', message: 'Failed to toggle audio' });
-
-      if (!isAudioContextInitialized && audioContext) {
-        try {
-          await audioContext.close();
-        } catch (closeErr) {
-          console.error('Error closing AudioContext:', closeErr.message);
-        }
-        audioContext = null;
-      }
-
+      console.error('Power on error:', err.message);
+      dispatchEvent('logError', { message: `Power on error: ${err.message}` });
+      await speak('audioError');
       for (let i = 0; i < 3; i++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         try {
           audioContext = new (window.AudioContext || window.webkitAudioContext)();
           await initializeAudio(audioContext);
           isAudioContextInitialized = true;
-          audioToggle.textContent = 'Turn Audio Off';
-          audioToggle.setAttribute('aria-label', 'Turn audio off');
-          await speak('audioToggle', { state: 'on' });
-          dispatchEvent('updateUI', { settingsMode: false, streamActive: true });
+          DOM.splashScreen.style.display = 'none';
+          DOM.mainContainer.style.display = 'grid';
+          await speak('audioOn');
+          dispatchEvent('updateUI', { settingsMode: false, streamActive: false });
           break;
         } catch (retryErr) {
           console.error(`Retry ${i + 1} failed:`, retryErr.message);
           dispatchEvent('logError', { message: `Audio retry ${i + 1} failed: ${retryErr.message}` });
         }
       }
-
       if (!isAudioContextInitialized) {
-        audioToggle.textContent = 'Turn Audio On';
-        audioToggle.setAttribute('aria-label', 'Turn audio on');
-        await speak('audioToggle', { state: 'error', message: 'Audio initialization failed' });
+        await speak('audioError', { message: 'Audio initialization failed' });
       }
     }
-  }
+  });
 
-  audioToggle.addEventListener('click', async () => {
-    if (!isAudioContextInitialized && !navigator.mediaDevices.getUserMedia) {
-      console.error('getUserMedia not supported');
-      dispatchEvent('logError', { message: 'getUserMedia not supported' });
-      await speak('audioToggle', { state: 'error', message: 'Media devices not supported' });
+  // Button 1: Toggle Stream
+  DOM.button1.addEventListener('click', async () => {
+    if (settings.isSettingsMode) return; // Handled in settings-handlers.js
+    if (!isAudioContextInitialized) {
+      console.error('Audio not initialized');
+      dispatchEvent('logError', { message: 'Audio not initialized' });
+      await speak('audioNotEnabled');
       return;
     }
-
     try {
       if (!settings.stream) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         DOM.videoFeed.srcObject = stream;
         setStream(stream);
+        setAudioInterval(setInterval(() => {
+          dispatchEvent('processFrame');
+        }, settings.updateInterval));
+        DOM.button1.textContent = 'Stop';
+        DOM.button1.setAttribute('aria-label', 'Stop stream');
+        await speak('startStop', { state: 'started' });
+      } else {
+        settings.stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+        clearInterval(settings.audioInterval);
+        setAudioInterval(null);
+        DOM.button1.textContent = 'Start';
+        DOM.button1.setAttribute('aria-label', 'Start stream');
+        await speak('startStop', { state: 'stopped' });
       }
-      await audioToggleHandler();
+      dispatchEvent('updateUI', { settingsMode: false, streamActive: !!settings.stream });
     } catch (err) {
-      console.error('Media access error:', err.message);
-      dispatchEvent('logError', { message: `Media access error: ${err.message}` });
-      await speak('audioToggle', { state: 'error', message: 'Failed to access media' });
+      console.error('Stream toggle error:', err.message);
+      dispatchEvent('logError', { message: `Stream toggle error: ${err.message}` });
+      await speak('cameraError');
+    }
+  });
+
+  // Button 2: Toggle Audio Context
+  DOM.button2.addEventListener('click', async () => {
+    if (settings.isSettingsMode) return; // Handled in settings-handlers.js
+    if (!isAudioContextInitialized) {
+      console.error('Audio not initialized');
+      dispatchEvent('logError', { message: 'Audio not initialized' });
+      await speak('audioNotEnabled');
+      return;
+    }
+    try {
+      if (audioContext.state === 'running') {
+        await audioContext.suspend();
+        DOM.button2.textContent = 'Audio On';
+        DOM.button2.setAttribute('aria-label', 'Turn audio on');
+        await speak('audioToggle', { state: 'off' });
+      } else if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+        DOM.button2.textContent = 'Audio Off';
+        DOM.button2.setAttribute('aria-label', 'Turn audio off');
+        await speak('audioToggle', { state: 'on' });
+      }
+      dispatchEvent('updateUI', { settingsMode: false, streamActive: !!settings.stream });
+    } catch (err) {
+      console.error('Audio toggle error:', err.message);
+      dispatchEvent('logError', { message: `Audio toggle error: ${err.message}` });
+      await speak('audioError');
     }
   });
 
