@@ -17,5 +17,10 @@
   "fpsError": "No se pudo establecer la velocidad de fotogramas",
   "emailDebug": "Correo de registro de errores {state}",
   "audioError": "Error de audio, por favor toca de nuevo para activar el audio",
-  "emailError": "No se pudo generar el correo de registro de errores"
+  "emailError": "No se pudo generar el correo de registro de errores",
+  "saveSettings": "Configuraciones {state}",
+  "loadSettings": "Configuraciones {state}",
+  "viewDebug": "Registro de depuración {state}",
+  "saveError": "No se pudo guardar configuraciones",
+  "loadError": "No se pudo cargar configuraciones"
 }
