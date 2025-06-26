@@ -1,44 +1,56 @@
-import { setupRectangleHandlers } from '../web/ui/rectangle-handlers.js';
-import { stopAudio } from '../web/audio-processor.js';
+import { setupRectangleHandlers } from '../ui/rectangle-handlers.js';
+import { initializeAudio, cleanupAudio } from '../audio-processor.js';
 
-jest.mock('../web/audio-processor.js', () => ({
-    initializeAudio: jest.fn(),
-    audioContext: { state: 'suspended', resume: jest.fn() },
-    stopAudio: jest.fn()
+jest.mock('../audio-processor.js', () => ({
+  initializeAudio: jest.fn(),
+  cleanupAudio: jest.fn(),
+  audioContext: { state: 'suspended', resume: jest.fn(), suspend: jest.fn(), close: jest.fn() }
 }));
 
 describe('rectangle-handlers', () => {
-    beforeEach(() => {
-        document.body.innerHTML = `
-            <button class="top-rectangle" id="settingsToggle">Settings</button>
-            <div class="main-container">
-                <div class="left-rectangle" id="modeBtn">Daylight</div>
-                <div class="center-rectangle" id="centerRectangle">
-                    <video id="videoFeed"></video>
-                    <canvas id="imageCanvas"></canvas>
-                </div>
-                <div class="right-rectangle" id="languageBtn">Language</div>
-            </div>
-            <button class="bottom-rectangle" id="startStopBtn">Start/Stop</button>
-        `;
-    });
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="splashScreen">
+        <button id="powerOn">⏻</button>
+      </div>
+      <div id="mainContainer">
+        <button id="button1">Start</button>
+        <button id="button2">Audio On</button>
+        <button id="button3">30 FPS</button>
+        <button id="button4">Save Settings</button>
+        <button id="button5">Load Settings</button>
+        <button id="button6">Settings</button>
+        <div id="centerRectangle">
+          <video id="videoFeed"></video>
+          <canvas id="imageCanvas"></canvas>
+        </div>
+      </div>
+    `;
+  });
 
-    test('binds rectangle button events', () => {
-        const dispatchEvent = jest.fn();
-        setupRectangleHandlers({ dispatchEvent });
-        expect(document.getElementById('settingsToggle').ontouchstart).toBeDefined();
-        expect(document.getElementById('modeBtn').ontouchstart).toBeDefined();
-        expect(document.getElementById('languageBtn').ontouchstart).toBeDefined();
-        expect(document.getElementById('startStopBtn').ontouchstart).toBeDefined();
-    });
+  test('binds button events', () => {
+    const dispatchEvent = jest.fn();
+    setupRectangleHandlers({ dispatchEvent });
+    expect(document.getElementById('powerOn').onclick).toBeDefined();
+    expect(document.getElementById('button1').onclick).toBeDefined();
+    expect(document.getElementById('button2').onclick).toBeDefined();
+  });
 
-    test('stops audio when stopping stream', () => {
-        const dispatchEvent = jest.fn();
-        setupRectangleHandlers({ dispatchEvent });
-        const startStopBtn = document.getElementById('startStopBtn');
-        const mockStream = { getTracks: () => [{ stop: jest.fn() }] };
-        require('../web/state.js').settings.stream = mockStream;
-        startStopBtn.dispatchEvent(new Event('touchstart'));
-        expect(stopAudio).toHaveBeenCalled();
-    });
+  test('initializes audio on powerOn click', async () => {
+    const dispatchEvent = jest.fn();
+    setupRectangleHandlers({ dispatchEvent });
+    const powerOn = document.getElementById('powerOn');
+    await powerOn.click();
+    expect(initializeAudio).toHaveBeenCalled();
+    expect(document.getElementById('splashScreen').style.display).toBe('none');
+    expect(document.getElementById('mainContainer').style.display).toBe('grid');
+  });
+
+  test('toggles stream on button1 click', async () => {
+    const dispatchEvent = jest.fn();
+    setupRectangleHandlers({ dispatchEvent });
+    const button1 = document.getElementById('button1');
+    await button1.click();
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({ video: true, audio: false });
+  });
 });
