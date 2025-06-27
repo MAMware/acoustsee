@@ -1,5 +1,5 @@
 import { playAudio } from '../audio-processor.js';
-import { frameCount, lastTime, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, setSkipFrame, settings, setAudioInterval } from '../state.js';
+import { frameCount, lastTime, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, skipFrame, setSkipFrame, settings, setAudioInterval } from '../state.js';
 import { getDispatchEvent } from '../context.js';
 
 export function processFrame(videoFeed, DOM) {
@@ -9,8 +9,8 @@ export function processFrame(videoFeed, DOM) {
   }
   if (!videoFeed || !DOM) {
     console.error('Missing required parameters in processFrame:', { videoFeed, DOM });
-    if (DOM && window.dispatchEvent) {
-      window.dispatchEvent('logError', { message: 'Missing videoFeed or DOM in processFrame' });
+    if (DOM && getDispatchEvent()) {
+      getDispatchEvent()('logError', { message: 'Missing videoFeed or DOM in processFrame' });
     }
     return;
   }
@@ -51,7 +51,7 @@ export function processFrame(videoFeed, DOM) {
       if (settings.audioInterval) {
         clearInterval(settings.audioInterval);
         setAudioInterval(setInterval(() => {
-          dispatchEvent('processFrame');
+          getDispatchEvent()('processFrame');
         }, settings.updateInterval));
       }
       console.timeEnd('autoFPS');
@@ -59,8 +59,8 @@ export function processFrame(videoFeed, DOM) {
     lastTime = currentTime;
   } catch (err) {
     console.error('Frame processing error:', err);
-    if (window.dispatchEvent) {
-      window.dispatchEvent('logError', { message: `Frame processing error: ${err.message}` });
+    if (getDispatchEvent()) {
+      getDispatchEvent()('logError', { message: `Frame processing error: ${err.message}` });
     }
     setSkipFrame(true);
   }
