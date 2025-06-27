@@ -1,15 +1,15 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AcoustSee</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
- <body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="./styles.css">
+  <title>AcoustSee</title>
+</head>
+<body>
   <!-- Splash Screen -->
   <div id="splashScreen" class="splash-screen">
-    <button id="powerOn" class="power-on-button" role="button" aria-label="Power on to initialize audio">⏻</button>
+    <button id="powerOn" class="power-on-button" role="button" aria-label="Power on to initialize audio">Power On (⏻)</button>
   </div>
   <!-- Main UI: 3x2 Button Grid -->
   <div id="mainContainer" class="main-container" style="display: none;">
@@ -28,7 +28,7 @@
   <div id="debug" class="debug-panel">
     <pre></pre>
     <button id="emailDebug" class="debug-button" role="button" aria-label="Email error log">Email Log</button>
-    <button id="closeDebug" class="debug-button" role="button" aria-label="Close debug panel">X</button>
+    <button id="closeDebug" class="debug-button" role="button" aria-label="Close debug panel">Close</button>
   </div>
   <script type="module" src="./main.js"></script>
 </body>
