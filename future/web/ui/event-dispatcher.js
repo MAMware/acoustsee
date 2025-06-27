@@ -70,7 +70,7 @@ export function createEventDispatcher(DOM) {
       // Button 6: Settings Toggle
       await speak('settingsToggle', state);
       setTextAndAriaLabel(
-        DOM.button6,
+        DOM.button6.querySelector('.button-text'),
         settingsMode ? 'Exit Settings' : 'Settings',
         settingsMode ? 'Exit settings mode' : 'Toggle settings mode'
       );
