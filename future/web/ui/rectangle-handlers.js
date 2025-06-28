@@ -28,7 +28,7 @@ export function setupRectangleHandlers() {
       DOM.splashScreen.style.display = 'none';
       DOM.mainContainer.style.display = 'grid';
       await speak('audioOn');
-      dispatchEvent('updateUI', { settingsMode: false, streamActive: false });
+      dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
     } catch (err) {
       console.error('Power on error:', err.message);
       dispatchEvent('logError', { message: `Power on error: ${err.message}` });
@@ -42,10 +42,10 @@ export function setupRectangleHandlers() {
           DOM.splashScreen.style.display = 'none';
           DOM.mainContainer.style.display = 'grid';
           await speak('audioOn');
-          dispatchEvent('updateUI', { settingsMode: false, streamActive: false });
+          dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
           break;
         } catch (retryErr) {
-          console.error(`Retry ${i + 1} failed:`, retryErr.error);
+          console.error(`Retry ${i + 1} failed:`, retryErr.message);
           dispatchEvent('logError', { message: `Audio retry ${i + 1} failed: ${retryErr.message}` });
         }
       }
@@ -66,7 +66,7 @@ export function setupRectangleHandlers() {
     }
     try {
       dispatchEvent('toggleStream');
-      dispatchEvent('updateUI', { settingsMode: false, streamActive: !!settings.stream });
+      dispatchEvent('updateUI', { settingsMode: false, streamActive: !!settings.stream, micActive: !!settings.micStream });
     } catch (err) {
       console.error('Button 1 error:', err.message);
       dispatchEvent('logError', { message: `Button 1 error: ${err.message}` });
@@ -74,7 +74,7 @@ export function setupRectangleHandlers() {
     }
   });
 
-  // Button 2: Toggle Audio Context
+  // Button 2: Toggle Microphone
   DOM.button2.addEventListener('click', async () => {
     if (settings.isSettingsMode) return; // Handled in settings-handlers.js
     if (!isAudioContextInitialized) {
@@ -84,22 +84,11 @@ export function setupRectangleHandlers() {
       return;
     }
     try {
-      if (audioContext.state === 'running') {
-        await audioContext.suspend();
-        DOM.button2.textContent = 'Audio On';
-        DOM.button2.setAttribute('aria-label', 'Turn audio on');
-        await speak('audioToggle', { state: 'off' });
-      } else if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-        DOM.button2.textContent = 'Audio Off';
-        DOM.button2.setAttribute('aria-label', 'Turn audio off');
-        await speak('audioToggle', { state: 'on' });
-      }
-      dispatchEvent('updateUI', { settingsMode: false, streamActive: !!settings.stream });
+      dispatchEvent('toggleMic', { settingsMode: false });
     } catch (err) {
-      console.error('Audio toggle error:', err.message);
-      dispatchEvent('logError', { message: `Audio toggle error: ${err.message}` });
-      await speak('audioError');
+      console.error('Mic toggle error:', err.message);
+      dispatchEvent('logError', { message: `Mic toggle error: ${err.message}` });
+      await speak('micError');
     }
   });
 
@@ -107,6 +96,10 @@ export function setupRectangleHandlers() {
     if (settings.stream) {
       settings.stream.getTracks().forEach(track => track.stop());
       setStream(null);
+    }
+    if (settings.micStream) {
+      settings.micStream.getTracks().forEach(track => track.stop());
+      settings.micStream = null;
     }
     if (settings.audioInterval) {
       clearInterval(settings.audioInterval);
