@@ -1,26 +1,57 @@
 {
-  "settingsToggle": "Settings {state}",
-  "modeBtn": "Mode set to {mode}",
-  "gridSelect": "Grid set to {grid}",
-  "synthesisSelect": "Synthesis set to {engine}",
-  "languageSelect": "Language set to {lang}",
-  "startStop": "Navigation {state}",
-  "cameraError": "Failed to access camera",
   "audioOn": "Audio enabled",
   "audioError": "Audio initialization failed",
-  "audioNotEnabled": "Audio not enabled, please enable audio first",
-  "cameraPermissionDenied": "Camera permission denied, please enable in settings",
-  "cameraInUse": "Camera is already in use by another application",
-  "cameraConstraintsError": "Camera settings not supported by this device",
-  "frameProcessingError": "Error processing video frame",
-  "fpsBtn": "Frame rate set to {fps} FPS",
-  "fpsError": "Failed to set frame rate",
-  "emailDebug": "Error log email {state}",
-  "audioError": "Audio error, please tap again to enable audio",
-  "emailError": "Failed to generate error log email",
-  "saveSettings": "Settings {state}",
-  "loadSettings": "Settings {state}",
-  "viewDebug": "Debug log {state}",
+  "audioNotEnabled": "Audio not initialized",
+  "startStop": {
+    "started": "Navigation started",
+    "stopped": "Navigation stopped"
+  },
+  "micToggle": {
+    "on": "Microphone enabled",
+    "off": "Microphone disabled"
+  },
+  "micError": "Microphone access failed",
+  "cameraError": "Camera access failed",
+  "audioToggle": {
+    "on": "Audio output enabled",
+    "off": "Audio output disabled"
+  },
+  "fpsBtn": {
+    "20": "20 frames per second",
+    "30": "30 frames per second",
+    "60": "60 frames per second",
+    "auto": "Automatic frame rate"
+  },
+  "gridSelect": {
+    "hex-tonnetz": "Hex Tonnetz grid selected",
+    "circle-of-fifths": "Circle of Fifths grid selected"
+  },
+  "synthesisSelect": {
+    "sine-wave": "Sine Wave synthesis selected",
+    "fm-synthesis": "FM Synthesis selected"
+  },
+  "languageSelect": {
+    "en-US": "English selected",
+    "es-ES": "Spanish selected"
+  },
+  "settingsToggle": {
+    "on": "Settings mode enabled",
+    "off": "Settings mode disabled"
+  },
+  "saveSettings": {
+    "saved": "Settings saved"
+  },
   "saveError": "Failed to save settings",
-  "loadError": "Failed to load settings"
+  "loadSettings": {
+    "loaded": "Settings loaded",
+    "none": "No saved settings found"
+  },
+  "loadError": "Failed to load settings",
+  "viewDebug": {
+    "view": "Debug view opened"
+  },
+  "emailDebug": {
+    "sent": "Debug log emailed",
+    "error": "Failed to email debug log"
+  }
 }
