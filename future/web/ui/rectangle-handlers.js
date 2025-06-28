@@ -19,6 +19,7 @@ export function setupRectangleHandlers() {
   // Power On: Initialize Audio Context
   DOM.powerOn.addEventListener('click', async () => {
     try {
+      console.log('PowerOn: Initializing AudioContext');
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       if (!audioContext) {
         throw new Error('AudioContext creation failed');
@@ -29,6 +30,7 @@ export function setupRectangleHandlers() {
       DOM.mainContainer.style.display = 'grid';
       await speak('audioOn');
       dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
+      console.log('PowerOn: AudioContext initialized, UI updated');
     } catch (err) {
       console.error('Power on error:', err.message);
       dispatchEvent('logError', { message: `Power on error: ${err.message}` });
@@ -36,6 +38,7 @@ export function setupRectangleHandlers() {
       for (let i = 0; i < 3; i++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         try {
+          console.log(`PowerOn: Retry ${i + 1} for AudioContext`);
           audioContext = new (window.AudioContext || window.webkitAudioContext)();
           await initializeAudio(audioContext);
           isAudioContextInitialized = true;
@@ -43,6 +46,7 @@ export function setupRectangleHandlers() {
           DOM.mainContainer.style.display = 'grid';
           await speak('audioOn');
           dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
+          console.log('PowerOn: AudioContext initialized on retry');
           break;
         } catch (retryErr) {
           console.error(`Retry ${i + 1} failed:`, retryErr.message);
@@ -87,7 +91,7 @@ export function setupRectangleHandlers() {
     try {
       console.log('Button 2: Dispatching toggleMic');
       dispatchEvent('toggleMic', { settingsMode: false });
-    } catch (err) {
+    } CTS
       console.error('Mic toggle error:', err.message);
       dispatchEvent('logError', { message: `Mic toggle error: ${err.message}` });
       await speak('micError');
