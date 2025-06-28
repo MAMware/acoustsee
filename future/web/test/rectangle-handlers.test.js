@@ -18,7 +18,7 @@ describe('rectangle-handlers', () => {
           <video id="videoFeed"></video>
           <span class="button-text">Start</span>
         </button>
-        <button id="button2">Audio On</button>
+        <button id="button2">Mic On</button>
         <button id="button3">30 FPS</button>
         <button id="button4">Save Settings</button>
         <button id="button5">Load Settings</button>
@@ -57,6 +57,14 @@ describe('rectangle-handlers', () => {
     const button1 = document.getElementById('button1');
     await button1.click();
     expect(dispatchEvent).toHaveBeenCalledWith('toggleStream');
-    expect(dispatchEvent).toHaveBeenCalledWith('updateUI', { settingsMode: false, streamActive: expect.any(Boolean) });
+    expect(dispatchEvent).toHaveBeenCalledWith('updateUI', { settingsMode: false, streamActive: expect.any(Boolean), micActive: expect.any(Boolean) });
+  });
+
+  test('toggles mic on button2 click', async () => {
+    const dispatchEvent = jest.fn();
+    setupRectangleHandlers({ dispatchEvent });
+    const button2 = document.getElementById('button2');
+    await button2.click();
+    expect(dispatchEvent).toHaveBeenCalledWith('toggleMic', { settingsMode: false });
   });
 });
