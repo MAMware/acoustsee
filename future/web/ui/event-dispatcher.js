@@ -16,7 +16,7 @@ export function createEventDispatcher(DOM) {
   }
 
   const handlers = {
-    updateUI: async ({ settingsMode, streamActive }) => {
+    updateUI: async ({ settingsMode, streamActive, micActive }) => {
       if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
         console.error('Missing critical DOM elements for UI update');
         dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
@@ -33,8 +33,8 @@ export function createEventDispatcher(DOM) {
         );
         setTextAndAriaLabel(
           DOM.button2,
-          settingsMode ? (settings.synthesisEngine === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (streamActive ? 'Audio Off' : 'Audio On'),
-          settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : `Toggle audio`
+          settingsMode ? (settings.synthesisEngine === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (micActive ? 'Mic Off' : 'Mic On'),
+          settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : `Toggle microphone`
         );
         setTextAndAriaLabel(
           DOM.button3,
@@ -59,6 +59,7 @@ export function createEventDispatcher(DOM) {
         return;
       }
 
+      console.log('updateUI triggered with TTS', { settingsMode, streamActive, micActive });
       const state = { state: settingsMode ? 'on' : 'off' };
       // Button 1: Start/Stop or Grid
       await speak(settingsMode ? 'gridSelect' : 'startStop', {
@@ -70,14 +71,14 @@ export function createEventDispatcher(DOM) {
         settingsMode ? `Select grid: ${settings.gridType}` : `Start or stop stream`
       );
 
-      // Button 2: Audio or Synth
-      await speak(settingsMode ? 'synthesisSelect' : 'audioToggle', {
-        state: settingsMode ? settings.synthesisEngine : (streamActive ? 'on' : 'off')
+      // Button 2: Mic or Synth
+      await speak(settingsMode ? 'synthesisSelect' : 'micToggle', {
+        state: settingsMode ? settings.synthesisEngine : (micActive ? 'off' : 'on')
       });
       setTextAndAriaLabel(
         DOM.button2,
-        settingsMode ? (settings.synthesisEngine === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (streamActive ? 'Audio Off' : 'Audio On'),
-        settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : `Toggle audio`
+        settingsMode ? (settings.synthesisEngine === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (micActive ? 'Mic Off' : 'Mic On'),
+        settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : `Toggle microphone`
       );
 
       // Button 3: FPS or Input
@@ -160,12 +161,12 @@ export function createEventDispatcher(DOM) {
       } else {
         await handlers.toggleStream();
       }
-      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream });
+      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
     toggleStream: async () => {
       try {
         if (!settings.stream) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!settings.micStream });
           DOM.videoFeed.srcObject = stream;
           setStream(stream);
           setAudioInterval(setInterval(() => {
@@ -175,30 +176,48 @@ export function createEventDispatcher(DOM) {
         } else {
           settings.stream.getTracks().forEach(track => track.stop());
           setStream(null);
+          if (settings.micStream) {
+            settings.micStream.getTracks().forEach(track => track.stop());
+            settings.micStream = null;
+          }
           clearInterval(settings.audioInterval);
           setAudioInterval(null);
           await speak('startStop', { state: 'stopped' });
         }
-        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream });
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {
         console.error('Stream toggle error:', err.message);
         dispatchEvent('logError', { message: `Stream toggle error: ${err.message}` });
         await speak('cameraError');
       }
     },
-    toggleAudio: async ({ settingsMode }) => {
+    toggleMic: async ({ settingsMode }) => {
       if (settingsMode) {
         settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
         await speak('synthesisSelect', { state: settings.synthesisEngine });
       } else {
-        dispatchEvent('toggleAudioContext');
+        try {
+          if (!settings.micStream) {
+            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            settings.micStream = micStream;
+            await speak('micToggle', { state: 'on' });
+          } else {
+            settings.micStream.getTracks().forEach(track => track.stop());
+            settings.micStream = null;
+            await speak('micToggle', { state: 'off' });
+          }
+          dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+        } catch (err) {
+          console.error('Mic toggle error:', err.message);
+          dispatchEvent('logError', { message: `Mic toggle error: ${err.message}` });
+          await speak('micError');
+        }
       }
-      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream });
     },
     toggleInput: async () => {
       settings.language = settings.language === 'en-US' ? 'es-ES' : 'en-US';
       await speak('languageSelect', { lang: settings.language });
-      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream });
+      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
     saveSettings: async ({ settingsMode }) => {
       if (settingsMode) {
@@ -245,7 +264,7 @@ export function createEventDispatcher(DOM) {
           await speak('loadError');
         }
       }
-      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream });
+      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
     emailDebug: async () => {
       try {
