@@ -65,6 +65,7 @@ export function setupRectangleHandlers() {
       return;
     }
     try {
+      console.log('Button 1: Dispatching toggleStream');
       dispatchEvent('toggleStream');
       dispatchEvent('updateUI', { settingsMode: false, streamActive: !!settings.stream, micActive: !!settings.micStream });
     } catch (err) {
@@ -84,6 +85,7 @@ export function setupRectangleHandlers() {
       return;
     }
     try {
+      console.log('Button 2: Dispatching toggleMic');
       dispatchEvent('toggleMic', { settingsMode: false });
     } catch (err) {
       console.error('Mic toggle error:', err.message);
