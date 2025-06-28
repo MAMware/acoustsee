@@ -11,17 +11,17 @@ The content in this repository builds a web app and provides a public working pl
 
 ### Project Vision
 
-Synesthesia: translation from a photon to phonon, 
-Tech stack: Mobile phone
-Use: Run the code into a mobile phone browser to translate the camera view into a stereo soundscape, where i.e.: a sidewalk that the user is waling on could have a distintive spectral signature with location awaresness modeling, a wall at the left with its charecteristical different spectra should make its  distintive sound signature in your left ear. A car, a bag on the floor and so on with its own char sound.
+- Synesthesia: i.e.:translation from a photon to phonon 
+- Tech stack: Mobile phone
+- Use: Run the app to translate images into a stereo soundscape, where i.e.: a sidewalk that the user is waling on could have a distintive spectral signature with location awaresness modeling, a wall at the left with its charecteristical different spectra should make its  distintive sound signature in your left ear. A car, a bag on the floor and so on with its own char sound.
 
 >Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has a less broad harmonic content and a lower volume and wen it swings closer its spectra complexity raises, broader and louder. 
 
 This project aims to make this imagination into a reality. 
 
-The first milestones coded (at 4 now) is entirely coded by xAI Grok 
+So far, the first four milestones are coded entirely coded by xAI Grok 
 
-We now are ready to welcome contributors from open source community to enhace perception. 
+We are ready to welcome contributors from open source community to enhace perception. 
 
 ## Table of Contents
 
@@ -54,7 +54,7 @@ Unstable versions currently being developed and about to be tested can be found 
 
 
 
-For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) there you also find instruccions to run the first command line PoC made with Python
+For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) where also you can find instruccions to run the command line Python version.
 
 ### Hardware needed:
 
