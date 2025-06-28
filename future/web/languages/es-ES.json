@@ -1,26 +1,57 @@
 {
-  "settingsToggle": "Configuraciones {state}",
-  "modeBtn": "Modo establecido en {mode}",
-  "gridSelect": "Cuadrícula establecida en {grid}",
-  "synthesisSelect": "Síntesis establecida en {engine}",
-  "languageSelect": "Idioma establecido en {lang}",
-  "startStop": "Navegación {state}",
-  "cameraError": "No se pudo acceder a la cámara",
   "audioOn": "Audio activado",
   "audioError": "Fallo en la inicialización del audio",
-  "audioNotEnabled": "Audio no activado, por favor active el audio primero",
-  "cameraPermissionDenied": "Permiso de cámara denegado, por favor habilita en ajustes",
-  "cameraInUse": "La cámara ya está en uso por otra aplicación",
-  "cameraConstraintsError": "Configuración de cámara no soportada por este dispositivo",
-  "frameProcessingError": "Error al procesar el cuadro de video",
-  "fpsBtn": "Velocidad de fotogramas establecida en {fps} FPS",
-  "fpsError": "No se pudo establecer la velocidad de fotogramas",
-  "emailDebug": "Correo de registro de errores {state}",
-  "audioError": "Error de audio, por favor toca de nuevo para activar el audio",
-  "emailError": "No se pudo generar el correo de registro de errores",
-  "saveSettings": "Configuraciones {state}",
-  "loadSettings": "Configuraciones {state}",
-  "viewDebug": "Registro de depuración {state}",
-  "saveError": "No se pudo guardar configuraciones",
-  "loadError": "No se pudo cargar configuraciones"
+  "audioNotEnabled": "Audio no inicializado",
+  "startStop": {
+    "started": "Navegación iniciada",
+    "stopped": "Navegación detenida"
+  },
+  "micToggle": {
+    "on": "Micrófono activado",
+    "off": "Micrófono desactivado"
+  },
+  "micError": "Fallo en el acceso al micrófono",
+  "cameraError": "Fallo en el acceso a la cámara",
+  "audioToggle": {
+    "on": "Salida de audio activada",
+    "off": "Salida de audio desactivada"
+  },
+  "fpsBtn": {
+    "20": "20 fotogramas por segundo",
+    "30": "30 fotogramas por segundo",
+    "60": "60 fotogramas por segundo",
+    "auto": "Frecuencia de fotogramas automática"
+  },
+  "gridSelect": {
+    "hex-tonnetz": "Cuadrícula Hex Tonnetz seleccionada",
+    "circle-of-fifths": "Círculo de quintas seleccionado"
+  },
+  "synthesisSelect": {
+    "sine-wave": "Síntesis de onda sinusoidal seleccionada",
+    "fm-synthesis": "Síntesis FM seleccionada"
+  },
+  "languageSelect": {
+    "en-US": "Inglés seleccionado",
+    "es-ES": "Español seleccionado"
+  },
+  "settingsToggle": {
+    "on": "Modo de configuración activado",
+    "off": "Modo de configuración desactivado"
+  },
+  "saveSettings": {
+    "saved": "Configuraciones guardadas"
+  },
+  "saveError": "Fallo al guardar configuraciones",
+  "loadSettings": {
+    "loaded": "Configuraciones cargadas",
+    "none": "No se encontraron configuraciones guardadas"
+  },
+  "loadError": "Fallo al cargar configuraciones",
+  "viewDebug": {
+    "view": "Vista de depuración abierta"
+  },
+  "emailDebug": {
+    "sent": "Registro de depuración enviado por correo",
+    "error": "Fallo al enviar el registro de depuración"
+  }
 }
