@@ -1,159 +1,32 @@
-import { settings } from "../state.js";
-import { getDispatchEvent } from "../context.js";
-import { getDOM } from "../context.js";
+import { settings } from '../state.js';
 
-let translationCache = {};
-
-async function loadTranslations(lang) {
-  if (translationCache[lang]) {
-    console.log(`Using cached translations for ${lang}`);
-    return translationCache[lang];
-  }
-
+export async function speak(key, params = {}) {
   try {
-    console.log(`Fetching translations for ${lang}`);
-    const response = await fetch(`../web/languages/${lang}.json`);
+    const response = await fetch(`./languages/${settings.language}.json`);
     if (!response.ok) {
-      throw new Error(
-        `Failed to load ${lang} translations: ${response.status}`,
-      );
+      throw new Error(`Failed to load language file: ${response.status}`);
     }
     const translations = await response.json();
-    translationCache[lang] = translations;
-    console.log(`Translations loaded for ${lang}`);
-    return translations;
-  } catch (error) {
-    console.error("Translation load failed:", error.message);
-    const dispatchEvent = getDispatchEvent();
-    dispatchEvent("logError", {
-      message: `Translation load failed for ${lang}: ${error.message}`,
-    });
-    return {};
-  }
-}
+    let finalMessage = translations[key] || key;
 
-export async function speak(elementId, state = {}) {
-  const lang = settings.language || "en-US";
-  const translations = await loadTranslations(lang);
-  let message = translations[elementId] || elementId;
+    if (typeof finalMessage === 'object') {
+      finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
+    }
 
-  if (!message) {
-    message = elementId;
-    console.warn(`No translation found for ${elementId} in ${lang}`);
-  }
-
-  let finalMessage = message;
-  for (const [key, value] of Object.entries(state)) {
-    if (key === "state") {
-      if (elementId === "emailDebug") {
-        finalMessage = finalMessage.replaceAll(
-          `{${key}}`,
-          value === "sent" ? (lang === "en-US" ? "sent" : "enviado") : value,
-        );
-      } else if (elementId === "settingsToggle") {
-        finalMessage = finalMessage.replaceAll(
-          `{${key}}`,
-          value === "on"
-            ? lang === "en-US"
-              ? "enabled"
-              : "activadas"
-            : lang === "en-US"
-              ? "disabled"
-              : "desactivadas",
-        );
-      } else if (elementId === "startStop") {
-        finalMessage = finalMessage.replaceAll(
-          `{${key}}`,
-          value === "started"
-            ? lang === "en-US"
-              ? "started"
-              : "iniciada"
-            : lang === "en-US"
-              ? "stopped"
-              : "detenida",
-        );
-      } else {
-        finalMessage = finalMessage.replaceAll(`{${key}}`, value);
+    // Replace placeholders (e.g., {state}, {fps}, {lang})
+    for (const [paramKey, paramValue] of Object.entries(params)) {
+      let tempMessage = finalMessage;
+      while (tempMessage.includes(`{${paramKey}}`)) {
+        tempMessage = tempMessage.replace(`{${paramKey}}`, paramValue);
       }
-    } else if (key === "mode") {
-      finalMessage = finalMessage.replaceAll(
-        `{${key}}`,
-        value === "day"
-          ? lang === "en-US"
-            ? "day"
-            : "día"
-          : lang === "en-US"
-            ? "night"
-            : "noche",
-      );
-    } else if (key === "grid") {
-      finalMessage = finalMessage.replaceAll(
-        `{${key}}`,
-        value === "hex-tonnetz"
-          ? lang === "en-US"
-            ? "hexagonal tonnetz"
-            : "tonnetz hexagonal"
-          : lang === "en-US"
-            ? "circle of fifths"
-            : "círculo de quintas",
-      );
-    } else if (key === "engine") {
-      finalMessage = finalMessage.replaceAll(
-        `{${key}}`,
-        value === "sine-wave"
-          ? lang === "en-US"
-            ? "sine wave"
-            : "onda sinusoidal"
-          : lang === "en-US"
-            ? "FM synthesis"
-            : "síntesis FM",
-      );
-    } else if (key === "lang") {
-      finalMessage = finalMessage.replaceAll(
-        `{${key}}`,
-        value === "en-US"
-          ? lang === "en-US"
-            ? "English"
-            : "inglés"
-          : lang === "en-US"
-            ? "Spanish"
-            : "español",
-      );
-    } else {
-      finalMessage = finalMessage.replaceAll(`{${key}}`, value);
+      finalMessage = tempMessage;
     }
-  }
 
-  console.log(`Speaking: ${finalMessage} in ${lang}`);
-  try {
-    if ("speechSynthesis" in window) {
-      const utterance = new SpeechSynthesisUtterance(finalMessage);
-      utterance.lang = lang;
-      utterance.volume = 1.0;
-      utterance.rate = 1.0;
-      window.speechSynthesis.speak(utterance);
-    } else {
-      console.warn("Speech synthesis not supported");
-      const dispatchEvent = getDispatchEvent();
-      dispatchEvent("logError", { message: "Speech synthesis not supported" });
-      const DOM = getDOM();
-      if (DOM.loadingIndicator) {
-        DOM.loadingIndicator.textContent = "Speech synthesis not supported";
-        DOM.loadingIndicator.style.display = "block";
-        setTimeout(() => (DOM.loadingIndicator.style.display = "none"), 3000);
-      }
-    }
-  } catch (error) {
-    console.error("Speech synthesis error:", error.message);
-    const dispatchEvent = getDispatchEvent();
-    dispatchEvent("logError", {
-      message: `Speech synthesis error: ${error.message}`,
-    });
-    const DOM = getDOM();
-    if (DOM.loadingIndicator) {
-      DOM.loadingIndicator.textContent = `Speech error: ${error.message}`;
-      DOM.loadingIndicator.style.display = "block";
-      setTimeout(() => (DOM.loadingIndicator.style.display = "none"), 3000);
-    }
+    console.log('speak: Speaking message', { key, finalMessage, params });
+    const utterance = new SpeechSynthesisUtterance(finalMessage);
+    utterance.lang = settings.language;
+    window.speechSynthesis.speak(utterance);
+  } catch (err) {
+    console.error('TTS error:', err.message);
   }
 }
