@@ -2,6 +2,7 @@ import { setAudioInterval, settings, setStream } from '../state.js';
 import { processFrame } from './frame-processor.js';
 import { speak } from './utils.js';
 import { getDOM } from '../context.js';
+import { initializeMicAudio } from '../audio-processor.js';
 
 export let dispatchEvent = null;
 
@@ -201,10 +202,12 @@ export function createEventDispatcher(DOM) {
           if (!settings.micStream) {
             const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             settings.micStream = micStream;
+            initializeMicAudio(micStream);
             await speak('micToggle', { state: 'on' });
           } else {
             settings.micStream.getTracks().forEach(track => track.stop());
             settings.micStream = null;
+            initializeMicAudio(null);
             await speak('micToggle', { state: 'off' });
           }
           dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
