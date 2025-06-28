@@ -5,18 +5,23 @@
 
 ## [Introduction](#introduction)
 
-The content in this repository aims to transform a visual environment into a intuitive soundscape, in a synesthesic transform, empowering the user to experience the visual world by synthetic audio cues in real time.
+The content in this repository builds a web app and provides a public working platform about code that aims to transform a visual environment into a soundscape, empowering the user to experience the visual world by synthetic audio cues in real time.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
 ### Project Vision
 
-The synesthesia at project is the translation from a photon to a phonon, with a tech stack that should be easy to get for a regular user, in this case a visually challenged one. 
-This repo holds code that when loaded into a mobile phone browser translates its camera imput into a stereo soundscape, where a sidewalk that the user is waling on could have a distintive spectrum signature that is being hear by both hears, a wall at the left with its should make its  distintive sound signature, a car, a hole... a light... and so on... 
+Synesthesia: translation from a photon to phonon, 
+Tech stack: Mobile phone
+Use: Run the code into a mobile phone browser to translate the camera view into a stereo soundscape, where i.e.: a sidewalk that the user is waling on could have a distintive spectral signature with location awaresness modeling, a wall at the left with its charecteristical different spectra should make its  distintive sound signature in your left ear. A car, a bag on the floor and so on with its own char sound.
 
 >Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has a less broad harmonic content and a lower volume and wen it swings closer its spectra complexity raises, broader and louder. 
 
-This project aims to make this imagination into a reality, with its first milestones coded entirely by xAI Grok is now ready to welcome contributors from open source community to enhace in a afordable way, perception. 
+This project aims to make this imagination into a reality. 
+
+The first milestones coded (at 4 now) is entirely coded by xAI Grok 
+
+We now are ready to welcome contributors from open source community to enhace perception. 
 
 ## Table of Contents
 
@@ -33,6 +38,8 @@ This project aims to make this imagination into a reality, with its first milest
 
 ### [Usage](docs/USAGE.md)
 
+To use it, having the most up to date version of mobile web browsers is diserable yet most mobile internet browsers from 2021 should work.
+
 The latest stable proof of concept can be run from 
 
 - https://mamware.github.io/acoustsee/present
@@ -41,11 +48,11 @@ Previous versions and other approachs can be found at
 
 - https://mamware.github.io/acoustsee/past
 
-Unstable versions currently being developed adn tested can be found at
+Unstable versions currently being developed and about to be tested can be found at
 
 - https://mamware.github.io/acoustsee/future
 
-To use it, having the most up to date version of mobile web browsers is diserable yet most mobile internet browsers from 2021 should work.
+
 
 For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) there you also find instruccions to run the first command line PoC made with Python
 
