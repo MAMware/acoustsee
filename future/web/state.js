@@ -28,6 +28,10 @@ export function setSkipFrame(value) {
   skipFrame = value;
 }
 
+export function setFrameCount(value) {
+  frameCount = value;
+}
+
 export function setPrevFrameDataLeft(data) {
   prevFrameDataLeft = data;
 }
