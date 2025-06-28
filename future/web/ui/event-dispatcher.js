@@ -5,6 +5,9 @@ import { getDOM } from '../context.js';
 
 export let dispatchEvent = null;
 
+let lastTTSTime = 0;
+const ttsCooldown = 2000; // 2 seconds cooldown for TTS
+
 export function createEventDispatcher(DOM) {
   console.log('createEventDispatcher: Initializing event dispatcher');
   if (!DOM) {
@@ -20,13 +23,49 @@ export function createEventDispatcher(DOM) {
         return;
       }
 
+      const currentTime = performance.now();
+      if (currentTime - lastTTSTime < ttsCooldown) {
+        // Skip TTS but update text and aria-labels
+        setTextAndAriaLabel(
+          DOM.button1.querySelector('.button-text'),
+          settingsMode ? (settings.gridType === 'hex-tonnetz' ? 'Hex Tonnetz' : 'Circle of Fifths') : (streamActive ? 'Stop' : 'Start'),
+          settingsMode ? `Select grid: ${settings.gridType}` : `Start or stop stream`
+        );
+        setTextAndAriaLabel(
+          DOM.button2,
+          settingsMode ? (settings.synthesisEngine === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (streamActive ? 'Audio Off' : 'Audio On'),
+          settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : `Toggle audio`
+        );
+        setTextAndAriaLabel(
+          DOM.button3,
+          settingsMode ? (settings.language === 'en-US' ? 'English' : 'Spanish') : (settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`),
+          settingsMode ? `Select language: ${settings.language}` : `Select frame rate`
+        );
+        setTextAndAriaLabel(
+          DOM.button4,
+          settingsMode ? 'View Debug' : 'Save Settings',
+          settingsMode ? 'View debug log' : 'Save settings'
+        );
+        setTextAndAriaLabel(
+          DOM.button5,
+          settingsMode ? 'Email Log' : 'Load Settings',
+          settingsMode ? 'Email debug log' : 'Load settings'
+        );
+        setTextAndAriaLabel(
+          DOM.button6,
+          settingsMode ? 'Exit Settings' : 'Settings',
+          settingsMode ? 'Exit settings mode' : 'Toggle settings mode'
+        );
+        return;
+      }
+
       const state = { state: settingsMode ? 'on' : 'off' };
       // Button 1: Start/Stop or Grid
       await speak(settingsMode ? 'gridSelect' : 'startStop', {
         state: settingsMode ? settings.gridType : (streamActive ? 'stopped' : 'started')
       });
       setTextAndAriaLabel(
-        DOM.button1,
+        DOM.button1.querySelector('.button-text'),
         settingsMode ? (settings.gridType === 'hex-tonnetz' ? 'Hex Tonnetz' : 'Circle of Fifths') : (streamActive ? 'Stop' : 'Start'),
         settingsMode ? `Select grid: ${settings.gridType}` : `Start or stop stream`
       );
@@ -70,10 +109,12 @@ export function createEventDispatcher(DOM) {
       // Button 6: Settings Toggle
       await speak('settingsToggle', state);
       setTextAndAriaLabel(
-        DOM.button6.querySelector('.button-text'),
+        DOM.button6,
         settingsMode ? 'Exit Settings' : 'Settings',
         settingsMode ? 'Exit settings mode' : 'Toggle settings mode'
       );
+
+      lastTTSTime = currentTime;
     },
     processFrame: () => {
       try {
