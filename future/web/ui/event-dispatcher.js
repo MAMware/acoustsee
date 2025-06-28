@@ -6,7 +6,7 @@ import { getDOM } from '../context.js';
 export let dispatchEvent = null;
 
 let lastTTSTime = 0;
-const ttsCooldown = 2000; // 2 seconds cooldown for TTS
+const ttsCooldown = 3000; // 3 seconds cooldown for TTS
 
 export function createEventDispatcher(DOM) {
   console.log('createEventDispatcher: Initializing event dispatcher');
@@ -56,10 +56,11 @@ export function createEventDispatcher(DOM) {
           settingsMode ? 'Exit Settings' : 'Settings',
           settingsMode ? 'Exit settings mode' : 'Toggle settings mode'
         );
+        console.log('updateUI: Skipped TTS due to cooldown', { currentTime, lastTTSTime });
         return;
       }
 
-      console.log('updateUI triggered with TTS', { settingsMode, streamActive, micActive });
+      console.log('updateUI: Triggering with TTS', { settingsMode, streamActive, micActive });
       const state = { state: settingsMode ? 'on' : 'off' };
       // Button 1: Start/Stop or Grid
       await speak(settingsMode ? 'gridSelect' : 'startStop', {
