@@ -5,6 +5,7 @@ export let settings = {
   language: 'en-US',
   synthesisEngine: 'sine-wave',
   stream: null,
+  micStream: null,
   gridType: 'circle-of-fifths',
   dayNightMode: 'day',
   isSettingsMode: false
@@ -29,6 +30,7 @@ export function setSkipFrame(value) {
 }
 
 export function setFrameCount(value) {
+  console.log(`Setting frameCount to ${value} (was ${frameCount})`);
   frameCount = value;
 }
 
