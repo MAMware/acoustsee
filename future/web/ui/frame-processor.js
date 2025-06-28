@@ -2,12 +2,10 @@ import { playAudio } from '../audio-processor.js';
 import { frameCount, lastTime, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, skipFrame, setSkipFrame, settings, setAudioInterval, setFrameCount } from '../state.js';
 import { getDispatchEvent } from '../context.js';
 
-let lastTTSTime = 0;
-const ttsCooldown = 2000; // 2 seconds cooldown for TTS
-
 export function processFrame(videoFeed, DOM) {
   if (skipFrame) {
     setSkipFrame(false);
+    console.log('Skipping frame due to skipFrame flag');
     return;
   }
   if (!videoFeed || !DOM) {
@@ -21,9 +19,11 @@ export function processFrame(videoFeed, DOM) {
   const deltaTime = currentTime - lastTime;
   if (deltaTime < settings.updateInterval) {
     setSkipFrame(true);
+    console.log(`Skipping frame due to deltaTime ${deltaTime} < updateInterval ${settings.updateInterval}`);
     return;
   }
   try {
+    console.log('Processing frame', { frameCount });
     const frameProcessingStart = performance.now();
     // Create a temporary canvas to process video frame
     const tempCanvas = document.createElement('canvas');
@@ -58,12 +58,6 @@ export function processFrame(videoFeed, DOM) {
         setAudioInterval(setInterval(() => {
           getDispatchEvent()('processFrame');
         }, settings.updateInterval));
-      }
-      // Throttle TTS for FPS updates
-      if (currentTime - lastTTSTime > ttsCooldown) {
-        console.log('Triggering updateUI from processFrame for autoFPS');
-        getDispatchEvent()('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream });
-        lastTTSTime = currentTime;
       }
       console.timeEnd('autoFPS');
     }
