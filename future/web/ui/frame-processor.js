@@ -1,6 +1,9 @@
 import { playAudio } from '../audio-processor.js';
-import { frameCount, lastTime, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, skipFrame, setSkipFrame, settings, setAudioInterval } from '../state.js';
+import { frameCount, lastTime, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, skipFrame, setSkipFrame, settings, setAudioInterval, setFrameCount } from '../state.js';
 import { getDispatchEvent } from '../context.js';
+
+let lastTTSTime = 0;
+const ttsCooldown = 2000; // 2 seconds cooldown for TTS
 
 export function processFrame(videoFeed, DOM) {
   if (skipFrame) {
@@ -38,21 +41,29 @@ export function processFrame(videoFeed, DOM) {
     );
     setPrevFrameDataLeft(newLeft);
     setPrevFrameDataRight(newRight);
-    frameCount++;
+    setFrameCount(frameCount + 1);
     // Auto FPS adjustment
     if (settings.autoFPS) {
       console.time('autoFPS');
       const frameProcessingTime = performance.now() - frameProcessingStart;
       if (frameProcessingTime > 40) {
         settings.updateInterval = Math.min(settings.updateInterval + 10, 50);
+        console.log(`Increased updateInterval to ${settings.updateInterval} due to slow frame processing: ${frameProcessingTime}ms`);
       } else if (frameProcessingTime < 20 && settings.updateInterval > 16) {
         settings.updateInterval = Math.max(settings.updateInterval - 10, 16);
+        console.log(`Decreased updateInterval to ${settings.updateInterval} due to fast frame processing: ${frameProcessingTime}ms`);
       }
       if (settings.audioInterval) {
         clearInterval(settings.audioInterval);
         setAudioInterval(setInterval(() => {
           getDispatchEvent()('processFrame');
         }, settings.updateInterval));
+      }
+      // Throttle TTS for FPS updates
+      if (currentTime - lastTTSTime > ttsCooldown) {
+        console.log('Triggering updateUI from processFrame for autoFPS');
+        getDispatchEvent()('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream });
+        lastTTSTime = currentTime;
       }
       console.timeEnd('autoFPS');
     }
