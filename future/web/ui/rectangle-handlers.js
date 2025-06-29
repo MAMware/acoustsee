@@ -91,7 +91,7 @@ export function setupRectangleHandlers() {
     try {
       console.log('Button 2: Dispatching toggleMic');
       dispatchEvent('toggleMic', { settingsMode: false });
-    } CTS
+    } catch (err) {
       console.error('Mic toggle error:', err.message);
       dispatchEvent('logError', { message: `Mic toggle error: ${err.message}` });
       await speak('micError');
