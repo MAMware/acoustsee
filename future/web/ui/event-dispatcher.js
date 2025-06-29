@@ -7,7 +7,7 @@ import { initializeMicAudio } from '../audio-processor.js';
 export let dispatchEvent = null;
 
 let lastTTSTime = 0;
-const ttsCooldown = 3000; // 3 seconds cooldown for TTS
+const ttsCooldown = 3000;
 
 export function createEventDispatcher(DOM) {
   console.log('createEventDispatcher: Initializing event dispatcher');
@@ -181,6 +181,7 @@ export function createEventDispatcher(DOM) {
           if (settings.micStream) {
             settings.micStream.getTracks().forEach(track => track.stop());
             settings.micStream = null;
+            initializeMicAudio(null);
           }
           clearInterval(settings.audioInterval);
           setAudioInterval(null);
