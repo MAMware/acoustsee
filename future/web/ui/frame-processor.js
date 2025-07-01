@@ -1,6 +1,9 @@
+// ui/frame-processor.js
 import { playAudio } from '../audio-processor.js';
-import { frameCount, lastTime, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, skipFrame, setSkipFrame, settings, setAudioInterval, setFrameCount } from '../state.js';
+import { frameCount, prevFrameDataLeft, prevFrameDataRight, setPrevFrameDataLeft, setPrevFrameDataRight, skipFrame, setSkipFrame, settings, setAudioInterval, setFrameCount } from '../state.js';
 import { getDispatchEvent } from '../context.js';
+
+let lastTime = 0; // Define locally
 
 export function processFrame(videoFeed, DOM) {
   if (skipFrame) {
@@ -61,7 +64,7 @@ export function processFrame(videoFeed, DOM) {
       }
       console.timeEnd('autoFPS');
     }
-    lastTime = currentTime;
+    lastTime = currentTime; // Update local lastTime
   } catch (err) {
     console.error('Frame processing error:', err);
     if (getDispatchEvent()) {
