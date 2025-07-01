@@ -28,5 +28,8 @@ export async function speak(key, params = {}) {
     window.speechSynthesis.speak(utterance);
   } catch (err) {
     console.error('TTS error:', err.message);
+    if (getDispatchEvent()) {
+      getDispatchEvent()('logError', { message: `TTS error: ${err.message}` });
+    }
   }
 }
