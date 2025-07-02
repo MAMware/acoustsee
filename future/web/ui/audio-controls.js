@@ -19,8 +19,19 @@ export function setupAudioControls({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log("powerOn touched");
     try {
+      // Create AudioContext
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       if (!audioContext) throw new Error("AudioContext creation failed");
+
+      // Ensure AudioContext is running
+      if (audioContext.state === "suspended") {
+        console.log("AudioContext is suspended, attempting to resume");
+        await audioContext.resume();
+      }
+      if (audioContext.state !== "running") {
+        throw new Error(`AudioContext failed to start, state: ${audioContext.state}`);
+      }
+
       await initializeAudio(audioContext);
       isAudioContextInitialized = true;
       DOM.splashScreen.style.display = "none";
@@ -32,11 +43,18 @@ export function setupAudioControls({ dispatchEvent, DOM }) {
       console.error("Power on error:", err.message);
       dispatchEvent("logError", { message: `Power on error: ${err.message}` });
       await speak("audioError");
+      // Retry logic
       for (let i = 0; i < 3; i++) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         try {
           console.log(`PowerOn: Retry ${i + 1} for AudioContext`);
           audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioContext.state === "suspended") {
+            await audioContext.resume();
+          }
+          if (audioContext.state !== "running") {
+            throw new Error(`AudioContext retry failed, state: ${audioContext.state}`);
+          }
           await initializeAudio(audioContext);
           isAudioContextInitialized = true;
           DOM.splashScreen.style.display = "none";
@@ -50,7 +68,11 @@ export function setupAudioControls({ dispatchEvent, DOM }) {
           dispatchEvent("logError", { message: `Audio retry ${i + 1} failed: ${retryErr.message}` });
         }
       }
-      if (!isAudioContextInitialized) await speak("audioError");
+      if (!isAudioContextInitialized) {
+        await speak("audioError");
+        DOM.powerOn.textContent = "Audio Failed - Retry";
+        DOM.powerOn.setAttribute("aria-label", "Retry audio initialization");
+      }
     }
   });
 

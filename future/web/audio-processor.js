@@ -1,7 +1,7 @@
+// audio-processor.js
 import { settings } from "./state.js";
 import { mapFrame } from "./grid-dispatcher.js";
-import { playSineWave } from "./synthesis-methods/engines/sine-wave.js";
-import { playFMSynthesis } from "./synthesis-methods/engines/fm-synthesis.js";
+import { availableEngines } from "./config.js";
 
 let audioContext = null;
 let isAudioInitialized = false;
@@ -10,7 +10,7 @@ let micSource = null;
 
 function setAudioContext(newContext) {
   audioContext = newContext;
-  isAudioInitialized = false; // Reset state when setting a new context
+  isAudioInitialized = false;
 }
 
 async function initializeAudio(context) {
@@ -25,9 +25,7 @@ async function initializeAudio(context) {
       await audioContext.resume();
     }
     if (audioContext.state !== "running") {
-      throw new Error(
-        `AudioContext is not running, state: ${audioContext.state}`,
-      );
+      throw new Error(`AudioContext is not running, state: ${audioContext.state}`);
     }
     oscillators = Array(24)
       .fill()
@@ -61,9 +59,7 @@ async function initializeAudio(context) {
     isAudioInitialized = false;
     audioContext = null;
     if (window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(
-        "Failed to initialize audio",
-      );
+      const utterance = new SpeechSynthesisUtterance("Failed to initialize audio");
       utterance.lang = settings.language || "en-US";
       window.speechSynthesis.speak(utterance);
     }
@@ -71,18 +67,8 @@ async function initializeAudio(context) {
   }
 }
 
-function playAudio(
-  frameData,
-  width,
-  height,
-  prevFrameDataLeft,
-  prevFrameDataRight,
-) {
-  if (
-    !isAudioInitialized ||
-    !audioContext ||
-    audioContext.state !== "running"
-  ) {
+async function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
+  if (!isAudioInitialized || !audioContext || audioContext.state !== "running") {
     console.warn("playAudio: Audio not initialized or context not running", {
       isAudioInitialized,
       audioContext: !!audioContext,
@@ -101,30 +87,27 @@ function playAudio(
     }
   }
 
-  const leftResult = mapFrame(
-    leftFrame,
-    halfWidth,
-    height,
-    prevFrameDataLeft,
-    -1,
-  );
-  const rightResult = mapFrame(
-    rightFrame,
-    halfWidth,
-    height,
-    prevFrameDataRight,
-    1,
-  );
+  const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
+  const rightResult = mapFrame(rightFrame, halfWidth, height, prevFrameDataRight, 1);
 
   const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
-  switch (settings.synthesisEngine) {
-    case "fm-synthesis":
-      playFMSynthesis(allNotes);
-      break;
-    case "sine-wave":
-    default:
-      playSineWave(allNotes);
-      break;
+  const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
+  if (engine) {
+    try {
+      const module = await import(engine.file);
+      const playFunction = module[engine.exportName];
+      if (playFunction) {
+        playFunction(allNotes);
+      } else {
+        console.error(`Play function ${engine.exportName} not found in ${engine.file}`);
+      }
+    } catch (err) {
+      console.error(`Failed to load synthesis engine ${engine.id}:`, err.message);
+    }
+  } else {
+    console.warn(`No synthesis engine found for ${settings.synthesisEngine}, falling back to sine-wave`);
+    const module = await import("./synthesis-methods/engines/sine-wave.js");
+    module.playSineWave(allNotes);
   }
 
   return {

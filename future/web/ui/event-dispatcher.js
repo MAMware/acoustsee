@@ -3,6 +3,7 @@ import { processFrame } from './frame-processor.js';
 import { speak } from './utils.js';
 import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../audio-processor.js';
+import { availableGrids, availableEngines, availableLanguages } from '../config.js';
 
 export let dispatchEvent = null;
 
@@ -29,17 +30,17 @@ export function createEventDispatcher(DOM) {
         // Skip TTS but update text and aria-labels
         setTextAndAriaLabel(
           DOM.button1.querySelector('.button-text'),
-          settingsMode ? (settings.gridType === 'hex-tonnetz' ? 'Hex Tonnetz' : 'Circle of Fifths') : (streamActive ? 'Stop' : 'Start'),
-          settingsMode ? `Select grid: ${settings.gridType}` : `Start or stop stream`
+          settingsMode ? availableGrids.find(g => g.id === settings.gridType)?.name || 'Grid' : (streamActive ? 'Stop Stream' : 'Start Stream'),
+          settingsMode ? `Select grid: ${settings.gridType}` : (streamActive ? 'Stop video stream' : 'Start video stream')
         );
         setTextAndAriaLabel(
           DOM.button2,
-          settingsMode ? (settings.synthesisEngine === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (micActive ? 'Mic Off' : 'Mic On'),
-          settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : `Toggle microphone`
+          settingsMode ? availableEngines.find(e => e.id === settings.synthesisEngine)?.name || 'Engine' : (micActive ? 'Mic Off' : 'Mic On'),
+          settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : (micActive ? 'Turn off microphone' : 'Turn on microphone')
         );
         setTextAndAriaLabel(
           DOM.button3,
-          settingsMode ? (settings.language === 'en-US' ? 'English' : 'Spanish') : (settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`),
+          settingsMode ? availableLanguages.find(l => l.id === settings.language)?.name || 'Language' : (settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`),
           settingsMode ? `Select language: ${settings.language}` : `Select frame rate`
         );
         setTextAndAriaLabel(
@@ -55,22 +56,21 @@ export function createEventDispatcher(DOM) {
         setTextAndAriaLabel(
           DOM.button6,
           settingsMode ? 'Exit Settings' : 'Settings',
-          settingsMode ? 'Exit settings mode' : 'Toggle settings mode'
+          settingsMode ? 'Exit settings mode' : 'Enter settings mode'
         );
         console.log('updateUI: Skipped TTS due to cooldown', { currentTime, lastTTSTime });
         return;
       }
 
       console.log('updateUI: Triggering with TTS', { settingsMode, streamActive, micActive });
-      const state = { state: settingsMode ? 'on' : 'off' };
       // Button 1: Start/Stop or Grid
       await speak(settingsMode ? 'gridSelect' : 'startStop', {
         state: settingsMode ? settings.gridType : (streamActive ? 'stopped' : 'started')
       });
       setTextAndAriaLabel(
         DOM.button1.querySelector('.button-text'),
-        settingsMode ? (settings.gridType === 'hex-tonnetz' ? 'Hex Tonnetz' : 'Circle of Fifths') : (streamActive ? 'Stop' : 'Start'),
-        settingsMode ? `Select grid: ${settings.gridType}` : `Start or stop stream`
+        settingsMode ? availableGrids.find(g => g.id === settings.gridType)?.name || 'Grid' : (streamActive ? 'Stop Stream' : 'Start Stream'),
+        settingsMode ? `Select grid: ${settings.gridType}` : (streamActive ? 'Stop video stream' : 'Start video stream')
       );
 
       // Button 2: Mic or Synth
@@ -79,17 +79,17 @@ export function createEventDispatcher(DOM) {
       });
       setTextAndAriaLabel(
         DOM.button2,
-        settingsMode ? (settings.synthesisEngine === 'sine-wave' ? 'Sine Wave' : 'FM Synthesis') : (micActive ? 'Mic Off' : 'Mic On'),
-        settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : `Toggle microphone`
+        settingsMode ? availableEngines.find(e => e.id === settings.synthesisEngine)?.name || 'Engine' : (micActive ? 'Mic Off' : 'Mic On'),
+        settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : (micActive ? 'Turn off microphone' : 'Turn on microphone')
       );
 
-      // Button 3: FPS or Input
+      // Button 3: FPS or Language
       await speak(settingsMode ? 'languageSelect' : 'fpsBtn', {
         fps: settingsMode ? settings.language : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
       });
       setTextAndAriaLabel(
         DOM.button3,
-        settingsMode ? (settings.language === 'en-US' ? 'English' : 'Spanish') : (settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`),
+        settingsMode ? availableLanguages.find(l => l.id === settings.language)?.name || 'Language' : (settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`),
         settingsMode ? `Select language: ${settings.language}` : `Select frame rate`
       );
 
@@ -110,11 +110,11 @@ export function createEventDispatcher(DOM) {
       );
 
       // Button 6: Settings Toggle
-      await speak('settingsToggle', state);
+      await speak('settingsToggle', { state: settingsMode ? 'off' : 'on' });
       setTextAndAriaLabel(
         DOM.button6,
         settingsMode ? 'Exit Settings' : 'Settings',
-        settingsMode ? 'Exit settings mode' : 'Toggle settings mode'
+        settingsMode ? 'Exit settings mode' : 'Enter settings mode'
       );
 
       lastTTSTime = currentTime;
@@ -158,7 +158,9 @@ export function createEventDispatcher(DOM) {
     },
     startStop: async ({ settingsMode }) => {
       if (settingsMode) {
-        settings.gridType = settings.gridType === 'circle-of-fifths' ? 'hex-tonnetz' : 'circle-of-fifths';
+        const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
+        const nextIndex = (currentIndex + 1) % availableGrids.length;
+        settings.gridType = availableGrids[nextIndex].id;
         await speak('gridSelect', { state: settings.gridType });
       } else {
         await handlers.toggleStream();
@@ -196,7 +198,9 @@ export function createEventDispatcher(DOM) {
     },
     toggleMic: async ({ settingsMode }) => {
       if (settingsMode) {
-        settings.synthesisEngine = settings.synthesisEngine === 'sine-wave' ? 'fm-synthesis' : 'sine-wave';
+        const currentIndex = availableEngines.findIndex(e => e.id === settings.synthesisEngine);
+        const nextIndex = (currentIndex + 1) % availableEngines.length;
+        settings.synthesisEngine = availableEngines[nextIndex].id;
         await speak('synthesisSelect', { state: settings.synthesisEngine });
       } else {
         try {
@@ -218,9 +222,12 @@ export function createEventDispatcher(DOM) {
           await speak('micError');
         }
       }
+      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
     toggleInput: async () => {
-      settings.language = settings.language === 'en-US' ? 'es-ES' : 'en-US';
+      const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
+      const nextIndex = (currentIndex + 1) % availableLanguages.length;
+      settings.language = availableLanguages[nextIndex].id;
       await speak('languageSelect', { lang: settings.language });
       dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
@@ -244,6 +251,7 @@ export function createEventDispatcher(DOM) {
           await speak('saveError');
         }
       }
+      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
     loadSettings: async ({ settingsMode }) => {
       if (settingsMode) {
@@ -253,9 +261,15 @@ export function createEventDispatcher(DOM) {
           const saved = localStorage.getItem('acoustSeeSettings');
           if (saved) {
             const parsed = JSON.parse(saved);
-            settings.gridType = parsed.gridType || settings.gridType;
-            settings.synthesisEngine = parsed.synthesisEngine || settings.synthesisEngine;
-            settings.language = parsed.language || settings.language;
+            if (availableGrids.some(g => g.id === parsed.gridType)) {
+              settings.gridType = parsed.gridType;
+            }
+            if (availableEngines.some(e => e.id === parsed.synthesisEngine)) {
+              settings.synthesisEngine = parsed.synthesisEngine;
+            }
+            if (availableLanguages.some(l => l.id === parsed.language)) {
+              settings.language = parsed.language;
+            }
             settings.autoFPS = parsed.autoFPS !== undefined ? parsed.autoFPS : settings.autoFPS;
             settings.updateInterval = parsed.updateInterval || settings.updateInterval;
             dispatchEvent('updateFrameInterval', { interval: settings.updateInterval });
@@ -275,7 +289,7 @@ export function createEventDispatcher(DOM) {
       try {
         const pre = DOM.debug.querySelector('pre');
         const logContent = pre ? pre.textContent : 'No logs available';
-        const mailto = `mailto:?subject=AcoustSee Error Log&body=${encodeURIComponent(logContent)}`;
+        const mailto = `mailto:acoustsee@outlook.com?subject=AcoustSee Error Log&body=${encodeURIComponent(logContent)}`;
         window.location.href = mailto;
         await speak('emailDebug', { state: 'sent' });
       } catch (err) {

@@ -2,6 +2,7 @@
 import { settings } from "../state.js";
 import { speak } from "./utils.js";
 import { getDispatchEvent } from "../context.js";
+import { availableGrids, availableEngines, availableLanguages } from "../config.js";
 
 export function setupUISettings({ dispatchEvent, DOM }) {
   if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button6) {
