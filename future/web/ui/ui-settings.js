@@ -1,6 +1,5 @@
 import { settings } from '../state.js';
 import { getText } from './utils.js';
-import { getDispatchEvent } from '../context.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
   if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
