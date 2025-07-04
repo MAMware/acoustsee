@@ -1,6 +1,6 @@
-import { setAudioInterval, settings, setStream } from '../state.js';
+import { settings, setAudioInterval, setStream, setMicStream, getLogs } from '../state.js';
 import { processFrame } from './frame-processor.js';
-import { speak } from './utils.js';
+import { getText } from './utils.js';
 import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../audio-processor.js';
 import { availableGrids, availableEngines, availableLanguages } from '../config.js';
@@ -26,277 +26,270 @@ export function createEventDispatcher(DOM) {
       }
 
       const currentTime = performance.now();
-      if (currentTime - lastTTSTime < ttsCooldown) {
-        // Skip TTS but update text and aria-labels
-        setTextAndAriaLabel(
-          DOM.button1.querySelector('.button-text'),
-          settingsMode ? availableGrids.find(g => g.id === settings.gridType)?.name || 'Grid' : (streamActive ? 'Stop Stream' : 'Start Stream'),
-          settingsMode ? `Select grid: ${settings.gridType}` : (streamActive ? 'Stop video stream' : 'Start video stream')
-        );
-        setTextAndAriaLabel(
-          DOM.button2,
-          settingsMode ? availableEngines.find(e => e.id === settings.synthesisEngine)?.name || 'Engine' : (micActive ? 'Mic Off' : 'Mic On'),
-          settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : (micActive ? 'Turn off microphone' : 'Turn on microphone')
-        );
-        setTextAndAriaLabel(
-          DOM.button3,
-          settingsMode ? availableLanguages.find(l => l.id === settings.language)?.name || 'Language' : (settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`),
-          settingsMode ? `Select language: ${settings.language}` : `Select frame rate`
-        );
-        setTextAndAriaLabel(
-          DOM.button4,
-          settingsMode ? 'View Debug' : 'Save Settings',
-          settingsMode ? 'View debug log' : 'Save settings'
-        );
-        setTextAndAriaLabel(
-          DOM.button5,
-          settingsMode ? 'Email Log' : 'Load Settings',
-          settingsMode ? 'Email debug log' : 'Load settings'
-        );
-        setTextAndAriaLabel(
-          DOM.button6,
-          settingsMode ? 'Exit Settings' : 'Settings',
-          settingsMode ? 'Exit settings mode' : 'Enter settings mode'
-        );
-        console.log('updateUI: Skipped TTS due to cooldown', { currentTime, lastTTSTime });
-        return;
+      const grid = availableGrids.find(g => g.id === settings.gridType);
+      const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
+      const language = availableLanguages.find(l => l.id === settings.language);
+
+      // Button 1
+      const button1Text = settingsMode
+        ? await getText('button1.settings.text', { gridName: grid?.name || 'Grid' }, 'text')
+        : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
+      const button1Aria = settingsMode
+        ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
+        : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
+      if (currentTime - lastTTSTime >= ttsCooldown) {
+        await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
+          state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
+        });
       }
+      setTextAndAriaLabel(DOM.button1, button1Text, button1Aria);
 
-      console.log('updateUI: Triggering with TTS', { settingsMode, streamActive, micActive });
-      // Button 1: Start/Stop or Grid
-      await speak(settingsMode ? 'gridSelect' : 'startStop', {
-        state: settingsMode ? settings.gridType : (streamActive ? 'stopped' : 'started')
-      });
-      setTextAndAriaLabel(
-        DOM.button1.querySelector('.button-text'),
-        settingsMode ? availableGrids.find(g => g.id === settings.gridType)?.name || 'Grid' : (streamActive ? 'Stop Stream' : 'Start Stream'),
-        settingsMode ? `Select grid: ${settings.gridType}` : (streamActive ? 'Stop video stream' : 'Start video stream')
-      );
+      // Button 2
+      const button2Text = settingsMode
+        ? await getText('button2.settings.text', { engineName: engine?.name || 'Engine' }, 'text')
+        : await getText(`button2.normal.${micActive ? 'off' : 'on'}.text`, {}, 'text');
+      const button2Aria = settingsMode
+        ? await getText('button2.settings.aria', { synthesisEngine: settings.synthesisEngine }, 'aria')
+        : await getText(`button2.normal.${micActive ? 'off' : 'on'}.aria`, {}, 'aria');
+      if (currentTime - lastTTSTime >= ttsCooldown) {
+        await getText(`button2.tts.${settingsMode ? 'synthesisSelect' : 'micToggle'}`, {
+          state: settingsMode ? settings.synthesisEngine : (micActive ? 'turningOff' : 'turningOn')
+        });
+      }
+      setTextAndAriaLabel(DOM.button2, button2Text, button2Aria);
 
-      // Button 2: Mic or Synth
-      await speak(settingsMode ? 'synthesisSelect' : 'micToggle', {
-        state: settingsMode ? settings.synthesisEngine : (micActive ? 'off' : 'on')
-      });
-      setTextAndAriaLabel(
-        DOM.button2,
-        settingsMode ? availableEngines.find(e => e.id === settings.synthesisEngine)?.name || 'Engine' : (micActive ? 'Mic Off' : 'Mic On'),
-        settingsMode ? `Select synthesis: ${settings.synthesisEngine}` : (micActive ? 'Turn off microphone' : 'Turn on microphone')
-      );
+      // Button 3
+      const button3Text = settingsMode
+        ? await getText('button3.settings.text', { languageName: language?.name || 'Language' }, 'text')
+        : await getText('button3.normal.text', { languageName: language?.name || 'Language' }, 'text');
+      const button3Aria = settingsMode
+        ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
+        : await getText('button3.normal.aria', { language: settings.language }, 'aria');
+      if (currentTime - lastTTSTime >= ttsCooldown) {
+        await getText(`button3.tts.${settingsMode ? 'languageSelect' : 'languageSelect'}`, {
+          state: settings.language
+        });
+      }
+      setTextAndAriaLabel(DOM.button3, button3Text, button3Aria);
 
-      // Button 3: FPS or Language
-      await speak(settingsMode ? 'languageSelect' : 'fpsBtn', {
-        fps: settingsMode ? settings.language : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
-      });
-      setTextAndAriaLabel(
-        DOM.button3,
-        settingsMode ? availableLanguages.find(l => l.id === settings.language)?.name || 'Language' : (settings.autoFPS ? 'Auto FPS' : `${Math.round(1000 / settings.updateInterval)} FPS`),
-        settingsMode ? `Select language: ${settings.language}` : `Select frame rate`
-      );
+      // Button 4
+      const button4Text = settingsMode
+        ? await getText('button4.settings.text', {}, 'text')
+        : await getText(`button4.normal.${settings.autoFPS ? 'auto' : 'manual'}.text`, { fps: Math.round(1000 / settings.updateInterval) }, 'text');
+      const button4Aria = settingsMode
+        ? await getText('button4.settings.aria', {}, 'aria')
+        : await getText('button4.normal.aria', {}, 'aria');
+      if (currentTime - lastTTSTime >= ttsCooldown) {
+        await getText(`button4.tts.${settingsMode ? 'saveSettings' : 'fpsBtn'}`, {
+          state: settingsMode ? 'save' : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
+        });
+      }
+      setTextAndAriaLabel(DOM.button4, button4Text, button4Aria);
 
-      // Button 4: Save Settings or View Debug
-      await speak(settingsMode ? 'viewDebug' : 'saveSettings', { state: settingsMode ? 'view' : 'save' });
-      setTextAndAriaLabel(
-        DOM.button4,
-        settingsMode ? 'View Debug' : 'Save Settings',
-        settingsMode ? 'View debug log' : 'Save settings'
-      );
+      // Button 5
+      const button5Text = settingsMode
+        ? await getText('button5.settings.text', {}, 'text')
+        : await getText('button5.normal.text', {}, 'text');
+      const button5Aria = settingsMode
+        ? await getText('button5.settings.aria', {}, 'aria')
+        : await getText('button5.normal.aria', {}, 'aria');
+      if (currentTime - lastTTSTime >= ttsCooldown) {
+        await getText(`button5.tts.${settingsMode ? 'loadSettings' : 'emailDebug'}`, {
+          state: settingsMode ? 'load' : 'email'
+        });
+      }
+      setTextAndAriaLabel(DOM.button5, button5Text, button5Aria);
 
-      // Button 5: Load Settings or Email Debug
-      await speak(settingsMode ? 'emailDebug' : 'loadSettings', { state: settingsMode ? 'email' : 'load' });
-      setTextAndAriaLabel(
-        DOM.button5,
-        settingsMode ? 'Email Log' : 'Load Settings',
-        settingsMode ? 'Email debug log' : 'Load settings'
-      );
-
-      // Button 6: Settings Toggle
-      await speak('settingsToggle', { state: settingsMode ? 'off' : 'on' });
-      setTextAndAriaLabel(
-        DOM.button6,
-        settingsMode ? 'Exit Settings' : 'Settings',
-        settingsMode ? 'Exit settings mode' : 'Enter settings mode'
-      );
+      // Button 6
+      const button6Text = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.text`, {}, 'text');
+      const button6Aria = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.aria`, {}, 'aria');
+      if (currentTime - lastTTSTime >= ttsCooldown) {
+        await getText('button6.tts.settingsToggle', { state: settingsMode ? 'off' : 'on' });
+      }
+      setTextAndAriaLabel(DOM.button6, button6Text, button6Aria);
 
       lastTTSTime = currentTime;
-    },
-    processFrame: () => {
-      try {
-        processFrame(DOM.videoFeed, DOM);
-      } catch (err) {
-        console.error('Process frame error:', err.message);
-        dispatchEvent('logError', { message: `Process frame error: ${err.message}` });
-      }
-    },
-    updateFrameInterval: ({ interval }) => {
-      if (settings.audioInterval) {
-        clearInterval(settings.audioInterval);
-        setAudioInterval(setInterval(() => {
-          dispatchEvent('processFrame');
-        }, interval));
-      }
-    },
-    toggleDebug: ({ show, message }) => {
-      console.log('toggleDebug handler called:', { show, message });
-      if (DOM.debug) {
-        DOM.debug.style.display = show ? 'block' : 'none';
-        if (message && show) {
-          const pre = DOM.debug.querySelector('pre');
-          if (pre) {
-            pre.textContent += `${new Date().toISOString()} - ${message}\n`;
-            pre.scrollTop = pre.scrollHeight;
-          } else {
-            console.error('Debug pre element not found');
-          }
-        }
-      } else {
-        console.error('Debug element not found');
-      }
-    },
-    logError: ({ message }) => {
-      console.error('Logging error:', message);
-      handlers.toggleDebug({ show: true, message });
+      console.log('updateUI: UI updated', { settingsMode, streamActive, micActive });
     },
     startStop: async ({ settingsMode }) => {
       if (settingsMode) {
         const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
         const nextIndex = (currentIndex + 1) % availableGrids.length;
         settings.gridType = availableGrids[nextIndex].id;
-        await speak('gridSelect', { state: settings.gridType });
+        await getText('button1.tts.gridSelect', { state: settings.gridType });
       } else {
-        await handlers.toggleStream();
-      }
-      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-    },
-    toggleStream: async () => {
-      try {
-        if (!settings.stream) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!settings.micStream });
-          DOM.videoFeed.srcObject = stream;
-          setStream(stream);
-          setAudioInterval(setInterval(() => {
-            dispatchEvent('processFrame');
-          }, settings.updateInterval));
-          await speak('startStop', { state: 'started' });
-        } else {
-          settings.stream.getTracks().forEach(track => track.stop());
-          setStream(null);
-          if (settings.micStream) {
-            settings.micStream.getTracks().forEach(track => track.stop());
-            settings.micStream = null;
-            initializeMicAudio(null);
+        try {
+          if (!settings.stream) {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!settings.micStream });
+            DOM.videoFeed.srcObject = stream;
+            setStream(stream);
+            setAudioInterval(setInterval(() => {
+              dispatchEvent('processFrame');
+            }, settings.updateInterval));
+            await getText('button1.tts.startStop', { state: 'starting' });
+          } else {
+            settings.stream.getTracks().forEach(track => track.stop());
+            setStream(null);
+            if (settings.micStream) {
+              settings.micStream.getTracks().forEach(track => track.stop());
+              setMicStream(null);
+              initializeMicAudio(null);
+            }
+            clearInterval(settings.audioInterval);
+            setAudioInterval(null);
+            await getText('button1.tts.startStop', { state: 'stopping' });
           }
-          clearInterval(settings.audioInterval);
-          setAudioInterval(null);
-          await speak('startStop', { state: 'stopped' });
+          dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+        } catch (err) {
+          console.error('Stream toggle error:', err.message);
+          dispatchEvent('logError', { message: `Stream toggle error: ${err.message}` });
+          await getText('button1.tts.cameraError');
         }
-        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-      } catch (err) {
-        console.error('Stream toggle error:', err.message);
-        dispatchEvent('logError', { message: `Stream toggle error: ${err.message}` });
-        await speak('cameraError');
       }
     },
-    toggleMic: async ({ settingsMode }) => {
+    toggleAudio: async ({ settingsMode }) => {
       if (settingsMode) {
         const currentIndex = availableEngines.findIndex(e => e.id === settings.synthesisEngine);
         const nextIndex = (currentIndex + 1) % availableEngines.length;
         settings.synthesisEngine = availableEngines[nextIndex].id;
-        await speak('synthesisSelect', { state: settings.synthesisEngine });
+        await getText('button2.tts.synthesisSelect', { state: settings.synthesisEngine });
       } else {
         try {
+          console.log('toggleAudio: Current mic state', { micActive: !!settings.micStream });
           if (!settings.micStream) {
             const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            settings.micStream = micStream;
+            setMicStream(micStream);
             initializeMicAudio(micStream);
-            await speak('micToggle', { state: 'on' });
+            await getText('button2.tts.micToggle', { state: 'turningOn' });
           } else {
             settings.micStream.getTracks().forEach(track => track.stop());
-            settings.micStream = null;
+            setMicStream(null);
             initializeMicAudio(null);
-            await speak('micToggle', { state: 'off' });
+            await getText('button2.tts.micToggle', { state: 'turningOff' });
           }
           dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
         } catch (err) {
           console.error('Mic toggle error:', err.message);
           dispatchEvent('logError', { message: `Mic toggle error: ${err.message}` });
-          await speak('micError');
+          await getText('button2.tts.micError');
         }
       }
-      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
     toggleInput: async () => {
-      const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
-      const nextIndex = (currentIndex + 1) % availableLanguages.length;
-      settings.language = availableLanguages[nextIndex].id;
-      await speak('languageSelect', { lang: settings.language });
+      try {
+        const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
+        const nextIndex = (currentIndex + 1) % availableLanguages.length;
+        settings.language = availableLanguages[nextIndex].id;
+        await getText('button3.tts.languageSelect', { state: settings.language });
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+      } catch (err) {
+        console.error('Language toggle error:', err.message);
+        dispatchEvent('logError', { message: `Language toggle error: ${err.message}` });
+        await getText('button3.tts.fpsError');
+      }
+    },
+    updateFrameInterval: async ({ interval }) => {
+      try {
+        settings.updateInterval = interval;
+        if (settings.stream) {
+          clearInterval(settings.audioInterval);
+          setAudioInterval(setInterval(() => {
+            dispatchEvent('processFrame');
+          }, settings.updateInterval));
+        }
+        await getText('button4.tts.fpsBtn', {
+          fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval)
+        });
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+      } catch (err) {
+        console.error('Frame interval update error:', err.message);
+        dispatchEvent('logError', { message: `Frame interval update error: ${err.message}` });
+        await getText('button4.tts.fpsError');
+      }
+    },
+    toggleGrid: async () => {
+      try {
+        const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
+        const nextIndex = (currentIndex + 1) % availableGrids.length;
+        settings.gridType = availableGrids[nextIndex].id;
+        await getText('button1.tts.gridSelect', { state: settings.gridType });
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+      } catch (err) {
+        console.error('Grid toggle error:', err.message);
+        dispatchEvent('logError', { message: `Grid toggle error: ${err.message}` });
+        await getText('button1.tts.startStop', { state: 'error' });
+      }
+    },
+    toggleDebug: async ({ show }) => {
+      try {
+        if (DOM.debug) {
+          DOM.debug.style.display = show ? 'block' : 'none';
+        }
+        await getText('button6.tts.settingsToggle', { state: show ? 'on' : 'off' });
+      } catch (err) {
+        console.error('Debug toggle error:', err.message);
+        dispatchEvent('logError', { message: `Debug toggle error: ${err.message}` });
+      }
+    },
+    saveSettings: async () => {
+      try {
+        const settingsToSave = {
+          gridType: settings.gridType,
+          synthesisEngine: settings.synthesisEngine,
+          language: settings.language,
+          autoFPS: settings.autoFPS,
+          updateInterval: settings.updateInterval,
+          dayNightMode: settings.dayNightMode,
+          ttsEnabled: settings.ttsEnabled
+        };
+        localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
+        await getText('button4.tts.saveSettings');
+      } catch (err) {
+        console.error('Save settings error:', err.message);
+        dispatchEvent('logError', { message: `Save settings error: ${err.message}` });
+        await getText('button4.tts.saveError');
+      }
       dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
-    saveSettings: async ({ settingsMode }) => {
-      if (settingsMode) {
-        DOM.debug.style.display = 'block';
-        await speak('viewDebug', { state: 'view' });
-      } else {
-        try {
-          localStorage.setItem('acoustSeeSettings', JSON.stringify({
-            gridType: settings.gridType,
-            synthesisEngine: settings.synthesisEngine,
-            language: settings.language,
-            autoFPS: settings.autoFPS,
-            updateInterval: settings.updateInterval
-          }));
-          await speak('saveSettings', { state: 'saved' });
-        } catch (err) {
-          console.error('Save settings error:', err.message);
-          dispatchEvent('logError', { message: `Save settings error: ${err.message}` });
-          await speak('saveError');
+    loadSettings: async () => {
+      try {
+        const savedSettings = localStorage.getItem('acoustsee-settings');
+        if (savedSettings) {
+          const parsedSettings = JSON.parse(savedSettings);
+          settings.gridType = parsedSettings.gridType || settings.gridType;
+          settings.synthesisEngine = parsedSettings.synthesisEngine || settings.synthesisEngine;
+          settings.language = parsedSettings.language || settings.language;
+          settings.autoFPS = parsedSettings.autoFPS ?? settings.autoFPS;
+          settings.updateInterval = parsedSettings.updateInterval || settings.updateInterval;
+          settings.dayNightMode = parsedSettings.dayNightMode || settings.dayNightMode;
+          settings.ttsEnabled = parsedSettings.ttsEnabled ?? settings.ttsEnabled;
+          await getText('button5.tts.loadSettings.loaded');
+        } else {
+          await getText('button5.tts.loadSettings.none');
         }
+      } catch (err) {
+        console.error('Load settings error:', err.message);
+        dispatchEvent('logError', { message: `Load settings error: ${err.message}` });
+        await getText('button5.tts.loadError');
       }
-      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-    },
-    loadSettings: async ({ settingsMode }) => {
-      if (settingsMode) {
-        dispatchEvent('emailDebug');
-      } else {
-        try {
-          const saved = localStorage.getItem('acoustSeeSettings');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (availableGrids.some(g => g.id === parsed.gridType)) {
-              settings.gridType = parsed.gridType;
-            }
-            if (availableEngines.some(e => e.id === parsed.synthesisEngine)) {
-              settings.synthesisEngine = parsed.synthesisEngine;
-            }
-            if (availableLanguages.some(l => l.id === parsed.language)) {
-              settings.language = parsed.language;
-            }
-            settings.autoFPS = parsed.autoFPS !== undefined ? parsed.autoFPS : settings.autoFPS;
-            settings.updateInterval = parsed.updateInterval || settings.updateInterval;
-            dispatchEvent('updateFrameInterval', { interval: settings.updateInterval });
-            await speak('loadSettings', { state: 'loaded' });
-          } else {
-            await speak('loadSettings', { state: 'none' });
-          }
-        } catch (err) {
-          console.error('Load settings error:', err.message);
-          dispatchEvent('logError', { message: `Load settings error: ${err.message}` });
-          await speak('loadError');
-        }
-      }
-      dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
     emailDebug: async () => {
       try {
-        const pre = DOM.debug.querySelector('pre');
-        const logContent = pre ? pre.textContent : 'No logs available';
-        const mailto = `mailto:acoustsee@outlook.com?subject=AcoustSee Error Log&body=${encodeURIComponent(logContent)}`;
-        window.location.href = mailto;
-        await speak('emailDebug', { state: 'sent' });
+        const logs = getLogs();
+        const subject = encodeURIComponent('AcoustSee Debug Log');
+        const body = encodeURIComponent(`Debug Log:\n${logs}`);
+        window.location.href = `mailto:acoustsee@outlook.com?subject=${subject}&body=${body}`;
+        await getText('button5.tts.emailDebug');
       } catch (err) {
         console.error('Email debug error:', err.message);
         dispatchEvent('logError', { message: `Email debug error: ${err.message}` });
-        await speak('emailDebug', { state: 'error' });
+        await getText('button5.tts.emailDebug', { state: 'error' });
       }
+    },
+    logError: ({ message }) => {
+      console.error('Error logged:', message);
+      addLog(`ERROR: ${message}`);
     }
   };
 

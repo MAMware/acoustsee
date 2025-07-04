@@ -1,57 +1,126 @@
 {
-  "audioOn": "Audio enabled",
-  "audioError": "Audio initialization failed",
-  "audioNotEnabled": "Audio not initialized",
-  "startStop": {
-    "started": "Navigation started",
-    "stopped": "Navigation stopped"
+  "button1": {
+    "normal": {
+      "start": {
+        "text": "Start Processing",
+        "aria": "Start processing video"
+      },
+      "stop": {
+        "text": "Stop Processing",
+        "aria": "Stop processing video"
+      }
+    },
+    "settings": {
+      "text": "Select Grid: {gridName}",
+      "aria": "Select grid type {gridType}"
+    },
+    "tts": {
+      "startStop": {
+        "starting": "Starting processing",
+        "stopping": "Stopping processing",
+        "error": "Error starting or stopping processing"
+      },
+      "cameraError": "Camera access error",
+      "gridSelect": "Grid set to {state}"
+    }
   },
-  "micToggle": {
-    "on": "Microphone enabled",
-    "off": "Microphone disabled"
+  "button2": {
+    "normal": {
+      "on": {
+        "text": "Turn Mic On",
+        "aria": "Turn on microphone"
+      },
+      "off": {
+        "text": "Turn Mic Off",
+        "aria": "Turn off microphone"
+      }
+    },
+    "settings": {
+      "text": "Select Engine: {engineName}",
+      "aria": "Select synthesis engine {synthesisEngine}"
+    },
+    "tts": {
+      "micToggle": {
+        "turningOn": "Turning on microphone",
+        "turningOff": "Turning off microphone"
+      },
+      "micError": "Microphone access error",
+      "synthesisSelect": "Synthesis set to {state}"
+    }
   },
-  "micError": "Microphone access failed",
-  "cameraError": "Camera access failed",
-  "audioToggle": {
-    "on": "Audio output enabled",
-    "off": "Audio output disabled"
+  "button3": {
+    "normal": {
+      "text": "Select Language: {languageName}",
+      "aria": "Select language {language}"
+    },
+    "settings": {
+      "text": "No Action",
+      "aria": "No action in settings mode"
+    },
+    "tts": {
+      "languageSelect": "Language set to {state}",
+      "fpsError": "Language toggle error"
+    }
   },
-  "fpsBtn": {
-    "20": "20 frames per second",
-    "30": "30 frames per second",
-    "60": "60 frames per second",
-    "auto": "Automatic frame rate"
+  "button4": {
+    "normal": {
+      "auto": {
+        "text": "Auto FPS",
+        "aria": "Select frame rate"
+      },
+      "manual": {
+        "text": "{fps} FPS",
+        "aria": "Select frame rate"
+      },
+      "aria": "Select frame rate"
+    },
+    "settings": {
+      "text": "Save Settings",
+      "aria": "Save settings"
+    },
+    "tts": {
+      "fpsBtn": "Frame rate set to {fps}",
+      "fpsError": "Frame rate error",
+      "saveSettings": "Settings saved",
+      "saveError": "Error saving settings"
+    }
   },
-  "gridSelect": {
-    "hex-tonnetz": "Hex Tonnetz grid selected",
-    "circle-of-fifths": "Circle of Fifths grid selected"
+  "button5": {
+    "normal": {
+      "text": "Email Console Log",
+      "aria": "Email console log"
+    },
+    "settings": {
+      "text": "Load Settings",
+      "aria": "Load settings"
+    },
+    "tts": {
+      "emailDebug": {
+        "email": "Emailing console log",
+        "error": "Error emailing console log"
+      },
+      "loadSettings": {
+        "loaded": "Settings loaded",
+        "none": "No settings found"
+      },
+      "loadError": "Error loading settings"
+    }
   },
-  "synthesisSelect": {
-    "sine-wave": "Sine Wave synthesis selected",
-    "fm-synthesis": "FM Synthesis selected"
-  },
-  "languageSelect": {
-    "en-US": "English selected",
-    "es-ES": "Spanish selected"
-  },
-  "settingsToggle": {
-    "on": "Settings mode enabled",
-    "off": "Settings mode disabled"
-  },
-  "saveSettings": {
-    "saved": "Settings saved"
-  },
-  "saveError": "Failed to save settings",
-  "loadSettings": {
-    "loaded": "Settings loaded",
-    "none": "No saved settings found"
-  },
-  "loadError": "Failed to load settings",
-  "viewDebug": {
-    "view": "Debug view opened"
-  },
-  "emailDebug": {
-    "sent": "Debug log emailed",
-    "error": "Failed to email debug log"
+  "button6": {
+    "normal": {
+      "text": "Settings",
+      "aria": "Enter settings mode"
+    },
+    "settings": {
+      "text": "Exit Settings",
+      "aria": "Exit settings mode"
+    },
+    "tts": {
+      "settingsToggle": {
+        "on": "Entering settings mode",
+        "off": "Exiting settings mode"
+      },
+      "settingsError": "Settings toggle error"
+    }
   }
 }

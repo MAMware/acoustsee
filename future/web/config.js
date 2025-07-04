@@ -13,3 +13,5 @@ export const availableLanguages = [
   { id: "en-US", name: "English", file: "./languages/en-US.json" },
   { id: "es-ES", name: "Spanish", file: "./languages/es-ES.json" }
 ];
+
+export const availableUpdateIntervals = [16, 33, 50]; // ms (60fps, 30fps, 20fps)

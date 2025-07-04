@@ -1,57 +1,126 @@
 {
-  "audioOn": "Audio activado",
-  "audioError": "Fallo en la inicialización del audio",
-  "audioNotEnabled": "Audio no inicializado",
-  "startStop": {
-    "started": "Navegación iniciada",
-    "stopped": "Navegación detenida"
+  "button1": {
+    "normal": {
+      "start": {
+        "text": "Iniciar Procesamiento",
+        "aria": "Iniciar procesamiento de video"
+      },
+      "stop": {
+        "text": "Detener Procesamiento",
+        "aria": "Detener procesamiento de video"
+      }
+    },
+    "settings": {
+      "text": "Seleccionar Cuadrícula: {gridName}",
+      "aria": "Seleccionar tipo de cuadrícula {gridType}"
+    },
+    "tts": {
+      "startStop": {
+        "starting": "Iniciando procesamiento",
+        "stopping": "Deteniendo procesamiento",
+        "error": "Error al iniciar o detener el procesamiento"
+      },
+      "cameraError": "Error de acceso a la cámara",
+      "gridSelect": "Cuadrícula establecida en {state}"
+    }
   },
-  "micToggle": {
-    "on": "Micrófono activado",
-    "off": "Micrófono desactivado"
+  "button2": {
+    "normal": {
+      "on": {
+        "text": "Encender Micrófono",
+        "aria": "Encender micrófono"
+      },
+      "off": {
+        "text": "Apagar Micrófono",
+        "aria": "Apagar micrófono"
+      }
+    },
+    "settings": {
+      "text": "Seleccionar Motor: {engineName}",
+      "aria": "Seleccionar motor de síntesis {synthesisEngine}"
+    },
+    "tts": {
+      "micToggle": {
+        "turningOn": "Encendiendo micrófono",
+        "turningOff": "Apagando micrófono"
+      },
+      "micError": "Error de acceso al micrófono",
+      "synthesisSelect": "Síntesis establecida en {state}"
+    }
   },
-  "micError": "Fallo en el acceso al micrófono",
-  "cameraError": "Fallo en el acceso a la cámara",
-  "audioToggle": {
-    "on": "Salida de audio activada",
-    "off": "Salida de audio desactivada"
+  "button3": {
+    "normal": {
+      "text": "Seleccionar Idioma: {languageName}",
+      "aria": "Seleccionar idioma {language}"
+    },
+    "settings": {
+      "text": "Sin Acción",
+      "aria": "Sin acción en modo configuración"
+    },
+    "tts": {
+      "languageSelect": "Idioma establecido en {state}",
+      "fpsError": "Error al alternar idioma"
+    }
   },
-  "fpsBtn": {
-    "20": "20 fotogramas por segundo",
-    "30": "30 fotogramas por segundo",
-    "60": "60 fotogramas por segundo",
-    "auto": "Frecuencia de fotogramas automática"
+  "button4": {
+    "normal": {
+      "auto": {
+        "text": "FPS Automático",
+        "aria": "Seleccionar velocidad de fotogramas"
+      },
+      "manual": {
+        "text": "{fps} FPS",
+        "aria": "Seleccionar velocidad de fotogramas"
+      },
+      "aria": "Seleccionar velocidad de fotogramas"
+    },
+    "settings": {
+      "text": "Guardar Configuración",
+      "aria": "Guardar configuración"
+    },
+    "tts": {
+      "fpsBtn": "Velocidad de fotogramas establecida en {fps}",
+      "fpsError": "Error en velocidad de fotogramas",
+      "saveSettings": "Configuración guardada",
+      "saveError": "Error al guardar configuración"
+    }
   },
-  "gridSelect": {
-    "hex-tonnetz": "Cuadrícula Hex Tonnetz seleccionada",
-    "circle-of-fifths": "Círculo de quintas seleccionado"
+  "button5": {
+    "normal": {
+      "text": "Enviar Registro de Consola",
+      "aria": "Enviar registro de consola"
+    },
+    "settings": {
+      "text": "Cargar Configuración",
+      "aria": "Cargar configuración"
+    },
+    "tts": {
+      "emailDebug": {
+        "email": "Enviando registro de consola",
+        "error": "Error al enviar registro de consola"
+      },
+      "loadSettings": {
+        "loaded": "Configuración cargada",
+        "none": "No se encontró configuración"
+      },
+      "loadError": "Error al cargar configuración"
+    }
   },
-  "synthesisSelect": {
-    "sine-wave": "Síntesis de onda sinusoidal seleccionada",
-    "fm-synthesis": "Síntesis FM seleccionada"
-  },
-  "languageSelect": {
-    "en-US": "Inglés seleccionado",
-    "es-ES": "Español seleccionado"
-  },
-  "settingsToggle": {
-    "on": "Modo de configuración activado",
-    "off": "Modo de configuración desactivado"
-  },
-  "saveSettings": {
-    "saved": "Configuraciones guardadas"
-  },
-  "saveError": "Fallo al guardar configuraciones",
-  "loadSettings": {
-    "loaded": "Configuraciones cargadas",
-    "none": "No se encontraron configuraciones guardadas"
-  },
-  "loadError": "Fallo al cargar configuraciones",
-  "viewDebug": {
-    "view": "Vista de depuración abierta"
-  },
-  "emailDebug": {
-    "sent": "Registro de depuración enviado por correo",
-    "error": "Fallo al enviar el registro de depuración"
+  "button6": {
+    "normal": {
+      "text": "Configuración",
+      "aria": "Entrar en modo configuración"
+    },
+    "settings": {
+      "text": "Salir de Configuración",
+      "aria": "Salir del modo configuración"
+    },
+    "tts": {
+      "settingsToggle": {
+        "on": "Entrando en modo configuración",
+        "off": "Saliendo del modo configuración"
+      },
+      "settingsError": "Error al alternar configuración"
+    }
   }
 }

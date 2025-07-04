@@ -1,44 +1,71 @@
-// state.js
-import { availableGrids, availableEngines, availableLanguages } from "./config.js";
+import { availableGrids, availableEngines, availableLanguages, availableUpdateIntervals } from './config.js';
 
 export let settings = {
-  gridType: availableGrids[0].id, // Default to first grid
-  synthesisEngine: availableEngines[0].id, // Default to first engine
-  language: availableLanguages[0].id, // Default to first language
-  isSettingsMode: false,
+  debugLogging: false,
   stream: null,
-  micStream: null,
-  autoFPS: true,
-  updateInterval: 1000 / 30,
   audioInterval: null,
-  dayNightMode: "day"
+  updateInterval: availableUpdateIntervals[0] || 50,
+  autoFPS: true,
+  gridType: availableGrids[0]?.id || 'circle-of-fifths',
+  synthesisEngine: availableEngines[0]?.id || 'sine-wave',
+  language: availableLanguages[0]?.id || 'en-US',
+  isSettingsMode: false,
+  micStream: null,
+  ttsEnabled: true,
+  dayNightMode: 'day'
 };
 
-export let frameCount = 0;
-export let prevFrameDataLeft = null;
-export let prevFrameDataRight = null;
-export let skipFrame = false;
+const logs = [];
+
+export function addLog(message) {
+  logs.push(`[${new Date().toISOString()}] ${message}`);
+  if (logs.length > 1000) logs.shift(); // Limit to 1000 entries
+}
+
+export function getLogs() {
+  return logs.join('\n');
+}
 
 export function setStream(stream) {
   settings.stream = stream;
+  if (settings.debugLogging) {
+    console.log('setStream', stream);
+    addLog(`setStream: ${stream ? 'Stream set' : 'Stream cleared'}`);
+  }
 }
 
 export function setAudioInterval(interval) {
   settings.audioInterval = interval;
+  if (settings.debugLogging) {
+    console.log('setAudioInterval', interval);
+    addLog(`setAudioInterval: ${interval ? `Interval set to ${interval}ms` : 'Interval cleared'}`);
+  }
 }
 
-export function setFrameCount(count) {
-  frameCount = count;
+export function setMicStream(stream) {
+  settings.micStream = stream;
+  if (settings.debugLogging) {
+    console.log('setMicStream', stream);
+    addLog(`setMicStream: ${stream ? 'Mic stream set' : 'Mic stream cleared'}`);
+  }
 }
 
-export function setPrevFrameDataLeft(data) {
-  prevFrameDataLeft = data;
-}
+// Override console methods to collect logs
+const originalConsoleLog = console.log;
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
 
-export function setPrevFrameDataRight(data) {
-  prevFrameDataRight = data;
-}
+console.log = (...args) => {
+  originalConsoleLog(...args);
+  addLog(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' '));
+};
 
-export function setSkipFrame(value) {
-  skipFrame = value;
-}
+console.warn = (...args) => {
+  originalConsoleWarn(...args);
+  addLog(`WARN: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+};
+
+console.error = (...args) => {
+  originalConsoleError(...args);
+  addLog(`ERROR: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+};
