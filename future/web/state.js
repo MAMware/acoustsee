@@ -1,19 +1,39 @@
-import { availableGrids, availableEngines, availableLanguages, availableUpdateIntervals } from './config.js';
+// File: web/state.js
+// future/web/state.js
 
 export let settings = {
   debugLogging: false,
   stream: null,
   audioInterval: null,
-  updateInterval: availableUpdateIntervals[0] || 50,
+  updateInterval: 50, // Default to 20 FPS
   autoFPS: true,
-  gridType: availableGrids[0]?.id || 'circle-of-fifths',
-  synthesisEngine: availableEngines[0]?.id || 'sine-wave',
-  language: availableLanguages[0]?.id || 'en-US',
+  gridType: 'circle-of-fifths', // Fallback
+  synthesisEngine: 'sine-wave', // Fallback
+  language: 'en-US', // Fallback
   isSettingsMode: false,
   micStream: null,
   ttsEnabled: true,
   dayNightMode: 'day'
 };
+
+// Load configurations at startup
+(async () => {
+  try {
+    const [grids, engines, languages, intervals] = await Promise.all([
+      fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
+      fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
+      fetch('./languages/availableLanguages.json').then(res => res.json()),
+      Promise.resolve([50, 33, 16]) // Hardcoded intervals for now
+    ]);
+    settings.gridType = grids[0]?.id || settings.gridType;
+    settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
+    settings.language = languages[0]?.id || settings.language;
+    settings.updateInterval = intervals[0] || settings.updateInterval;
+  } catch (err) {
+    console.error('Failed to load configurations:', err.message);
+    addLog(`ERROR: Failed to load configurations: ${err.message}`);
+  }
+})();
 
 const logs = [];
 

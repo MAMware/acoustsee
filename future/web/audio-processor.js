@@ -1,6 +1,6 @@
+// future/web/audio-processor.js
 import { settings } from "./state.js";
-import { mapFrame } from "./grid-dispatcher.js";
-import { availableEngines } from "./config.js";
+import { dispatchEvent } from "./ui/event-dispatcher.js";
 
 let audioContext = null;
 let isAudioInitialized = false;
@@ -49,41 +49,30 @@ export async function initializeAudio(context) {
   }
 }
 
-export async function playAudio(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
+export async function playAudio(notes) {
   if (!isAudioInitialized || !audioContext || audioContext.state !== "running") {
     console.warn("playAudio: Audio not initialized or context not running");
-    return { prevFrameDataLeft, prevFrameDataRight };
+    return;
   }
   try {
-    const halfWidth = width / 2;
-    const leftFrame = new Uint8ClampedArray(halfWidth * height);
-    const rightFrame = new Uint8ClampedArray(halfWidth * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < halfWidth; x++) {
-        leftFrame[y * halfWidth + x] = frameData[y * width + x];
-        rightFrame[y * halfWidth + x] = frameData[y * width + x + halfWidth];
-      }
-    }
-    const leftResult = mapFrame(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
-    const rightResult = mapFrame(rightFrame, halfWidth, height, prevFrameDataRight, 1);
-    const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
+    const enginesResponse = await fetch("./synthesis-methods/engines/availableEngines.json");
+    if (!enginesResponse.ok) throw new Error(`Failed to load availableEngines.json: ${enginesResponse.status}`);
+    const availableEngines = await enginesResponse.json();
     const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
-    if (engine) {
-      const module = await import(engine.file);
-      const playFunction = module[engine.exportName];
-      if (playFunction) {
-        playFunction(allNotes, audioContext, oscillators);
-      } else {
-        console.error(`Play function ${engine.exportName} not found`);
-      }
+    if (!engine) {
+      console.error(`Engine not found: ${settings.synthesisEngine}`);
+      return;
     }
-    return {
-      prevFrameDataLeft: leftResult.newFrameData,
-      prevFrameDataRight: rightResult.newFrameData,
-    };
+    const engineModule = await import(`./synthesis-methods/engines/${engine.id}.js`);
+    const playFunction = engineModule[`play${engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
+    if (playFunction) {
+      playFunction(notes, audioContext, oscillators);
+    } else {
+      console.error(`Play function for ${engine.id} not found`);
+    }
   } catch (err) {
     console.error("playAudio error:", err.message);
-    return { prevFrameDataLeft, prevFrameDataRight };
+    dispatchEvent("logError", { message: `Play audio error: ${err.message}` });
   }
 }
 

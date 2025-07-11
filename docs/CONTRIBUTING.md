@@ -3,6 +3,9 @@ Welcome to `acoustsee`! We’re building spatial audio navigation for the visual
 
 ## How to contribute
 
+Hi there! just a quick update, on branch v0.5 we are introducing an automatic file loader for grids, engines and languages.
+If you contribute one or several of such, you can run the file-indexer.js from /scripts that automatically generates a file listing the affected folders files.  
+
 1. The `developing` branch is our zone that rapid deploys to GitHub Pages for easy and broad testing.
 2. At `developing` branch, you can create new artifacts in `future` folder, meant as placeholder to play around new ideas and radical changes, where you could create a folder name of your liking and do as you like inside it.
 4. You can compare your new artifacts among the consolidated files from the `past` or `present` folder.

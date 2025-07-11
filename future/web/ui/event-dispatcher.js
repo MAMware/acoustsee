@@ -1,21 +1,28 @@
+// future/web/ui/event-dispatcher.js
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from '../state.js';
 import { processFrame } from './frame-processor.js';
 import { getText } from './utils.js';
 import { getDOM } from '../context.js';
-import { initializeMicAudio } from '../audio-processor.js';
-import { availableGrids, availableEngines, availableLanguages } from '../config.js';
+import { initializeMicAudio } from '../media-processor.js';
 
 export let dispatchEvent = null;
 
 let lastTTSTime = 0;
 const ttsCooldown = 3000;
 
-export function createEventDispatcher(DOM) {
+export async function createEventDispatcher(DOM) {
   console.log('createEventDispatcher: Initializing event dispatcher');
   if (!DOM) {
     console.error('DOM is undefined in createEventDispatcher');
     return { dispatchEvent: () => console.error('dispatchEvent not initialized due to undefined DOM') };
   }
+
+  // Load configurations
+  const [availableGrids, availableEngines, availableLanguages] = await Promise.all([
+    fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
+    fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
+    fetch('./languages/availableLanguages.json').then(res => res.json())
+  ]);
 
   const handlers = {
     updateUI: async ({ settingsMode, streamActive, micActive }) => {
@@ -32,7 +39,7 @@ export function createEventDispatcher(DOM) {
 
       // Button 1
       const button1Text = settingsMode
-        ? await getText('button1.settings.text', { gridName: grid?.name || 'Grid' }, 'text')
+        ? await getText('button1.settings.text', { gridName: grid?.id || 'Grid' }, 'text')
         : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
       const button1Aria = settingsMode
         ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
@@ -46,7 +53,7 @@ export function createEventDispatcher(DOM) {
 
       // Button 2
       const button2Text = settingsMode
-        ? await getText('button2.settings.text', { engineName: engine?.name || 'Engine' }, 'text')
+        ? await getText('button2.settings.text', { engineName: engine?.id || 'Engine' }, 'text')
         : await getText(`button2.normal.${micActive ? 'off' : 'on'}.text`, {}, 'text');
       const button2Aria = settingsMode
         ? await getText('button2.settings.aria', { synthesisEngine: settings.synthesisEngine }, 'aria')
@@ -60,8 +67,8 @@ export function createEventDispatcher(DOM) {
 
       // Button 3
       const button3Text = settingsMode
-        ? await getText('button3.settings.text', { languageName: language?.name || 'Language' }, 'text')
-        : await getText('button3.normal.text', { languageName: language?.name || 'Language' }, 'text');
+        ? await getText('button3.settings.text', { languageName: language?.id || 'Language' }, 'text')
+        : await getText('button3.normal.text', { languageName: language?.id || 'Language' }, 'text');
       const button3Aria = settingsMode
         ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
         : await getText('button3.normal.aria', { language: settings.language }, 'aria');

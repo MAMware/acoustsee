@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "**a photon to phonon code**",
   "main": "index.js",
+  "type": "module", 
   "directories": {
     "doc": "docs"
   },

@@ -1,5 +1,6 @@
+// future/web/ui/utils.js
+// This file provides utility functions for text processing and announcements in the UI.
 import { settings } from '../state.js';
-import { availableLanguages } from '../config.js';
 
 export async function getText(key, params = {}, type = 'tts') {
   try {

@@ -1,4 +1,4 @@
-// ui/stream-control.js
+// future/web/ui/stream-control.js
 import { settings, setStream } from "../state.js";
 import { speak } from "./utils.js";
 import { getDispatchEvent } from "../context.js";

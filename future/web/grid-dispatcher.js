@@ -1,3 +1,5 @@
+// future/web/grid-dispatcher.js
+// analize this file since it has hardcoded imports consider deleting it since might be deprecated
 import { mapFrameToTonnetz } from "./synthesis-methods/grids/hex-tonnetz.js";
 import { mapFrameToCircleOfFifths } from "./synthesis-methods/grids/circle-of-fifths.js";
 import { settings } from "./state.js";

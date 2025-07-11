@@ -2,41 +2,41 @@
   "button1": {
     "normal": {
       "start": {
-        "text": "Start Processing",
-        "aria": "Start processing video"
+        "text": "Start",
+        "aria": "Processing video started"
       },
       "stop": {
-        "text": "Stop Processing",
-        "aria": "Stop processing video"
+        "text": "Stop",
+        "aria": "Processing video stopped"
       }
     },
     "settings": {
-      "text": "Select Grid: {gridName}",
-      "aria": "Select grid type {gridType}"
+      "text": "Kernel: {gridType}",
+      "aria": "Kernel selection {gridType}"
     },
     "tts": {
       "startStop": {
-        "starting": "Starting processing",
-        "stopping": "Stopping processing",
+        "starting": "Startinng syneshesia",
+        "stopping": "Stopping synesthesia",
         "error": "Error starting or stopping processing"
       },
       "cameraError": "Camera access error",
-      "gridSelect": "Grid set to {state}"
+      "gridSelect": "Kernel set to {state}"
     }
   },
   "button2": {
     "normal": {
       "on": {
-        "text": "Turn Mic On",
+        "text": "Mic On",
         "aria": "Turn on microphone"
       },
       "off": {
-        "text": "Turn Mic Off",
+        "text": "Mic Off",
         "aria": "Turn off microphone"
       }
     },
     "settings": {
-      "text": "Select Engine: {engineName}",
+      "text": "Sound synthetizer: {synthesisEngine}",
       "aria": "Select synthesis engine {synthesisEngine}"
     },
     "tts": {
@@ -50,15 +50,15 @@
   },
   "button3": {
     "normal": {
-      "text": "Select Language: {languageName}",
-      "aria": "Select language {language}"
+      "text": "Language: {languageName}",
+      "aria": "Select language {languageName}"
     },
     "settings": {
-      "text": "No Action",
-      "aria": "No action in settings mode"
+      "text": "Input: {inputType}",
+      "aria": "Input selector: {inputType}"
     },
     "tts": {
-      "languageSelect": "Language set to {state}",
+      "languageSelect": "Language set to {languageName}",
       "fpsError": "Language toggle error"
     }
   },
@@ -96,7 +96,7 @@
     },
     "tts": {
       "emailDebug": {
-        "email": "Emailing console log",
+        "email": "Emailing console log for debuggin",
         "error": "Error emailing console log"
       },
       "loadSettings": {

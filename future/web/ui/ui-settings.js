@@ -1,3 +1,4 @@
+// future/web/ui/ui-settings.js
 import { settings } from '../state.js';
 import { getText } from './utils.js';
 
@@ -18,7 +19,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     }
   }
 
-  // Button 1: Stream Toggle (Main Mode), Grid Toggle (Settings Mode)
+  // Button 1: Start/stop Process input  (Main Mode), Grid Toggle (Settings Mode)
   DOM.button1.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button1 touched', { settingsMode: settings.isSettingsMode });
@@ -70,14 +71,17 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     }
   });
 
-  // Button 3: Language Toggle (Main Mode), No-op (Settings Mode)
+  // Button 3: Language Toggle (Main Mode), Input selelector (Settings Mode)
   DOM.button3.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button3 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
     try {
       if (!settings.isSettingsMode) {
-        dispatchEvent('toggleInput');
+        dispatchEvent('toggleLanguage');
+            } else {
+      // Alternar entre video local y stream de cámara
+      dispatchEvent('toggleVideoSource');
       }
       dispatchEvent('updateUI', {
         settingsMode: settings.isSettingsMode,
@@ -87,7 +91,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     } catch (err) {
       console.error('button3 error:', err.message);
       dispatchEvent('logError', { message: `button3 error: ${err.message}` });
-      await getText('button3.tts.fpsError');
+      await getText('button3.tts.inputError');
     }
   });
   DOM.button3.addEventListener('click', async (event) => {

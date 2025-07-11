@@ -1,7 +1,15 @@
-import { setupUIController } from "./ui/ui-controller.js";
+// future/web/main.js
+// This is the main entry point for the AcoustSee web application.
+// It initializes the application, sets up the UI controller, and handles DOM events.
+
 import { createEventDispatcher } from "./ui/event-dispatcher.js";
-import { initDOM } from "./ui/dom.js";
-import { setDOM, setDispatchEvent } from "./context.js";
+import { setupStreamControl } from "./ui/stream-control.js";
+import { setupUISettings } from "./ui/settings-handlers.js";
+import { processFrame } from "./ui/video-capture.js"; // Updated from frame-processor.js
+import { initializeAudio, cleanupAudio } from "./audio-processor.js";
+import { getDOM } from "./context.js";
+import { cleanupFrameProcessor } from "./ui/video-capture.js"; // Updated
+
 
 console.log("main.js: Starting initialization");
 

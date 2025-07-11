@@ -1,4 +1,4 @@
-// ui/ui-controller.js
+// future/web/ui-controller.js
 import { setupAudioControls } from './audio-controls.js';
 import { setupStreamControl } from './stream-control.js';
 import { setupUISettings } from './ui-settings.js';
