@@ -1,17 +1,16 @@
-# AcoustSee
-
 **a photon to phonon code**
-
 
 ## [Introduction](#introduction)
 
-This repository contains a web application that transforms visual environments into intuitive soundscapes through a synesthetic process. By converting visual data into real-time synthetic audio cues, the platform empowers users to experience and interact with the visual world in an innovative auditory format.
+The content in this repository builds a web app and provides a public working platform code that transform a visual environment into a soundscape, empowering the user to experience the visual world by synthetic audio cues in real time.
+
+> **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
 ### Project Vision
 
-Synesthetic Translation: Transforms visual data into real-time stereo audio cues, mapping by sound signatures.
-
-> **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
+- Synesthetic Translation: Converts visual data into stereo audio cues, mapping colors, motion to distinct sound signatures.
+- Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
+- Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
 
 ### Tech stack needed
 
@@ -50,31 +49,27 @@ To use it, having the most up to date version of mobile web browsers is diserabl
 
 The latest stable proof of concept can be run from 
 
-- https://mamware.github.io/acoustsee/present
-
-Previous versions and other approachs can be found at
-
-- https://mamware.github.io/acoustsee/past/web
-
-Unstable versions currently being developed and about to be tested can be found at
-
-- https://mamware.github.io/acoustsee/future/web
-
+Current version [AcoustSee](https://mamware.github.io/acoustsee/present/)
+Previous versions [AcoustSee](https://mamware.github.io/acoustsee/past/old_versions/preview)
+In development [AcoustSee](https://mamware.github.io/acoustsee/future/web)
 
 ### Check [Usage](docs/USAGE.md) for further details
 
 ### [Status](#status) 
 
-**Milestone 4 (Current)**: **Developing in Progress**  at /future folder from developing branch
+Working on **Milestone 5 (Current)**
 
-- Current effort is at setting the repository with the most confortable structure for developers, with niche experts in mind, to have a fast way to understand how we do what we do and be able to contribute in a fast and simple way.
-- We should refactor dependencies, isolate the audio pipeline and decouple UI and logic.
-- Make WCAG contrast UI.
-- Code should be educational purpose ready (JSDoc)
-  
+- Haptic feedback via Vibration API **Developing in Progress**
+- Console log on device screen and mail to feature for debuggin. **Developing in Progress**
+- New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress**
+- Audio imput from camera into the headphones among the synthetized sound from camera. **Developing in Progress**
+- Further Modularity **Developing in Progress**
+- Mermaid diagrams to reflect current Modular Single Responsability Principle **To do**
+
+ 
 ### [Changelog](docs/CHANGELOG.md)
 
-- Current version is v0.4.7, follow link above for a the history change log, details and past milestones achieved.
+- Current "stable" version is v0.4.7, follow link above for a the history change log, details and past milestones achieved.
 
 ### [Project structure](#project_structure)
 
@@ -128,25 +123,6 @@ acoustsee/
 ### [To-Do List](docs/TO_DO.md)
 
 - At this document linked above, you will find the list for current TO TO list, we are now at milestone 4 (v0.4.X)
-
-Resume of TO_DO:
-
-- Haptic feedback via Vibration API 
-- Console log on device screen and mail to feature for debuggin. 
-- New languajes for the speech sinthetizer
-- Audio imput from camera into the headphones among the synthetized sound from camera.
-- Further Modularity: e.g., modularize audio-processor.js
-- Optimizations aiming the use less resources and achieve better performance, ie: implementing Web Workers and using WebAssembly.
-- Reintroducing Hilbert curves.
-- Gabor filters for motion detection.
-- New grid types and synth engines
-- Voting system for grid and synth engines.
-- Consider making User selectable synth engine version.
-- Consider adding support for VST like plugins.
-- Testing true HRTF, loading CIPIC HRIR data.
-- New capabilities like screen/video capture to sound engine.
-- Android/iOS app developtment if considerable performance gain can be achieved.
-- Mermaid diagrams to reflect current Modular Single Responsability Principle
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
