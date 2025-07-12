@@ -5,23 +5,31 @@
 
 ## [Introduction](#introduction)
 
-The content in this repository builds a web app and provides a public working platform about code that aims to transform a visual environment into a soundscape, empowering the user to experience the visual world by synthetic audio cues in real time.
-
-> **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
+This repository contains a web application that transforms visual environments into intuitive soundscapes through a synesthetic process. By converting visual data into real-time synthetic audio cues, the platform empowers users to experience and interact with the visual world in an innovative auditory format.
 
 ### Project Vision
 
-- Synesthesia: i.e.:translation from a photon to phonon 
-- Tech stack: Mobile phone
-- Use: Run the app to translate images into a stereo soundscape, where i.e.: a sidewalk that the user is waling on could have a distintive spectral signature with location awaresness modeling, a wall at the left with its charecteristical different spectra should make its  distintive sound signature in your left ear. A car, a bag on the floor and so on with its own char sound.
+Synesthetic Translation: Transforms visual data into real-time stereo audio cues, mapping by sound signatures.
 
->Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has a less broad harmonic content and a lower volume and wen it swings closer its spectra complexity raises, broader and louder. 
+> **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
-This project aims to make this imagination into a reality. 
+### Tech stack needed
 
-So far, the first four milestones are coded entirely coded by xAI Grok 
+Platform to run the code: Mobile phone since it is web-based application accessible via browser and algorythm is coded without need for internet access and lightweight (only 72kB)
+Input: Mobile camera for real-time visual data capture.
+Audio Output: Stereo headphones for spatial audio effects.
 
-We are ready to welcome contributors from open source community to enhace perception. 
+### Hipothetic Use Case
+
+Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, the phone, worn as a necklace, captures visuals like a swing in motion. As the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
+
+### Development
+
+Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts 
+Milestone 5 wich is a work in progress got a little help from OpenAI ChatGPT 4.1 via @github copilot at codespaces
+Research drafts are going to be feed into Grok 4 for a surprise next step ;)
+
+We are ready to welcome contributors from open source community to enhace perception!. 
 
 ## Table of Contents
 
@@ -46,36 +54,14 @@ The latest stable proof of concept can be run from
 
 Previous versions and other approachs can be found at
 
-- https://mamware.github.io/acoustsee/past
+- https://mamware.github.io/acoustsee/past/web
 
 Unstable versions currently being developed and about to be tested can be found at
 
-- https://mamware.github.io/acoustsee/future
+- https://mamware.github.io/acoustsee/future/web
 
 
-
-For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) where also you can find instruccions to run the command line Python version.
-
-### Hardware needed:
-
-A mobile phone/cellphone from 2021 and up, with a front facing camera and stereo headphones with mic.
-
-### Steps to initialize
-
-- The webapp is designed to be used with a mobile phone where its front camera (and screen) are facing the desired objetive to be transformed in to sound, wearing the mobile phone like a necklage is its first use case in mind.
-
-- Enter https://mamware.github.io/acoustsee/present  (or your version of preference from [Usage](docs/USAGE.md))
-
-- The User Interface of the webapp is split into five regions,
-  - Center rectangle: Audio enabler, a touchplace holder that enables the webpage to produce sound. 
-  - Top border rectangle: Settings SHIFTer button 
-  - Bottom rectangle: Start and Stop button 
-  - Left rectangle: Day and night switch for light logic inversion
-  - Right rectangle: Languaje switcher
-  - SHIFTed left rectangle (settings enabled): Grid selector, changes how the camera frames or "grids" the environment
-  - SHIFTed right rectangle (settings enabled): Audio engine selector, changes how the sound synthetizer reacts to the selected grid.   
-
-IMPORTANT: The processing of the camera is done privately on your device and not a single frame is sent outside your device processor. A permision to access the camera by the browser will be requested in order to do this local processing and thus generate the audio for the navigation.
+### Check [Usage](docs/USAGE.md) for further details
 
 ### [Status](#status) 
 
