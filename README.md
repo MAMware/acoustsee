@@ -12,7 +12,7 @@ The content in this repository builds a web app and provides a public working pl
 - Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
 - Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
 
-- Tech stack: Mobile phone and heaphones
+- Tech stack: Mobile phone and headphones
 - Use: Run the app to translate images into a stereo soundscape, where i.e.: a sidewalk that the user is waling on could have a distintive spectral signature with location awaresness modeling, a wall at the left with its charecteristical different spectra should make its  distintive sound signature in your left ear. A car, a bag on the floor and so on with its own char sound.
 
 >Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. The phone camera captures visuals changes to motion a sound synthetizer. As dinamics settle get quieter as the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a work in progress is to make ie: a sidewalk that might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
