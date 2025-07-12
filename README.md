@@ -1,7 +1,4 @@
-# AcoustSee
-
 **a photon to phonon code**
-
 
 ## [Introduction](#introduction)
 
@@ -11,13 +8,14 @@ The content in this repository builds a web app and provides a public working pl
 
 ### Project Vision
 
-- Synesthesia: i.e.:translation from a photon to phonon 
-- Tech stack: Mobile phone
+- Synesthetic Translation: Converts visual data into stereo audio cues, mapping colors, motion to distinct sound signatures.
+- Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
+- Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
+
+- Tech stack: Mobile phone and heaphones
 - Use: Run the app to translate images into a stereo soundscape, where i.e.: a sidewalk that the user is waling on could have a distintive spectral signature with location awaresness modeling, a wall at the left with its charecteristical different spectra should make its  distintive sound signature in your left ear. A car, a bag on the floor and so on with its own char sound.
 
->Imagine a person that is unable to see, sitting at a park with headphones on and paired to a mobile phone. This phone is being weared like a necklage with the camera facing a quiet swing, as the seat of the swing gets back/further the sound generator makes a sound spectra that has a less broad harmonic content and a lower volume and wen it swings closer its spectra complexity raises, broader and louder. 
-
-This project aims to make this imagination into a reality. 
+>Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. The phone camera captures visuals changes to motion a sound synthetizer. As dinamics settle get quieter as the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a work in progress is to make ie: a sidewalk that might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
 
 So far, the first four milestones are coded entirely coded by xAI Grok 
 
