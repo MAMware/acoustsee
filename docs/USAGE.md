@@ -1,11 +1,35 @@
 ## USAGE
 
-Please note that the current best performer can be run without installation directly from a internet browser, the latest stable version is hosted at: 
+# Web Application Interface
+The web application features a user-friendly interface divided into five interactive regions, designed to facilitate seamless control and customization of the synesthetic audio experience. All camera processing is performed locally on your device, ensuring privacy. No frames are transmitted externally, though the browser will request camera access permission to enable this local processing for audio generation.
+
+## Interface Regions
+- **Center Rectangle**: Audio Enabler  
+  A touch-sensitive area that activates the webpage’s audio output, allowing sound generation to begin.
+- **Top Border Rectangle**: Settings SHIFTer Button  
+  Toggles the settings mode to reveal advanced configuration options.
+- **Bottom Rectangle**: Start/Stop Button  
+  Initiates or pauses the audio generation and camera processing.
+- **Left Rectangle**: Day/Night Switch  
+  Inverts light logic to optimize visibility and processing for different lighting conditions.
+- **Right Rectangle**: Language Switcher  
+  Changes the interface language for improved accessibility.
+
+## Settings Mode (SHIFTed Interface)
+When settings are enabled via the SHIFTer button:
+- **SHIFTed Left Rectangle**: Grid Selector  
+  Adjusts the camera’s framing or "gridding" of the environment, allowing users to customize how the visual input is segmented for audio mapping.
+- **SHIFTed Right Rectangle**: Audio Engine Selector  
+  Modifies the sound synthesizer’s response to the selected grid, enabling users to tailor the audio output to their preferences.
+
+## Privacy and Processing
+The application processes all camera data locally on your device, ensuring no visual information leaves your processor. Upon launching, the browser will request camera access to perform this private processing, which is essential for generating the real-time audio cues used for navigation.
+
+The latest stable version is hosted at: 
 
 https://mamware.github.io/acoustsee/present
 
-Browser compability list:
-
+### Browser compability list:
 
 | Browser             | Minimum Version for Full Support   | Notes                                                                          |
 | ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
@@ -16,13 +40,10 @@ Browser compability list:
 | Opera Mobile        | Opera 36 (2016)                    | Based on Chromium, full support for all APIs.                                  |
 | Edge for Android    | Edge 79 (January 2020)             | Based on Chromium, full support for all APIs.                                  |
 
-Privacy Note: All of the video processing is done at your device, not a single frame is sent to anyone or anywhere than that the ones that takes places at your own device processing logic.
 
 
 
-
-
-### Project structure for TBD version
+### Project structure for TBD version (Milestone 2) v0.2
 
 ```
 acoustsee/
