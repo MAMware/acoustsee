@@ -17,7 +17,7 @@ The content in this repository builds a web app and provides a public working pl
 
 >Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. The phone camera captures visual changes and maps them to a sound synthesizer. As dynamics settle, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a work in progress is to make, for example, a sidewalk emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
 
-So far, the first four milestones are coded entirely coded by xAI Grok 
+So far, the first four milestones have been coded entirely by xAI Grok 
 
 We are ready to welcome contributors from open source community to enhace perception. 
 
