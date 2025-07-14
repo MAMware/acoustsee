@@ -1,8 +1,8 @@
-**a photon to phonon code**
+**photon to phonon code**
 
 ## [Introduction](#introduction)
 
-The content in this repository builds a web app and provides a public working platform about code that aims to transform a visual environment into a soundscape, empowering the user to experience the visual world by synthetic audio cues in real time.
+The content in this repository builds a web app and provides a public working platform code that transform a visual environment into a soundscape, empowering the user to experience the visual world by synthetic audio cues in real time.
 
 > **Why?** We believe in solving real problems with open-source software in a fast, accessible, and impactful way. You are invited to join us to improve and make a difference!
 
@@ -12,14 +12,25 @@ The content in this repository builds a web app and provides a public working pl
 - Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
 - Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
 
-- Tech stack: Mobile phone and headphones
-- Use: Run the app to translate images into a stereo soundscape, where i.e.: a sidewalk that the user is walking on could have a distinctive spectral signature with location awareness modeling, a wall at the left with its characteristic different spectra should make its distinctive sound signature in your left ear. A car, a bag on the floor and so on with its own char sound.
+### Tech stack needed
 
->Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. The phone camera captures visual changes and maps them to a sound synthesizer. As dynamics settle, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a work in progress is to make, for example, a sidewalk emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
+Platform to run the code: 
 
-So far, the first four milestones have been coded entirely by xAI Grok 
+- Image processing: Mobile phone from year 2020 and up with a web browser and a camera, the algorithm is coded without need for internet access and weights only 72kB.
+- Audio output: Stereo headphones.
 
-We are ready to welcome contributors from open source community to enhace perception. 
+### Hipothetic Use Case
+
+Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, the phone, worn as a necklace, captures visuals like a swing in motion. As the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
+>>>>>>> v0.5-dinamicLoading
+
+### Development
+
+Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts 
+Milestone 5 wich is a work in progress got a little help from OpenAI ChatGPT 4.1 via @github copilot at codespaces
+Research drafts are going to be feed into Grok 4 for a surprise next step ;)
+
+We are ready to welcome contributors from open source community to enhace perception!. 
 
 ## Table of Contents
 
@@ -40,53 +51,27 @@ To use it, having the most up to date version of mobile web browsers is diserabl
 
 The latest stable proof of concept can be run from 
 
-- https://mamware.github.io/acoustsee/present
+- Current version [RUN](https://mamware.github.io/acoustsee/present/)
+- Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
+- In development [RUN](https://mamware.github.io/acoustsee/future/web)
 
-Previous versions and other approachs can be found at
-
-- https://mamware.github.io/acoustsee/past
-
-Unstable versions currently being developed and about to be tested can be found at
-
-- https://mamware.github.io/acoustsee/future
-
-
-
-For a complete mobile browser compability list check the doc [Usage](docs/USAGE.md) where also you can find instruccions to run the command line Python version.
-
-### Hardware needed:
-
-A mobile phone/cellphone from 2021 and up, with a front facing camera and stereo headphones with mic.
-
-### Steps to initialize
-
-- The webapp is designed to be used with a mobile phone where its front camera (and screen) are facing the desired objetive to be transformed in to sound, wearing the mobile phone like a necklage is its first use case in mind.
-
-- Enter https://mamware.github.io/acoustsee/present  (or your version of preference from [Usage](docs/USAGE.md))
-
-- The User Interface of the webapp is split into five regions,
-  - Center rectangle: Audio enabler, a touchplace holder that enables the webpage to produce sound. 
-  - Top border rectangle: Settings SHIFTer button 
-  - Bottom rectangle: Start and Stop button 
-  - Left rectangle: Day and night switch for light logic inversion
-  - Right rectangle: Languaje switcher
-  - SHIFTed left rectangle (settings enabled): Grid selector, changes how the camera frames or "grids" the environment
-  - SHIFTed right rectangle (settings enabled): Audio engine selector, changes how the sound synthetizer reacts to the selected grid.   
-
-IMPORTANT: The processing of the camera is done privately on your device and not a single frame is sent outside your device processor. A permision to access the camera by the browser will be requested in order to do this local processing and thus generate the audio for the navigation.
+### Check [Usage](docs/USAGE.md) for further details
 
 ### [Status](#status) 
 
-**Milestone 4 (Current)**: **Developing in Progress**  at /future folder from developing branch
+Working on **Milestone 5 (Current)**
 
-- Current effort is at setting the repository with the most confortable structure for developers, with niche experts in mind, to have a fast way to understand how we do what we do and be able to contribute in a fast and simple way.
-- We should refactor dependencies, isolate the audio pipeline and decouple UI and logic.
-- Make WCAG contrast UI.
-- Code should be educational purpose ready (JSDoc)
-  
+- Haptic feedback via Vibration API **Developing in Progress**
+- Console log on device screen and mail to feature for debuggin. **Developing in Progress**
+- New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress**
+- Audio imput from camera into the headphones among the synthetized sound from camera. **Developing in Progress**
+- Further Modularity **Developing in Progress**
+- Mermaid diagrams to reflect current Modular Single Responsability Principle **To do**
+
+ 
 ### [Changelog](docs/CHANGELOG.md)
 
-- Current version is v0.4.7, follow link above for a the history change log, details and past milestones achieved.
+- Current "stable" version is v0.4.7, follow link above for a the history change log, details and past milestones achieved.
 
 ### [Project structure](#project_structure)
 
@@ -140,25 +125,6 @@ acoustsee/
 ### [To-Do List](docs/TO_DO.md)
 
 - At this document linked above, you will find the list for current TO TO list, we are now at milestone 4 (v0.4.X)
-
-Resume of TO_DO:
-
-- Haptic feedback via Vibration API 
-- Console log on device screen and mail to feature for debuggin. 
-- New languajes for the speech sinthetizer
-- Audio imput from camera into the headphones among the synthetized sound from camera.
-- Further Modularity: e.g., modularize audio-processor.js
-- Optimizations aiming the use less resources and achieve better performance, ie: implementing Web Workers and using WebAssembly.
-- Reintroducing Hilbert curves.
-- Gabor filters for motion detection.
-- New grid types and synth engines
-- Voting system for grid and synth engines.
-- Consider making User selectable synth engine version.
-- Consider adding support for VST like plugins.
-- Testing true HRTF, loading CIPIC HRIR data.
-- New capabilities like screen/video capture to sound engine.
-- Android/iOS app developtment if considerable performance gain can be achieved.
-- Mermaid diagrams to reflect current Modular Single Responsability Principle
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
