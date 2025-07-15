@@ -22,14 +22,12 @@ When settings are enabled via the SHIFTer button:
 - **SHIFTed Right Rectangle**: Audio Engine Selector  
   Modifies the sound synthesizer’s response to the selected grid, enabling users to tailor the audio output to their preferences.
 
-## Privacy and Processing
-The application processes all camera data locally on your device, ensuring no visual information leaves your processor. Upon launching, the browser will request camera access to perform this private processing, which is essential for generating the real-time audio cues used for navigation.
-
 The latest stable version is hosted at: 
 
 https://mamware.github.io/acoustsee/present
 
-### Browser compability list:
+## Browser compability list:
+
 
 | Browser             | Minimum Version for Full Support   | Notes                                                                          |
 | ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
@@ -41,39 +39,9 @@ https://mamware.github.io/acoustsee/present
 | Edge for Android    | Edge 79 (January 2020)             | Based on Chromium, full support for all APIs.                                  |
 
 
+### To test our first commit wich is a Python script, either out of curiosity or educational purposes, follow the instrucctions below
 
-
-### Project structure for TBD version (Milestone 2) v0.2
-
-```
-acoustsee/
-├── src/                       # Contains the Python PoC code for still image processing and audio generation.
-├── web/                       # Contains HTML, CSS, and JavaScript files for the web interface folder for different approaches at the core logic
-│   ├── fft/                   # Experimenting with Fourier, fast. 
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── hrft/                  # Experimenting the Head Related Transfer Function
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── tonnetz/               # Experimenting with Euler, Tonnetz.
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── index.html             # The current chosen version as a better performer (Tonnetz, 5/18/2025).
-│   ├── main.js
-│   ├── styles.css
-├── examples/                  # Still image and output container for the Python PoC
-├── tests/                     # Should contain unit tests (currently missing)
-├── docs/                      # Contains technical documentation (working)
-│    ├── DIAGRAMS.ms           # Wireframes the logic at main.js
-└── README.md                  # This file, providing an overview of the project
-```
-
-## To test our first commit wich is a Python script, either out of curiosit or educational purposes, follow the instrucctions below
-
-Our first iteration, a simple proof-of-concept: process a static image file and output basic left/right panned audio file.
+How to run the first iteration, a simple proof-of-concept processing a static image file and output basic left/right panned audio file.
 
 ## Setup
 
@@ -160,4 +128,9 @@ Try it with examples/wall_left.jpg to hear a basic left/right audio split!
   - `pyo` may warn about missing WxPython, falling back to Tkinter. This is harmless for WAV generation.
 - **SetuptoolsDeprecationWarning**:
   - A warning about `License :: OSI Approved :: GNU General Public License` is harmless (it’s a `pyo` packaging issue).
+
+> Privacy and Processing
+The application processes all camera data locally on your device, ensuring no visual information leaves your processor. Upon launching, the browser will request camera access to perform this private processing, which is essential for generating the real-time audio cues used for navigation.
+
+
 - **Still stuck?** Open an issue on GitHub or ping us on [X](https://x.com/MAMware).
