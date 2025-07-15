@@ -9,16 +9,19 @@ The content in this repository builds a web app and provides the code for a publ
 
 ### Project Vision
 
+
 - Synesthetic Translation: Converting visual data into stereo audio cues, mapping colors, motion to distinct sound signatures.
 - Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
 - Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
 
 ### Usage & Tech stack needed
 
-Run the version of your choice in any internet browser from year 2020 and up.
-The design is tested with a mobile phone anda its front camera
-Input: Mobile camera for real-time visual data capture.
-Audio Output: Stereo headphones for spatial audio effects.
+Software requesites: Most internet browsers from year 2020.
+
+System requesites:
+- Tested with a mobile phone front camera.
+- Image Input: Mobile camera for real-time visual data capture.
+- Audio Output: Stereo headphones for spatial audio effects.
 
 ### Development
 
@@ -66,7 +69,6 @@ Runs from most mobile Internet browsers from 2021 and up.
 Working at **Milestone 5 (Current)**
 
 - Haptic feedback via Vibration API **Developing in Progress** 
->>>>>>> v0.5-dinamicLoading
 - Console log on device screen and mail to feature for debuggin. **Developing in Progress**
 - New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress**
 - Audio imput from camera into the headphones among the synthetized sound from camera. **Developing in Progress**
@@ -77,7 +79,6 @@ Working at **Milestone 5 (Current)**
 ### [Changelog](docs/CHANGELOG.md)
 
 - Current "stable" version from "present" is v0.4.7, link above logs the history and details past milestones achieved.
->>>>>>> v0.5-dinamicLoading
 
 ### [Project structure](#project_structure)
 
