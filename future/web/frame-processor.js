@@ -1,5 +1,3 @@
-// future/web/ui/frame-processor.js
-// This module processes video frames and maps them to musical notes using a grid synthesis method.
 import { settings } from "./state.js";
 import { dispatchEvent } from "./ui/event-dispatcher.js";
 
