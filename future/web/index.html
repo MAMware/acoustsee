@@ -3,32 +3,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="./styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="AcoustSee: Audio-Visual Synthesis Interface">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>AcoustSee</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <!-- Splash Screen -->
-  <div id="splashScreen" class="splash-screen">
-    <button id="powerOn" class="power-on-button" role="button" aria-label="Power on to initialize audio">Power On</button>
+  <div id="splashScreen">
+    <button id="powerOn" aria-label="Power On"></button>
   </div>
-  <!-- Main UI: 3x2 Button Grid -->
-  <div id="mainContainer" class="main-container" style="display: none;">
-    <button id="button1" class="grid-button video-container" role="button" aria-label="Start or stop stream">
-      <video id="videoFeed" autoplay muted playsinline></video>
-      <span class="button-text">Start</span>
-    </button>
-    <button id="button2" class="grid-button" role="button" aria-label="Toggle microphone">Mic On</button>
-    <button id="button3" class="grid-button" role="button" aria-label="languageSelector">Language</button>
-    <button id="button4" class="grid-button" role="button" aria-label="Load settings">Load Settings</button>
-    <button id="button5" class="grid-button" role="button" aria-label="Save settings">Save Settings</button>
-    <button id="button6" class="grid-button" role="button" aria-label="Toggle settings">Settings</button>
-  </div>
-  <!-- Debug Panel -->
-  <div id="debug" class="debug-panel">
-    <pre></pre>
-    <button id="emailDebug" class="debug-button" role="button" aria-label="Email error log">Email Log</button>
-    
+  <div id="mainContainer" style="display: none;">
+    <video id="videoFeed" autoplay playsinline muted aria-label="Video Feed"></video>
+    <div id="debugPanel" style="display: none;"></div>
+    <button id="button1" aria-label="Start/Stop Stream"></button>
+    <button id="button2" aria-label="Toggle Microphone"></button>
+    <button id="button3" aria-label="Toggle Language/Input"></button>
+    <button id="button4" aria-label="Toggle FPS/Save Settings"></button>
+    <button id="button5" aria-label="Email Log/Load Settings"></button>
+    <button id="button6" aria-label="Toggle Settings Mode"></button>
   </div>
   <script type="module" src="./main.js"></script>
 </body>
