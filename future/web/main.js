@@ -1,35 +1,43 @@
 // future/web/main.js
 // This is the main entry point for the AcoustSee web application.
 // It initializes the application, sets up the UI controller, and handles DOM events.
+import { setupUIController } from './ui/ui-controller.js';
+import { getDispatchEvent } from './context.js';
 
-import { createEventDispatcher } from "./ui/event-dispatcher.js";
-import { setupStreamControl } from "./ui/stream-control.js";
-import { setupUISettings } from "./ui/settings-handlers.js";
-import { processFrame } from "./ui/video-capture.js"; // Updated from frame-processor.js
-import { initializeAudio, cleanupAudio } from "./audio-processor.js";
-import { getDOM } from "./context.js";
-import { cleanupFrameProcessor } from "./ui/video-capture.js"; // Updated
+const DOM = {
+  videoFeed: document.getElementById('videoFeed'),
+  button1: document.getElementById('button1'),
+  button2: document.getElementById('button2'),
+  button3: document.getElementById('button3'),
+  button4: document.getElementById('button4'),
+  button5: document.getElementById('button5'),
+  button6: document.getElementById('button6'),
+  powerOn: document.getElementById('powerOn'),
+  splashScreen: document.getElementById('splashScreen'),
+  mainContainer: document.getElementById('mainContainer'),
+  debugPanel: document.getElementById('debugPanel'),
+};
 
-
-console.log("main.js: Starting initialization");
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const DOM = await initDOM();
-  setDOM(DOM);
-  const { dispatchEvent } = createEventDispatcher(DOM);
-  setDispatchEvent(dispatchEvent);
-  console.log("DOM loaded, initializing AcoustSee");
+async function init() {
   try {
-    console.log("DOM initialized:", DOM);
-    window.dispatchEvent = dispatchEvent; // For mailto: feature
-    console.log("Dispatcher created:", dispatchEvent);
+    if (!DOM.videoFeed || !DOM.button1 || !DOM.button2 || !DOM.button3 || 
+        !DOM.button4 || !DOM.button5 || !DOM.button6 || !DOM.powerOn || 
+        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel) {
+      throw new Error('Missing DOM elements in main.js');
+    }
+    const dispatchEvent = getDispatchEvent();
     setupUIController({ dispatchEvent, DOM });
-    console.log("UI controller set up");
-    dispatchEvent("updateUI", { settingsMode: false, streamActive: false });
-    console.log("Initial UI update dispatched");
+    console.log('init: UI setup complete');
   } catch (err) {
-    console.error("Initialization failed:", err.message);
+    console.error('init error:', err.message);
+    dispatchEvent('logError', { message: `init error: ${err.message}` });
+    try {
+      const { getText } = await import('./ui/utils.js');
+      await getText('init.tts.error');
+    } catch (ttsErr) {
+      console.error('TTS error:', ttsErr.message);
+    }
   }
-});
+}
 
-console.log("main.js: Initialization script loaded");
+init();
