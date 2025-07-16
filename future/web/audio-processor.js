@@ -25,7 +25,7 @@ export async function initializeAudio(context) {
       await audioContext.resume();
     }
     if (audioContext.state !== "running") {
-      throw new Error(`AudioContext is not running, state: ${audioContext.state}`);
+      throw new Error(`AudioContext not running, state: ${audioContext.state}`);
     }
     oscillators = Array(24)
       .fill()
@@ -33,15 +33,19 @@ export async function initializeAudio(context) {
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
         const panner = audioContext.createStereoPanner();
+        osc.type = "sine"; // Default, updated by synthesis engine
+        osc.frequency.setValueAtTime(0, audioContext.currentTime);
+        gain.gain.setValueAtTime(0, audioContext.currentTime);
+        panner.pan.setValueAtTime(0, audioContext.currentTime);
         osc.connect(gain).connect(panner).connect(audioContext.destination);
         osc.start();
         return { osc, gain, panner, active: false };
       });
     isAudioInitialized = true;
-    console.log("initializeAudio: Audio initialized successfully");
+    console.log("initializeAudio: Audio initialized with 24 oscillators");
     return true;
   } catch (error) {
-    console.error("Audio Initialization Error:", error.message);
+    console.error("initializeAudio error:", error.message);
     dispatchEvent("logError", { message: `Audio init error: ${error.message}` });
     isAudioInitialized = false;
     audioContext = null;
@@ -51,24 +55,33 @@ export async function initializeAudio(context) {
 
 export async function playAudio(notes) {
   if (!isAudioInitialized || !audioContext || audioContext.state !== "running") {
-    console.warn("playAudio: Audio not initialized or context not running");
+    console.warn("playAudio: Audio not initialized or context not running", {
+      isAudioInitialized,
+      audioContext: !!audioContext,
+      state: audioContext?.state,
+    });
     return;
   }
   try {
     const enginesResponse = await fetch("./synthesis-methods/engines/availableEngines.json");
-    if (!enginesResponse.ok) throw new Error(`Failed to load availableEngines.json: ${enginesResponse.status}`);
+    if (!enginesResponse.ok) {
+      throw new Error(`Failed to load availableEngines.json: ${enginesResponse.status}`);
+    }
     const availableEngines = await enginesResponse.json();
     const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
     if (!engine) {
       console.error(`Engine not found: ${settings.synthesisEngine}`);
+      dispatchEvent("logError", { message: `Engine not found: ${settings.synthesisEngine}` });
       return;
     }
     const engineModule = await import(`./synthesis-methods/engines/${engine.id}.js`);
     const playFunction = engineModule[`play${engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
     if (playFunction) {
-      playFunction(notes, audioContext, oscillators);
+      playFunction(notes);
+      console.log("playAudio: Played notes", { engine: engine.id, noteCount: notes.length });
     } else {
       console.error(`Play function for ${engine.id} not found`);
+      dispatchEvent("logError", { message: `Play function for ${engine.id} not found` });
     }
   } catch (err) {
     console.error("playAudio error:", err.message);
@@ -88,10 +101,10 @@ export async function cleanupAudio() {
       if (micSource && micGainNode) {
         micSource.disconnect();
         micGainNode.disconnect();
+        micSource = null;
+        micGainNode = null;
       }
       oscillators = [];
-      micSource = null;
-      micGainNode = null;
       isAudioInitialized = false;
       console.log("cleanupAudio: Audio resources cleaned up");
     } catch (err) {
@@ -121,12 +134,12 @@ export function initializeMicAudio(micStream) {
     if (micStream) {
       micSource = audioContext.createMediaStreamSource(micStream);
       micGainNode = audioContext.createGain();
-      micGainNode.gain.setValueAtTime(0.7, audioContext.currentTime);
+      micGainNode.gain.setValueAtTime(0.7, audioContext.currentTime); // Adjustable gain
       micSource.connect(micGainNode).connect(audioContext.destination);
-      console.log("initializeMicAudio: Microphone stream connected");
+      console.log("initializeMicAudio: Microphone stream connected", { gain: 0.7 });
       return micSource;
     }
-    console.log("initializeMicAudio: No microphone stream provided");
+    console.log("initializeMicAudio: Microphone stream disconnected");
     return null;
   } catch (error) {
     console.error("initializeMicAudio error:", error.message);
