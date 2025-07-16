@@ -19,7 +19,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     }
   }
 
-  // Button 1: Start/stop Process input  (Main Mode), Grid Toggle (Settings Mode)
+  // Button 1: Start/Stop Stream (Normal Mode), Grid Toggle (Settings Mode)
   DOM.button1.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button1 touched', { settingsMode: settings.isSettingsMode });
@@ -45,7 +45,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     }
   });
 
-  // Button 2: Mic Toggle (Main Mode), Synthesis Toggle (Settings Mode)
+  // Button 2: Mic Toggle (Normal Mode), Synthesis Toggle (Settings Mode)
   DOM.button2.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button2 touched', { settingsMode: settings.isSettingsMode });
@@ -71,7 +71,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     }
   });
 
-  // Button 3: Language Toggle (Main Mode), Input selelector (Settings Mode)
+  // Button 3: Language Toggle (Normal Mode), Input Selector (Settings Mode)
   DOM.button3.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button3 touched', { settingsMode: settings.isSettingsMode });
@@ -79,9 +79,8 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     try {
       if (!settings.isSettingsMode) {
         dispatchEvent('toggleLanguage');
-            } else {
-      // Alternar entre video local y stream de cámara
-      dispatchEvent('toggleVideoSource');
+      } else {
+        dispatchEvent('toggleVideoSource');
       }
       dispatchEvent('updateUI', {
         settingsMode: settings.isSettingsMode,
@@ -114,7 +113,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     }
   });
 
-  // Button 4: FPS Toggle (Main Mode), Save Settings (Settings Mode)
+  // Button 4: FPS Toggle (Normal Mode), Save Settings (Settings Mode)
   DOM.button4.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button4 touched', { settingsMode: settings.isSettingsMode });
@@ -196,7 +195,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     }
   });
 
-  // Button 5: Email Console Log (Main Mode), Load Settings (Settings Mode)
+  // Button 5: Email Console Log (Normal Mode), Load Settings (Settings Mode)
   DOM.button5.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button5 touched', { settingsMode: settings.isSettingsMode });
