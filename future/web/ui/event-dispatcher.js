@@ -2,7 +2,7 @@
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from '../state.js';
 import { getText } from './utils.js';
 import { getDOM } from '../context.js';
-import { initializeMicAudio } from '../../audio-processor.js';
+import { initializeMicAudio } from '../audio-processor.js';
 
 export let dispatchEvent = null;
 
