@@ -1,12 +1,10 @@
-// future/web/main.js
-// This is the main entry point for the AcoustSee web application.
-// It initializes the application, sets up the UI controller, and handles DOM events.
 import { setupUIController } from './ui/ui-controller.js';
-import { createEventDispatcher } from './ui/event-dispatcher.js';  
-import { loadConfigs } from './state.js';
+import { createEventDispatcher } from './ui/event-dispatcher.js';
+import { loadConfigs } from './state.js';  // Add this line
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),
+  frameCanvas: document.getElementById('frameCanvas'),  // Add this line
   button1: document.getElementById('button1'),
   button2: document.getElementById('button2'),
   button3: document.getElementById('button3'),
@@ -24,7 +22,7 @@ async function init() {
     await loadConfigs;
     if (!DOM.videoFeed || !DOM.button1 || !DOM.button2 || !DOM.button3 || 
         !DOM.button4 || !DOM.button5 || !DOM.button6 || !DOM.powerOn || 
-        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel) {
+        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel || !DOM.frameCanvas) {  // Add !DOM.frameCanvas
       throw new Error('Missing DOM elements in main.js');
     }
     const { dispatchEvent } = await createEventDispatcher(DOM);  // Create the dispatcher here
@@ -32,7 +30,6 @@ async function init() {
     console.log('init: UI setup complete');
   } catch (err) {
     console.error('init error:', err.message);
-    // Removed dispatchEvent('logError', ...) to avoid reference issues during init failure
     try {
       const { getText } = await import('./ui/utils.js');
       await getText('init.tts.error');

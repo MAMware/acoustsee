@@ -3,6 +3,7 @@ import { settings, setAudioInterval, setStream, setMicStream, getLogs, addLog } 
 import { getText } from './utils.js';
 import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../audio-processor.js';
+import { processFrame } from './video-capture.js';
 
 
 export let dispatchEvent = null;
@@ -31,7 +32,7 @@ export async function createEventDispatcher(DOM) {
         dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
         return;
       }
-
+      
       const currentTime = performance.now();
       const grid = availableGrids.find(g => g.id === settings.gridType);
       const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
@@ -118,6 +119,13 @@ export async function createEventDispatcher(DOM) {
       lastTTSTime = currentTime;
       console.log('updateUI: UI updated', { settingsMode, streamActive, micActive });
     },
+
+    processFrame: async () => {
+      const video = DOM.videoFeed;
+        if (!video || video.videoWidth === 0 || video.videoHeight === 0) return;
+        await processFrame(DOM, video.videoWidth, video.videoHeight);
+      },
+
     startStop: async ({ settingsMode }) => {
       if (settingsMode) {
         const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
