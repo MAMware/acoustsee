@@ -1,21 +1,18 @@
-// File: web/state.js
-// future/web/state.js
-
 export let settings = {
   debugLogging: false,
   stream: null,
   audioInterval: null,
-  updateInterval: 50, // Default to 20 FPS
+  updateInterval: 30, 
   autoFPS: true,
-  gridType: 'circle-of-fifths', // Fallback
-  synthesisEngine: 'sine-wave', // Fallback
-  language: 'en-US', // Fallback
+  gridType: null, 
+  synthesisEngine: null, 
+  language: null, 
   isSettingsMode: false,
   micStream: null,
   ttsEnabled: true,
   dayNightMode: 'day'
 };
-
+export let availableLanguages = [];
 // Load configurations at startup
 (async () => {
   try {

@@ -2,7 +2,7 @@
 
 ## [Introduction](#introduction)
 
-The content in this repository builds a web app and provides a public working platform for code that transform visual environments into a soundscapes, thus empowering the user to experience a visual world by synthetic audio cues in real time.
+The content in this repository builds a web app and provides the code for a public working platform that transform visual environments into a soundscapes, thus empowering the user to experience a visual world by synthetic audio cues in real time.
 
 > **Why?** We believe in enhancing humanity with open-source software in a fast, accessible and impactful way. You are invited to join us to improve its mission and make a difference!
 
@@ -29,7 +29,7 @@ Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts
 Milestone 5 wich is a work in progress got a little help from OpenAI ChatGPT 4.1 via @github copilot at codespaces
 Research drafts are going to be feed into Grok 4 for a surprise next step ;)
 
-We are ready to welcome contributors from open source community to enhace perception!. 
+>We welcome contributors! 
 
 ## Table of Contents
 
@@ -46,11 +46,11 @@ We are ready to welcome contributors from open source community to enhace percep
 
 ### [Usage](docs/USAGE.md)
 
-Runs from a Internet browser, and mobile hardware from 2021.
+The webapp runs from a Internet browsers and mobile hardware from 2021.
 
-Current version [RUN](https://mamware.github.io/acoustsee/present/)
-Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
-Testing developments [RUN](https://mamware.github.io/acoustsee/future/web)
+- Current version [RUN](https://mamware.github.io/acoustsee/present/)
+- Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
+- Testing developments [RUN](https://mamware.github.io/acoustsee/future/web)
 
 ### Check [Usage](docs/USAGE.md) for further details
 
@@ -64,7 +64,6 @@ Working at **Milestone 5 (Current)**
 - Audio imput from camera into the headphones among the synthetized sound from camera. **Developing in Progress**
 - Further Modularity **Developing in Progress**
 - Mermaid diagrams to reflect current Modular Single Responsability Principle **To do**
-
  
 ### [Changelog](docs/CHANGELOG.md)
 
@@ -121,7 +120,7 @@ acoustsee/
 
 ### [To-Do List](docs/TO_DO.md)
 
-- At this document linked above, you will find the list for our current TO TO list, now from milestone 4 (v0.4.7)
+- At this document linked above, you will find the list for our current TO TO list, now from milestone 5 (v0.5.2)
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 

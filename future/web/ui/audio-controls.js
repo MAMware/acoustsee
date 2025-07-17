@@ -1,8 +1,5 @@
-// future/web/ui/audio-controls.js
-// This module manages audio controls, initializes the audio context, and handles user interactions for audio settings
-import { settings } from "../state.js";
 import { getText } from "./utils.js";
-import { initializeAudio, cleanupAudio, initializeMicAudio } from "../audio-processor.js";
+import { initializeAudio, cleanupAudio } from "../audio-processor.js";
 import { dispatchEvent } from "./event-dispatcher.js";
 
 let isAudioContextInitialized = false;

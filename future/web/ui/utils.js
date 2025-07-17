@@ -1,14 +1,38 @@
-// future/web/ui/utils.js
-// This file provides utility functions for text processing and announcements in the UI.
-import { settings } from '../state.js';
+import { settings, availableLanguages } from '../state.js';
+
+export function tryVibrate(event) {
+  if (event.cancelable && navigator.vibrate) {
+    try {
+      navigator.vibrate(50);
+    } catch (err) {
+      console.warn('Vibration blocked:', err.message);
+    }
+  }
+}
+
+export function hapticCount(count) {
+  if (navigator.vibrate) {
+    const pattern = Array(count * 2 - 1).fill(30).map((v, i) => i % 2 === 0 ? 30 : 50);
+    navigator.vibrate(pattern);
+  }
+}
+
+const translationsCache = {};
 
 export async function getText(key, params = {}, type = 'tts') {
   try {
     const language = availableLanguages.find(l => l.id === settings.language);
     if (!language) throw new Error(`Language not found: ${settings.language}`);
-    const response = await fetch(language.file);
-    if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
-    const translations = await response.json();
+
+    // Usa el cache si ya está cargado
+    let translations = translationsCache[language.id];
+    if (!translations) {
+      const response = await fetch(language.file);
+      if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
+      translations = await response.json();
+      translationsCache[language.id] = translations;
+    }
+
     let finalMessage = translations;
     for (const part of key.split('.')) {
       finalMessage = finalMessage[part] || key;

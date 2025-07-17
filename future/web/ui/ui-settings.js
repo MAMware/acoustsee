@@ -1,6 +1,6 @@
 // future/web/ui/ui-settings.js
 import { settings } from '../state.js';
-import { getText } from './utils.js';
+import { getText, tryVibrate, hapticCount } from './utils.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
   if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
@@ -9,21 +9,12 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     return;
   }
 
-  function tryVibrate(event) {
-    if (event.cancelable && navigator.vibrate) {
-      try {
-        navigator.vibrate(50);
-      } catch (err) {
-        console.warn('Vibration blocked:', err.message);
-      }
-    }
-  }
-
   // Button 1: Start/Stop Stream (Normal Mode), Grid Toggle (Settings Mode)
   DOM.button1.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button1 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(1)
     try {
       dispatchEvent('startStop', { settingsMode: settings.isSettingsMode });
     } catch (err) {
@@ -36,6 +27,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button1 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(1)
     try {
       dispatchEvent('startStop', { settingsMode: settings.isSettingsMode });
     } catch (err) {
@@ -50,6 +42,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button2 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(2)
     try {
       dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode });
     } catch (err) {
@@ -62,6 +55,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button2 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(2)
     try {
       dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode });
     } catch (err) {
@@ -76,6 +70,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button3 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(3)
     try {
       if (!settings.isSettingsMode) {
         dispatchEvent('toggleLanguage');
@@ -97,6 +92,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button3 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(3)
     try {
       if (!settings.isSettingsMode) {
         dispatchEvent('toggleInput');
@@ -118,6 +114,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button4 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(4)
     try {
       if (settings.isSettingsMode) {
         dispatchEvent('saveSettings', { settingsMode: true });
@@ -158,6 +155,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button4 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(4)
     try {
       if (settings.isSettingsMode) {
         dispatchEvent('saveSettings', { settingsMode: true });
@@ -200,6 +198,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button5 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(5)
     try {
       if (settings.isSettingsMode) {
         dispatchEvent('loadSettings', { settingsMode: true });
@@ -217,6 +216,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button5 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(5)
     try {
       if (settings.isSettingsMode) {
         dispatchEvent('loadSettings', { settingsMode: true });
@@ -236,6 +236,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button6 touched');
     tryVibrate(event);
+    hapticCount(6)
     try {
       settings.isSettingsMode = !settings.isSettingsMode;
       dispatchEvent('updateUI', {
@@ -255,6 +256,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button6 clicked');
     tryVibrate(event);
+    hapticCount(6)
     try {
       settings.isSettingsMode = !settings.isSettingsMode;
       dispatchEvent('updateUI', {
