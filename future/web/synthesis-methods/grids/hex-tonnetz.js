@@ -26,7 +26,7 @@ for (let y = 0; y < gridSize; y++) {
   }
 }
 
-export function mapFrameToTonnetz(
+export function mapFrameToHexTonnetz(
   frameData,
   width,
   height,
