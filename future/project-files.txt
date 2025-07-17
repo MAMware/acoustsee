@@ -1,4 +1,4 @@
-// Generated on: 2025-07-16 19:31:19 +0000
+// Generated on: 2025-07-17 00:53:24 +0000
 
 // File: web/synthesis-methods/grids/availableGrids.json
 [
@@ -324,20 +324,26 @@ export function playFMSynthesis(notes) {
 import { setupAudioControls } from './audio-controls.js';
 import { setupUISettings } from './ui-settings.js';
 import { setupCleanupManager } from './cleanup-manager.js';
+// Importa los módulos de configuración cuando los tengas
+// import { setupSaveSettings, setupLoadSettings } from './settings-manager.js';
 
 export function setupUIController({ dispatchEvent, DOM }) {
   console.log('setupUIController: Starting setup');
   setupAudioControls({ dispatchEvent, DOM });
   setupUISettings({ dispatchEvent, DOM });
   setupCleanupManager();
+
+  // Inicialización futura para guardar y leer configuraciones
+  // setupSaveSettings({ dispatchEvent, DOM });
+  // setupLoadSettings({ dispatchEvent, DOM });
+
   console.log('setupUIController: Setup complete');
 }
-
 
 // File: web/ui/ui-settings.js
 // future/web/ui/ui-settings.js
 import { settings } from '../state.js';
-import { getText } from './utils.js';
+import { getText, tryVibrate, hapticCount } from './utils.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
   if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
@@ -346,21 +352,12 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     return;
   }
 
-  function tryVibrate(event) {
-    if (event.cancelable && navigator.vibrate) {
-      try {
-        navigator.vibrate(50);
-      } catch (err) {
-        console.warn('Vibration blocked:', err.message);
-      }
-    }
-  }
-
   // Button 1: Start/Stop Stream (Normal Mode), Grid Toggle (Settings Mode)
   DOM.button1.addEventListener('touchstart', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button1 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(1)
     try {
       dispatchEvent('startStop', { settingsMode: settings.isSettingsMode });
     } catch (err) {
@@ -373,6 +370,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button1 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(1)
     try {
       dispatchEvent('startStop', { settingsMode: settings.isSettingsMode });
     } catch (err) {
@@ -387,6 +385,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button2 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(2)
     try {
       dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode });
     } catch (err) {
@@ -399,6 +398,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button2 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(2)
     try {
       dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode });
     } catch (err) {
@@ -413,6 +413,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button3 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(3)
     try {
       if (!settings.isSettingsMode) {
         dispatchEvent('toggleLanguage');
@@ -434,6 +435,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button3 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(3)
     try {
       if (!settings.isSettingsMode) {
         dispatchEvent('toggleInput');
@@ -455,6 +457,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button4 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(4)
     try {
       if (settings.isSettingsMode) {
         dispatchEvent('saveSettings', { settingsMode: true });
@@ -495,6 +498,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button4 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(4)
     try {
       if (settings.isSettingsMode) {
         dispatchEvent('saveSettings', { settingsMode: true });
@@ -537,6 +541,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button5 touched', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(5)
     try {
       if (settings.isSettingsMode) {
         dispatchEvent('loadSettings', { settingsMode: true });
@@ -554,6 +559,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button5 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
+    hapticCount(5)
     try {
       if (settings.isSettingsMode) {
         dispatchEvent('loadSettings', { settingsMode: true });
@@ -573,6 +579,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button6 touched');
     tryVibrate(event);
+    hapticCount(6)
     try {
       settings.isSettingsMode = !settings.isSettingsMode;
       dispatchEvent('updateUI', {
@@ -592,6 +599,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     if (event.cancelable) event.preventDefault();
     console.log('button6 clicked');
     tryVibrate(event);
+    hapticCount(6)
     try {
       settings.isSettingsMode = !settings.isSettingsMode;
       dispatchEvent('updateUI', {
@@ -617,7 +625,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from '../state.js';
 import { getText } from './utils.js';
 import { getDOM } from '../context.js';
-import { initializeMicAudio } from '../../audio-processor.js';
+import { initializeMicAudio } from '../audio-processor.js';
 
 export let dispatchEvent = null;
 
@@ -942,11 +950,8 @@ function setTextAndAriaLabel(element, text, ariaLabel) {
 }
 
 // File: web/ui/audio-controls.js
-// future/web/ui/audio-controls.js
-// This module manages audio controls, initializes the audio context, and handles user interactions for audio settings
-import { settings } from "../state.js";
 import { getText } from "./utils.js";
-import { initializeAudio, cleanupAudio, initializeMicAudio } from "../audio-processor.js";
+import { initializeAudio, cleanupAudio } from "../audio-processor.js";
 import { dispatchEvent } from "./event-dispatcher.js";
 
 let isAudioContextInitialized = false;
@@ -1110,7 +1115,6 @@ export function initDOM() {
 // future/web/ui/settings-handlers.js
 import { settings } from "../state.js";
 import { speak } from "./utils.js";
-import { getDispatchEvent } from "../context.js";
 
 export function setupSettingsHandlers({ dispatchEvent, DOM }) {
   console.log("setupSettingsHandlers: Starting setup");
@@ -1318,17 +1322,41 @@ export async function cleanupFrameProcessor() {
 }
 
 // File: web/ui/utils.js
-// future/web/ui/utils.js
-// This file provides utility functions for text processing and announcements in the UI.
-import { settings } from '../state.js';
+import { settings, availableLanguages } from '../state.js';
+
+export function tryVibrate(event) {
+  if (event.cancelable && navigator.vibrate) {
+    try {
+      navigator.vibrate(50);
+    } catch (err) {
+      console.warn('Vibration blocked:', err.message);
+    }
+  }
+}
+
+export function hapticCount(count) {
+  if (navigator.vibrate) {
+    const pattern = Array(count * 2 - 1).fill(30).map((v, i) => i % 2 === 0 ? 30 : 50);
+    navigator.vibrate(pattern);
+  }
+}
+
+const translationsCache = {};
 
 export async function getText(key, params = {}, type = 'tts') {
   try {
     const language = availableLanguages.find(l => l.id === settings.language);
     if (!language) throw new Error(`Language not found: ${settings.language}`);
-    const response = await fetch(language.file);
-    if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
-    const translations = await response.json();
+
+    // Usa el cache si ya está cargado
+    let translations = translationsCache[language.id];
+    if (!translations) {
+      const response = await fetch(language.file);
+      if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
+      translations = await response.json();
+      translationsCache[language.id] = translations;
+    }
+
     let finalMessage = translations;
     for (const part of key.split('.')) {
       finalMessage = finalMessage[part] || key;
@@ -2009,7 +2037,6 @@ export async function mapFrameToNotes(frameData, width, height, prevFrameDataLef
 }
 
 // File: web/context.js
-// future/web/context.js
 let DOM = null;
 let dispatchEvent = null;
 
@@ -2018,7 +2045,10 @@ export function setDOM(dom) {
 }
 
 export function getDOM() {
-  if (!DOM) console.error("DOM not initialized");
+  if (!DOM) {
+    console.error("DOM not initialized");
+    throw new Error("DOM not initialized");
+  }
   return DOM;
 }
 
@@ -2027,10 +2057,12 @@ export function setDispatchEvent(dispatcher) {
 }
 
 export function getDispatchEvent() {
-  if (!dispatchEvent) console.error("dispatchEvent not initialized");
+  if (!dispatchEvent) {
+    console.error("dispatchEvent not initialized");
+    throw new Error("dispatchEvent not initialized");
+  }
   return dispatchEvent;
 }
-
 
 // File: web/test/ui-settings.test.js
 // test/ui-settings.test.js
@@ -2073,24 +2105,21 @@ describe('ui-settings', () => {
 
 
 // File: web/state.js
-// File: web/state.js
-// future/web/state.js
-
 export let settings = {
   debugLogging: false,
   stream: null,
   audioInterval: null,
-  updateInterval: 50, // Default to 20 FPS
+  updateInterval: 30, 
   autoFPS: true,
-  gridType: 'circle-of-fifths', // Fallback
-  synthesisEngine: 'sine-wave', // Fallback
-  language: 'en-US', // Fallback
+  gridType: null, 
+  synthesisEngine: null, 
+  language: null, 
   isSettingsMode: false,
   micStream: null,
   ttsEnabled: true,
   dayNightMode: 'day'
 };
-
+export let availableLanguages = [];
 // Load configurations at startup
 (async () => {
   try {
