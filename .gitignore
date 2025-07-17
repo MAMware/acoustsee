@@ -1,5 +1,4 @@
 node_modules/
-future/project-files.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -175,3 +174,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+future/project-files.txt
