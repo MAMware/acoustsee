@@ -1,8 +1,9 @@
 // future/web/ui/event-dispatcher.js
-import { settings, setAudioInterval, setStream, setMicStream, getLogs } from '../state.js';
+import { settings, setAudioInterval, setStream, setMicStream, getLogs, addLog } from '../state.js';
 import { getText } from './utils.js';
 import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../audio-processor.js';
+
 
 export let dispatchEvent = null;
 

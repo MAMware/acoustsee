@@ -12,15 +12,14 @@ export let settings = {
   ttsEnabled: true,
   dayNightMode: 'day'
 };
-export let availableLanguages = [];
-// Load configurations at startup
-(async () => {
+
+export const loadConfigs = (async () => {
   try {
     const [grids, engines, languages, intervals] = await Promise.all([
       fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
       fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
       fetch('./languages/availableLanguages.json').then(res => res.json()),
-      Promise.resolve([50, 33, 16]) // Hardcoded intervals for now
+      Promise.resolve([50, 33, 16])
     ]);
     availableLanguages = languages;
     settings.gridType = grids[0]?.id || settings.gridType;

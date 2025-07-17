@@ -20,6 +20,7 @@ const DOM = {
 
 async function init() {
   try {
+    await loadConfigs;
     if (!DOM.videoFeed || !DOM.button1 || !DOM.button2 || !DOM.button3 || 
         !DOM.button4 || !DOM.button5 || !DOM.button6 || !DOM.powerOn || 
         !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel) {
