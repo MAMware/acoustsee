@@ -22,6 +22,7 @@ export let availableLanguages = [];
       fetch('./languages/availableLanguages.json').then(res => res.json()),
       Promise.resolve([50, 33, 16]) // Hardcoded intervals for now
     ]);
+    availableLanguages = languages;
     settings.gridType = grids[0]?.id || settings.gridType;
     settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
     settings.language = languages[0]?.id || settings.language;

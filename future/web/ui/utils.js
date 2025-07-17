@@ -27,7 +27,7 @@ export async function getText(key, params = {}, type = 'tts') {
     // Usa el cache si ya está cargado
     let translations = translationsCache[language.id];
     if (!translations) {
-      const response = await fetch(language.file);
+      const response = await fetch(`./languages/${language.id}.json`);
       if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
       translations = await response.json();
       translationsCache[language.id] = translations;
