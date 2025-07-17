@@ -13,6 +13,8 @@ export let settings = {
   dayNightMode: 'day'
 };
 
+export let availableLanguages = [];
+
 export const loadConfigs = (async () => {
   try {
     const [grids, engines, languages, intervals] = await Promise.all([
