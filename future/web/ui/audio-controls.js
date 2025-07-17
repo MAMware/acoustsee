@@ -1,3 +1,5 @@
+// Update web/ui/audio-controls.js: Remove { passive: true } from touchstart listener to ensure it counts as a user gesture for AudioContext
+
 import { getText } from "./utils.js";
 import { initializeAudio, cleanupAudio } from "../audio-processor.js";
 
@@ -58,7 +60,7 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
   };
 
   DOM.powerOn.addEventListener("click", handlePowerOn);
-  DOM.powerOn.addEventListener("touchstart", handlePowerOn, { passive: true });  // Added { passive: true }
+  DOM.powerOn.addEventListener("touchstart", handlePowerOn);  // Removed { passive: true }
 
   console.log("setupAudioControls: Audio controls initialized");
-  }
+}
