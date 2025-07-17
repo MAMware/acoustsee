@@ -2,7 +2,7 @@
 // This is the main entry point for the AcoustSee web application.
 // It initializes the application, sets up the UI controller, and handles DOM events.
 import { setupUIController } from './ui/ui-controller.js';
-import { getDispatchEvent } from './context.js';
+import { createEventDispatcher } from './ui/event-dispatcher.js';  // Add this import
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),
@@ -25,12 +25,12 @@ async function init() {
         !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel) {
       throw new Error('Missing DOM elements in main.js');
     }
-    const dispatchEvent = getDispatchEvent();
+    const { dispatchEvent } = await createEventDispatcher(DOM);  // Create the dispatcher here
     setupUIController({ dispatchEvent, DOM });
     console.log('init: UI setup complete');
   } catch (err) {
     console.error('init error:', err.message);
-    dispatchEvent('logError', { message: `init error: ${err.message}` });
+    // Removed dispatchEvent('logError', ...) to avoid reference issues during init failure
     try {
       const { getText } = await import('./ui/utils.js');
       await getText('init.tts.error');
