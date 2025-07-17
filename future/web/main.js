@@ -2,7 +2,8 @@
 // This is the main entry point for the AcoustSee web application.
 // It initializes the application, sets up the UI controller, and handles DOM events.
 import { setupUIController } from './ui/ui-controller.js';
-import { createEventDispatcher } from './ui/event-dispatcher.js';  // Add this import
+import { createEventDispatcher } from './ui/event-dispatcher.js';  
+import { loadConfigs } from './state.js';
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),
