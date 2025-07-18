@@ -69,22 +69,26 @@ export function setMicStream(stream) {
   }
 }
 
-// Override console methods to collect logs
+// Override console methods to collect logs (conditional for non-errors)
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
 console.log = (...args) => {
-  originalConsoleLog(...args);
-  addLog(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' '));
+  if (settings.debugLogging) originalConsoleLog(...args);  // Conditional for log
+  if (settings.debugLogging) {  // Already conditional, but consistent
+    addLog(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' '));
+  }
 };
 
 console.warn = (...args) => {
-  originalConsoleWarn(...args);
-  addLog(`WARN: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+  if (settings.debugLogging) originalConsoleWarn(...args);  // Conditional for warn
+  if (settings.debugLogging) {
+    addLog(`WARN: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+  }
 };
 
 console.error = (...args) => {
-  originalConsoleError(...args);
-  addLog(`ERROR: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+  originalConsoleError(...args);  // Always show errors in console
+  addLog(`ERROR: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);  // But internal addLog unconditional for errors
 };
