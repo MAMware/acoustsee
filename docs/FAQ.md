@@ -1,1 +1,3 @@
-gather questions, answer and fill this KB, sort by most asked (keep count)
+## Frecuently asked questions
+
+In this space, we aim to gather questions and thier answers.
