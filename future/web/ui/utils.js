@@ -41,7 +41,8 @@ export async function getText(key, params = {}, type = 'tts') {
       finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
     }
     for (const [paramKey, paramValue] of Object.entries(params)) {
-      finalMessage = finalMessage.replace(`{${paramKey}}`, paramValue);
+      const placeholderRegex = new RegExp(`\\{${paramKey}\\}`, 'g');
+      finalMessage = finalMessage.replace(placeholderRegex, paramValue);
     }
     if (type === 'tts' && settings.ttsEnabled) {
       const utterance = new SpeechSynthesisUtterance(finalMessage);

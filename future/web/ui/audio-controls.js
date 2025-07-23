@@ -41,8 +41,8 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
       }
     }
     await getText("audioError");
-    DOM.powerOn.textContent = "Audio Failed - Retry";
-    DOM.powerOn.setAttribute("aria-label", "Retry audio initialization");
+    DOM.powerOn.textContent = await getText("powerOn.failed.text", {}, 'text');
+    DOM.powerOn.setAttribute("aria-label", await getText("powerOn.failed.aria", {}, 'aria'));
   };
 
   const handlePowerOn = async (event) => {

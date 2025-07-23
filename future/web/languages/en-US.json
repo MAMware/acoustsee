@@ -1,4 +1,22 @@
 {
+"powerOn": {
+    "text": "Power On",
+    "aria": "Power On to enable audio",
+    "failed": {
+      "text": "Audio Failed - Retry",
+      "aria": "Retry audio initialization"
+    }
+  },
+  "videoFeed": {
+    "aria": "Video Feed"
+  },
+  "frameCanvas": {
+    "aria": "Hidden Frame Processing Canvas"
+  },
+  "debugPanel": {
+    "aria": "Debug Panel"
+  },
+  
   "button1": {
     "normal": {
       "start": {
