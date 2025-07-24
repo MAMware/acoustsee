@@ -127,20 +127,4 @@ body {
   display: inline-block;
 }
 
-@media (orientation: landscape) {
-  body::before {
-    content: "Please use portrait orientation (9:16)";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 5vw;
-    z-index: 50;
-  }
 }
