@@ -23,10 +23,18 @@ async function init() {
     const { getText } = await import('./ui/utils.js');
     // Set aria and text for all relevant elements deriving from ID
     const staticElements = [
+      DOM.splashScreen,
+      DOM.mainContainer,
       DOM.powerOn,
       DOM.videoFeed,
       DOM.frameCanvas,
       DOM.debugPanel,
+      DOM.button1,
+      DOM.button2,
+      DOM.button3,
+      DOM.button4,
+      DOM.button5,
+      DOM.button6,
       
     ];
     for (const el of staticElements) {
