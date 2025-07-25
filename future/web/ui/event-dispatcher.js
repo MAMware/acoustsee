@@ -1,4 +1,3 @@
-// future/web/ui/event-dispatcher.js
 import { settings, setAudioInterval, setStream, setMicStream, getLogs, addLog } from '../state.js';
 import { getText } from './utils.js';
 import { getDOM } from '../context.js';
@@ -150,8 +149,8 @@ export async function createEventDispatcher(DOM) {
               setMicStream(null);
               initializeMicAudio(null);
             }
-            clearInterval(settings.audioInterval);
-            setAudioInterval(null);
+            clearInterval(settings.audioTimerId);
+            setAudioInterval(setInterval);
             await getText('button1.tts.startStop', { state: 'stopping' });
           }
           dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
@@ -210,7 +209,7 @@ export async function createEventDispatcher(DOM) {
       try {
         settings.updateInterval = interval;
         if (settings.stream) {
-          clearInterval(settings.audioInterval);
+          clearInterval(settings.audioTimerId);
           setAudioInterval(setInterval(() => {
             dispatchEvent('processFrame');
           }, settings.updateInterval));
