@@ -190,7 +190,7 @@ export async function createEventDispatcher(DOM) {
         }
       }
     },
-    toggleInput: async () => {
+    toggleLanguage: async () => {
       try {
         const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
         const nextIndex = (currentIndex + 1) % availableLanguages.length;
