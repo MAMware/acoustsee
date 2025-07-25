@@ -162,6 +162,7 @@ export async function createEventDispatcher(DOM) {
         }
       }
     },
+    
     toggleAudio: async ({ settingsMode }) => {
       if (settingsMode) {
         const currentIndex = availableEngines.findIndex(e => e.id === settings.synthesisEngine);
@@ -190,6 +191,7 @@ export async function createEventDispatcher(DOM) {
         }
       }
     },
+    
     toggleLanguage: async () => {
       try {
         const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
@@ -203,6 +205,7 @@ export async function createEventDispatcher(DOM) {
         await getText('button3.tts.fpsError');
       }
     },
+    
     updateFrameInterval: async ({ interval }) => {
       try {
         settings.updateInterval = interval;
@@ -222,6 +225,7 @@ export async function createEventDispatcher(DOM) {
         await getText('button4.tts.fpsError');
       }
     },
+    
     toggleGrid: async () => {
       try {
         const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
@@ -235,6 +239,7 @@ export async function createEventDispatcher(DOM) {
         await getText('button1.tts.startStop', { state: 'error' });
       }
     },
+    
     toggleDebug: async ({ show }) => {
       try {
         if (DOM.debug) {
@@ -246,6 +251,12 @@ export async function createEventDispatcher(DOM) {
         dispatchEvent('logError', { message: `Debug toggle error: ${err.message}` });
       }
     },
+    
+    toggleVideoSource: async () => {
+  // Logic: Stop stream, request new getUserMedia({ video: { facingMode: nextMode } }), restart.
+  // Use imported function from new file.
+    },
+    
     saveSettings: async () => {
       try {
         const settingsToSave = {
