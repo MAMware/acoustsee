@@ -1,5 +1,5 @@
 export let settings = {
-  debugLogging: false,
+  debugLogging: true,
   stream: null,
   audioInterval: null,
   updateInterval: 30, 
@@ -9,7 +9,7 @@ export let settings = {
   language: null, 
   isSettingsMode: false,
   micStream: null,
-  ttsEnabled: true,
+  ttsEnabled: false,
   dayNightMode: 'day'
 };
 
