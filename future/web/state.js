@@ -1,7 +1,7 @@
 export let settings = {
   debugLogging: true,
   stream: null,
-  audioInterval: null,
+  audioTimerId: null,
   updateInterval: 30, 
   autoFPS: true,
   gridType: null, 
@@ -53,11 +53,13 @@ export function setStream(stream) {
   }
 }
 
-export function setAudioInterval(interval) {
-  settings.audioInterval = interval;
+export function setAudioInterval(timerId) {  // Renamed param for clarity: timerId instead of interval
+  settings.audioTimerId = timerId;
   if (settings.debugLogging) {
-    console.log('setAudioInterval', settings.updateInterval);  // Log actual ms instead of ID.
-    addLog(`setAudioInterval: ${settings.updateInterval ? `Interval set to ${settings.updateInterval}ms` : 'Interval cleared'}`);
+    const ms = settings.updateInterval;  // Explicit reference to ms config
+    const idInfo = timerId ? `ID ${timerId} with duration ${ms}ms` : 'cleared';
+    console.log('setAudioInterval', { timerId, updateIntervalMs: ms });
+    addLog(`setAudioInterval: Timer ${idInfo}`);
   }
 }
 
