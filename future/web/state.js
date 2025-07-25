@@ -56,8 +56,8 @@ export function setStream(stream) {
 export function setAudioInterval(interval) {
   settings.audioInterval = interval;
   if (settings.debugLogging) {
-    console.log('setAudioInterval', interval);
-    addLog(`setAudioInterval: ${interval ? `Interval set to ${interval}ms` : 'Interval cleared'}`);
+    console.log('setAudioInterval', settings.updateInterval);  // Log actual ms instead of ID.
+    addLog(`setAudioInterval: ${settings.updateInterval ? `Interval set to ${settings.updateInterval}ms` : 'Interval cleared'}`);
   }
 }
 
