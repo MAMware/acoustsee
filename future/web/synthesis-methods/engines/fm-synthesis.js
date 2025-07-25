@@ -1,6 +1,6 @@
 import { audioContext, oscillators } from "../../audio-processor.js";
 
-export function playFMSynthesis(notes) {
+export function playFmSynthesis(notes) {
   let oscIndex = 0;
   const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
   for (let i = 0; i < oscillators.length; i++) {
