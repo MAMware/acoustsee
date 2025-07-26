@@ -1,9 +1,10 @@
-import { structuredLog } from './utils/logging.js';  // Moved to top to avoid reference issues.
+import { structuredLog } from './utils/logging.js';  // Top import.
+import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import for DB logging.
 
 export let settings = {
   debugLogging: true,
   stream: null,
-  audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
+  audioTimerId: null,
   updateInterval: 30, 
   autoFPS: true,
   gridType: null, 
@@ -35,22 +36,11 @@ export const loadConfigs = (async () => {
 
 export let availableLanguages = [];
 
-const logs = [];
-
-export function addLog(message) {
-  logs.push(message);  // Now expects serialized JSON from structuredLog.
-  if (logs.length > 1000) logs.shift(); // Limit to 1000 entries
-}
-
-export function getLogs() {
-  // Enhanced: Pretty-print JSON logs for readability (e.g., in email body).
-  return logs.map(log => {
-    try {
-      const parsed = JSON.parse(log);
-      return `Timestamp: ${parsed.timestamp}\nLevel: ${parsed.level}\nMessage: ${parsed.message}\nData: ${JSON.stringify(parsed.data, null, 2)}\n---\n`;
-    } catch (err) {
-      return `Invalid log entry: ${log}\n---\n`;  // Fallback for malformed logs.
-    }
+export async function getLogs() {
+  const allLogs = await getAllIdbLogs();
+  // Pretty-print for readability.
+  return allLogs.map(log => {
+    return `Timestamp: ${log.timestamp}\nLevel: ${log.level}\nMessage: ${log.message}\nData: ${JSON.stringify(log.data, null, 2)}\n---\n`;
   }).join('');
 }
 
@@ -76,7 +66,7 @@ export function setMicStream(stream) {
   }
 }
 
-// Override console methods to collect logs, fully routed through structuredLog (clean removal of originals).
+// Override console methods to collect logs, fully routed through structuredLog.
 console.log = (...args) => {
   if (settings.debugLogging) {
     structuredLog('INFO', 'Console log', { args });

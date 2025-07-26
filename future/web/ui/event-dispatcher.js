@@ -11,6 +11,8 @@ export let dispatchEvent = null;
 
 let lastTTSTime = 0;
 const ttsCooldown = 3000;
+let fpsSamplerInterval = null;  // For averaging FPS.
+let frameCount = 0;  // Reset per sample period.
 
 export async function createEventDispatcher(DOM) {
   structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher');
@@ -25,6 +27,32 @@ export async function createEventDispatcher(DOM) {
     fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
     fetch('./languages/availableLanguages.json').then(res => res.json())
   ]);
+
+  // Gather and log enhanced browser/app debug info.
+  const browserInfo = {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    parsedBrowserVersion: parseBrowserVersion(navigator.userAgent),  // New: Parsed version.
+    hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',  // CPU cores.
+    deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',  // Approx RAM.
+    screen: `${screen.width}x${screen.height}`,
+    audioContextState: typeof audioContext !== 'undefined' ? audioContext.state : 'Not initialized',  // App-specific.
+    streamActive: !!settings.stream,
+    micActive: !!settings.micStream,
+    currentFPSInterval: settings.updateInterval  // Proxy for FPS (1000 / ms).
+  };
+  structuredLog('INFO', 'Enhanced browser and app debug info', browserInfo);
+
+  // Start FPS sampler if debugLogging (logs average every 10s when stream active).
+  if (settings.debugLogging) {
+    fpsSamplerInterval = setInterval(() => {
+      if (settings.stream) {
+        const avgFPS = frameCount / 10;  // Over 10s period.
+        structuredLog('DEBUG', 'Average FPS sample', { avgFPS, overSeconds: 10 });
+        frameCount = 0;  // Reset.
+      }
+    }, 10000);  // 10s.
+  }
 
   const handlers = {
     updateUI: async ({ settingsMode, streamActive, micActive }) => {
@@ -131,6 +159,7 @@ export async function createEventDispatcher(DOM) {
         const video = DOM.videoFeed;
         if (!video || video.videoWidth === 0 || video.videoHeight === 0) return;
         await processFrame(DOM, video.videoWidth, video.videoHeight);
+        frameCount++;  // Increment for FPS sampling.
       } catch (err) {
         structuredLog('ERROR', 'processFrame handler error', { message: err.message });
         handlers.logError({ message: `Frame processing handler error: ${err.message}` });
@@ -336,10 +365,14 @@ export async function createEventDispatcher(DOM) {
 
     emailDebug: async () => {
       try {
-        const logs = getLogs();
-        const subject = encodeURIComponent('AcoustSee Debug Log');
-        const body = encodeURIComponent(`Debug Log:\n${logs}`);
-        window.location.href = `mailto:acoustsee@outlook.com?subject=${subject}&body=${body}`;
+        const logsText = await getLogs();
+        const blob = new Blob([logsText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'acoustsee-debug-log.txt';
+        a.click();
+        URL.revokeObjectURL(url);
         await getText('button5.tts.emailDebug');
       } catch (err) {
         structuredLog('ERROR', 'emailDebug error', { message: err.message });
@@ -370,6 +403,12 @@ export async function createEventDispatcher(DOM) {
 
   structuredLog('INFO', 'createEventDispatcher: Dispatcher initialized');
   return { dispatchEvent };
+}
+
+// Helper for parsed browser version (simple regex examples; expand as needed).
+function parseBrowserVersion(userAgent) {
+  let match = userAgent.match(/Chrome\/([0-9.]+)/) || userAgent.match(/Firefox\/([0-9.]+)/) || userAgent.match(/Safari\/([0-9.]+)/) || userAgent.match(/Edg\/([0-9.]+)/);
+  return match ? match[1] : 'Unknown';
 }
 
 function setTextAndAriaLabel(element, text, ariaLabel) {
