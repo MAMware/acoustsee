@@ -1,7 +1,9 @@
+import { structuredLog } from './utils/logging.js';  // Moved to top to avoid reference issues.
+
 export let settings = {
   debugLogging: true,
   stream: null,
-  audioTimerId: null,
+  audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
   updateInterval: 30, 
   autoFPS: true,
   gridType: null, 
@@ -27,8 +29,7 @@ export const loadConfigs = (async () => {
     settings.language = languages[0]?.id || settings.language;
     settings.updateInterval = intervals[0] || settings.updateInterval;
   } catch (err) {
-    console.error('Failed to load configurations:', err.message);
-    addLog(`ERROR: Failed to load configurations: ${err.message}`);
+    structuredLog('ERROR', 'Failed to load configurations', { message: err.message });
   }
 })();
 
@@ -37,7 +38,7 @@ export let availableLanguages = [];
 const logs = [];
 
 export function addLog(message) {
-  logs.push(`[${new Date().toISOString()}] ${message}`);
+  logs.push(message);  // Now expects serialized JSON from structuredLog.
   if (logs.length > 1000) logs.shift(); // Limit to 1000 entries
 }
 
@@ -48,49 +49,38 @@ export function getLogs() {
 export function setStream(stream) {
   settings.stream = stream;
   if (settings.debugLogging) {
-    console.log('setStream', stream);
-    addLog(`setStream: ${stream ? 'Stream set' : 'Stream cleared'}`);
+    structuredLog('INFO', 'setStream', { streamSet: !!stream });
   }
 }
 
-export function setAudioInterval(timerId) {  // Renamed param for clarity: timerId instead of interval
+export function setAudioInterval(timerId) {
   settings.audioTimerId = timerId;
   if (settings.debugLogging) {
-    const ms = settings.updateInterval;  // Explicit reference to ms config
-    const idInfo = timerId ? `ID ${timerId} with duration ${ms}ms` : 'cleared';
-    console.log('setAudioInterval', { timerId, updateIntervalMs: ms });
-    addLog(`setAudioInterval: Timer ${idInfo}`);
+    const ms = settings.updateInterval;
+    structuredLog('INFO', 'setAudioInterval', { timerId, updateIntervalMs: ms });
   }
 }
 
 export function setMicStream(stream) {
   settings.micStream = stream;
   if (settings.debugLogging) {
-    console.log('setMicStream', stream);
-    addLog(`setMicStream: ${stream ? 'Mic stream set' : 'Mic stream cleared'}`);
+    structuredLog('INFO', 'setMicStream', { micStreamSet: !!stream });
   }
 }
 
-// Override console methods to collect logs (conditional for non-errors)
-const originalConsoleLog = console.log;
-const originalConsoleWarn = console.warn;
-const originalConsoleError = console.error;
-
+// Override console methods to collect logs, fully routed through structuredLog (clean removal of originals).
 console.log = (...args) => {
-  if (settings.debugLogging) originalConsoleLog(...args);  // Conditional for log
-  if (settings.debugLogging) {  // Already conditional, but consistent
-    addLog(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' '));
+  if (settings.debugLogging) {
+    structuredLog('INFO', 'Console log', { args });
   }
 };
 
 console.warn = (...args) => {
-  if (settings.debugLogging) originalConsoleWarn(...args);  // Conditional for warn
   if (settings.debugLogging) {
-    addLog(`WARN: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+    structuredLog('WARN', 'Console warn', { args });
   }
 };
 
 console.error = (...args) => {
-  originalConsoleError(...args);  // Always show errors in console
-  addLog(`ERROR: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);  // But internal addLog unconditional for errors
+  structuredLog('ERROR', 'Console error', { args });  // Always log errors.
 };
