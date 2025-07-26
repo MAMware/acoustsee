@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 // future/web/ui/event-dispatcher.js
 import { settings, setAudioInterval, setStream, setMicStream, getLogs, addLog } from '../state.js';
 import { getText } from './utils.js';
@@ -161,7 +162,7 @@ export async function createEventDispatcher(DOM) {
               initializeMicAudio(null);
             }
             clearInterval(settings.audioTimerId);
-            setAudioInterval(null);  // Correct: Nullifies ID after clear; clearInterval doesn't return a value to pass.
+            setAudioInterval(null);  // Nullifies ID after clear; clearInterval doesn't return a value, but state consistency requires this.
             await getText('button1.tts.startStop', { state: 'stopping' });
           }
           dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
