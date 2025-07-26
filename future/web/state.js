@@ -43,7 +43,15 @@ export function addLog(message) {
 }
 
 export function getLogs() {
-  return logs.join('\n');
+  // Enhanced: Pretty-print JSON logs for readability (e.g., in email body).
+  return logs.map(log => {
+    try {
+      const parsed = JSON.parse(log);
+      return `Timestamp: ${parsed.timestamp}\nLevel: ${parsed.level}\nMessage: ${parsed.message}\nData: ${JSON.stringify(parsed.data, null, 2)}\n---\n`;
+    } catch (err) {
+      return `Invalid log entry: ${log}\n---\n`;  // Fallback for malformed logs.
+    }
+  }).join('');
 }
 
 export function setStream(stream) {
