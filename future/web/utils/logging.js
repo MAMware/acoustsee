@@ -13,7 +13,8 @@ const LOG_LEVELS = {
 };
 
 let currentLogLevel = LOG_LEVELS.DEBUG;  // Default; can be set from settings.debugLogging.
-let sampleRate = 1.0;  // Default: log all; e.g., 0.1 for 10% sampling on DEBUG.
+const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+let sampleRate = isMobile ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 
 // Helper to set global log level (e.g., from settings.isSettingsMode or debugLogging).
 export function setLogLevel(level) {
@@ -43,7 +44,7 @@ export function setSampleRate(rate) {
  * @param {boolean} [persist=true] - If true, also calls addLog with serialized form.
  * @param {boolean} [sample=true] - If false, bypass sampling (for critical logs).
  */
-export function structuredLog(level, message, data = {}, persist = true, sample = true) {
+export async function structuredLog(level, message, data = {}, persist = true, sample = true) {
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
   if (numericLevel < currentLogLevel) return;  // Skip if below threshold.
 

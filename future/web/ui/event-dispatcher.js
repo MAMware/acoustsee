@@ -21,6 +21,17 @@ export async function createEventDispatcher(DOM) {
     return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined DOM') };
   }
 
+ // Log DOM elements for debugging.
+  structuredLog('DEBUG', 'DOM elements received', {
+    hasButton1: !!DOM.button1,
+    hasButton2: !!DOM.button2,
+    hasButton3: !!DOM.button3,
+    hasButton4: !!DOM.button4,
+    hasButton5: !!DOM.button5,
+    hasButton6: !!DOM.button6,
+    hasVideoFeed: !!DOM.videoFeed,
+  });
+  
   // Load configurations
   const [availableGrids, availableEngines, availableLanguages] = await Promise.all([
     fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
@@ -58,7 +69,16 @@ export async function createEventDispatcher(DOM) {
     updateUI: async ({ settingsMode, streamActive, micActive }) => {
       try {
         if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
-          structuredLog('ERROR', 'Missing critical DOM elements for UI update');
+          structuredLog('ERROR', 'Missing critical DOM elements for UI update', {
+            missing: [
+              !DOM.button1 && 'button1',
+              !DOM.button2 && 'button2',
+              !DOM.button3 && 'button3',
+              !DOM.button4 && 'button4',
+              !DOM.button5 && 'button5',
+              !DOM.button6 && 'button6'
+            ].filter(Boolean)
+          });
           dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
           return;
         }
@@ -363,9 +383,15 @@ export async function createEventDispatcher(DOM) {
       dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
 
-    emailDebug: async () => {
+    eemailDebug: async () => {
       try {
         const logsText = await getLogs();
+        if (!logsText) {
+          structuredLog('WARN', 'emailDebug: No logs retrieved from IndexedDB');
+          alert('No logs available to download. Try generating some actions first.');
+          await getText('button5.tts.emailDebug', { state: 'error' });
+          return;
+        }
         const blob = new Blob([logsText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -377,6 +403,7 @@ export async function createEventDispatcher(DOM) {
       } catch (err) {
         structuredLog('ERROR', 'emailDebug error', { message: err.message });
         handlers.logError({ message: `Email debug error: ${err.message}` });
+        alert('Failed to download logs: ' + err.message);  // Mobile-friendly feedback.
         await getText('button5.tts.emailDebug', { state: 'error' });
       }
     },
