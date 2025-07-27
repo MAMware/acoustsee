@@ -3,7 +3,7 @@
 // Supports async to avoid blocking high-throughput paths (e.g., frame processing).
 // Sampling reduces log volume for DEBUG level in performance-critical scenarios.
 
-import { addLog } from '../state.js';  // Import for persist=true; calls addLog with serialized entry.
+import { addIdbLog } from './idb-logger.js';  // Updated to use IndexedDB.
 
 const LOG_LEVELS = {
   DEBUG: 0,
@@ -60,9 +60,10 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     consoleMethod(`[${timestamp}] ${logEntry.level}: ${message}`, data);
 
     if (persist) {
-      // Serialize and persist via addLog.
-      const serialized = JSON.stringify(logEntry);  // Full JSON for parseability.
-      addLog(serialized);
+// Persist via IndexedDB (async to avoid blocking).
+      addIdbLog(logEntry).catch(err => {
+        console.warn('Failed to persist log to IndexedDB:', err.message);
+      });
     }
   }, 0);
 }

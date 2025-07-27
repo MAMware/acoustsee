@@ -4,7 +4,7 @@ import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import
 export let settings = {
   debugLogging: true,
   stream: null,
-  audioTimerId: null,
+  audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
   updateInterval: 30, 
   autoFPS: true,
   gridType: null, 
@@ -37,10 +37,14 @@ export const loadConfigs = (async () => {
 export let availableLanguages = [];
 
 export async function getLogs() {
+  // Fetch from IndexedDB and pretty-print for readability.
   const allLogs = await getAllIdbLogs();
-  // Pretty-print for readability.
   return allLogs.map(log => {
-    return `Timestamp: ${log.timestamp}\nLevel: ${log.level}\nMessage: ${log.message}\nData: ${JSON.stringify(log.data, null, 2)}\n---\n`;
+    try {
+      return `Timestamp: ${log.timestamp}\nLevel: ${log.level}\nMessage: ${log.message}\nData: ${JSON.stringify(log.data, null, 2)}\n---\n`;
+    } catch (err) {
+      return `Invalid log entry: ${JSON.stringify(log)}\n---\n`;  // Fallback for malformed logs.
+    }
   }).join('');
 }
 
@@ -66,7 +70,7 @@ export function setMicStream(stream) {
   }
 }
 
-// Override console methods to collect logs, fully routed through structuredLog.
+// Override console methods to collect logs, fully routed through structuredLog (clean removal of originals).
 console.log = (...args) => {
   if (settings.debugLogging) {
     structuredLog('INFO', 'Console log', { args });
