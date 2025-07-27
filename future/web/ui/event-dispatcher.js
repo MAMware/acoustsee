@@ -1,11 +1,10 @@
 /* @ts-nocheck */
 // future/web/ui/event-dispatcher.js
-import { settings, setAudioInterval, setStream, setMicStream, getLogs, } from '../state.js';
+import { settings, setAudioInterval, setStream, setMicStream, getLogs } from '../state.js';
 import { getText } from './utils.js';
-import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../audio-processor.js';
 import { processFrame } from './video-capture.js';
-import { structuredLog } from '../utils/logging.js';  // New import for logging.
+import { structuredLog } from '../utils/logging.js';
 
 export let dispatchEvent = null;
 
@@ -15,7 +14,7 @@ let fpsSamplerInterval = null;  // For averaging FPS.
 let frameCount = 0;  // Reset per sample period.
 
 export async function createEventDispatcher(DOM) {
-  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher');
+  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!DOM });
   if (!DOM) {
     structuredLog('ERROR', 'DOM is undefined in createEventDispatcher');
     return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined DOM') };
@@ -69,16 +68,15 @@ export async function createEventDispatcher(DOM) {
     updateUI: async ({ settingsMode, streamActive, micActive }) => {
       try {
         if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
-          structuredLog('ERROR', 'Missing critical DOM elements for UI update', {
-            missing: [
-              !DOM.button1 && 'button1',
-              !DOM.button2 && 'button2',
-              !DOM.button3 && 'button3',
-              !DOM.button4 && 'button4',
-              !DOM.button5 && 'button5',
-              !DOM.button6 && 'button6'
-            ].filter(Boolean)
-          });
+          const missing = [
+            !DOM.button1 && 'button1',
+            !DOM.button2 && 'button2',
+            !DOM.button3 && 'button3',
+            !DOM.button4 && 'button4',
+            !DOM.button5 && 'button5',
+            !DOM.button6 && 'button6'
+          ].filter(Boolean);
+          structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
           dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
           return;
         }
@@ -124,8 +122,8 @@ export async function createEventDispatcher(DOM) {
           ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
           : await getText('button3.normal.aria', { language: settings.language }, 'aria');
         if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button3.tts.${settingsMode ? 'languageSelect' : 'languageSelect'}`, {
-            state: settings.language
+          await getText(`button3.tts.${settingsMode ? 'videoSourceSelect' : 'languageSelect'}`, {
+            state: settingsMode ? (DOM.videoFeed?.srcObject?.getVideoTracks()[0]?.getSettings().facingMode || 'unknown') : settings.language
           });
         }
         setTextAndAriaLabel(DOM.button3, button3Text, button3Aria);
@@ -169,7 +167,7 @@ export async function createEventDispatcher(DOM) {
         lastTTSTime = currentTime;
         structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
       } catch (err) {
-        structuredLog('ERROR', 'updateUI error', { message: err.message });
+        structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `UI update error: ${err.message}` });
       }
     },
@@ -177,11 +175,15 @@ export async function createEventDispatcher(DOM) {
     processFrame: async () => {
       try {
         const video = DOM.videoFeed;
-        if (!video || video.videoWidth === 0 || video.videoHeight === 0) return;
-        await processFrame(DOM, video.videoWidth, video.videoHeight);
-        frameCount++;  // Increment for FPS sampling.
+        if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+          structuredLog('WARN', 'processFrame: Invalid video feed', { width: video?.videoWidth, height: video?.videoHeight });
+          return;
+        }
+        const result = await processFrame(DOM, video.videoWidth, video.videoHeight);
+        structuredLog('DEBUG', 'processFrame result', { notesCount: result?.notes?.length || 0, avgIntensity: result?.avgIntensity });
+        frameCount++;
       } catch (err) {
-        structuredLog('ERROR', 'processFrame handler error', { message: err.message });
+        structuredLog('ERROR', 'processFrame handler error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Frame processing handler error: ${err.message}` });
       }
     },
@@ -211,13 +213,18 @@ export async function createEventDispatcher(DOM) {
               initializeMicAudio(null);
             }
             clearInterval(settings.audioTimerId);
-            setAudioInterval(null);  // Nullifies ID after clear; clearInterval doesn't return a value, but state consistency requires this.
+            setAudioInterval(null);
+            if (fpsSamplerInterval) {
+              clearInterval(fpsSamplerInterval);
+              fpsSamplerInterval = null;
+              structuredLog('INFO', 'FPS sampler cleared on stream stop');
+            }
             await getText('button1.tts.startStop', { state: 'stopping' });
           }
           dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
         }
       } catch (err) {
-        structuredLog('ERROR', 'startStop error', { message: err.message });
+        structuredLog('ERROR', 'startStop error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Stream toggle error: ${err.message}` });
         await getText('button1.tts.cameraError');
       }
@@ -252,17 +259,56 @@ export async function createEventDispatcher(DOM) {
       }
     },
 
-    toggleInput: async () => {
+    toggleInput: async () => {  // Renamed from toggleInput for clarity
       try {
         const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
         const nextIndex = (currentIndex + 1) % availableLanguages.length;
         settings.language = availableLanguages[nextIndex].id;
         await getText('button3.tts.languageSelect', { state: settings.language });
-        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+        // Remove redundant dispatchEvent; updateUI triggered by setupUIController
       } catch (err) {
-        structuredLog('ERROR', 'toggleInput error', { message: err.message });
+        structuredLog('ERROR', 'toggleInput error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Language toggle error: ${err.message}` });
-        await getText('button3.tts.fpsError');
+        await getText('button3.tts.languageError');  // Changed to language-specific error
+      }
+    },
+
+    toggleLanguage: async () => {  // Renamed from toggleInput for clarity
+      try {
+        const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
+        const nextIndex = (currentIndex + 1) % availableLanguages.length;
+        settings.language = availableLanguages[nextIndex].id;
+        await getText('button3.tts.languageSelect', { state: settings.language });
+        // Remove redundant dispatchEvent; updateUI triggered by setupUIController
+      } catch (err) {
+        structuredLog('ERROR', 'toggleLanguage error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Language toggle error: ${err.message}` });
+        await getText('button3.tts.languageError');  // Changed to language-specific error
+      }
+    },
+
+    toggleVideoSource: async () => {  // New handler for settings mode (DEF-003)
+      try {
+        const videoTrack = DOM.videoFeed?.srcObject?.getVideoTracks()[0];
+        if (videoTrack) {
+          const settings = videoTrack.getSettings();
+          const currentFacingMode = settings.facingMode || 'user';
+          const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: newFacingMode },
+            audio: !!settings.micStream
+          });
+          DOM.videoFeed.srcObject = stream;
+          setStream(stream);  // Update stream state
+          await getText('button3.tts.videoSourceSelect', { state: newFacingMode });
+        } else {
+          structuredLog('WARN', 'toggleVideoSource: No video track available');
+          await getText('button3.tts.videoSourceError');
+        }
+      } catch (err) {
+        structuredLog('ERROR', 'toggleVideoSource error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Video source toggle error: ${err.message}` });
+        await getText('button3.tts.videoSourceError');
       }
     },
 
@@ -280,7 +326,7 @@ export async function createEventDispatcher(DOM) {
         });
         dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {
-        structuredLog('ERROR', 'updateFrameInterval error', { message: err.message });
+        structuredLog('ERROR', 'updateFrameInterval error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Frame interval update error: ${err.message}` });
         await getText('button4.tts.fpsError');
       }
@@ -294,7 +340,7 @@ export async function createEventDispatcher(DOM) {
         await getText('button1.tts.gridSelect', { state: settings.gridType });
         dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {
-        structuredLog('ERROR', 'toggleGrid error', { message: err.message });
+        structuredLog('ERROR', 'toggleGrid error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Grid toggle error: ${err.message}` });
         await getText('button1.tts.startStop', { state: 'error' });
       }
@@ -307,7 +353,7 @@ export async function createEventDispatcher(DOM) {
         }
         await getText('button6.tts.settingsToggle', { state: show ? 'on' : 'off' });
       } catch (err) {
-        structuredLog('ERROR', 'toggleDebug error', { message: err.message });
+        structuredLog('ERROR', 'toggleDebug error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Debug toggle error: ${err.message}` });
       }
     },
@@ -326,7 +372,7 @@ export async function createEventDispatcher(DOM) {
         localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
         await getText('button4.tts.saveSettings');
       } catch (err) {
-        structuredLog('ERROR', 'saveSettings error', { message: err.message });
+        structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Save settings error: ${err.message}` });
         await getText('button4.tts.saveError');
       }
@@ -376,18 +422,18 @@ export async function createEventDispatcher(DOM) {
           await getText('button5.tts.loadSettings.none');
         }
       } catch (err) {
-        structuredLog('ERROR', 'Load settings error', { message: err.message });
+        structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Load settings error: ${err.message}` });
         await getText('button5.tts.loadError');
       }
       dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
 
-    eemailDebug: async () => {
+    emailDebug: async () => {
       try {
         const logsText = await getLogs();
-        if (!logsText) {
-          structuredLog('WARN', 'emailDebug: No logs retrieved from IndexedDB');
+        if (!logsText || logsText.trim() === '') {
+          structuredLog('WARN', 'emailDebug: No logs retrieved or empty from IndexedDB');
           alert('No logs available to download. Try generating some actions first.');
           await getText('button5.tts.emailDebug', { state: 'error' });
           return;
@@ -397,11 +443,13 @@ export async function createEventDispatcher(DOM) {
         const a = document.createElement('a');
         a.href = url;
         a.download = 'acoustsee-debug-log.txt';
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
         await getText('button5.tts.emailDebug');
       } catch (err) {
-        structuredLog('ERROR', 'emailDebug error', { message: err.message });
+        structuredLog('ERROR', 'emailDebug error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Email debug error: ${err.message}` });
         alert('Failed to download logs: ' + err.message);  // Mobile-friendly feedback.
         await getText('button5.tts.emailDebug', { state: 'error' });
@@ -416,9 +464,10 @@ export async function createEventDispatcher(DOM) {
   dispatchEvent = (eventName, payload = {}) => {
     if (handlers[eventName]) {
       try {
+        structuredLog('DEBUG', `Dispatching event: ${eventName}`, { payload });
         handlers[eventName](payload);
       } catch (err) {
-        structuredLog('ERROR', `Error in handler ${eventName}`, { message: err.message });
+        structuredLog('ERROR', `Error in handler ${eventName}`, { message: err.message, stack: err.stack });
         handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
       }
     } else {
