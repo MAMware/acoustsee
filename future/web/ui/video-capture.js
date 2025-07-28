@@ -2,11 +2,14 @@ import { settings } from "../state.js";
 import { mapFrameToNotes } from "../frame-processor.js";
 import { playAudio } from "../audio-processor.js";
 import { dispatchEvent } from "./event-dispatcher.js";
+import { getDOM } from "../context.js";
 
 let prevFrameDataLeft = null;
 let prevFrameDataRight = null;
 
-export async function processFrame(DOM, width, height) {
+export async function processFrame(width, height) {
+  // Retrieve DOM references from shared context
+  const DOM = getDOM();
   try {
     const canvas = DOM.frameCanvas;
     const context = canvas.getContext("2d", { willReadFrequently: true });

@@ -117,8 +117,11 @@ export async function cleanupAudio() {
         micGainNode = null;
       }
       oscillators = [];
+      // Fully close AudioContext to release system resources
+      await audioContext.close();
+      audioContext = null;
       isAudioInitialized = false;
-      structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up');
+      structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up and context closed');
     } catch (err) {
       structuredLog('ERROR', 'cleanupAudio error', { message: err.message });
       dispatchEvent('logError', { message: `Cleanup audio error: ${err.message}` });

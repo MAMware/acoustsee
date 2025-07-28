@@ -70,19 +70,29 @@ export function setMicStream(stream) {
   }
 }
 
-// Override console methods to collect logs, fully routed through structuredLog (clean removal of originals).
+// Override console methods but retain native output, augment with structured logging when enabled
+// Capture original console methods before overriding
+const originalConsole = {
+  log: console.log,
+  warn: console.warn,
+  error: console.error,
+};
+
 console.log = (...args) => {
+  originalConsole.log(...args);
   if (settings.debugLogging) {
-    structuredLog('INFO', 'Console log', { args });
+    structuredLog('INFO', 'Console log', { args }, false);
   }
 };
 
 console.warn = (...args) => {
+  originalConsole.warn(...args);
   if (settings.debugLogging) {
-    structuredLog('WARN', 'Console warn', { args });
+    structuredLog('WARN', 'Console warn', { args }, false);
   }
 };
 
 console.error = (...args) => {
-  structuredLog('ERROR', 'Console error', { args });  // Always log errors.
+  originalConsole.error(...args);
+  structuredLog('ERROR', 'Console error', { args }, false);
 };
