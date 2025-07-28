@@ -5,6 +5,13 @@
 
 import { addIdbLog } from './idb-logger.js';  // Updated to use IndexedDB.
 
+// Capture original console methods before any overrides
+const originalConsoleRef = {
+  log: console.log,
+  warn: console.warn,
+  error: console.error,
+};
+
 const LOG_LEVELS = {
   DEBUG: 0,
   INFO: 1,
@@ -57,13 +64,13 @@ export async function structuredLog(level, message, data = {}, persist = true, s
   // Async emission: Use setTimeout(0) for browser (non-blocking queue).
   setTimeout(() => {
     // Human-readable console output.
-    const consoleMethod = console[level.toLowerCase()] || console.log;
+    const consoleMethod = originalConsoleRef[level.toLowerCase()] || originalConsoleRef.log;
     consoleMethod(`[${timestamp}] ${logEntry.level}: ${message}`, data);
 
     if (persist) {
 // Persist via IndexedDB (async to avoid blocking).
       addIdbLog(logEntry).catch(err => {
-        console.warn('Failed to persist log to IndexedDB:', err.message);
+        originalConsoleRef.warn('Failed to persist log to IndexedDB:', err.message);
       });
     }
   }, 0);

@@ -88,14 +88,17 @@ export function setupUISettings({ dispatchEvent, DOM }) {
       await getText('button3.tts.inputError');
     }
   });
+  // Button 3 click: Language Toggle (Normal) or Input Selector (Settings)
   DOM.button3.addEventListener('click', async (event) => {
     if (event.cancelable) event.preventDefault();
     console.log('button3 clicked', { settingsMode: settings.isSettingsMode });
     tryVibrate(event);
-    hapticCount(3)
+    hapticCount(3);
     try {
       if (!settings.isSettingsMode) {
-        dispatchEvent('toggleInput');
+        dispatchEvent('toggleLanguage');
+      } else {
+        dispatchEvent('toggleVideoSource');
       }
       dispatchEvent('updateUI', {
         settingsMode: settings.isSettingsMode,
@@ -105,7 +108,11 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     } catch (err) {
       console.error('button3 error:', err.message);
       dispatchEvent('logError', { message: `button3 error: ${err.message}` });
-      await getText('button3.tts.fpsError');
+      await getText(
+        settings.isSettingsMode
+          ? 'button3.tts.videoSourceError'
+          : 'button3.tts.languageError'
+      );
     }
   });
 

@@ -1,6 +1,13 @@
 import { structuredLog } from './utils/logging.js';  // Top import.
 import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import for DB logging.
 
+// Capture original console methods before overrides
+const originalConsole = {
+  log: console.log,
+  warn: console.warn,
+  error: console.error
+};
+
 export let settings = {
   debugLogging: true,
   stream: null,
@@ -70,19 +77,21 @@ export function setMicStream(stream) {
   }
 }
 
-// Override console methods to collect logs, fully routed through structuredLog (clean removal of originals).
+// Override console methods to collect logs, fully routed through structuredLog
 console.log = (...args) => {
   if (settings.debugLogging) {
-    structuredLog('INFO', 'Console log', { args });
+    structuredLog('INFO', 'Console log', { args }, false);
   }
 };
 
 console.warn = (...args) => {
   if (settings.debugLogging) {
-    structuredLog('WARN', 'Console warn', { args });
+    structuredLog('WARN', 'Console warn', { args }, false);
   }
 };
 
 console.error = (...args) => {
-  structuredLog('ERROR', 'Console error', { args });  // Always log errors.
+  if (settings.debugLogging) {
+    structuredLog('ERROR', 'Console error', { args }, false);
+  }
 };
