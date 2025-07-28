@@ -1,11 +1,12 @@
-import { audioContext, oscillators } from "../../audio-processor.js";
+import { audioContext, oscillators, modulators } from "../../audio-processor.js";
 
 export function playFmSynthesis(notes) {
   let oscIndex = 0;
+  let modIndex = 0;
   const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
   for (let i = 0; i < oscillators.length; i++) {
     const oscData = oscillators[i];
-    if (oscIndex < allNotes.length && i < oscillators.length) {
+    if (oscIndex < allNotes.length) {
       const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
       oscData.osc.type = "sine";
       oscData.osc.frequency.setTargetAtTime(
@@ -20,27 +21,39 @@ export function playFmSynthesis(notes) {
       );
       oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
       oscData.active = true;
-      if (harmonics.length && oscIndex + 1 < oscillators.length) {
-        // Limitar a 1 modulador por nota
-        oscIndex++;
-        const modulator = audioContext.createOscillator();
-        modulator.type = "sine";
-        modulator.frequency.setTargetAtTime(
+      if (harmonics.length) {
+        // handle one modulator per note, reuse or create
+        let modData;
+        if (modIndex < modulators.length) {
+          modData = modulators[modIndex];
+        } else {
+          const mOsc = audioContext.createOscillator();
+          const mGain = audioContext.createGain();
+          modulators.push({ osc: mOsc, gain: mGain, started: false });
+          modData = modulators[modulators.length - 1];
+        }
+        // configure modulator
+        modData.osc.type = "sine";
+        modData.osc.frequency.setTargetAtTime(
           pitch * 2,
           audioContext.currentTime,
           0.015,
         );
-        const modGain = audioContext.createGain();
-        modGain.gain.setTargetAtTime(
+        modData.gain.gain.setTargetAtTime(
           intensity * 100,
           audioContext.currentTime,
           0.015,
         );
-        modulator.connect(modGain).connect(oscData.osc.frequency);
-        modulator.start();
-        // Usar el siguiente oscilador para el armónico principal
-        if (oscIndex < oscillators.length) {
-          const harmonicOsc = oscillators[oscIndex];
+        // connect and start only once
+        modData.osc.connect(modData.gain).connect(oscData.osc.frequency);
+        if (!modData.started) {
+          modData.osc.start();
+          modData.started = true;
+        }
+        modIndex++;
+        // Use next oscillator for main harmonic
+        if (oscIndex + 1 < oscillators.length) {
+          const harmonicOsc = oscillators[oscIndex + 1];
           harmonicOsc.osc.type = "sine";
           harmonicOsc.osc.frequency.setTargetAtTime(
             harmonics[0],
@@ -65,5 +78,9 @@ export function playFmSynthesis(notes) {
       oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
       oscData.active = false;
     }
+  }
+  // silence any unused modulators
+  for (let i = modIndex; i < modulators.length; i++) {
+    modulators[i].gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
   }
 }

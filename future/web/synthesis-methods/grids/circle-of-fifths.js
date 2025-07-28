@@ -23,28 +23,39 @@ export function mapFrameToCircleOfFifths(
   const gridHeight = height / 12;
   const movingRegions = [];
   const newFrameData = new Uint8ClampedArray(frameData);
-  let avgIntensity = 0;
-  for (let i = 0; i < frameData.length; i++) avgIntensity += frameData[i];
-  avgIntensity /= frameData.length;
+ // Correct avgIntensity over pixels (skip alpha)
+ let avgIntensity = 0;
+ for (let i = 0; i < frameData.length; i += 4) {
+   const r = frameData[i];
+   const g = frameData[i + 1];
+   const b = frameData[i + 2];
+   avgIntensity += (r + g + b) / 3;
+ }
+ avgIntensity /= (frameData.length / 4);
 
-  if (prevFrameData) {
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = y * width + x;
-        const delta = Math.abs(frameData[idx] - prevFrameData[idx]);
-        if (delta > 50) {
-          const gridX = Math.floor(x / gridWidth);
-          const gridY = Math.floor(y / gridHeight);
-          movingRegions.push({
-            gridX,
-            gridY,
-            intensity: frameData[idx],
-            delta,
-          });
-        }
-      }
-    }
-  }
+ if (prevFrameData) {
+   for (let y = 0; y < height; y++) {
+     for (let x = 0; x < width; x++) {
+       const idx = (y * width + x) * 4;
+       const r = frameData[idx];
+       const g = frameData[idx + 1];
+       const b = frameData[idx + 2];
+       const intensity = (r + g + b) / 3;
+
+       const pr = prevFrameData[idx];
+       const pg = prevFrameData[idx + 1];
+       const pb = prevFrameData[idx + 2];
+       const prevIntensity = (pr + pg + pb) / 3;
+
+       const delta = Math.abs(intensity - prevIntensity);
+       if (delta > 20) {
+         const gridX = Math.floor(x / gridWidth);
+         const gridY = Math.floor(y / gridHeight);
+         movingRegions.push({ gridX, gridY, intensity, delta });
+       }
+     }
+   }
+ }
 
   movingRegions.sort((a, b) => b.delta - a.delta);
   const notes = [];

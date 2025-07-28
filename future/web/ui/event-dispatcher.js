@@ -197,7 +197,8 @@ export async function createEventDispatcher(DOM) {
           await getText('button1.tts.gridSelect', { state: settings.gridType });
         } else {
           if (!settings.stream) {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!settings.micStream });
+            // video-only to avoid duplicate audio tracks
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             DOM.videoFeed.srcObject = stream;
             setStream(stream);
             setAudioInterval(setInterval(() => {
@@ -205,7 +206,8 @@ export async function createEventDispatcher(DOM) {
             }, settings.updateInterval));
             await getText('button1.tts.startStop', { state: 'starting' });
           } else {
-            settings.stream.getTracks().forEach(track => track.stop());
+            // stop only video tracks
+            settings.stream.getVideoTracks().forEach(track => track.stop());
             setStream(null);
             if (settings.micStream) {
               settings.micStream.getTracks().forEach(track => track.stop());
