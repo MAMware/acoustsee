@@ -1,4 +1,4 @@
-// Generated on: 2025-07-28 10:00:30 +0000
+// Generated on: 2025-07-28 12:27:46 +0000
 
 // File: web/utils/logging.js
 // web/utils/logging.js
@@ -248,28 +248,40 @@ export function mapFrameToHexTonnetz(
   const gridHeight = height / gridSize;
   const movingRegions = [];
   const newFrameData = new Uint8ClampedArray(frameData);
-  let avgIntensity = 0;
-  for (let i = 0; i < frameData.length; i++) avgIntensity += frameData[i];
-  avgIntensity /= frameData.length;
+ 
+ // Correct avgIntensity over pixels (skip alpha)
+ let avgIntensity = 0;
+ for (let i = 0; i < frameData.length; i += 4) {
+   const r = frameData[i];
+   const g = frameData[i + 1];
+   const b = frameData[i + 2];
+   avgIntensity += (r + g + b) / 3;
+ }
+ avgIntensity /= (frameData.length / 4);  
 
-  if (prevFrameData) {
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = y * width + x;
-        const delta = Math.abs(frameData[idx] - prevFrameData[idx]);
-        if (delta > 20) {
-          const grid7X = Math.floor(x / gridWidth);
-          const gridY = Math.floor(y / gridHeight);
-          movingRegions.push({
-            gridX,
-            gridY,
-            intensity: frameData[idx],
-            delta,
-          });
-        }
-      }
-    }
-  }
+ if (prevFrameData) {
+   for (let y = 0; y < height; y++) {
+     for (let x = 0; x < width; x++) {
+       const idx = (y * width + x) * 4;
+       const r = frameData[idx];
+       const g = frameData[idx + 1];
+       const b = frameData[idx + 2];
+       const intensity = (r + g + b) / 3;
+
+       const pr = prevFrameData[idx];
+       const pg = prevFrameData[idx + 1];
+       const pb = prevFrameData[idx + 2];
+       const prevIntensity = (pr + pg + pb) / 3;
+
+       const delta = Math.abs(intensity - prevIntensity);
+       if (delta > 20) {
+         const gridX = Math.floor(x / gridWidth);
+         const gridY = Math.floor(y / gridHeight);
+         movingRegions.push({ gridX, gridY, intensity, delta });
+       }
+     }
+   }
+ }
 
   movingRegions.sort((a, b) => b.delta - a.delta);
   const notes = [];
@@ -324,28 +336,39 @@ export function mapFrameToCircleOfFifths(
   const gridHeight = height / 12;
   const movingRegions = [];
   const newFrameData = new Uint8ClampedArray(frameData);
-  let avgIntensity = 0;
-  for (let i = 0; i < frameData.length; i++) avgIntensity += frameData[i];
-  avgIntensity /= frameData.length;
+ // Correct avgIntensity over pixels (skip alpha)
+ let avgIntensity = 0;
+ for (let i = 0; i < frameData.length; i += 4) {
+   const r = frameData[i];
+   const g = frameData[i + 1];
+   const b = frameData[i + 2];
+   avgIntensity += (r + g + b) / 3;
+ }
+ avgIntensity /= (frameData.length / 4);
 
-  if (prevFrameData) {
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = y * width + x;
-        const delta = Math.abs(frameData[idx] - prevFrameData[idx]);
-        if (delta > 50) {
-          const gridX = Math.floor(x / gridWidth);
-          const gridY = Math.floor(y / gridHeight);
-          movingRegions.push({
-            gridX,
-            gridY,
-            intensity: frameData[idx],
-            delta,
-          });
-        }
-      }
-    }
-  }
+ if (prevFrameData) {
+   for (let y = 0; y < height; y++) {
+     for (let x = 0; x < width; x++) {
+       const idx = (y * width + x) * 4;
+       const r = frameData[idx];
+       const g = frameData[idx + 1];
+       const b = frameData[idx + 2];
+       const intensity = (r + g + b) / 3;
+
+       const pr = prevFrameData[idx];
+       const pg = prevFrameData[idx + 1];
+       const pb = prevFrameData[idx + 2];
+       const prevIntensity = (pr + pg + pb) / 3;
+
+       const delta = Math.abs(intensity - prevIntensity);
+       if (delta > 20) {
+         const gridX = Math.floor(x / gridWidth);
+         const gridY = Math.floor(y / gridHeight);
+         movingRegions.push({ gridX, gridY, intensity, delta });
+       }
+     }
+   }
+ }
 
   movingRegions.sort((a, b) => b.delta - a.delta);
   const notes = [];
@@ -432,14 +455,15 @@ export function playSineWave(notes) {
 
 
 // File: web/synthesis-methods/engines/fm-synthesis.js
-import { audioContext, oscillators } from "../../audio-processor.js";
+import { audioContext, oscillators, modulators } from "../../audio-processor.js";
 
 export function playFmSynthesis(notes) {
   let oscIndex = 0;
+  let modIndex = 0;
   const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
   for (let i = 0; i < oscillators.length; i++) {
     const oscData = oscillators[i];
-    if (oscIndex < allNotes.length && i < oscillators.length) {
+    if (oscIndex < allNotes.length) {
       const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
       oscData.osc.type = "sine";
       oscData.osc.frequency.setTargetAtTime(
@@ -454,27 +478,39 @@ export function playFmSynthesis(notes) {
       );
       oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
       oscData.active = true;
-      if (harmonics.length && oscIndex + 1 < oscillators.length) {
-        // Limitar a 1 modulador por nota
-        oscIndex++;
-        const modulator = audioContext.createOscillator();
-        modulator.type = "sine";
-        modulator.frequency.setTargetAtTime(
+      if (harmonics.length) {
+        // handle one modulator per note, reuse or create
+        let modData;
+        if (modIndex < modulators.length) {
+          modData = modulators[modIndex];
+        } else {
+          const mOsc = audioContext.createOscillator();
+          const mGain = audioContext.createGain();
+          modulators.push({ osc: mOsc, gain: mGain, started: false });
+          modData = modulators[modulators.length - 1];
+        }
+        // configure modulator
+        modData.osc.type = "sine";
+        modData.osc.frequency.setTargetAtTime(
           pitch * 2,
           audioContext.currentTime,
           0.015,
         );
-        const modGain = audioContext.createGain();
-        modGain.gain.setTargetAtTime(
+        modData.gain.gain.setTargetAtTime(
           intensity * 100,
           audioContext.currentTime,
           0.015,
         );
-        modulator.connect(modGain).connect(oscData.osc.frequency);
-        modulator.start();
-        // Usar el siguiente oscilador para el armónico principal
-        if (oscIndex < oscillators.length) {
-          const harmonicOsc = oscillators[oscIndex];
+        // connect and start only once
+        modData.osc.connect(modData.gain).connect(oscData.osc.frequency);
+        if (!modData.started) {
+          modData.osc.start();
+          modData.started = true;
+        }
+        modIndex++;
+        // Use next oscillator for main harmonic
+        if (oscIndex + 1 < oscillators.length) {
+          const harmonicOsc = oscillators[oscIndex + 1];
           harmonicOsc.osc.type = "sine";
           harmonicOsc.osc.frequency.setTargetAtTime(
             harmonics[0],
@@ -499,6 +535,10 @@ export function playFmSynthesis(notes) {
       oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
       oscData.active = false;
     }
+  }
+  // silence any unused modulators
+  for (let i = modIndex; i < modulators.length; i++) {
+    modulators[i].gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
   }
 }
 
@@ -888,7 +928,8 @@ export async function createEventDispatcher(DOM) {
           await getText('button1.tts.gridSelect', { state: settings.gridType });
         } else {
           if (!settings.stream) {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!settings.micStream });
+            // video-only to avoid duplicate audio tracks
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             DOM.videoFeed.srcObject = stream;
             setStream(stream);
             setAudioInterval(setInterval(() => {
@@ -896,7 +937,8 @@ export async function createEventDispatcher(DOM) {
             }, settings.updateInterval));
             await getText('button1.tts.startStop', { state: 'starting' });
           } else {
-            settings.stream.getTracks().forEach(track => track.stop());
+            // stop only video tracks
+            settings.stream.getVideoTracks().forEach(track => track.stop());
             setStream(null);
             if (settings.micStream) {
               settings.micStream.getTracks().forEach(track => track.stop());
@@ -2123,6 +2165,7 @@ import { structuredLog } from "./utils/logging.js";  // Add for detailed logging
 let audioContext = null;
 let isAudioInitialized = false;
 let oscillators = [];
+let modulators = [];
 let micSource = null;
 let micGainNode = null;
 
@@ -2234,6 +2277,13 @@ export async function cleanupAudio() {
         micGainNode = null;
       }
       oscillators = [];
+      // cleanup modulators
+      modulators.forEach(({ osc, gain }) => {
+        osc.stop();
+        osc.disconnect();
+        gain.disconnect();
+      });
+      modulators = [];
       // Fully close AudioContext to release system resources
       await audioContext.close();
       audioContext = null;
@@ -2280,7 +2330,7 @@ export function initializeMicAudio(micStream) {
   }
 }
 
-export { audioContext, isAudioInitialized, oscillators };
+export { audioContext, isAudioInitialized, oscillators, modulators };
 
 // File: web/index.html
 <!DOCTYPE html>

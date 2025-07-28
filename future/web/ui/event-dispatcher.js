@@ -289,19 +289,31 @@ export async function createEventDispatcher(DOM) {
       }
     },
 
-    toggleVideoSource: async () => {  // New handler for settings mode (DEF-003)
+    toggleVideoSource: async () => {
       try {
-        const videoTrack = DOM.videoFeed?.srcObject?.getVideoTracks()[0];
-        if (videoTrack) {
-          const settings = videoTrack.getSettings();
-          const currentFacingMode = settings.facingMode || 'user';
+        const oldStream = DOM.videoFeed?.srcObject;
+        if (oldStream) {
+          const currentVideoTrack = oldStream.getVideoTracks()[0];
+          const currentFacingMode = currentVideoTrack.getSettings().facingMode || 'user';
           const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-          const stream = await navigator.mediaDevices.getUserMedia({
+
+          // Release old camera & mic tracks
+          oldStream.getTracks().forEach(track => track.stop());
+
+          // Request new stream with updated video source and existing audio state
+          const newStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: newFacingMode },
             audio: !!settings.micStream
           });
-          DOM.videoFeed.srcObject = stream;
-          setStream(stream);  // Update stream state
+          DOM.videoFeed.srcObject = newStream;
+          setStream(newStream);
+
+          // Re-init mic if it was on
+          if (settings.micStream) {
+            setMicStream(newStream);
+            initializeMicAudio(newStream);
+          }
+
           await getText('button3.tts.videoSourceSelect', { state: newFacingMode });
         } else {
           structuredLog('WARN', 'toggleVideoSource: No video track available');

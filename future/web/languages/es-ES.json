@@ -50,16 +50,18 @@
   },
   "button3": {
     "normal": {
-      "text": "Seleccionar Idioma: {languageName}",
+      "text": "Idioma: {languageName}",
       "aria": "Seleccionar idioma {language}"
     },
     "settings": {
-      "text": "Sin Acción",
-      "aria": "Sin acción en modo configuración"
+      "text": "Cambiar Cámara",
+      "aria": "Cambiar entre cámara frontal y trasera"
     },
     "tts": {
       "languageSelect": "Idioma establecido en {state}",
-      "fpsError": "Error al alternar idioma"
+      "videoSourceSelect": "Cámara establecida en {state}",
+      "videoSourceError": "Error al cambiar de cámara",
+      "languageError": "Error al cambiar de idioma"
     }
   },
   "button4": {

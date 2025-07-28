@@ -19,17 +19,25 @@ export async function mapFrameToNotes(frameData, width, height, prevFrameDataLef
       dispatchEvent("logError", { message: `Map function for ${grid.id} not found` });
       return { notes: [], prevFrameDataLeft, prevFrameDataRight };
     }
-    const halfWidth = width / 2;
-    const leftFrame = new Uint8ClampedArray(halfWidth * height);
-    const rightFrame = new Uint8ClampedArray(halfWidth * height);
+    // Determine split buffers and copy full RGBA pixels
+    const halfWidth = Math.floor(width / 2);
+    const frameSize = halfWidth * height * 4;
+    const leftFrameData = new Uint8ClampedArray(frameSize);
+    const rightFrameData = new Uint8ClampedArray(frameSize);
+
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < halfWidth; x++) {
-        leftFrame[y * halfWidth + x] = frameData[y * width + x];
-        rightFrame[y * halfWidth + x] = frameData[y * width + x + halfWidth];
+        const fullIdx = (y * width + x) * 4;
+        const halfIdx = (y * halfWidth + x) * 4;
+        // Copy left RGBA
+        leftFrameData.set(frameData.subarray(fullIdx, fullIdx + 4), halfIdx);
+        // Copy right RGBA
+        const fullIdxR = (y * width + x + halfWidth) * 4;
+        rightFrameData.set(frameData.subarray(fullIdxR, fullIdxR + 4), halfIdx);
       }
     }
-    const leftResult = mapFunction(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
-    const rightResult = mapFunction(rightFrame, halfWidth, height, prevFrameDataRight, 1);
+    const leftResult = mapFunction(leftFrameData, halfWidth, height, prevFrameDataLeft, -1);
+    const rightResult = mapFunction(rightFrameData, halfWidth, height, prevFrameDataRight, 1);
     const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
     return {
       notes: allNotes,
