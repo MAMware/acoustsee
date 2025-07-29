@@ -1,4 +1,5 @@
-import { settings } from "../state.js";
+import { structuredLog } from "../utils/logging.js";
+import { settings, setAudioInterval } from "../state.js";
 import { mapFrameToNotes } from "../frame-processor.js";
 import { playAudio } from "../audio-processor.js";
 import { dispatchEvent } from "./event-dispatcher.js";
@@ -24,9 +25,9 @@ export async function processFrame(width, height) {
       dispatchEvent("logError", { message: msg });
       consecutiveErrors++;
       if (consecutiveErrors >= maxConsecutiveErrors && settings.stream) {
+        structuredLog('WARN', 'Paused frame processing due to repeated invalid dimensions');
         clearInterval(settings.audioTimerId);
         setAudioInterval(null);
-        structuredLog('WARN', 'Paused frame processing due to repeated invalid dimensions');
         await getText('button1.tts.cameraError');
       }
       return { notes: [], newFrameData: null, avgIntensity: 0 };  // Early return with dummy
@@ -40,7 +41,7 @@ export async function processFrame(width, height) {
     canvas.height = h;
     context.drawImage(DOM.videoFeed, 0, 0, width, height);
     const frameData = context.getImageData(0, 0, width, height).data;
-    const { notes, prevFrameDataLeft: newLeft, prevFrameDataRight: newRight } = await mapFrameToNotes(
+    const { notes, newFrameDataLeft, newFrameDataRight } = await mapFrameToNotes( // Renamed for clarity
       frameData, w, h, prevFrameDataLeft, prevFrameDataRight
     );
     await playAudio(notes);
@@ -48,14 +49,14 @@ export async function processFrame(width, height) {
     prevFrameDataRight = newRight;
     return { notes, newFrameData: frameData, avgIntensity };
   } catch (err) {
+    structuredLog('WARN', 'Paused frame processing due to repeated errors', { message: err.message });
     console.error("processFrame error:", err.message);
     dispatchEvent("logError", { message: `Frame processing error: ${err.message}` });
     consecutiveErrors++;
     if (consecutiveErrors >= maxConsecutiveErrors && settings.stream) {
       clearInterval(settings.audioTimerId);
       setAudioInterval(null);
-      structuredLog('WARN', 'Paused frame processing due to repeated errors', { message: err.message });
-      await getText('button1.tts.cameraError');
+            await getText('button1.tts.cameraError');
     }
     return { notes: [], newFrameData: null, avgIntensity: 0 };
   }
