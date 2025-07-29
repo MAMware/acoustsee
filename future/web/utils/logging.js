@@ -44,27 +44,30 @@ export function setSampleRate(rate) {
  * @param {boolean} [persist=true] - If true, also calls addLog with serialized form.
  * @param {boolean} [sample=true] - If false, bypass sampling (for critical logs).
  */
+import { originalConsole } from '../state.js';
+
+let inStructuredLog = false;
+/**
+ * Logs a structured message synchronously with recursion guard.
+ */
 export async function structuredLog(level, message, data = {}, persist = true, sample = true) {
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
-  if (numericLevel < currentLogLevel) return;  // Skip if below threshold.
-
-  // Sampling: For DEBUG, randomly skip based on sampleRate.
+  if (numericLevel < currentLogLevel) return;
   if (sample && level.toUpperCase() === 'DEBUG' && Math.random() > sampleRate) return;
 
-  const timestamp = new Date().toISOString();
-  const logEntry = { timestamp, level: level.toUpperCase(), message, data };
-
-  // Async emission: Use setTimeout(0) for browser (non-blocking queue).
-  setTimeout(() => {
-    // Human-readable console output.
-    const consoleMethod = console[level.toLowerCase()] || console.log;
-    consoleMethod(`[${timestamp}] ${logEntry.level}: ${message}`, data);
-
+  if (inStructuredLog) return;
+  inStructuredLog = true;
+  try {
+    const timestamp = new Date().toISOString();
+    const logEntry = { timestamp, level: level.toUpperCase(), message, data };
+    const fn = (originalConsole[level.toLowerCase()] || originalConsole.log).bind(originalConsole);
+    fn(`[${timestamp}] ${logEntry.level}: ${message}`, data);
     if (persist) {
-// Persist via IndexedDB (async to avoid blocking).
       addIdbLog(logEntry).catch(err => {
-        console.warn('Failed to persist log to IndexedDB:', err.message);
+        originalConsole.warn('Failed to persist log to IndexedDB:', err.message);
       });
     }
-  }, 0);
+  } finally {
+    inStructuredLog = false;
+  }
 }

@@ -77,6 +77,8 @@ const originalConsole = {
   warn: console.warn,
   error: console.error,
 };
+// Expose the original console methods to avoid override recursion
+export { originalConsole };
 
 console.log = (...args) => {
   originalConsole.log(...args);
