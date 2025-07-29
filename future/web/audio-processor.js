@@ -1,6 +1,6 @@
 // future/web/audio-processor.js
 import { settings } from "./state.js";
-import { dispatchEvent } from "./ui/event-dispatcher.js";
+import { dispatchEvent } from "./core/dispatcher.js";
 import { structuredLog } from "./utils/logging.js";  // Add for detailed logging.
 
 let audioContext = null;

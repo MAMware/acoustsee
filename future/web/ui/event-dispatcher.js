@@ -6,8 +6,7 @@ import { initializeMicAudio } from '../audio-processor.js';
 import { processFrame } from './video-capture.js';
 import { structuredLog } from '../utils/logging.js';
 import { cleanupFrameProcessor } from './video-capture.js';
-
-export let dispatchEvent = null;
+import { dispatchEvent, setDispatcher } from '../core/dispatcher.js';
 
 let lastTTSTime = 0;
 const ttsCooldown = 3000;
@@ -501,7 +500,8 @@ export async function createEventDispatcher(DOM) {
     }
   };
 
-  dispatchEvent = (eventName, payload = {}) => {
+  // Setup core dispatcher to use this UI dispatcher
+  setDispatcher((eventName, payload = {}) => {
     if (handlers[eventName]) {
       try {
         structuredLog('DEBUG', `Dispatching event: ${eventName}`, { payload });
@@ -514,7 +514,7 @@ export async function createEventDispatcher(DOM) {
       structuredLog('ERROR', `No handler found for event: ${eventName}`);
       handlers.logError({ message: `No handler for event: ${eventName}` });
     }
-  };
+  });
 
   structuredLog('INFO', 'createEventDispatcher: Dispatcher initialized');
   return { dispatchEvent };
