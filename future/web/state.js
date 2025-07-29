@@ -4,6 +4,9 @@ import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import
 export let settings = {
   debugLogging: true,
   stream: null,
+  availableGrids: [],    // Loaded once at startup
+  availableEngines: [],  // Loaded once at startup
+  availableLanguages: [], // Loaded once at startup
   audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
   updateInterval: 30, 
   autoFPS: true,
@@ -24,7 +27,9 @@ export const loadConfigs = (async () => {
       fetch('./languages/availableLanguages.json').then(res => res.json()),
       Promise.resolve([50, 33, 16])
     ]);
-    availableLanguages = languages;
+    settings.availableGrids = grids;
+    settings.availableEngines = engines;
+    settings.availableLanguages = languages;
     settings.gridType = grids[0]?.id || settings.gridType;
     settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
     settings.language = languages[0]?.id || settings.language;
@@ -33,8 +38,6 @@ export const loadConfigs = (async () => {
     structuredLog('ERROR', 'Failed to load configurations', { message: err.message });
   }
 })();
-
-export let availableLanguages = [];
 
 export async function getLogs() {
   // Fetch from IndexedDB and pretty-print for readability.

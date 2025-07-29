@@ -3,9 +3,8 @@ import { dispatchEvent } from "./ui/event-dispatcher.js";
 
 export async function mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
   try {
-    const gridsResponse = await fetch("./synthesis-methods/grids/availableGrids.json");
-    if (!gridsResponse.ok) throw new Error(`Failed to load availableGrids.json: ${gridsResponse.status}`);
-    const availableGrids = await gridsResponse.json();
+    // Use cached grids loaded at startup
+    const availableGrids = settings.availableGrids;
     const grid = availableGrids.find((g) => g.id === settings.gridType);
     if (!grid) {
       console.error(`Grid not found: ${settings.gridType}`);
