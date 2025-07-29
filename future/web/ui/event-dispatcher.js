@@ -294,7 +294,8 @@ export async function createEventDispatcher(DOM) {
         const nextIndex = (currentIndex + 1) % availableLanguages.length;
         settings.language = availableLanguages[nextIndex].id;
         await getText('button3.tts.languageSelect', { state: settings.language });
-        // Remove redundant dispatchEvent; updateUI triggered by setupUIController
+        // Trigger UI refresh after language change
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {
         structuredLog('ERROR', 'toggleLanguage error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Language toggle error: ${err.message}` });

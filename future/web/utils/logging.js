@@ -44,7 +44,6 @@ export function setSampleRate(rate) {
  * @param {boolean} [persist=true] - If true, also calls addLog with serialized form.
  * @param {boolean} [sample=true] - If false, bypass sampling (for critical logs).
  */
-import { originalConsole } from '../state.js';
 
 let inStructuredLog = false;
 /**
@@ -60,7 +59,8 @@ export async function structuredLog(level, message, data = {}, persist = true, s
   try {
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, level: level.toUpperCase(), message, data };
-    const fn = (originalConsole[level.toLowerCase()] || originalConsole.log).bind(originalConsole);
+    // Use global console to avoid circular import
+    const fn = (console[level.toLowerCase()] || console.log).bind(console);
     fn(`[${timestamp}] ${logEntry.level}: ${message}`, data);
     if (persist) {
       addIdbLog(logEntry).catch(err => {

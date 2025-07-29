@@ -1,6 +1,6 @@
 import { setupUIController } from './ui/ui-controller.js';
 import { createEventDispatcher } from './ui/event-dispatcher.js';
-import { loadConfigs } from './state.js';
+import { loadConfigs, settings } from './state.js';
 import { structuredLog } from './utils/logging.js';  
 import { setDOM } from './context.js'; 
 
@@ -70,6 +70,35 @@ async function init() {
     }
     const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
+    // Console overrides moved here to break circular dependency
+    const originalConsole = {
+      log: console.log,
+      warn: console.warn,
+      error: console.error
+    };
+    const oldStructuredLog = structuredLog;
+    window.structuredLog = async (level, message, data = {}, persist = true, sample = true) => {
+      const backup = { log: console.log, warn: console.warn, error: console.error };
+      console.log = originalConsole.log;
+      console.warn = originalConsole.warn;
+      console.error = originalConsole.error;
+      await oldStructuredLog(level, message, data, persist, sample);
+      console.log = backup.log;
+      console.warn = backup.warn;
+      console.error = backup.error;
+    };
+    console.log = (...args) => {
+      originalConsole.log.apply(console, args);
+      if (settings.debugLogging) window.structuredLog('INFO', 'Console log', { args }, false);
+    };
+    console.warn = (...args) => {
+      originalConsole.warn.apply(console, args);
+      if (settings.debugLogging) window.structuredLog('WARN', 'Console warn', { args }, false);
+    };
+    console.error = (...args) => {
+      originalConsole.error.apply(console, args);
+      window.structuredLog('ERROR', 'Console error', { args }, false);
+    };
     // Force initial UI update for dynamic content
     dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
     console.log('init: UI setup complete');

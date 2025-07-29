@@ -65,39 +65,3 @@ export function setAudioInterval(timerId) {
     structuredLog('INFO', 'setAudioInterval', { timerId, updateIntervalMs: ms });
   }
 }
-
-export function setMicStream(stream) {
-  settings.micStream = stream;
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'setMicStream', { micStreamSet: !!stream });
-  }
-}
-
-// Override console methods but retain native output, augment with structured logging when enabled
-// Capture original console methods before overriding
-const originalConsole = {
-  log: console.log,
-  warn: console.warn,
-  error: console.error,
-};
-// Expose the original console methods to avoid override recursion
-export { originalConsole };
-
-console.log = (...args) => {
-  originalConsole.log(...args);
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'Console log', { args }, false);
-  }
-};
-
-console.warn = (...args) => {
-  originalConsole.warn(...args);
-  if (settings.debugLogging) {
-    structuredLog('WARN', 'Console warn', { args }, false);
-  }
-};
-
-console.error = (...args) => {
-  originalConsole.error(...args);
-  structuredLog('ERROR', 'Console error', { args }, false);
-};
