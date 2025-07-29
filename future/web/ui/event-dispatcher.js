@@ -5,6 +5,7 @@ import { getText } from './utils.js';
 import { initializeMicAudio } from '../audio-processor.js';
 import { processFrame } from './video-capture.js';
 import { structuredLog } from '../utils/logging.js';
+import { cleanupFrameProcessor } from './video-capture.js';
 
 export let dispatchEvent = null;
 
@@ -209,6 +210,7 @@ export async function createEventDispatcher(DOM) {
             // stop only video tracks
             settings.stream.getVideoTracks().forEach(track => track.stop());
             setStream(null);
+            await cleanupFrameProcessor(); // Reset frame processor state
             if (settings.micStream) {
               settings.micStream.getTracks().forEach(track => track.stop());
               setMicStream(null);
@@ -299,6 +301,7 @@ export async function createEventDispatcher(DOM) {
 
           // Release old camera & mic tracks
           oldStream.getTracks().forEach(track => track.stop());
+          await cleanupFrameProcessor(); // Reset frame processor state
 
           // Request new stream with updated video source and existing audio state
           const newStream = await navigator.mediaDevices.getUserMedia({
