@@ -13,19 +13,24 @@ export async function processFrame(width, height) {
   try {
     const canvas = DOM.frameCanvas;
     const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) {
-      console.error("Canvas context not found");
-      dispatchEvent("logError", { message: "Canvas context not found" });
-      return;
+    // Validate context and dimensions
+    if (!context || width <= 0 || height <= 0) {
+      const msg = context ? "Invalid dimensions for frame processing" : "Canvas context not found";
+      console.error(msg);
+      dispatchEvent("logError", { message: msg });
+      return { notes: [], newFrameData: null, avgIntensity: 0 };  // Early return with dummy
     }
-    canvas.width = width;
-    canvas.height = height;
+    // Use integer dimensions for canvas
+    const w = Math.floor(width);
+    const h = Math.floor(height);
+    canvas.width = w;
+    canvas.height = h;
     context.drawImage(DOM.videoFeed, 0, 0, width, height);
     const frameData = context.getImageData(0, 0, width, height).data;
     const { notes, prevFrameDataLeft: newLeft, prevFrameDataRight: newRight } = await mapFrameToNotes(
       frameData,
       width,
-      height,
+      h,
       prevFrameDataLeft,
       prevFrameDataRight
     );
