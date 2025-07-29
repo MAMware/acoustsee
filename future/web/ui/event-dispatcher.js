@@ -201,6 +201,13 @@ export async function createEventDispatcher(DOM) {
             // video-only to avoid duplicate audio tracks
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             DOM.videoFeed.srcObject = stream;
+            await new Promise((resolve, reject) => {
+            DOM.videoFeed.addEventListener('loadedmetadata', () => {
+              structuredLog('INFO', 'Video metadata loaded', { videoWidth: DOM.videoFeed.videoWidth });
+              resolve();
+              }, { once: true });
+              DOM.videoFeed.addEventListener('error', reject, { once: true });
+            });
             setStream(stream);
             setAudioInterval(setInterval(() => {
               dispatchEvent('processFrame');
