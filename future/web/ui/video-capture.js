@@ -1,5 +1,6 @@
 import { structuredLog } from "../utils/logging.js";
 import { settings, setAudioInterval } from "../state.js";
+import { getText } from "./utils.js";
 import { mapFrameToNotes } from "../frame-processor.js";
 import { playAudio } from "../audio-processor.js";
 import { dispatchEvent } from "./event-dispatcher.js";
@@ -16,47 +17,49 @@ export async function processFrame(width, height) {
   const DOM = getDOM();
   try {
     const canvas = DOM.frameCanvas;
-    structuredLog('DEBUG', 'processFrame dimensions', { rawWidth: width, rawHeight: height });
     const context = canvas.getContext("2d", { willReadFrequently: true });
-    // Validate context and dimensions
+    structuredLog('DEBUG', 'processFrame dimensions', { rawWidth: width, rawHeight: height });
     if (!context || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
       const msg = context ? "Invalid dimensions for frame processing" : "Canvas context not found";
       console.error(msg);
       dispatchEvent("logError", { message: msg });
       consecutiveErrors++;
-      if (consecutiveErrors >= maxConsecutiveErrors && settings.stream) {
+      if (consecutiveErrors >= maxConsecutiveErrors && settings.audioTimerId) {
         structuredLog('WARN', 'Paused frame processing due to repeated invalid dimensions');
         clearInterval(settings.audioTimerId);
         setAudioInterval(null);
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: false, micActive: !!settings.micStream });
         await getText('button1.tts.cameraError');
       }
       return { notes: [], newFrameData: null, avgIntensity: 0 };  // Early return with dummy
     }
-    // Reset error counter on valid dimensions
+    // Reset counter on valid dimensions
     consecutiveErrors = 0;
     // Use integer dimensions for canvas
     const w = Math.floor(width);
     const h = Math.floor(height);
     canvas.width = w;
     canvas.height = h;
-    context.drawImage(DOM.videoFeed, 0, 0, width, height);
-    const frameData = context.getImageData(0, 0, width, height).data;
-    const { notes, newFrameDataLeft, newFrameDataRight } = await mapFrameToNotes( // Renamed for clarity
+    context.drawImage(DOM.videoFeed, 0, 0, w, h);
+    const frameData = context.getImageData(0, 0, w, h).data;
+    const { notes, prevFrameDataLeft: newLeft, prevFrameDataRight: newRight } = await mapFrameToNotes(
       frameData, w, h, prevFrameDataLeft, prevFrameDataRight
     );
     await playAudio(notes);
     prevFrameDataLeft = newLeft;
     prevFrameDataRight = newRight;
-    return { notes, newFrameData: frameData, avgIntensity };
+    return { notes, newFrameData: frameData, avgIntensity: 0 };
   } catch (err) {
-    structuredLog('WARN', 'Paused frame processing due to repeated errors', { message: err.message });
+    structuredLog('ERROR', 'processFrame error', { message: err.message });
     console.error("processFrame error:", err.message);
     dispatchEvent("logError", { message: `Frame processing error: ${err.message}` });
     consecutiveErrors++;
-    if (consecutiveErrors >= maxConsecutiveErrors && settings.stream) {
+    if (consecutiveErrors >= maxConsecutiveErrors && settings.audioTimerId) {
+      structuredLog('WARN', 'Paused frame processing due to repeated errors', { message: err.message });
       clearInterval(settings.audioTimerId);
       setAudioInterval(null);
-            await getText('button1.tts.cameraError');
+      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: false, micActive: !!settings.micStream });
+      await getText('button1.tts.cameraError');
     }
     return { notes: [], newFrameData: null, avgIntensity: 0 };
   }

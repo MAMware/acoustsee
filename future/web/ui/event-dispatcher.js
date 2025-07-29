@@ -200,11 +200,15 @@ export async function createEventDispatcher(DOM) {
           if (!settings.stream) {
             // video-only to avoid duplicate audio tracks
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            // attach stream and wait for valid metadata before proceeding
             DOM.videoFeed.srcObject = stream;
             await new Promise((resolve, reject) => {
-            DOM.videoFeed.addEventListener('loadedmetadata', () => {
-              structuredLog('INFO', 'Video metadata loaded', { videoWidth: DOM.videoFeed.videoWidth });
-              resolve();
+              DOM.videoFeed.addEventListener('loadedmetadata', () => {
+                if (DOM.videoFeed.videoWidth <= 0 || DOM.videoFeed.videoHeight <= 0) {
+                  return reject(new Error('Invalid video dimensions after metadata'));
+                }
+                structuredLog('INFO', 'Video metadata loaded', { width: DOM.videoFeed.videoWidth, height: DOM.videoFeed.videoHeight });
+                resolve();
               }, { once: true });
               DOM.videoFeed.addEventListener('error', reject, { once: true });
             });
@@ -315,7 +319,18 @@ export async function createEventDispatcher(DOM) {
             video: { facingMode: newFacingMode },
             audio: !!settings.micStream
           });
+          // attach new stream and validate metadata
           DOM.videoFeed.srcObject = newStream;
+          await new Promise((resolve, reject) => {
+            DOM.videoFeed.addEventListener('loadedmetadata', () => {
+              if (DOM.videoFeed.videoWidth <= 0 || DOM.videoFeed.videoHeight <= 0) {
+                return reject(new Error('Invalid video dimensions after metadata'));
+              }
+              structuredLog('INFO', 'Video metadata loaded', { width: DOM.videoFeed.videoWidth, height: DOM.videoFeed.videoHeight });
+              resolve();
+            }, { once: true });
+            DOM.videoFeed.addEventListener('error', reject, { once: true });
+          });
           setStream(newStream);
 
           // Re-init mic if it was on
