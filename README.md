@@ -2,7 +2,7 @@
 
 ## [Introduction](#introduction)
 
-The content in this repository builds a web app and provides the code for a public working platform that transform visual environments into a soundscapes, thus empowering the user to experience a visual world by synthetic audio cues in real time.
+The content in this repository is meant to provde the code and public infraestructure for a web app that transforms visual environments into a soundscapes, empowering userd to experience the visual world by synthetic audio cues, in real time.
 
 > **Why?** We believe in enhancing humanity with open-source software in a fast, accessible and impactful way. You are invited to join us to improve its mission and make a difference!
 
@@ -21,13 +21,12 @@ Audio Output: Stereo headphones for spatial audio effects.
 
 ### Hipothetic Use Case
 
-Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, the phone, worn as a necklace, captures visuals like a swing in motion. As the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
+Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, a mobile phone worn as a necklace captures surrounding visuals like a swing in motion, as the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
 
 ### Development
 
 Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts 
-Milestone 5 wich is a work in progress got a little help from OpenAI ChatGPT 4.1 via @github copilot at codespaces
-Research drafts are going to be feed into Grok 4 for a surprise next step ;)
+Milestone 5 wich is a work in progress is getting help from OpenAI ChatGPT 4.1, 04-mini, Anthropic Claude 4 via @github copilot at codespaces and also Grok 4 wich is charge of the re-estructuring from v0.5.12
 
 >We welcome contributors! 
 
@@ -58,59 +57,57 @@ The webapp runs from a Internet browsers and mobile hardware from 2021.
 
 Working at **Milestone 5 (Current)**
 
-- Haptic feedback via Vibration API **Developing in Progress** 
-- Console log on device screen and mail to feature for debuggin. **Developing in Progress**
-- New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress**
-- Audio imput from camera into the headphones among the synthetized sound from camera. **Developing in Progress**
-- Further Modularity **Developing in Progress**
+- Haptic feedback via Vibration API **Developing in Progress 85%** 
+- Console log on device screen and mail to feature for debuggin. **Developing in Progress 85%**
+- New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress 95%**
 - Mermaid diagrams to reflect current Modular Single Responsability Principle **To do**
  
 ### [Changelog](docs/CHANGELOG.md)
 
 - Current "stable" version from "present" is v0.4.7, link above logs the history and details past milestones achieved.
+- Current "future" version in development starts from v0.5 
 
-### [Project structure](#project_structure)
+### ["future" Project structure](#project_structure)
 
 ```
 
-acoustsee/
-
-├── present/                      # Current Stable Modular Webapp
-│   ├── index.html
-│   ├── styles.css
-│   ├── main.js
-│   ├── state.js
-│   ├── audio-processor.js
-│   ├── grid-selector.js
-│   ├── ui/
-│   │   ├── rectangle-handlers.js # Handles settingsToggle, modeBtn, languageBtn, startStopBtn
-│   │   ├── settings-handlers.js  # Manages gridSelect, synthesisSelect, languageSelect, fpsSelect
-│   │   ├── frame-processor.js    # Processes video frames (processFrame)
-│   │   └── event-dispatcher.js   # Routes events to handlers
-│   └── synthesis-methods/
-│       ├── grids/
-│       │   ├── hex-tonnetz.js
-│       │   └── circle-of-fifths.js
-│       └── engines/
-│           ├── sine-wave.js
-│           └── fm-synthesis.js
-│   
-├── tests/                     # Unit tests (TO_DO)
-│   ├── ui-handlers.test.js
-│   ├── trapezoid-handlers.test.js
-│   ├── settings-handlers.test.js
-│   └── frame-processor.test.js
-├── docs/                      # Documentation
-│   ├── USAGE.md
-│   ├── CHANGELOG.md
-│   ├── CONTRIBUTING.md
-│   ├── TO_DO.md
-│   ├── DIAGRAMS.md
-│   ├── LICENSE.md
-│   └── FAQ.md
-├── past/                     # Historic folder for older versions.
-├── future/                   # Meant to be used for fast, live testing of new features and improvements
-└── README.md
+web/
+├── audio/                    # Audio processing and synthesis
+│   ├── audio-processor.js    # AudioContext, oscillators, mic handling
+│   ├── synthesis-engines/    # Synthesis methods (sine-wave.js, fm-synthesis.js)
+│   │   ├── sine-wave.js
+│   │   ├── fm-synthesis.js
+│   │   └── available-engines.json
+│   └── audio-controls.js     # PowerOn button and AudioContext initialization (moved from ui)
+├── core/                     # Core application logic and state
+│   ├── dispatcher.js         # Event dispatching (renamed from event-dispatcher.js)
+│   ├── frame-processor.js    # Frame-to-notes mapping (moved from ui)
+│   ├── state.js              # Global settings and config loading
+│   └── context.js            # Shared DOM and dispatcher context
+├── ui/                       # Strictly UI-related code (DOM, buttons, rendering)
+│   ├── ui-controller.js      # UI setup and orchestration
+│   ├── ui-settings.js        # Button event bindings
+│   ├── video-capture.js      # Video feed rendering and canvas setup (refocused from processing)
+│   └── dom.js                # DOM element initialization
+├── utils/                    # General-purpose utilities
+│   ├── logging.js            # Structured logging
+│   ├── idb-logger.js         # IndexedDB logging
+│   ├── utils.js              # General utilities (tryVibrate, hapticCount, getText, etc.)
+│   └── async.js              # Async utilities (withErrorBoundary)
+├── synthesis-grids/          # Grid-based synthesis methods
+│   ├── hex-tonnetz.js
+│   ├── circle-of-fifths.js
+│   └── available-grids.json
+├── languages/                # Language and translation files
+│   ├── es-ES.json
+│   ├── en-US.json
+│   └── available-languages.json
+├── styles.css                # Global styles
+├── index.html                # Main HTML
+├── main.js                   # Application entry point
+└── test/                     # Tests
+    ├── ui-settings.test.js
+    └── video-capture.test.js
 
 ```
 
@@ -139,4 +136,9 @@ Reflecting:
 
 - GPL-3.0 license details
   
-MAKE LOVE NOT WAR
+Peace
+Love
+Union
+Respect
+
+
