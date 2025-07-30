@@ -2,7 +2,7 @@
 
 ## [Introduction](#introduction)
 
-The content in this repository is meant to provde the code and public infraestructure for a web app that transforms visual environments into a soundscapes, empowering userd to experience the visual world by synthetic audio cues, in real time.
+The content in this repository is meant to provide the code for a public infraestructure web app that aims to transform visual environments into soundscapes, empowering the users to experience the visual world by synthetic audio cues, in real time.
 
 > **Why?** We believe in enhancing humanity with open-source software in a fast, accessible and impactful way. You are invited to join us to improve its mission and make a difference!
 
