@@ -14,8 +14,8 @@ export function setupCleanupManager() {
       settings.micStream.getTracks().forEach((track) => track.stop());
       settings.micStream = null;
     }
-    if (settings.audioInterval) {
-      clearInterval(settings.audioInterval);
+    if (settings.audioTimerId) {
+      clearInterval(settings.audioTimerId);
       setAudioInterval(null);
     }
     if (isAudioInitialized && audioContext) {

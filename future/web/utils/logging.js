@@ -64,7 +64,7 @@ export async function structuredLog(level, message, data = {}, persist = true, s
     fn(`[${timestamp}] ${logEntry.level}: ${message}`, data);
     if (persist) {
       addIdbLog(logEntry).catch(err => {
-        originalConsole.warn('Failed to persist log to IndexedDB:', err.message);
+        console.warn('Failed to persist log to IndexedDB:', err.message);
       });
     }
   } finally {

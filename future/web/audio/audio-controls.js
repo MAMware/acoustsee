@@ -1,6 +1,6 @@
 // Update web/ui/audio-controls.js: Remove { passive: true } from touchstart listener to ensure it counts as a user gesture for AudioContext
 
-import { getText } from "./utils.js";
+import { getText } from "./utils/utils.js";
 import { initializeAudio, cleanupAudio } from "../audio-processor.js";
 import { structuredLog } from "../utils/logging.js";
 

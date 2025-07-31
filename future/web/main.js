@@ -28,7 +28,7 @@ async function init() {
     await loadConfigs;
     let getText;
     try {
-      ({ getText } = await import('./ui/utils.js'));
+      ({ getText } = await import('./utils/utils.js'));
       console.log('utils.js imported successfully');  // Confirm import worked
     } catch (importErr) {
       console.error('Failed to import utils.js:', importErr.message);
