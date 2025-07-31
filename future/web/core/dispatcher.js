@@ -3,8 +3,7 @@ import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './
 import { getText, parseBrowserVersion, setTextAndAriaLabel } from '../utils/utils.js';
 import { withErrorBoundary } from '../utils/async.js';
 import { initializeMicAudio } from '../audio/audio-processor.js';
-import { processFrame } from './frame-processor.js';
-import { cleanupFrameProcessor } from './frame-processor.js';
+import { processFrame, cleanupFrameProcessor } from './frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
 
 let _dispatcherFn = null;
