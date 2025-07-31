@@ -1,5 +1,6 @@
 import { settings } from "./state.js";
 import { dispatchEvent } from "./dispatcher.js";
+import { structuredLog } from "../utils/logging.js";
 
 export async function mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
   try {
@@ -47,5 +48,21 @@ export async function mapFrameToNotes(frameData, width, height, prevFrameDataLef
     console.error("mapFrameToNotes error:", err.message);
     dispatchEvent("logError", { message: `Frame mapping error: ${err.message}` });
     return { notes: [], prevFrameDataLeft, prevFrameDataRight };
+    
+  }
+}
+
+// Expose mapFrameToNotes as processFrame for dispatcher
+export { mapFrameToNotes as processFrame };
+
+/** Cleanup function for frame processor */
+export async function cleanupFrameProcessor() {
+  try {
+    structuredLog('INFO', 'cleanupFrameProcessor: Resetting frame processor state');
+    return { prevFrameDataLeft: null, prevFrameDataRight: null };
+  } catch (err) {
+    structuredLog('ERROR', 'cleanupFrameProcessor error', { message: err.message });
+    dispatchEvent('logError', { message: `Frame processor cleanup error: ${err.message}` });
+    return { prevFrameDataLeft: null, prevFrameDataRight: null };
   }
 }
