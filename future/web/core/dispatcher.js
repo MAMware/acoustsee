@@ -1,3 +1,4 @@
+// File: web/core/dispatcher.js
 /* @ts-nocheck */
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
 import { getText, parseBrowserVersion, setTextAndAriaLabel } from '../utils/utils.js';
@@ -42,12 +43,9 @@ export async function createEventDispatcher(DOM) {
     hasButton6: !!DOM.button6,
     hasVideoFeed: !!DOM.videoFeed,
   });
-
-  const [availableGrids, availableEngines, availableLanguages] = await Promise.all([
-    fetch('./synthesis-grids/available-grids.json').then(res => res.json()),
-    fetch('./audio/synthesis-engines/available-engines.json').then(res => res.json()),
-    fetch('./languages/available-languages.json').then(res => res.json())
-  ]);
+  
+  // Use the centrally loaded configurations from the settings object.
+  const { availableGrids, availableEngines, availableLanguages } = settings;
 
   const browserInfo = {
     userAgent: navigator.userAgent,
@@ -176,14 +174,37 @@ export async function createEventDispatcher(DOM) {
     },
 
     processFrame: async () => {
-      const { data: result, error } = await withErrorBoundary(processFrame, DOM.videoFeed.videoWidth, DOM.videoFeed.videoHeight);
+      const video = DOM.videoFeed;
+      const canvas = DOM.frameCanvas;
+
+      if (!video || !canvas || video.readyState < video.HAVE_METADATA || video.videoWidth <= 0 || video.videoHeight <= 0) {
+        structuredLog('DEBUG', 'processFrame: Video not ready or dimensions invalid, skipping frame.');
+        return;
+      }
+
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      let frameData;
+      try {
+        frameData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      } catch (e) {
+        structuredLog('ERROR', 'Could not get image data from canvas', { message: e.message });
+        return; // Cannot proceed
+      }
+      
+      const { data: result, error } = await withErrorBoundary(processFrame, frameData, canvas.width, canvas.height);
       if (error) {
         structuredLog('ERROR', 'processFrame handler error', { message: error.message, stack: error.stack });
         handlers.logError({ message: `Frame processing handler error: ${error.message}` });
         return;
       }
       if (!result) {
-        structuredLog('WARN', 'processFrame: No result returned', { width: DOM.videoFeed?.videoWidth, height: DOM.videoFeed?.videoHeight });
+        structuredLog('WARN', 'processFrame: No result returned', { width: canvas.width, height: canvas.height });
         return;
       }
       structuredLog('DEBUG', 'processFrame result', { notesCount: result.notes?.length || 0, avgIntensity: result.avgIntensity });

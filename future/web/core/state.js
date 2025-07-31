@@ -1,3 +1,4 @@
+// File: web/core/state.js
 import { structuredLog } from '../utils/logging.js';  // Top import.
 import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';  // New import for DB logging.
 
@@ -21,10 +22,18 @@ export let settings = {
 
 export const loadConfigs = (async () => {
   try {
+    const fetchAndCheck = async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    };
+
     const [grids, engines, languages, intervals] = await Promise.all([
-      fetch('./synthesis-grids/available-grids.json').then(res => res.json()),
-      fetch('./audio/synthesis-engines/available-engines.json').then(res => res.json()),
-      fetch('./languages/available-languages.json').then(res => res.json()),
+      fetchAndCheck('./synthesis-grids/available-grids.json'),
+      fetchAndCheck('./audio/synthesis-engines/available-engines.json'),
+      fetchAndCheck('./languages/available-languages.json'),
       Promise.resolve([50, 33, 16])
     ]);
     settings.availableGrids = grids;
@@ -35,7 +44,9 @@ export const loadConfigs = (async () => {
     settings.language = languages[0]?.id || settings.language;
     settings.updateInterval = intervals[0] || settings.updateInterval;
   } catch (err) {
-    structuredLog('ERROR', 'Failed to load configurations', { message: err.message });
+    structuredLog('ERROR', 'Failed to load critical configurations. The application may not function correctly.', { message: err.message });
+    // This will help in debugging by showing a clear error to the user.
+    alert(`A critical configuration file could not be loaded. Please check the browser's developer console for more details. Error: ${err.message}`);
   }
 })();
 
