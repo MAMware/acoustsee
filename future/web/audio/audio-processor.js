@@ -1,4 +1,3 @@
-// future/web/audio-processor.js
 import { settings } from "../core/state.js";
 import { dispatchEvent } from "../core/dispatcher.js";
 import { structuredLog } from "../utils/logging.js";  // Add for detailed logging.
