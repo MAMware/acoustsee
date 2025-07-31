@@ -1,4 +1,4 @@
-import { settings, availableLanguages } from '../core/state.js';
+import { settings } from '../core/state.js';
 import { structuredLog } from './logging.js';
 
 export function tryVibrate(event) {
@@ -18,11 +18,12 @@ export function hapticCount(count) {
   }
 }
 
+const langs = settings.availableLanguages;
 const translationsCache = {};
 
 export async function getText(key, params = {}, type = 'tts') {
   try {
-    const language = availableLanguages.find(l => l.id === settings.language);
+    const language = langs.find(l => l.id === settings.language);
     if (!language) throw new Error(`Language not found: ${settings.language}`);
 
     let translations = translationsCache[language.id];
