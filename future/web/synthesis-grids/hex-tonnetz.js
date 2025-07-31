@@ -1,4 +1,4 @@
-import { settings } from "../../state.js";
+import { settings } from "../core/state.js";
 
 const gridSize = 32;
 const notesPerOctave = 12;

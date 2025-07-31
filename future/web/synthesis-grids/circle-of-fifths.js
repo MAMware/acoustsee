@@ -1,4 +1,4 @@
-import { settings } from "../../state.js";
+import { settings } from "../core/state.js";
 
 const notesPerOctave = 12;
 const octaves = 5;
