@@ -1,4 +1,5 @@
-// future/web/ui/dom.js
+import { getText } from '../utils/utils.js';
+
 function assignDOMElements() {
   DOM.splashScreen = document.getElementById('splashScreen');
   DOM.powerOn = document.getElementById('powerOn');

@@ -1,5 +1,5 @@
-import { structuredLog } from './utils/logging.js';  // Top import.
-import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import for DB logging.
+import { structuredLog } from '../utils/logging.js';  // Top import.
+import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';  // New import for DB logging.
 
 export let settings = {
   debugLogging: true,
@@ -22,9 +22,9 @@ export let settings = {
 export const loadConfigs = (async () => {
   try {
     const [grids, engines, languages, intervals] = await Promise.all([
-      fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
-      fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
-      fetch('./languages/availableLanguages.json').then(res => res.json()),
+      fetch('./synthesis-grids/available-grids.json').then(res => res.json()),
+      fetch('./audio/synthesis-engines/available-engines.json').then(res => res.json()),
+      fetch('./languages/available-languages.json').then(res => res.json()),
       Promise.resolve([50, 33, 16])
     ]);
     settings.availableGrids = grids;

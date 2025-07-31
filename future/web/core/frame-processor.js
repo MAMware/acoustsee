@@ -1,5 +1,5 @@
 import { settings } from "./state.js";
-import { dispatchEvent } from "./core/dispatcher.js";
+import { dispatchEvent } from "./dispatcher.js";
 
 export async function mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
   try {
@@ -11,7 +11,7 @@ export async function mapFrameToNotes(frameData, width, height, prevFrameDataLef
       dispatchEvent("logError", { message: `Grid not found: ${settings.gridType}` });
       return { notes: [], prevFrameDataLeft, prevFrameDataRight };
     }
-    const gridModule = await import(`./synthesis-methods/grids/${grid.id}.js`);
+    const gridModule = await import(`../synthesis-grids/${grid.id}.js`);
     const mapFunction = gridModule[`mapFrameTo${grid.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
     if (!mapFunction) {
       console.error(`Map function for ${grid.id} not found`);

@@ -1,4 +1,5 @@
-import { settings, availableLanguages } from '../state.js';
+import { settings, availableLanguages } from '../core/state.js';
+import { structuredLog } from './logging.js';
 
 export function tryVibrate(event) {
   if (event.cancelable && navigator.vibrate) {
@@ -24,7 +25,6 @@ export async function getText(key, params = {}, type = 'tts') {
     const language = availableLanguages.find(l => l.id === settings.language);
     if (!language) throw new Error(`Language not found: ${settings.language}`);
 
-    // Usa el cache si ya está cargado
     let translations = translationsCache[language.id];
     if (!translations) {
       const response = await fetch(`./languages/${language.id}.json`);
@@ -61,5 +61,20 @@ export async function getText(key, params = {}, type = 'tts') {
       announcements.textContent = `${type} error: Unable to process message`;
     }
     return key;
+  }
+}
+
+export function parseBrowserVersion(userAgent) {
+  const rx = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
+  const m = userAgent.match(rx);
+  return (m && (m[1] || m[2] || m[3] || m[4])) || 'Unknown';
+}
+
+export function setTextAndAriaLabel(element, text, ariaLabel) {
+  if (element) {
+    element.textContent = text;
+    element.setAttribute('aria-label', ariaLabel);
+  } else {
+    structuredLog('WARN', 'Element not found for text update', { text });
   }
 }

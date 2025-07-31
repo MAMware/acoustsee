@@ -1,8 +1,9 @@
 import { setupUIController } from './ui/ui-controller.js';
-import { createEventDispatcher } from './ui/event-dispatcher.js';
-import { loadConfigs, settings } from './state.js';
-import { structuredLog } from './utils/logging.js';  
-import { setDOM } from './context.js'; 
+import { createEventDispatcher } from './core/dispatcher.js';
+import { loadConfigs, settings } from './core/state.js';
+import { structuredLog } from './utils/logging.js';
+import { setDOM } from './core/context.js';
+import { getText } from './utils/utils.js';
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),

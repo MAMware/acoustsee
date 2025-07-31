@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 const targets = [
-  { dir: '../web/synthesis-methods/grids', output: '../web/synthesis-methods/grids/availableGrids.json', ext: '.js' },
-  { dir: '../web/synthesis-methods/engines', output: '../web/synthesis-methods/engines/availableEngines.json', ext: '.js' },
+  { dir: '../web/synthesis-grids', output: '../web/synthesis-grids/available-grids.json', ext: '.js' },
+  { dir: '../web/audio/synthesis-engines', output: '../web/audio/synthesis-engines/available-engines.json', ext: '.js' },
   { dir: '../web/languages', output: '../web/languages/availableLanguages.json', ext: '.json' }
 ];
 

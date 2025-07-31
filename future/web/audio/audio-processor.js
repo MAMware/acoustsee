@@ -1,7 +1,7 @@
 // future/web/audio-processor.js
-import { settings } from "./state.js";
-import { dispatchEvent } from "./core/dispatcher.js";
-import { structuredLog } from "./utils/logging.js";  // Add for detailed logging.
+import { settings } from "../core/state.js";
+import { dispatchEvent } from "../core/dispatcher.js";
+import { structuredLog } from "../utils/logging.js";  // Add for detailed logging.
 
 let audioContext = null;
 let isAudioInitialized = false;
@@ -82,7 +82,7 @@ export async function playAudio(notes) {
       dispatchEvent('logError', { message: `Engine not found: ${settings.synthesisEngine}` });
       return;
     }
-    const engineModule = await import(`./synthesis-methods/engines/${engine.id}.js`);
+    const engineModule = await import(`./synthesis-engines/${engine.id}.js`);
     // Fix DEF-001: Normalize to camelCase (e.g., fm-synthesis -> playFmSynthesis).
     const engineName = engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
     const playFunction = engineModule[`play${engineName}`];
