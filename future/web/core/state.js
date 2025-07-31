@@ -65,3 +65,10 @@ export function setAudioInterval(timerId) {
     structuredLog('INFO', 'setAudioInterval', { timerId, updateIntervalMs: ms });
   }
 }
+
+export function setMicStream(micStream) {
+  settings.micStream = micStream;
+  if (settings.debugLogging) {
+    structuredLog('INFO', 'setMicStream', { micStreamSet: !!micStream });
+  }
+}
