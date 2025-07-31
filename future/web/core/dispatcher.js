@@ -5,8 +5,22 @@ import { withErrorBoundary } from '../utils/async.js';
 import { initializeMicAudio } from '../audio/audio-processor.js';
 import { processFrame } from './frame-processor.js';
 import { cleanupFrameProcessor } from './frame-processor.js';
-import { dispatchEvent, setDispatcher } from './dispatcher.js';
 import { structuredLog } from '../utils/logging.js';
+
+let _dispatcherFn = null;
+
+export function setDispatcher(fn) {
+  _dispatcherFn = fn;
+}
+
+export function dispatchEvent(eventName, payload) {
+  if (_dispatcherFn) {
+    structuredLog('DEBUG', `dispatchEvent: ${eventName}`, { payload });
+    return _dispatcherFn(eventName, payload);
+  } else {
+    structuredLog('ERROR', 'dispatchEvent called before initialization', { eventName, payload });
+  }
+}
 
 let lastTTSTime = 0;
 const ttsCooldown = 3000;
