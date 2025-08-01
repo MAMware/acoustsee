@@ -23,12 +23,47 @@ export let settings = {
 };
 
 export const loadConfigs = Promise.all([
-  import('../synthesis-grids/available-grids.json').then(m => settings.availableGrids = m),
-  import('../audio/synthesis-engines/available-engines.json').then(m => settings.availableEngines = m),
-  import('../languages/available-languages.json').then(m => settings.availableLanguages = m),
+  fetch('../synthesis-grids/available-grids.json')
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to fetch available-grids.json: ${res.status}`);
+      return res.json();
+    })
+    .then(data => { settings.availableGrids = data; })
+    .catch(err => {
+      console.error('available-grids load error:', err.message);
+      structuredLog('ERROR', 'available-grids load error', { message: err.message });
+      settings.availableGrids = [];
+      return [];
+    }),
+
+  fetch('../audio/synthesis-engines/available-engines.json')
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to fetch available-engines.json: ${res.status}`);
+      return res.json();
+    })
+    .then(data => { settings.availableEngines = data; })
+    .catch(err => {
+      console.error('available-engines load error:', err.message);
+      structuredLog('ERROR', 'available-engines load error', { message: err.message });
+      settings.availableEngines = [];
+      return [];
+    }),
+
+  fetch('../languages/available-languages.json')
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to fetch available-languages.json: ${res.status}`);
+      return res.json();
+    })
+    .then(data => { settings.availableLanguages = data; })
+    .catch(err => {
+      console.error('available-languages load error:', err.message);
+      structuredLog('ERROR', 'available-languages load error', { message: err.message });
+      settings.availableLanguages = [];
+      return [];
+    }),
 ]).catch(err => {
-  console.error('Config load error:', err.message);
-  structuredLog('ERROR', 'Config load error', { message: err.message });
+  console.error('Configs load aggregate error:', err.message);
+  structuredLog('ERROR', 'Configs load aggregate error', { message: err.message });
 });
 
 export async function getLogs() {
