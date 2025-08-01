@@ -208,7 +208,15 @@ export async function createEventDispatcher(DOM) {
           await getText('button1.tts.gridSelect', { state: settings.gridType });
         } else {
           if (!settings.stream) {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            // first try user-facing video + no audio (audio toggled separately)
+            let constraints = { video: { facingMode: 'user' }, audio: false };
+            let stream;
+            try {
+              stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (err) {
+              structuredLog('WARN', 'getUserMedia(user) failed, retrying default video', { message: err.message });
+              stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            }
             DOM.videoFeed.srcObject = stream;
             await new Promise((resolve, reject) => {
               DOM.videoFeed.addEventListener('loadedmetadata', () => {
@@ -221,9 +229,9 @@ export async function createEventDispatcher(DOM) {
               DOM.videoFeed.addEventListener('error', reject, { once: true });
             });
             setStream(stream);
-            setAudioInterval(setInterval(() => {
-              dispatchEvent('processFrame');
-            }, settings.updateInterval));
+            // schedule frame processing
+            const timerId = setInterval(() => dispatchEvent('processFrame'), settings.updateInterval);
+            setAudioInterval(timerId);
             await getText('button1.tts.startStop', { state: 'starting' });
           } else {
             settings.stream.getVideoTracks().forEach(track => track.stop());
