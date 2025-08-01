@@ -18,7 +18,7 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
   const initializeAudioContext = async (event) => {
     console.log(`powerOn: ${event.type} event`);
     try {
-      const success = await audioManager.initialize(44100);
+      const success = await audioManager.initialize();
       if (success) {
         await initializeAudio(audioManager.context);
         isAudioContextInitialized = true;

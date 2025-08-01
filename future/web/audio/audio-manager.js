@@ -7,7 +7,7 @@ export class AudioManager {
     this.state = 'uninitialized';
   }
 
-  async initialize(sampleRate = 44100) {
+  async initialize() {
     if (this.state !== 'uninitialized') {
       structuredLog('WARN', 'AudioManager: Already initialized', { currentState: this.state });
       return this.context?.state === 'running';
@@ -15,7 +15,7 @@ export class AudioManager {
 
     try {
       this.state = 'initializing';
-      this.context = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+      this.context = new (window.AudioContext || window.webkitAudioContext)();
       
       if (this.context.state === 'suspended') {
         structuredLog('INFO', 'AudioManager: Resuming suspended context');
@@ -27,7 +27,7 @@ export class AudioManager {
       }
       
       this.state = 'ready';
-      structuredLog('INFO', 'AudioManager: Initialized', { sampleRate, state: this.state });
+      structuredLog('INFO', 'AudioManager: Initialized', { sampleRate: this.context.sampleRate, state: this.state });
       return true;
     } catch (error) {
       this.state = 'error';
