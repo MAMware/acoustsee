@@ -33,11 +33,22 @@ export function initDOM() {
     const checkDOMReady = () => {
       if (document.readyState === 'complete' || document.readyState === 'interactive') {
         assignDOMElements();
-        const missingElements = Object.entries(DOM).filter(([_, value]) => !value);
-        if (missingElements.length > 0) {
-          const missingKeys = missingElements.map(([key]) => key).join(', ');
-          console.error(`Critical DOM elements missing: ${missingKeys}. Check index.html IDs.`);
-          reject(new Error(`Missing DOM elements: ${missingKeys}`));
+        // Enhanced validation
+        const missing = [];
+        const available = [];
+        Object.entries(DOM).forEach(([key, value]) => {
+          if (!value) {
+            missing.push(key);
+          } else {
+            available.push(key);
+          }
+        });
+
+        if (missing.length > 0) {
+          const errorMsg = `Missing DOM elements: ${missing.join(', ')}. Available: ${available.join(', ')}`;
+          console.error(errorMsg);
+          structuredLog('ERROR', 'DOM validation failed', { missing, available });
+          reject(new Error(errorMsg));
         } else {
           resolve(DOM);
         }

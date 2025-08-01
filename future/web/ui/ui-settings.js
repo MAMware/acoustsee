@@ -4,12 +4,6 @@ import { getText, tryVibrate, hapticCount } from '../utils/utils.js';
 import { structuredLog } from '../utils/logging.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
-  if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 ||
-      !DOM.button4 || !DOM.button5 || !DOM.button6) {
-    console.error('Missing DOM elements in ui-settings');
-    dispatchEvent('logError', { message: 'Missing DOM elements in ui-settings' });
-    return;
-  }
 
   // Helper: wire a single pointer event for both touch & click
   function wireButton(el, id, { normal, settings: settingsAction }, {

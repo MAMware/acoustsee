@@ -24,6 +24,11 @@ const DOM = {
 setDOM(DOM);
 
 async function init() {
+  const originalConsole = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error
+  };
   try {
     await loadConfigs;
     let getText;
@@ -72,43 +77,45 @@ async function init() {
     const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
     // Console overrides moved here to break circular dependency
-    const originalConsole = {
-      log: console.log,
-      warn: console.warn,
-      error: console.error
-    };
-    const oldStructuredLog = structuredLog;
-    window.structuredLog = async (level, message, data = {}, persist = true, sample = true) => {
-      const backup = { log: console.log, warn: console.warn, error: console.error };
+
+    // Wrapper to avoid direct circular calls
+    function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
+      // Temporarily restore original console for logging to prevent recursion
+      const tempLog = console.log;
+      const tempWarn = console.warn;
+      const tempError = console.error;
       console.log = originalConsole.log;
       console.warn = originalConsole.warn;
       console.error = originalConsole.error;
-      await oldStructuredLog(level, message, data, persist, sample);
-      console.log = backup.log;
-      console.warn = backup.warn;
-      console.error = backup.error;
-    };
+
+      structuredLog(level, message, data, persist, sample);
+
+      console.log = tempLog;
+      console.warn = tempWarn;
+      console.error = tempError;
+    }
+
     console.log = (...args) => {
       originalConsole.log.apply(console, args);
-      if (settings.debugLogging) window.structuredLog('INFO', 'Console log', { args }, false);
+      if (settings.debugLogging) safeStructuredLog('INFO', 'Console log', { args }, false);
     };
     console.warn = (...args) => {
       originalConsole.warn.apply(console, args);
-      if (settings.debugLogging) window.structuredLog('WARN', 'Console warn', { args }, false);
+      if (settings.debugLogging) safeStructuredLog('WARN', 'Console warn', { args }, false);
     };
     console.error = (...args) => {
       originalConsole.error.apply(console, args);
-      window.structuredLog('ERROR', 'Console error', { args }, false);
+      safeStructuredLog('ERROR', 'Console error', { args }, false);
     };
     // Force initial UI update for dynamic content
     dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
     console.log('init: UI setup complete');
   } catch (err) {
-    console.error('init error:', err.message);
+    originalConsole.error('init error:', err.message);
     try {
       await getText('init.tts.error');
     } catch (ttsErr) {
-      console.error('TTS error:', ttsErr.message);
+      originalConsole.error('TTS error:', ttsErr.message);
     }
   }
 }
