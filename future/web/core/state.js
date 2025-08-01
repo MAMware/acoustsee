@@ -21,35 +21,14 @@ export let settings = {
   resetStateOnError: true // New flag to control state reset on errors
 };
 
-export const loadConfigs = (async () => {
-  try {
-    const fetchAndCheck = async (url) => {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-      }
-      return response.json();
-    };
-
-    const [grids, engines, languages, intervals] = await Promise.all([
-      fetchAndCheck('./synthesis-grids/available-grids.json'),
-      fetchAndCheck('./audio/synthesis-engines/available-engines.json'),
-      fetchAndCheck('./languages/available-languages.json'),
-      Promise.resolve([50, 33, 16])
-    ]);
-    settings.availableGrids = grids;
-    settings.availableEngines = engines;
-    settings.availableLanguages = languages;
-    settings.gridType = grids[0]?.id || settings.gridType;
-    settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
-    settings.language = languages[0]?.id || settings.language;
-    settings.updateInterval = intervals[0] || settings.updateInterval;
-  } catch (err) {
-    structuredLog('ERROR', 'Failed to load critical configurations. The application may not function correctly.', { message: err.message });
-    // This will help in debugging by showing a clear error to the user.
-    alert(`A critical configuration file could not be loaded. Please check the browser's developer console for more details. Error: ${err.message}`);
-  }
-})();
+export const loadConfigs = Promise.all([
+  import('../synthesis-grids/available-grids.json').then(m => settings.availableGrids = m),
+  import('../audio/synthesis-engines/available-engines.json').then(m => settings.availableEngines = m),
+  import('../languages/available-languages.json').then(m => settings.availableLanguages = m),
+]).catch(err => {
+  console.error('Config load error:', err.message);
+  structuredLog('ERROR', 'Config load error', { message: err.message });
+});
 
 export async function getLogs() {
   // Fetch from IndexedDB and pretty-print for readability.
