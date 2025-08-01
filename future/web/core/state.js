@@ -17,7 +17,8 @@ export let settings = {
   isSettingsMode: false,
   micStream: null,
   ttsEnabled: false,
-  dayNightMode: 'day'
+  dayNightMode: 'day',
+  resetStateOnError: true // New flag to control state reset on errors
 };
 
 export const loadConfigs = (async () => {
