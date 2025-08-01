@@ -22,6 +22,29 @@ export let settings = {
   motionThreshold: 20 // Default threshold for motion detection
 };
 
+/**
+ * Initializes default settings from the loaded configuration files.
+ * This runs after the config files have been fetched and parsed.
+ */
+function initializeDefaults() {
+  structuredLog('INFO', 'Initializing default settings from loaded configs.');
+
+  if (settings.availableGrids.length > 0 && !settings.gridType) {
+    settings.gridType = settings.availableGrids[0].id;
+  }
+  if (settings.availableEngines.length > 0 && !settings.synthesisEngine) {
+    settings.synthesisEngine = settings.availableEngines[0].id;
+  }
+  if (settings.availableLanguages.length > 0) {
+    // Always default to the first available language if the current one isn't valid
+    if (!settings.availableLanguages.some(l => l.id === settings.language)) {
+      settings.language = settings.availableLanguages[0].id;
+    }
+  }
+  
+  structuredLog('INFO', 'Default settings initialized', { settings });
+}
+
 export const loadConfigs = Promise.all([
   fetch('./synthesis-grids/available-grids.json')
     .then(res => {
