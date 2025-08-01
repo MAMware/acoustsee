@@ -1,4 +1,5 @@
 import { settings } from "../core/state.js";
+import { structuredLog } from "../utils/logging.js";
 
 const gridSize = 32;
 const notesPerOctave = 12;
@@ -63,13 +64,14 @@ export function mapFrameToHexTonnetz(
        const prevIntensity = (pr + pg + pb) / 3;
 
        const delta = Math.abs(intensity - prevIntensity);
-       if (delta > 20) {
+       if (delta > (settings.motionThreshold || 20)) {
          const gridX = Math.floor(x / gridWidth);
          const gridY = Math.floor(y / gridHeight);
          movingRegions.push({ gridX, gridY, intensity, delta });
        }
      }
    }
+   structuredLog('DEBUG', 'Motion regions detected', { count: movingRegions.length, threshold: settings.motionThreshold || 20 });
  }
 
   movingRegions.sort((a, b) => b.delta - a.delta);

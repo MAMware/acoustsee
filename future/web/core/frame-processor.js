@@ -28,6 +28,10 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
       }
       return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
     }
+    // New: Initial frame prev data check
+    if (!prevLeft || !prevRight) {
+      structuredLog('INFO', 'mapFrameToNotes: Initial frame, no prev data', { width, height });
+    }
 
     // Use cached grids loaded at startup
     const availableGrids = settings.availableGrids;
@@ -89,6 +93,19 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
 
 // Stateful wrapper for dispatcher integration
 export async function processFrameWithState(frameData, width, height) {
+  // New: Validate frameData variance
+  let hasVariance = false;
+  let sampleSum = 0;
+  for (let i = 0; i < Math.min(1000, frameData.length); i += 4) {
+    const intensity = (frameData[i] + frameData[i+1] + frameData[i+2]) / 3;
+    sampleSum += intensity;
+    if (intensity > 0) hasVariance = true;
+  }
+  if (!hasVariance) {
+    structuredLog('WARN', 'processFrame: No variance in frame data', { sampleAvg: sampleSum / 250 });
+    return { notes: [], avgIntensity: 0 };
+  }
+
   const result = await mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight);
   prevFrameDataLeft = result.prevFrameDataLeft;
   prevFrameDataRight = result.prevFrameDataRight;

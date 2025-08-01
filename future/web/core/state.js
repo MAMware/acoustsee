@@ -18,7 +18,8 @@ export let settings = {
   micStream: null,
   ttsEnabled: false,
   dayNightMode: 'day',
-  resetStateOnError: true // New flag to control state reset on errors
+  resetStateOnError: true, // New flag to control state reset on errors
+  motionThreshold: 20 // Default threshold for motion detection
 };
 
 export const loadConfigs = Promise.all([
