@@ -5,15 +5,25 @@ import { loadConfigs, settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
 
-let getText;
+let getText, initializeLanguageIfNeeded, speakText, announceMessage;
 try {
-  ({ getText } = await import('./utils/utils.js'));
-  console.log('utils.js imported successfully');
+  ({ getText, initializeLanguageIfNeeded, speakText, announceMessage } = await import('./utils/utils.js'));
+  console.log('utils.js imported successfully');  // Confirm import worked
 } catch (importErr) {
-  structuredLog('ERROR', 'Failed to import utils.js', { message: importErr.message });
+  console.error('Failed to import utils.js:', importErr.message);
   getText = async (key) => {
-    structuredLog('WARN', 'TTS fallback for key', { key });
+    console.warn('TTS fallback for key:', key);
     return key;
+  };
+  initializeLanguageIfNeeded = () => {
+    structuredLog('WARN', 'Language init skipped due to import failure');
+    return 'en-US';  // Fallback return
+  };
+  speakText = () => {
+    structuredLog('WARN', 'TTS skipped due to import failure');
+  };
+  announceMessage = (msg) => {
+    structuredLog('WARN', 'Announcement skipped due to import failure', { msg });
   };
 }
 
@@ -79,6 +89,9 @@ async function init() {
       });
     }
 
+    // Ensure language is initialized before translating
+    initializeLanguageIfNeeded();
+
     // Set aria and text for all relevant elements deriving from ID
     const staticElements = [
       { el: DOM.splashScreen, baseKey: 'splashScreen', setText: false, setAria: false }, // Non-interactive, no aria/text
@@ -94,24 +107,37 @@ async function init() {
       { el: DOM.button5, baseKey: 'button5', setText: true, setAria: true },
       { el: DOM.button6, baseKey: 'button6', setText: true, setAria: true },
     ];
+    const setupErrors = [];
     for (const { el, baseKey, setText: shouldSetText, setAria } of staticElements) {
-      if (!el) {
-        structuredLog('WARN', `Skipping null element in staticElements`, { id: baseKey });
-        continue;
-      }
+      if (!el) continue;  // Validation already threw; no need for warn here
       try {
         if (setAria) {
-          el.setAttribute('aria-label', await getText(`${baseKey}.aria`, {}, 'aria'));
+          const ariaText = await getText(`${baseKey}.aria`, {});
+          el.setAttribute('aria-label', ariaText);
+          announceMessage(ariaText); // Announce if needed
         }
         if (shouldSetText) {
-          el.textContent = await getText(`${baseKey}.text`, {}, 'text');
+          const text = await getText(`${baseKey}.text`, {});
+          el.textContent = text;
+          announceMessage(text);
+          speakText(text); // Speak if TTS enabled
         }
       } catch (textErr) {
-        structuredLog('WARN', 'Failed to set text/aria for element', { baseKey, message: textErr.message });
-        // Continue with best-effort: set fallback if needed
-        if (setAria) el.setAttribute('aria-label', baseKey);
-        if (shouldSetText) el.textContent = baseKey;
+        setupErrors.push({ baseKey, message: textErr.message });
+        // Continue with best-effort: set fallback
+        if (setAria) {
+          el.setAttribute('aria-label', baseKey);
+          announceMessage(baseKey);
+        }
+        if (shouldSetText) {
+          el.textContent = baseKey;
+          announceMessage(baseKey);
+          speakText(baseKey);
+        }
       }
+    }
+    if (setupErrors.length > 0) {
+      structuredLog('WARN', 'UI setup had partial failures', { errors: setupErrors });
     }
 
     const { dispatchEvent } = await createEventDispatcher(DOM);
@@ -154,17 +180,21 @@ async function init() {
   } catch (err) {
     let errorMessage = err.message;
     let errorData = err instanceof CustomError ? err.data : {};
-    structuredLog('ERROR', 'init error', { message: errorMessage, data: errorData, stack: err.stack });
+    let specificMessage = errorMessage;
+    if (err.data?.missing) {
+      specificMessage = `Missing DOM elements: ${err.data.missing.join(', ')}`;
+    } else if (err.data?.language === null) {
+      specificMessage = 'Language configuration failed to initialize';
+    } // Add more categories as needed
+    structuredLog('ERROR', 'init error', { message: specificMessage, data: errorData, stack: err.stack });
     originalConsole.error('init error:', err.message);
     try {
-      await getText('init.tts.error');
+      const errorText = await getText('init.tts.error');
+      speakText(errorText);
+      announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
     } catch (ttsErr) {
       originalConsole.error('TTS error:', ttsErr.message);
-    }
-    // Display specific error to user
-    const announcements = document.getElementById('announcements');
-    if (announcements) {
-      announcements.textContent = `Initialization failed: ${errorMessage}. Check console for details.`;
+      announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
     }
   }
 }
@@ -172,7 +202,7 @@ async function init() {
 // Adds uncaught error handler for global contexts
 window.onerror = function (message, source, lineno, colno, error) {
   structuredLog('ERROR', 'Uncaught global error', { message, source, lineno, colno, stack: error ? error.stack : 'N/A' });
-  if (settings.debugLogging) {
+  if (settings?.debugLogging ?? true) {  // Safe check; default to true if settings null (pre-init)
     console.error(message); // Allow bubbling in debug mode
     return false; // Let browser handle
   }

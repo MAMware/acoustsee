@@ -1,6 +1,26 @@
 import { settings } from '../core/state.js';
 import { structuredLog } from './logging.js';
 
+/**
+ * Initializes language if not set, using available configs.
+ * Call this once upfront (e.g., after loadConfigs in main.js) to avoid races.
+ * @returns {string} The selected language ID.
+ */
+export function initializeLanguageIfNeeded() {
+  if (!settings.language) {
+    structuredLog('WARN', 'Language not initialized; setting default');
+    if (settings.availableLanguages.length === 0) {
+      // Configs likely not loaded; use ultimate fallback (assumes loadConfigs awaited upstream)
+      settings.language = 'en-US';
+      structuredLog('INFO', 'Using ultimate fallback language', { language: settings.language });
+    } else {
+      settings.language = settings.availableLanguages[0].id;
+      structuredLog('INFO', 'Auto-set language to first available', { language: settings.language });
+    }
+  }
+  return settings.language;
+}
+
 export function tryVibrate(event) {
   if (event.cancelable && navigator.vibrate) {
     try {
@@ -18,20 +38,42 @@ export function hapticCount(count) {
   }
 }
 
-const langs = settings.availableLanguages;
 const translationsCache = {};
 
-export async function getText(key, params = {}, type = 'tts') {
+/**
+ * Fetches and formats a translated message. No DOM/TTS side-effects—callers handle those.
+ * @param {string} key - Translation key (dot-notated).
+ * @param {Object} [params={}] - Params for placeholder replacement.
+ * @returns {Promise<string>} The formatted message, or key on failure.
+ */
+export async function getText(key, params = {}) {
   try {
-    const language = langs.find(l => l.id === settings.language);
-    if (!language) throw new Error(`Language not found: ${settings.language}`);
+    const languageId = settings.language;
+    if (!languageId) {
+      throw new Error('Language not set; call initializeLanguageIfNeeded first');
+    }
+
+    const language = settings.availableLanguages.find(l => l.id === languageId);
+    if (!language) {
+      structuredLog('ERROR', 'Language not found', {
+        requestedLanguage: languageId,
+        availableLanguages: settings.availableLanguages.map(l => l.id),
+        key
+      });
+      return key; // No fallback mutation—caller decides
+    }
 
     let translations = translationsCache[language.id];
     if (!translations) {
-      const response = await fetch(`./languages/${language.id}.json`);
-      if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
-      translations = await response.json();
-      translationsCache[language.id] = translations;
+      try {
+        const response = await fetch(`./languages/${language.id}.json`);
+        if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
+        translations = await response.json();
+        translationsCache[language.id] = translations;
+      } catch (fetchErr) {
+        structuredLog('ERROR', 'Language file fetch error', { message: fetchErr.message, key });
+        return key; // Fallback on network/parse error
+      }
     }
 
     let finalMessage = translations;
@@ -41,27 +83,40 @@ export async function getText(key, params = {}, type = 'tts') {
     if (typeof finalMessage === 'object') {
       finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
     }
+
+    // Safer placeholder replacement (exact match to avoid partial brace issues)
     for (const [paramKey, paramValue] of Object.entries(params)) {
-      const placeholderRegex = new RegExp(`\\{${paramKey}\\}`, 'g');
-      finalMessage = finalMessage.replace(placeholderRegex, paramValue);
+      finalMessage = finalMessage.replaceAll(`{${paramKey}}`, paramValue);
     }
-    if (type === 'tts' && settings.ttsEnabled) {
-      const utterance = new SpeechSynthesisUtterance(finalMessage);
-      utterance.lang = settings.language;
-      window.speechSynthesis.speak(utterance);
-    }
-    const announcements = document.getElementById('announcements');
-    if (announcements) {
-      announcements.textContent = finalMessage;
-    }
+
     return finalMessage;
   } catch (err) {
-    console.error(`${type} error:`, err.message);
-    const announcements = document.getElementById('announcements');
-    if (announcements) {
-      announcements.textContent = `${type} error: Unable to process message`;
-    }
-    return key;
+    structuredLog('ERROR', 'getText error', { message: err.message, key, params });
+    throw err; // Rethrow for callers to handle (e.g., fallback or announce)
+  }
+}
+
+/**
+ * Speaks the message via TTS if enabled.
+ * @param {string} message - Message to speak.
+ * @param {string} [type='tts'] - Type (for logging).
+ */
+export function speakText(message, type = 'tts') {
+  if (type === 'tts' && settings.ttsEnabled) {
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = settings.language;
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+/**
+ * Updates the announcements element with a message.
+ * @param {string} message - Message to announce.
+ */
+export function announceMessage(message) {
+  const announcements = document.getElementById('announcements');
+  if (announcements) {
+    announcements.textContent = message;
   }
 }
 
