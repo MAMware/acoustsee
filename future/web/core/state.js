@@ -27,33 +27,23 @@ export let settings = {
  * This runs after the config files have been fetched and parsed.
  */
 function initializeDefaults() {
-  structuredLog('INFO', 'Initializing default settings from loaded configs.');
+  structuredLog('INFO', 'Initializing settings from loaded configs.');
 
-  if (!settings.gridType) {
-    if (settings.availableGrids.length > 0) {
-      settings.gridType = settings.availableGrids[0].id;
-    } else {
-      settings.gridType = window.innerWidth < 768 ? 'mobile-hex' : 'hex-tonnetz';
-    }
+  if (settings.availableGrids.length > 0 && !settings.gridType) {
+    settings.gridType = settings.availableGrids[0].id;
   }
 
-  if (!settings.synthesisEngine) {
-    if (settings.availableEngines.length > 0) {
-      settings.synthesisEngine = settings.availableEngines[0].id;
-    } else {
-      settings.synthesisEngine = 'AudioContext' in window ? 'sine-wave' : 'silent';
-    }
+  if (settings.availableEngines.length > 0 && !settings.synthesisEngine) {
+    settings.synthesisEngine = settings.availableEngines[0].id;
   }
 
-  if (!settings.language || !settings.availableLanguages.some(l => l.id === settings.language)) {
-    if (settings.availableLanguages.length > 0) {
+  if (settings.availableLanguages.length > 0) {
+    if (!settings.language || !settings.availableLanguages.some(l => l.id === settings.language)) {
       settings.language = settings.availableLanguages[0].id;
-    } else {
-      settings.language = (navigator.languages && navigator.languages[0]) || 'en-US';
     }
   }
   
-  structuredLog('INFO', 'Default settings initialized', { settings });
+  structuredLog('INFO', 'Settings initialized', { settings });
 }
 
 export const loadConfigs = Promise.all([

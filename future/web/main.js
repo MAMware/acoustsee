@@ -80,13 +80,16 @@ async function init() {
       language: settings.language
     });
 
-    // Validate critical settings before proceeding
-    if (!settings.language || !settings.gridType || !settings.synthesisEngine) {
-      throw new CustomError('Critical settings not initialized', {
-        language: settings.language,
-        gridType: settings.gridType,
-        synthesisEngine: settings.synthesisEngine
-      });
+    // Handle missing configuration gracefully
+    if (!settings.gridType || !settings.synthesisEngine || !settings.language) {
+      const missing = [];
+      if (!settings.gridType) missing.push('grids');
+      if (!settings.synthesisEngine) missing.push('engines');
+      if (!settings.language) missing.push('languages');
+      const msg = await getText('initMissingConfigs', { missing: missing.join(', ') });
+      announceMessage(msg);
+      if (settings.ttsEnabled) speakText(msg);
+      structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
 
     // Ensure language is initialized before translating
