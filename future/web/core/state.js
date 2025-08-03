@@ -29,16 +29,27 @@ export let settings = {
 function initializeDefaults() {
   structuredLog('INFO', 'Initializing default settings from loaded configs.');
 
-  if (settings.availableGrids.length > 0 && !settings.gridType) {
-    settings.gridType = settings.availableGrids[0].id;
+  if (!settings.gridType) {
+    if (settings.availableGrids.length > 0) {
+      settings.gridType = settings.availableGrids[0].id;
+    } else {
+      settings.gridType = window.innerWidth < 768 ? 'mobile-hex' : 'hex-tonnetz';
+    }
   }
-  if (settings.availableEngines.length > 0 && !settings.synthesisEngine) {
-    settings.synthesisEngine = settings.availableEngines[0].id;
+
+  if (!settings.synthesisEngine) {
+    if (settings.availableEngines.length > 0) {
+      settings.synthesisEngine = settings.availableEngines[0].id;
+    } else {
+      settings.synthesisEngine = 'AudioContext' in window ? 'sine-wave' : 'silent';
+    }
   }
-  if (settings.availableLanguages.length > 0) {
-    // Always default to the first available language if the current one isn't valid
-    if (!settings.availableLanguages.some(l => l.id === settings.language)) {
+
+  if (!settings.language || !settings.availableLanguages.some(l => l.id === settings.language)) {
+    if (settings.availableLanguages.length > 0) {
       settings.language = settings.availableLanguages[0].id;
+    } else {
+      settings.language = (navigator.languages && navigator.languages[0]) || 'en-US';
     }
   }
   
@@ -47,11 +58,15 @@ function initializeDefaults() {
 
 export const loadConfigs = Promise.all([
   fetch('./synthesis-grids/available-grids.json')
-    .then(res => {
+    .then(async res => {
       if (!res.ok) throw new Error(`Failed to fetch available-grids.json: ${res.status}`);
-      return res.json();
+      const clone = res.clone();
+      const data = await res.json();
+      settings.availableGrids = data;
+      console.log('Debug: availableGrids raw JSON', await clone.text());
+      if (settings.availableGrids.length === 0) console.warn('Debug: availableGrids is empty array');
+      return data;
     })
-    .then(data => { settings.availableGrids = data; })
     .catch(err => {
       console.error('available-grids load error:', err.message);
       structuredLog('ERROR', 'available-grids load error', { message: err.message });
@@ -60,11 +75,15 @@ export const loadConfigs = Promise.all([
     }),
 
   fetch('./audio/synthesis-engines/available-engines.json')
-    .then(res => {
+    .then(async res => {
       if (!res.ok) throw new Error(`Failed to fetch available-engines.json: ${res.status}`);
-      return res.json();
+      const clone = res.clone();
+      const data = await res.json();
+      settings.availableEngines = data;
+      console.log('Debug: availableEngines raw JSON', await clone.text());
+      if (settings.availableEngines.length === 0) console.warn('Debug: availableEngines is empty array');
+      return data;
     })
-    .then(data => { settings.availableEngines = data; })
     .catch(err => {
       console.error('available-engines load error:', err.message);
       structuredLog('ERROR', 'available-engines load error', { message: err.message });
@@ -73,21 +92,30 @@ export const loadConfigs = Promise.all([
     }),
 
   fetch('./languages/available-languages.json')
-    .then(res => {
+    .then(async res => {
       if (!res.ok) throw new Error(`Failed to fetch available-languages.json: ${res.status}`);
-      return res.json();
+      const clone = res.clone();
+      const data = await res.json();
+      settings.availableLanguages = data;
+      console.log('Debug: availableLanguages raw JSON', await clone.text());
+      if (settings.availableLanguages.length === 0) console.warn('Debug: availableLanguages is empty array');
+      return data;
     })
-    .then(data => { settings.availableLanguages = data; })
     .catch(err => {
       console.error('available-languages load error:', err.message);
       structuredLog('ERROR', 'available-languages load error', { message: err.message });
       settings.availableLanguages = [];
       return [];
     }),
-]).catch(err => {
-  console.error('Configs load aggregate error:', err.message);
-  structuredLog('ERROR', 'Configs load aggregate error', { message: err.message });
-});
+])
+  .then(() => {
+    initializeDefaults();  // Derive defaults from loaded (or empty) arrays
+  })
+  .catch(err => {
+    console.error('Configs load aggregate error:', err.message);
+    structuredLog('ERROR', 'Configs load aggregate error', { message: err.message });
+    initializeDefaults();  // Ensure defaults even if failed
+  });
 
 export async function getLogs() {
   // Fetch from IndexedDB and pretty-print for readability.
