@@ -46,7 +46,7 @@ function initializeDefaults() {
 }
 
 export const loadConfigs = Promise.all([
-  fetch('./web/synthesis-grids/available-grids.json')
+  fetch('./synthesis-grids/available-grids.json')
     .then(res => {
       if (!res.ok) throw new Error(`Failed to fetch available-grids.json: ${res.status}`);
       return res.json();
@@ -59,7 +59,7 @@ export const loadConfigs = Promise.all([
       return [];
     }),
 
-  fetch('./web/audio/synthesis-engines/available-engines.json')
+  fetch('./audio/synthesis-engines/available-engines.json')
     .then(res => {
       if (!res.ok) throw new Error(`Failed to fetch available-engines.json: ${res.status}`);
       return res.json();
@@ -72,7 +72,7 @@ export const loadConfigs = Promise.all([
       return [];
     }),
 
-  fetch('./web/languages/available-languages.json')
+  fetch('./languages/available-languages.json')
     .then(res => {
       if (!res.ok) throw new Error(`Failed to fetch available-languages.json: ${res.status}`);
       return res.json();
