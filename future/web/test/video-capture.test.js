@@ -1,5 +1,5 @@
 // File: web/test/video-capture.test.js
-import { setupVideoCapture, cleanupVideoCapture } from '../ui/video-capture.js';
+import { setupVideoCapture, cleanupVideoCapture } from '../video/video-capture.js';
 import { structuredLog } from '../utils/logging.js';
 import { getDOM } from '../core/context.js';
 import { dispatchEvent } from '../core/dispatcher.js';

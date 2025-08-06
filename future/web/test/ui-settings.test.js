@@ -1,6 +1,6 @@
 // test/ui-settings.test.js
 import { setupUISettings } from '../ui/ui-settings.js';
-import { settings } from '../state.js';
+import { settings } from '../core/state.js';
 
 jest.mock('../state.js', () => ({
   settings: { isSettingsMode: false, stream: null, micStream: null },

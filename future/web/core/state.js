@@ -47,7 +47,7 @@ function initializeDefaults() {
 }
 
 export const loadConfigs = Promise.all([
-  fetch('./synthesis-grids/available-grids.json')
+  fetch('./video/grids/available-grids.json')
     .then(async res => {
       if (!res.ok) throw new Error(`Failed to fetch available-grids.json: ${res.status}`);
       const clone = res.clone();
@@ -64,7 +64,7 @@ export const loadConfigs = Promise.all([
       return [];
     }),
 
-  fetch('./audio/synthesis-engines/available-engines.json')
+  fetch('./audio/synths/available-engines.json')
     .then(async res => {
       if (!res.ok) throw new Error(`Failed to fetch available-engines.json: ${res.status}`);
       const clone = res.clone();

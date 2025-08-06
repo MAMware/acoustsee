@@ -1,5 +1,5 @@
-import { settings } from "./state.js";
-import { dispatchEvent } from "./dispatcher.js";
+import { settings } from "../core/state.js";
+import { dispatchEvent } from "../core/dispatcher.js";
 import { structuredLog } from "../utils/logging.js";
 
 // Module-level state for stateful wrapper

@@ -1,5 +1,5 @@
-import { settings } from "../core/state.js";
-import { structuredLog } from "../utils/logging.js";
+import { settings } from "../../core/state.js";
+import { structuredLog } from "../../utils/logging.js";
 
 const gridSize = 32;
 const notesPerOctave = 12;

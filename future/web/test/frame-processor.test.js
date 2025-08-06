@@ -1,4 +1,4 @@
-import { mapFrameToNotes, processFrameWithState, cleanupFrameProcessor } from '../core/frame-processor.js';
+import { mapFrameToNotes, processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
 import { dispatchEvent } from '../core/dispatcher.js';
 import { settings } from '../core/state.js';
