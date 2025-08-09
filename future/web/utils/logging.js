@@ -3,7 +3,8 @@
 // Supports async to avoid blocking high-throughput paths (e.g., frame processing).
 // Sampling reduces log volume for DEBUG level in performance-critical scenarios.
 
-import { addIdbLog } from './idb-logger.js';  // Updated to use IndexedDB.
+import { addIdbLog } from './idb-logger.js';
+import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
 
 // Safely stringify objects, handling circular refs and Error instances
 function safeStringify(obj) {
@@ -20,18 +21,12 @@ function safeStringify(obj) {
   });
 }
 
-const LOG_LEVELS = {
-  DEBUG: 0,
-  INFO: 1,
-  WARN: 2,
-  ERROR: 3,
-};
+// LOG_LEVELS now imported from constants.js
 
-let currentLogLevel = LOG_LEVELS.DEBUG;  // Default; can be set from settings.debugLogging.
+let currentLogLevel = LOG_LEVELS[DEFAULT_LOG_LEVEL];
 const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
 let sampleRate = isMobile ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 
-// Helper to set global log level (e.g., from settings.isSettingsMode or debugLogging).
 export function setLogLevel(level) {
   const upperLevel = level.toUpperCase();
   if (Object.keys(LOG_LEVELS).includes(upperLevel)) {
@@ -75,7 +70,7 @@ export async function structuredLog(level, message, data = {}, persist = true, s
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, level: level.toUpperCase(), message, data };
     // Use global console to avoid circular import
-    const fn = (console[level.toLowerCase()] || console.log).bind(console);
+  const consoleMethod = (console[level.toLowerCase()] || console.log).bind(console);
     // Serialize only own properties to a JSON payload string to prevent endless prototype expansion
     let payload = '';
     if (Object.keys(data).length) {
@@ -85,7 +80,7 @@ export async function structuredLog(level, message, data = {}, persist = true, s
         payload = ' [Unserializable data]';
       }
     }
-    fn(`[${timestamp}] ${logEntry.level}: ${message}${payload}`);
+  consoleMethod(`[${timestamp}] ${logEntry.level}: ${message}${payload}`);
     if (persist) {
       addIdbLog(logEntry).catch(err => {
         console.warn('Failed to persist log to IndexedDB:', err.message);

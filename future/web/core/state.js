@@ -1,5 +1,6 @@
 // File: web/core/state.js
-import { structuredLog } from '../utils/logging.js';  // Top import.
+import { structuredLog } from '../utils/logging.js';
+import { FALLBACK_LANGUAGE } from './constants.js';
 import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';  // New import for DB logging.
 
 export let settings = {

@@ -1,6 +1,7 @@
 // File: web/core/dispatcher.js
 /* @ts-nocheck */
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
+import { TTS_COOLDOWN_MS } from './constants.js';
 import { getText } from '../utils/utils.js';
 import { withErrorBoundary } from '../utils/async.js';
 import { initializeMicAudio } from '../audio/audio-processor.js';
@@ -23,25 +24,25 @@ export function dispatchEvent(eventName, payload) {
 }
 
 let lastTTSTime = 0;
-const ttsCooldown = 3000;
+const ttsCooldown = TTS_COOLDOWN_MS;
 let fpsSamplerInterval = null;
 let frameCount = 0;
 
-export async function createEventDispatcher(DOM) {
-  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!DOM });
-  if (!DOM) {
-    structuredLog('ERROR', 'DOM is undefined in createEventDispatcher');
-    return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined DOM') };
+export async function createEventDispatcher(domElements) {
+  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!domElements });
+  if (!domElements) {
+    structuredLog('ERROR', 'domElements is undefined in createEventDispatcher');
+    return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined domElements') };
   }
 
   structuredLog('DEBUG', 'DOM elements received', {
-    hasButton1: !!DOM.button1,
-    hasButton2: !!DOM.button2,
-    hasButton3: !!DOM.button3,
-    hasButton4: !!DOM.button4,
-    hasButton5: !!DOM.button5,
-    hasButton6: !!DOM.button6,
-    hasVideoFeed: !!DOM.videoFeed,
+    hasButton1: !!domElements.button1,
+    hasButton2: !!domElements.button2,
+    hasButton3: !!domElements.button3,
+    hasButton4: !!domElements.button4,
+    hasButton5: !!domElements.button5,
+    hasButton6: !!domElements.button6,
+    hasVideoFeed: !!domElements.videoFeed,
   });
   
   // Use the centrally loaded configurations from the settings object.
@@ -51,8 +52,8 @@ export async function createEventDispatcher(DOM) {
     userAgent: navigator.userAgent,
     platform: navigator.platform,
     parsedBrowserVersion: (() => {
-      const rx = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
-      const m = navigator.userAgent.match(rx);
+      const browserVersionRegex = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
+      const m = navigator.userAgent.match(browserVersionRegex);
       return (m && (m[1] || m[2] || m[3] || m[4])) || 'Unknown';
     })(),
     hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
@@ -78,14 +79,14 @@ export async function createEventDispatcher(DOM) {
   const handlers = {
     updateUI: async ({ settingsMode, streamActive, micActive }) => {
       try {
-        if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
+        if (!domElements.button1 || !domElements.button2 || !domElements.button3 || !domElements.button4 || !domElements.button5 || !domElements.button6) {
           const missing = [
-            !DOM.button1 && 'button1',
-            !DOM.button2 && 'button2',
-            !DOM.button3 && 'button3',
-            !DOM.button4 && 'button4',
-            !DOM.button5 && 'button5',
-            !DOM.button6 && 'button6'
+            !domElements.button1 && 'button1',
+            !domElements.button2 && 'button2',
+            !domElements.button3 && 'button3',
+            !domElements.button4 && 'button4',
+            !domElements.button5 && 'button5',
+            !domElements.button6 && 'button6'
           ].filter(Boolean);
           structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
           dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
@@ -108,9 +109,9 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
           });
         }
-        if (DOM.button1) {
-          DOM.button1.textContent = button1Text;
-          DOM.button1.setAttribute('aria-label', button1Aria);
+        if (domElements.button1) {
+          domElements.button1.textContent = button1Text;
+          domElements.button1.setAttribute('aria-label', button1Aria);
         } else {
           structuredLog('WARN', 'Element not found for text update', { text: button1Text });
         }

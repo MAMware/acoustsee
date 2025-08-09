@@ -6,7 +6,7 @@
 const DB_NAME = 'AcoustSeeLogsDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'logs';
-const MAX_ENTRIES = 1000;  // Cap to prevent unbounded growth.
+const MAX_ENTRIES = 1000;
 let dbPromise = null;
 
 // Check IndexedDB support (technical: Feature detection to avoid errors in non-supporting envs like some iframes or old browsers).

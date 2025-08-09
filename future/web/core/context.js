@@ -1,16 +1,16 @@
-let DOM = null;
+let domElements = null;
 let dispatchEvent = null;
 
 export function setDOM(dom) {
-  DOM = dom;
+  domElements = dom;
 }
 
 export function getDOM() {
-  if (!DOM) {
-    console.error("DOM not initialized");
-    throw new Error("DOM not initialized");
+  if (!domElements) {
+    console.error("domElements not initialized");
+    throw new Error("domElements not initialized");
   }
-  return DOM;
+  return domElements;
 }
 
 export function setDispatchEvent(dispatcher) {
