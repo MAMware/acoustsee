@@ -1,6 +1,6 @@
 // File: web/ui/ui-settings.js
 import { settings } from '../core/state.js';
-import { getText, tryVibrate, hapticCount } from '../utils/utils.js';
+import { getText, hapticCount } from '../utils/utils.js';
 import { structuredLog } from '../utils/logging.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
@@ -12,7 +12,13 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     el.addEventListener('pointerdown', async (event) => {
       if (event.cancelable) event.preventDefault();
       console.log(`${id} event`, { settingsMode: settings.isSettingsMode });
-      tryVibrate(event);
+      if (event.cancelable && navigator.vibrate) {
+        try {
+          navigator.vibrate(50);
+        } catch (err) {
+          console.warn('Vibration blocked:', err.message);
+        }
+      }
       hapticCount(Number(id.replace('button', '')));
       try {
         if (!settings.isSettingsMode) {
@@ -36,7 +42,13 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     el.addEventListener('touchstart', async (event) => {
       if (event.cancelable) event.preventDefault();
       console.log(`${id} touched`);
-      tryVibrate(event);
+      if (event.cancelable && navigator.vibrate) {
+        try {
+          navigator.vibrate(50);
+        } catch (err) {
+          console.warn('Vibration blocked:', err.message);
+        }
+      }
       try {
         if (!settings.isSettingsMode) {
           await normal();

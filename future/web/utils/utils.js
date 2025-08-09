@@ -21,16 +21,6 @@ export function initializeLanguageIfNeeded() {
   return settings.language;
 }
 
-export function tryVibrate(event) {
-  if (event.cancelable && navigator.vibrate) {
-    try {
-      navigator.vibrate(50);
-    } catch (err) {
-      console.warn('Vibration blocked:', err.message);
-    }
-  }
-}
-
 export function hapticCount(count) {
   if (navigator.vibrate) {
     const pattern = Array(count * 2 - 1).fill(30).map((v, i) => i % 2 === 0 ? 30 : 50);
@@ -117,20 +107,5 @@ export function announceMessage(message) {
   const announcements = document.getElementById('announcements');
   if (announcements) {
     announcements.textContent = message;
-  }
-}
-
-export function parseBrowserVersion(userAgent) {
-  const rx = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
-  const m = userAgent.match(rx);
-  return (m && (m[1] || m[2] || m[3] || m[4])) || 'Unknown';
-}
-
-export function setTextAndAriaLabel(element, text, ariaLabel) {
-  if (element) {
-    element.textContent = text;
-    element.setAttribute('aria-label', ariaLabel);
-  } else {
-    structuredLog('WARN', 'Element not found for text update', { text });
   }
 }

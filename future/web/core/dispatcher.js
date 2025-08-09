@@ -1,7 +1,7 @@
 // File: web/core/dispatcher.js
 /* @ts-nocheck */
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
-import { getText, parseBrowserVersion, setTextAndAriaLabel } from '../utils/utils.js';
+import { getText } from '../utils/utils.js';
 import { withErrorBoundary } from '../utils/async.js';
 import { initializeMicAudio } from '../audio/audio-processor.js';
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
@@ -50,7 +50,11 @@ export async function createEventDispatcher(DOM) {
   const browserInfo = {
     userAgent: navigator.userAgent,
     platform: navigator.platform,
-    parsedBrowserVersion: parseBrowserVersion(navigator.userAgent),
+    parsedBrowserVersion: (() => {
+      const rx = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
+      const m = navigator.userAgent.match(rx);
+      return (m && (m[1] || m[2] || m[3] || m[4])) || 'Unknown';
+    })(),
     hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
     deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
     screen: `${screen.width}x${screen.height}`,
@@ -104,7 +108,12 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
           });
         }
-        setTextAndAriaLabel(DOM.button1, button1Text, button1Aria);
+        if (DOM.button1) {
+          DOM.button1.textContent = button1Text;
+          DOM.button1.setAttribute('aria-label', button1Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button1Text });
+        }
 
         const button2Text = settingsMode
           ? await getText('button2.settings.text', { engineName: engine?.id || 'Engine' }, 'text')
@@ -117,7 +126,12 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? settings.synthesisEngine : (micActive ? 'turningOff' : 'turningOn')
           });
         }
-        setTextAndAriaLabel(DOM.button2, button2Text, button2Aria);
+        if (DOM.button2) {
+          DOM.button2.textContent = button2Text;
+          DOM.button2.setAttribute('aria-label', button2Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button2Text });
+        }
 
         const button3Text = settingsMode
           ? await getText('button3.settings.text', { languageName: language?.id || 'Language' }, 'text')
@@ -130,7 +144,12 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? (DOM.videoFeed?.srcObject?.getVideoTracks()[0]?.getSettings().facingMode || 'unknown') : settings.language
           });
         }
-        setTextAndAriaLabel(DOM.button3, button3Text, button3Aria);
+        if (DOM.button3) {
+          DOM.button3.textContent = button3Text;
+          DOM.button3.setAttribute('aria-label', button3Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button3Text });
+        }
 
         const button4Text = settingsMode
           ? await getText('button4.settings.text', {}, 'text')
@@ -143,7 +162,12 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? 'save' : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
           });
         }
-        setTextAndAriaLabel(DOM.button4, button4Text, button4Aria);
+        if (DOM.button4) {
+          DOM.button4.textContent = button4Text;
+          DOM.button4.setAttribute('aria-label', button4Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button4Text });
+        }
 
         const button5Text = settingsMode
           ? await getText('button5.settings.text', {}, 'text')
@@ -156,14 +180,24 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? 'load' : 'email'
           });
         }
-        setTextAndAriaLabel(DOM.button5, button5Text, button5Aria);
+        if (DOM.button5) {
+          DOM.button5.textContent = button5Text;
+          DOM.button5.setAttribute('aria-label', button5Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button5Text });
+        }
 
         const button6Text = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.text`, {}, 'text');
         const button6Aria = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.aria`, {}, 'aria');
         if (currentTime - lastTTSTime >= ttsCooldown) {
           await getText('button6.tts.settingsToggle', { state: settingsMode ? 'off' : 'on' });
         }
-        setTextAndAriaLabel(DOM.button6, button6Text, button6Aria);
+        if (DOM.button6) {
+          DOM.button6.textContent = button6Text;
+          DOM.button6.setAttribute('aria-label', button6Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button6Text });
+        }
 
         lastTTSTime = currentTime;
         structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
