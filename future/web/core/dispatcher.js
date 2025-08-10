@@ -7,6 +7,15 @@ import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
 import { initializeMicAudio } from '../audio/audio-processor.js';
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
+// Reusable offscreen canvas for frame processing
+let offscreenCanvas = null;
+let offscreenCtx = null;
+
+// Clear offscreen canvas on window resize
+window.addEventListener('resize', debounce(() => {
+  offscreenCanvas = null;
+  offscreenCtx = null;
+}, 200));
 
 let _dispatcherFn = null;
 
@@ -125,50 +134,54 @@ export async function createEventDispatcher(domElements) {
   updateUI: debouncedUpdateUI,
     // --- Performance: Reusable offscreen canvas for frame processing ---
     processFrame: (() => {
-      let frameCanvas = null;
-      let frameCtx = null;
-      let lastWidth = 0;
-      let lastHeight = 0;
-      // Debounced resize to handle orientation changes without jank
-      const debouncedResize = debounce((newWidth, newHeight) => {
-        frameCanvas.width = newWidth;
-        frameCanvas.height = newHeight;
-        lastWidth = newWidth;
-        lastHeight = newHeight;
-      }, 100);
       return async () => {
         try {
-          if (!frameCanvas) {
-            frameCanvas = document.createElement('canvas');
-            frameCtx = frameCanvas.getContext('2d');
-            domElements.frameCanvas = frameCanvas; // store for debugging
-            // initial size
-              const initW = DOM.videoFeed.videoWidth;
-              const initH = DOM.videoFeed.videoHeight;
-              frameCanvas.width = initW;
-              frameCanvas.height = initH;
-              lastWidth = initW;
-              lastHeight = initH;
+          // Create or resize offscreen canvas if needed
+          if (!offscreenCanvas ||
+              offscreenCanvas.width !== DOM.videoFeed.videoWidth ||
+              offscreenCanvas.height !== DOM.videoFeed.videoHeight) {
+            offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = DOM.videoFeed.videoWidth;
+            offscreenCanvas.height = DOM.videoFeed.videoHeight;
+            offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+            structuredLog('INFO', 'processFrame: Created/Resized offscreen canvas', {
+              width: offscreenCanvas.width,
+              height: offscreenCanvas.height
+            });
           }
-          // Resize if video dimensions change (debounced)
-          const curW = DOM.videoFeed.videoWidth;
-          const curH = DOM.videoFeed.videoHeight;
-          if (curW !== lastWidth || curH !== lastHeight) {
-            debouncedResize(curW, curH);
+          // Draw current video frame into offscreen canvas
+          offscreenCtx.drawImage(DOM.videoFeed, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          // Read pixel data with error handling
+          let frameData;
+          try {
+            frameData = offscreenCtx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height).data;
+          } catch (err) {
+            structuredLog('ERROR', 'processFrame getImageData failed', { message: err.message });
+            // Fallback to empty frame buffer
+            frameData = new Uint8ClampedArray(offscreenCanvas.width * offscreenCanvas.height * 4);
           }
-          frameCtx.drawImage(DOM.videoFeed, 0, 0, frameCanvas.width, frameCanvas.height);
-          const frameData = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height).data;
-          const { data: result, error } = await withErrorBoundary(processFrameWithState, frameData, DOM.videoFeed.videoWidth, DOM.videoFeed.videoHeight);
+          const { data: result, error } = await withErrorBoundary(
+            processFrameWithState,
+            frameData,
+            DOM.videoFeed.videoWidth,
+            DOM.videoFeed.videoHeight
+          );
           if (error) {
             structuredLog('ERROR', 'processFrame handler error', { message: error.message, stack: error.stack });
             handlers.logError({ message: `Frame processing handler error: ${error.message}` });
             return;
           }
           if (!result) {
-            structuredLog('WARN', 'processFrame: No result returned', { width: DOM.videoFeed?.videoWidth, height: DOM.videoFeed?.videoHeight });
+            structuredLog('WARN', 'processFrame: No result returned', {
+              width: DOM.videoFeed?.videoWidth,
+              height: DOM.videoFeed?.videoHeight
+            });
             return;
           }
-          structuredLog('DEBUG', 'processFrame result', { notesCount: result.notes?.length || 0, avgIntensity: result.avgIntensity });
+          structuredLog('DEBUG', 'processFrame result', {
+            notesCount: result.notes?.length || 0,
+            avgIntensity: result.avgIntensity
+          });
           frameCount++;
         } catch (err) {
           structuredLog('ERROR', 'processFrame error', { message: err.message, stack: err.stack });
