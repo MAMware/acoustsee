@@ -2,10 +2,12 @@
 [
   {
     "id": "hex-tonnetz",
-    "createdAt": 1750899236982.1191
+    "createdAt": 1750899236982.1191,
+    "maxNotes": 24
   },
   {
     "id": "circle-of-fifths",
-    "createdAt": 1750899236950.1191
+    "createdAt": 1750899236950.1191,
+    "maxNotes": 16
   }
 ]

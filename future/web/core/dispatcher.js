@@ -4,7 +4,7 @@ import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './
 import { TTS_COOLDOWN_MS } from './constants.js';
 import { getText, clearTranslationsCache } from '../utils/utils.js';
 import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
-import { initializeMicAudio } from '../audio/audio-processor.js';
+import { initializeMicAudio, resizeOscillatorPool } from '../audio/audio-processor.js';
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
 // Reusable offscreen canvas for frame processing
@@ -196,6 +196,9 @@ export async function createEventDispatcher(domElements) {
           const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
           const nextIndex = (currentIndex + 1) % availableGrids.length;
           settings.gridType = availableGrids[nextIndex].id;
+          // resize oscillator pool for new grid
+          const newMax = availableGrids[nextIndex].maxNotes || 24;
+          resizeOscillatorPool(newMax);
           await getText('button1.tts.gridSelect', { state: settings.gridType });
         } else {
           if (!settings.stream) {
@@ -380,6 +383,9 @@ export async function createEventDispatcher(domElements) {
         const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
         const nextIndex = (currentIndex + 1) % availableGrids.length;
         settings.gridType = availableGrids[nextIndex].id;
+        // resize oscillator pool for new grid
+        const newMax = availableGrids[nextIndex].maxNotes || 24;
+        resizeOscillatorPool(newMax);
         await getText('button1.tts.gridSelect', { state: settings.gridType });
         dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {

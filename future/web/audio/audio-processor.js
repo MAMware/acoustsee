@@ -2,6 +2,37 @@ import { settings } from "../core/state.js";
 import { dispatchEvent } from "../core/dispatcher.js";
 import { structuredLog } from "../utils/logging.js";  // Add for detailed logging.
 
+// New helper to resize oscillator pool based on grid maxNotes, capped at 100
+export function resizeOscillatorPool(newMax) {
+  const cap = Math.min(newMax, 100);
+  const current = oscillatorPool.length;
+  if (cap > current) {
+    for (let i = current; i < cap; i++) {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const panner = audioContext.createStereoPanner();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(0, audioContext.currentTime);
+      gain.gain.setValueAtTime(0, audioContext.currentTime);
+      panner.pan.setValueAtTime(0, audioContext.currentTime);
+      osc.connect(gain).connect(panner).connect(audioContext.destination);
+      osc.start();
+      oscillatorPool.push({ osc, gain, panner, active: false });
+    }
+    structuredLog('INFO', 'resizeOscillatorPool: Expanded osc pool', { from: current, to: cap });
+  } else if (cap < current) {
+    for (let i = current - 1; i >= cap; i--) {
+      const { osc, gain, panner } = oscillatorPool[i];
+      osc.stop();
+      osc.disconnect();
+      gain.disconnect();
+      panner.disconnect();
+      oscillatorPool.pop();
+    }
+    structuredLog('INFO', 'resizeOscillatorPool: Shrunk osc pool', { from: current, to: cap });
+  }
+}
+
 let audioContext = null;
 let isAudioInitialized = false;
 let oscillators = [];
@@ -36,13 +67,10 @@ export async function initializeAudio(context) {
     if (audioContext.state !== "running") {
       throw new Error(`AudioContext not running, state: ${audioContext.state}`);
     }
-    // Determine max notes from grids
-    let maxNotes = 24;
-    if (settings.availableGrids && Array.isArray(settings.availableGrids)) {
-      maxNotes = Math.max(...settings.availableGrids.map(g => g.maxNotes || 24));
-    }
+    // Determine max notes from current grid
+    let maxNotes = settings.availableGrids.find(g => g.id === settings.gridType)?.maxNotes || 24;
     oscillatorPool = [];
-    for (let i = 0; i < maxNotes; i++) {
+    for (let i = 0; i < Math.min(maxNotes, 100); i++) {
       const osc = audioContext.createOscillator();
       const gain = audioContext.createGain();
       const panner = audioContext.createStereoPanner();
