@@ -37,35 +37,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
         const key = !settings.isSettingsMode ? normalError : settingsError;
         await getText(key, params());
       }
-    });
-    // Additional touchstart for compatibility (from settings-handlers.js)
-    el.addEventListener('touchstart', async (event) => {
-      if (event.cancelable) event.preventDefault();
-      console.log(`${id} touched`);
-      if (event.cancelable && navigator.vibrate) {
-        try {
-          navigator.vibrate(50);
-        } catch (err) {
-          console.warn('Vibration blocked:', err.message);
-        }
-      }
-      try {
-        if (!settings.isSettingsMode) {
-          await normal();
-        } else {
-          await settingsAction();
-        }
-        dispatchEvent('updateUI', {
-          settingsMode: settings.isSettingsMode,
-          streamActive: !!settings.stream,
-          micActive: !!settings.micStream,
-        });
-      } catch (err) {
-        console.error(`${id} error:`, err.message);
-        dispatchEvent('logError', { message: `${id} error: ${err.message}` });
-        await getText(`${id}.tts.${!settings.isSettingsMode ? normalError.split('.').pop() : settingsError.split('.').pop()}`, params());
-      }
-    });
+    }, { passive: false });
     console.log(`${id} event listeners attached`);
   }
 
