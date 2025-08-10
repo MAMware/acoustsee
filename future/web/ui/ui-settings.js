@@ -5,7 +5,7 @@ import { structuredLog } from '../utils/logging.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
 
-  // Helper: wire a single pointer event for both touch & click
+  // Helper: wire a single pointer event for both touch & click (use only 'pointerdown')
   function wireButton(el, id, { normal, settings: settingsAction }, {
     normalError, settingsError, params = () => ({})
   }) {
@@ -38,7 +38,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
         await getText(key, params());
       }
     }, { passive: false });
-    console.log(`${id} event listeners attached`);
+    console.log(`${id} event listener attached (pointerdown only)`);
   }
 
   // Button 1

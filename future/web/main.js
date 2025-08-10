@@ -6,6 +6,16 @@ import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
 
 let getText, initializeLanguageIfNeeded, speakText, announceMessage;
+// Translation cache for static keys
+const translationCache = {};
+// Cached getText wrapper
+async function getTextCached(key, params = {}) {
+  const cacheKey = JSON.stringify({ key, params });
+  if (translationCache[cacheKey]) return translationCache[cacheKey];
+  const result = await getText(key, params);
+  translationCache[cacheKey] = result;
+  return result;
+}
 try {
   ({ getText, initializeLanguageIfNeeded, speakText, announceMessage } = await import('./utils/utils.js'));
   console.log('utils.js imported successfully');  // Confirm import worked
@@ -95,7 +105,7 @@ async function init() {
     // Ensure language is initialized before translating
     initializeLanguageIfNeeded();
 
-    // Set aria and text for all relevant elements deriving from ID
+    // Set aria and text for all relevant elements deriving from ID (with translation cache)
     const staticElements = [
       { el: DOM.splashScreen, baseKey: 'splashScreen', setText: false, setAria: false }, // Non-interactive, no aria/text
       { el: DOM.mainContainer, baseKey: 'mainContainer', setText: false, setAria: false },
@@ -115,12 +125,12 @@ async function init() {
       if (!el) continue;  // Validation already threw; no need for warn here
       try {
         if (setAria) {
-          const ariaText = await getText(`${baseKey}.aria`, {});
+          const ariaText = await getTextCached(`${baseKey}.aria`, {});
           el.setAttribute('aria-label', ariaText);
           announceMessage(ariaText); // Announce if needed
         }
         if (shouldSetText) {
-          const text = await getText(`${baseKey}.text`, {});
+          const text = await getTextCached(`${baseKey}.text`, {});
           el.textContent = text;
           announceMessage(text);
           speakText(text); // Speak if TTS enabled
