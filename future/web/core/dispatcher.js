@@ -296,17 +296,27 @@ export async function createEventDispatcher(domElements) {
             video: { facingMode: newFacingMode },
             audio: !!settings.micStream
           });
+          // Set the new stream and ensure the video is playing
           DOM.videoFeed.srcObject = newStream;
-          await new Promise((resolve, reject) => {
-            DOM.videoFeed.addEventListener('loadedmetadata', () => {
-              if (DOM.videoFeed.videoWidth <= 0 || DOM.videoFeed.videoHeight <= 0) {
-                return reject(new Error('Invalid video dimensions after metadata'));
-              }
-              structuredLog('INFO', 'Video metadata loaded', { width: DOM.videoFeed.videoWidth, height: DOM.videoFeed.videoHeight });
-              resolve();
-            }, { once: true });
-            DOM.videoFeed.addEventListener('error', reject, { once: true });
+          try {
+            await DOM.videoFeed.play();
+          } catch (playErr) {
+            structuredLog('ERROR', 'toggleVideoSource: video play failed', { message: playErr.message, stack: playErr.stack });
+          }
+          // Wait for metadata to load with error handling and timeout
+          const metadataPromise = new Promise((resolve, reject) => {
+            DOM.videoFeed.onloadedmetadata = resolve;
+            DOM.videoFeed.onerror = reject;
           });
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Video metadata loading timeout')), 5000)
+          );
+          await Promise.race([metadataPromise, timeoutPromise]);
+          // Validate dimensions to avoid race conditions in frame processing
+          if (DOM.videoFeed.videoWidth <= 0 || DOM.videoFeed.videoHeight <= 0) {
+            throw new Error('Invalid video dimensions after metadata');
+          }
+          structuredLog('INFO', 'Video metadata loaded', { width: DOM.videoFeed.videoWidth, height: DOM.videoFeed.videoHeight });
           setStream(newStream);
 
           if (settings.micStream) {
