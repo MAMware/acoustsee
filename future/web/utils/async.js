@@ -13,3 +13,35 @@ export async function withErrorBoundary(fn, ...args) {
     return { data: null, error };
   }
 }
+
+/**
+ * Debounce function for throttling UI updates and frame processing
+ * @param {Function} fn - Function to debounce
+ * @param {number} delay - Delay in ms
+ * @returns {Function}
+ */
+export function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+/**
+ * requestAnimationFrame-based throttle for autoFPS
+ * @param {Function} fn - Function to throttle
+ * @returns {Function}
+ */
+export function rafThrottle(fn) {
+  let running = false;
+  return function(...args) {
+    if (!running) {
+      running = true;
+      requestAnimationFrame(() => {
+        fn.apply(this, args);
+        running = false;
+      });
+    }
+  };
+}

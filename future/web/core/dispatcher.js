@@ -3,7 +3,7 @@
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
 import { TTS_COOLDOWN_MS } from './constants.js';
 import { getText } from '../utils/utils.js';
-import { withErrorBoundary } from '../utils/async.js';
+import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
 import { initializeMicAudio } from '../audio/audio-processor.js';
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
@@ -112,47 +112,48 @@ export async function createEventDispatcher(domElements) {
         if (domElements.button1) {
           domElements.button1.textContent = button1Text;
           domElements.button1.setAttribute('aria-label', button1Aria);
-        } else {
-          structuredLog('WARN', 'Element not found for text update', { text: button1Text });
-        }
-
-        const button2Text = settingsMode
-          ? await getText('button2.settings.text', { engineName: engine?.id || 'Engine' }, 'text')
-          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.text`, {}, 'text');
-        const button2Aria = settingsMode
-          ? await getText('button2.settings.aria', { synthesisEngine: settings.synthesisEngine }, 'aria')
-          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.aria`, {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button2.tts.${settingsMode ? 'synthesisSelect' : 'micToggle'}`, {
-            state: settingsMode ? settings.synthesisEngine : (micActive ? 'turningOff' : 'turningOn')
-          });
-        }
-        if (DOM.button2) {
-          DOM.button2.textContent = button2Text;
-          DOM.button2.setAttribute('aria-label', button2Aria);
-        } else {
-          structuredLog('WARN', 'Element not found for text update', { text: button2Text });
-        }
-
-        const button3Text = settingsMode
-          ? await getText('button3.settings.text', { languageName: language?.id || 'Language' }, 'text')
-          : await getText('button3.normal.text', { languageName: language?.id || 'Language' }, 'text');
-        const button3Aria = settingsMode
-          ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
-          : await getText('button3.normal.aria', { language: settings.language }, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button3.tts.${settingsMode ? 'videoSourceSelect' : 'languageSelect'}`, {
-            state: settingsMode ? (DOM.videoFeed?.srcObject?.getVideoTracks()[0]?.getSettings().facingMode || 'unknown') : settings.language
-          });
-        }
-        if (DOM.button3) {
-          DOM.button3.textContent = button3Text;
-          DOM.button3.setAttribute('aria-label', button3Aria);
-        } else {
-          structuredLog('WARN', 'Element not found for text update', { text: button3Text });
-        }
-
-        const button4Text = settingsMode
+        // --- Performance: Debounced UI update ---
+        import { debounce, rafThrottle } from '../utils/async.js';
+        const _updateUI = async ({ settingsMode, streamActive, micActive }) => {
+          try {
+            if (!domElements.button1 || !domElements.button2 || !domElements.button3 || !domElements.button4 || !domElements.button5 || !domElements.button6) {
+              const missing = [
+                !domElements.button1 && 'button1',
+                !domElements.button2 && 'button2',
+                !domElements.button3 && 'button3',
+                !domElements.button4 && 'button4',
+                !domElements.button5 && 'button5',
+                !domElements.button6 && 'button6'
+              ].filter(Boolean);
+              structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
+              dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
+              return;
+            }
+            const currentTime = performance.now();
+            const grid = availableGrids.find(g => g.id === settings.gridType);
+            const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
+            const language = availableLanguages.find(l => l.id === settings.language);
+            const button1Text = settingsMode
+              ? await getText('button1.settings.text', { gridName: grid?.id || 'Grid' }, 'text')
+              : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
+            const button1Aria = settingsMode
+              ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
+              : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
+            if (currentTime - lastTTSTime >= ttsCooldown) {
+              await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
+                state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
+              });
+            }
+            // ...existing code...
+            lastTTSTime = currentTime;
+            structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
+          } catch (err) {
+            structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
+            handlers.logError({ message: `UI update error: ${err.message}` });
+          }
+        };
+        const handlers = {
+          updateUI: debounce(_updateUI, 40), // ~25fps max
           ? await getText('button4.settings.text', {}, 'text')
           : await getText(`button4.normal.${settings.autoFPS ? 'auto' : 'manual'}.text`, { fps: Math.round(1000 / settings.updateInterval) }, 'text');
         const button4Aria = settingsMode
@@ -208,31 +209,44 @@ export async function createEventDispatcher(domElements) {
       }
     },
 
-    processFrame: async () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = DOM.videoFeed.videoWidth;
-        canvas.height = DOM.videoFeed.videoHeight;
-        ctx.drawImage(DOM.videoFeed, 0, 0, canvas.width, canvas.height);
-        const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        const { data: result, error } = await withErrorBoundary(processFrameWithState, frameData, DOM.videoFeed.videoWidth, DOM.videoFeed.videoHeight);
-        if (error) {
-          structuredLog('ERROR', 'processFrame handler error', { message: error.message, stack: error.stack });
-          handlers.logError({ message: `Frame processing handler error: ${error.message}` });
-          return;
+    // --- Performance: Reusable offscreen canvas for frame processing ---
+    processFrame: (() => {
+      let frameCanvas = null;
+      let frameCtx = null;
+      return async () => {
+        try {
+          if (!frameCanvas) {
+            frameCanvas = document.createElement('canvas');
+            frameCanvas.width = DOM.videoFeed.videoWidth;
+            frameCanvas.height = DOM.videoFeed.videoHeight;
+            frameCtx = frameCanvas.getContext('2d');
+            domElements.frameCanvas = frameCanvas; // store for debugging
+          }
+          // Resize if video dimensions change
+          if (frameCanvas.width !== DOM.videoFeed.videoWidth || frameCanvas.height !== DOM.videoFeed.videoHeight) {
+            frameCanvas.width = DOM.videoFeed.videoWidth;
+            frameCanvas.height = DOM.videoFeed.videoHeight;
+          }
+          frameCtx.drawImage(DOM.videoFeed, 0, 0, frameCanvas.width, frameCanvas.height);
+          const frameData = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height).data;
+          const { data: result, error } = await withErrorBoundary(processFrameWithState, frameData, DOM.videoFeed.videoWidth, DOM.videoFeed.videoHeight);
+          if (error) {
+            structuredLog('ERROR', 'processFrame handler error', { message: error.message, stack: error.stack });
+            handlers.logError({ message: `Frame processing handler error: ${error.message}` });
+            return;
+          }
+          if (!result) {
+            structuredLog('WARN', 'processFrame: No result returned', { width: DOM.videoFeed?.videoWidth, height: DOM.videoFeed?.videoHeight });
+            return;
+          }
+          structuredLog('DEBUG', 'processFrame result', { notesCount: result.notes?.length || 0, avgIntensity: result.avgIntensity });
+          frameCount++;
+        } catch (err) {
+          structuredLog('ERROR', 'processFrame error', { message: err.message, stack: err.stack });
+          handlers.logError({ message: `Frame processing error: ${err.message}` });
         }
-        if (!result) {
-          structuredLog('WARN', 'processFrame: No result returned', { width: DOM.videoFeed?.videoWidth, height: DOM.videoFeed?.videoHeight });
-          return;
-        }
-        structuredLog('DEBUG', 'processFrame result', { notesCount: result.notes?.length || 0, avgIntensity: result.avgIntensity });
-        frameCount++;
-      } catch (err) {
-        structuredLog('ERROR', 'processFrame error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Frame processing error: ${err.message}` });
-      }
-    },
+      };
+    })(),
 
     startStop: async ({ settingsMode }) => {
       try {

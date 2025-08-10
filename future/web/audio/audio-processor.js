@@ -5,6 +5,7 @@ import { structuredLog } from "../utils/logging.js";  // Add for detailed loggin
 let audioContext = null;
 let isAudioInitialized = false;
 let oscillators = [];
+let oscillatorPool = [];
 let modulators = [];
 let micSource = null;
 let micGainNode = null;
@@ -28,22 +29,27 @@ export async function initializeAudio(context) {
     if (audioContext.state !== "running") {
       throw new Error(`AudioContext not running, state: ${audioContext.state}`);
     }
-    oscillators = Array(24)
-      .fill()
-      .map(() => {
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        const panner = audioContext.createStereoPanner();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(0, audioContext.currentTime);
-        gain.gain.setValueAtTime(0, audioContext.currentTime);
-        panner.pan.setValueAtTime(0, audioContext.currentTime);
-        osc.connect(gain).connect(panner).connect(audioContext.destination);
-        osc.start();
-        return { osc, gain, panner, active: false };
-      });
+    // Determine max notes from grids
+    let maxNotes = 24;
+    if (settings.availableGrids && Array.isArray(settings.availableGrids)) {
+      maxNotes = Math.max(...settings.availableGrids.map(g => g.maxNotes || 24));
+    }
+    oscillatorPool = [];
+    for (let i = 0; i < maxNotes; i++) {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const panner = audioContext.createStereoPanner();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(0, audioContext.currentTime);
+      gain.gain.setValueAtTime(0, audioContext.currentTime);
+      panner.pan.setValueAtTime(0, audioContext.currentTime);
+      osc.connect(gain).connect(panner).connect(audioContext.destination);
+      osc.start();
+      oscillatorPool.push({ osc, gain, panner, active: false });
+    }
+    oscillators = oscillatorPool;
     isAudioInitialized = true;
-    structuredLog('INFO', 'initializeAudio: Audio initialized with 24 oscillators');
+    structuredLog('INFO', `initializeAudio: Audio initialized with ${maxNotes} oscillators`);
     return true;
   } catch (error) {
     structuredLog('ERROR', 'initializeAudio error', { message: error.message });
@@ -80,18 +86,36 @@ export async function playAudio(notes) {
       structuredLog('ERROR', `playAudio: Engine not found`, { synthesisEngine: settings.synthesisEngine });
       dispatchEvent('logError', { message: `Engine not found: ${settings.synthesisEngine}` });
       return;
-    }
-    const engineModule = await import(`./synthesis-engines/${engine.id}.js`);
-    // Fix DEF-001: Normalize to camelCase (e.g., fm-synthesis -> playFmSynthesis).
-    const engineName = engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
-    const playFunction = engineModule[`play${engineName}`];
-    if (playFunction) {
-      playFunction(notes);
-      structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length });
-    } else {
-      structuredLog('ERROR', `playAudio: Play function not found`, { engine: engine.id });
-      dispatchEvent('logError', { message: `Play function for ${engine.id} not found` });
-    }
+    }activeCount = 0;
+    notes.forEach((note, i) => {
+      let oscObj = oscillatorPool.find(o => !o.active);
+      if (!oscObj) {
+        // If pool exhausted, create new
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const panner = audioContext.createStereoPanner();
+        osc.type = "sine";
+        osc.connect(gain).connect(panner).connect(audioContext.destination);
+        osc.start();
+    // --- Oscillator Pool: Reuse inactive oscillators ---
+    let 
+        oscObj = { osc, gain, panner, active: false };
+        oscillatorPool.push(oscObj);
+      }
+      oscObj.active = true;
+      oscObj.osc.frequency.setValueAtTime(note.frequency, audioContext.currentTime);
+      oscObj.gain.gain.setValueAtTime(note.velocity || 0.5, audioContext.currentTime);
+      oscObj.panner.pan.setValueAtTime(note.pan || 0, audioContext.currentTime);
+      activeCount++;
+    });
+    // Deactivate unused oscillators
+    oscillatorPool.forEach((oscObj, i) => {
+      if (i >= notes.length && oscObj.active) {
+        oscObj.gain.gain.setValueAtTime(0, audioContext.currentTime);
+        oscObj.active = false;
+      }
+    });
+    structuredLog('INFO', 'playAudio: Played notes with oscillator pool', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
   } catch (err) {
     structuredLog('ERROR', 'playAudio error', { message: err.message });
     dispatchEvent('logError', { message: `Play audio error: ${err.message}` });

@@ -61,6 +61,8 @@ Working at **Milestone 6 (Current)**
 - Adding support for new video and audio techniques
   - ml-depth-processor.js # New: Monocular depth estimation (TF.js + MiDaS; config-driven)
   - hrtf-processor.js     # New: HRTF logic (PannerNode, positional filtering)
+- Strict arquitectural paradigm to no hardcoding and no fallbacks
+
  
 ### [Changelog](docs/CHANGELOG.md)
 
@@ -136,6 +138,10 @@ web/
 - At this document linked above, you will find the list for our current TO TO list, now from milestone 5 (v0.5.2)
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
+
+
+
+
 
 Diagrams covering the Turnk Based Development approach (v0.2). 
 
