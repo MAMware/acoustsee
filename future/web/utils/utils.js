@@ -1,4 +1,4 @@
-import { settings } from '../core/state.js';
+import { settings, lastTTSTime } from '../core/state.js';
 import { structuredLog } from './logging.js';
 
 /**
@@ -43,13 +43,22 @@ export function clearTranslationsCache() {
 }
 
 /**
- * Fetches and formats a translated message. No DOM/TTS side-effects—callers handle those.
+ * Fetches and formats a translated message. No DOM/TTS side-effects.
+ * Enforces a global TTS cooldown using lastTTSTime from state.js.
  * @param {string} key - Translation key (dot-notated).
  * @param {Object} [params={}] - Params for placeholder replacement.
  * @returns {Promise<string>} The formatted message, or key on failure.
  */
 export async function getText(key, params = {}) {
   try {
+    const now = Date.now();
+    if (now - lastTTSTime < 3000) { // 3-second cooldown
+      structuredLog('WARN', 'TTS cooldown active', { lastTTSTime, now });
+      return 'Cooldown active';
+    }
+
+    lastTTSTime = now; // Update the last TTS time
+
     const languageId = settings.language;
     if (!languageId) {
       throw new Error('Language not set; call initializeLanguageIfNeeded first');

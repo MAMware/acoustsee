@@ -26,11 +26,62 @@ export let settings = {
 };
 
 /**
+ * Validates settings object against a simple JSON schema without external dependencies.
+ * @param {Object} settingsObj - The settings object to validate.
+ * @returns {boolean} True if valid, false otherwise.
+ */
+function validateSettingsSchema(settingsObj) {
+  const schema = {
+    debugLogging: 'boolean',
+    stream: ['null', 'object'],
+    availableGrids: 'array',
+    availableEngines: 'array',
+    availableLanguages: 'array',
+    audioTimerId: ['null', 'number'],
+    updateInterval: 'number',
+    autoFPS: 'boolean',
+    gridType: ['null', 'string'],
+    synthesisEngine: ['null', 'string'],
+    language: ['null', 'string'],
+    isSettingsMode: 'boolean',
+    micStream: ['null', 'object'],
+    audioResumeAttempts: 'number',
+    audioResumeDelayMs: 'number',
+    ttsEnabled: 'boolean',
+    dayNightMode: 'string',
+    resetStateOnError: 'boolean',
+    motionThreshold: 'number'
+  };
+
+  for (const key in schema) {
+    const expectedType = schema[key];
+    const actualValue = settingsObj[key];
+
+    if (Array.isArray(expectedType)) {
+      if (!expectedType.some(type => type === typeof actualValue || (type === 'null' && actualValue === null))) {
+        structuredLog('ERROR', `Invalid type for ${key}`, { expected: expectedType, actual: typeof actualValue });
+        return false;
+      }
+    } else if (typeof actualValue !== expectedType) {
+      structuredLog('ERROR', `Invalid type for ${key}`, { expected: expectedType, actual: typeof actualValue });
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Initializes default settings from the loaded configuration files.
  * This runs after the config files have been fetched and parsed.
  */
 function initializeDefaults() {
   structuredLog('INFO', 'Initializing settings from loaded configs.');
+
+  if (!validateSettingsSchema(settings)) {
+    structuredLog('ERROR', 'initializeDefaults: Invalid settings schema', { settings });
+    throw new Error('Settings validation failed');
+  }
 
   if (settings.availableGrids.length > 0 && !settings.gridType) {
     settings.gridType = settings.availableGrids[0].id;
@@ -143,3 +194,5 @@ export function setMicStream(micStream) {
     structuredLog('INFO', 'setMicStream', { micStreamSet: !!micStream });
   }
 }
+
+export let lastTTSTime = 0; // Tracks the last TTS invocation time globally
