@@ -10,9 +10,10 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
   try {
     // Guard against invalid dimensions
     if (!width || !height || width <= 0 || height <= 0) {
+      const errorType = 'invalidDimensions';
       structuredLog('ERROR', 'Invalid dimensions for frame processing', { width, height });
       dispatchEvent("logError", { message: `Invalid dimensions for frame processing: ${width}x${height}` });
-      // Reset state on dimension error if configured
+      structuredLog('WARN', 'Frame error; state reset', { reset: settings.resetStateOnError, errorType });
       if (settings.resetStateOnError) {
         return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
       }
@@ -21,11 +22,11 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
 
     // Validate frameData
     if (!frameData || !(frameData instanceof Uint8ClampedArray) || frameData.length < width * height * 4) {
+      const errorType = 'invalidFrameDataTransient';
       structuredLog('ERROR', 'Invalid frameData for processing', { frameDataLength: frameData?.length || 0 });
       dispatchEvent("logError", { message: `Invalid frameData: length ${frameData?.length || 0}` });
-      if (settings.resetStateOnError) {
-        return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
-      }
+      // Transient error: preserve previous state to avoid audio interruption
+      structuredLog('WARN', 'Frame error; transient, preserving state', { reset: false, errorType });
       return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
     }
     // New: Initial frame prev data check
@@ -82,8 +83,10 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
       avgIntensity
     };
   } catch (err) {
+    const errorType = 'exception';
     console.error("mapFrameToNotes error:", err.message);
     dispatchEvent("logError", { message: `Frame mapping error: ${err.message}` });
+    structuredLog('WARN', 'Frame error; state reset', { reset: settings.resetStateOnError, errorType });
     if (settings.resetStateOnError) {
       return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
     }
@@ -102,8 +105,9 @@ export async function processFrameWithState(frameData, width, height) {
     if (intensity > 0) hasVariance = true;
   }
   if (!hasVariance) {
-    structuredLog('WARN', 'processFrame: No variance in frame data', { sampleAvg: sampleSum / 250 });
-    return { notes: [], avgIntensity: 0 };
+    structuredLog('WARN', 'processFrame: No variance in frame data; preserving previous state', { sampleAvg: sampleSum / 250 });
+    // Transient glitch: preserve previous frame data
+    return { notes: [], prevFrameDataLeft, prevFrameDataRight, avgIntensity: 0 };
   }
 
   const result = await mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight);
