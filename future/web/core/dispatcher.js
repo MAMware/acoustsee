@@ -2,7 +2,7 @@
 /* @ts-nocheck */
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
 import { TTS_COOLDOWN_MS } from './constants.js';
-import { getText } from '../utils/utils.js';
+import { getText, clearTranslationsCache } from '../utils/utils.js';
 import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
 import { initializeMicAudio } from '../audio/audio-processor.js';
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
@@ -267,12 +267,18 @@ export async function createEventDispatcher(domElements) {
       }
     },
 
-    toggleLanguage: async () => {
+  toggleLanguage: async () => {
       try {
         const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
         const nextIndex = (currentIndex + 1) % availableLanguages.length;
         settings.language = availableLanguages[nextIndex].id;
+        // Invalidate translation cache and cancel any ongoing speech
+        clearTranslationsCache();
+        if (window.speechSynthesis?.cancel) {
+          window.speechSynthesis.cancel();
+        }
         await getText('button3.tts.languageSelect', { state: settings.language });
+        // Refresh UI elements for new language
         dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {
         structuredLog('ERROR', 'toggleLanguage error', { message: err.message, stack: err.stack });

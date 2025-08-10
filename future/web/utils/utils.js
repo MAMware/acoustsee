@@ -29,6 +29,14 @@ export function hapticCount(count) {
 }
 
 const translationsCache = {};
+/**
+ * Clears the translations cache to force fresh fetch on next getText call.
+ */
+export function clearTranslationsCache() {
+  for (const key in translationsCache) {
+    delete translationsCache[key];
+  }
+}
 
 /**
  * Fetches and formats a translated message. No DOM/TTS side-effects—callers handle those.
@@ -55,6 +63,8 @@ export async function getText(key, params = {}) {
 
     let translations = translationsCache[language.id];
     if (!translations) {
+      // Log cache miss and fetching fresh translations
+      structuredLog('DEBUG', 'Fetching fresh translations for language', { languageId });
       try {
         const response = await fetch(`./languages/${language.id}.json`);
         if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
