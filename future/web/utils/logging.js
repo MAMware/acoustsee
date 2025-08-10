@@ -70,7 +70,7 @@ export async function structuredLog(level, message, data = {}, persist = true, s
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, level: level.toUpperCase(), message, data };
     // Use global console to avoid circular import
-  const consoleMethod = (console[level.toLowerCase()] || console.log).bind(console);
+  const consoleMethod = console[level.toLowerCase()] || console.log;
     // Serialize only own properties to a JSON payload string to prevent endless prototype expansion
     let payload = '';
     if (Object.keys(data).length) {

@@ -4,8 +4,8 @@ export const DEFAULT_FPS = 20;
 export const FALLBACK_LANGUAGE = 'en-US';
 export const DEFAULT_LOG_LEVEL = 'DEBUG';
 export const LOG_LEVELS = {
-  DEBUG: 'debug',
-  INFO: 'info',
-  WARN: 'warn',
-  ERROR: 'error'
+  DEBUG: 0,
+  INFO: 1,
+  WARN: 2,
+  ERROR: 3
 };
