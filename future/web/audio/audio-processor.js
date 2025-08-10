@@ -240,12 +240,19 @@ export function getOscillator() {
 
   if (!oscObj && audioContext) {
     if (oscillatorPool.length >= cap) {
-      // Recycle the oldest oscillator
-      oscObj = oscillatorPool.shift();
-      oscObj.osc.frequency.setValueAtTime(0, audioContext.currentTime);
-      oscObj.gain.gain.setValueAtTime(0, audioContext.currentTime);
-      oscObj.panner.pan.setValueAtTime(0, audioContext.currentTime);
-      structuredLog('INFO', 'getOscillator: Recycled oldest oscillator', { poolSize: oscillatorPool.length });
+      // Pool exhausted: recycle oldest inactive or oldest overall
+      oscObj = oscillatorPool.find(o => !o.active) || oscillatorPool[0];
+      if (oscObj) {
+        oscObj.osc.frequency.setValueAtTime(0, audioContext.currentTime);
+        oscObj.gain.gain.setValueAtTime(0, audioContext.currentTime);
+        oscObj.panner.pan.setValueAtTime(0, audioContext.currentTime);
+        oscObj.active = true;
+        structuredLog('WARN', 'getOscillator: Pool exhausted, recycled oscillator', { poolSize: oscillatorPool.length });
+        return oscObj;
+      } else {
+        structuredLog('ERROR', 'getOscillator: Pool exhausted, no oscillator available', { poolSize: oscillatorPool.length });
+        return null;
+      }
     } else {
       // Create a new oscillator if under the cap
       const osc = audioContext.createOscillator();
@@ -254,19 +261,21 @@ export function getOscillator() {
       osc.type = "sine";
       osc.connect(gain).connect(panner).connect(audioContext.destination);
       osc.start();
-      oscObj = { osc, gain, panner, active: false };
+      oscObj = { osc, gain, panner, active: true };
+      oscillatorPool.push(oscObj);
       structuredLog('INFO', 'getOscillator: Created new oscillator', { poolSize: oscillatorPool.length });
+      return oscObj;
     }
-    oscillatorPool.push(oscObj);
   }
 
   if (oscObj) {
     oscObj.active = true;
     structuredLog('INFO', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
+    return oscObj;
   } else {
     structuredLog('WARN', 'getOscillator: No available oscillator found');
+    return null;
   }
-  return oscObj;
 }
 
 /**
