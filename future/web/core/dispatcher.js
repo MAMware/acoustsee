@@ -112,94 +112,12 @@ export async function createEventDispatcher(domElements) {
         if (domElements.button1) {
           domElements.button1.textContent = button1Text;
           domElements.button1.setAttribute('aria-label', button1Aria);
-        // --- Performance: Debounced UI update ---
-        import { debounce, rafThrottle } from '../utils/async.js';
-        const _updateUI = async ({ settingsMode, streamActive, micActive }) => {
-          try {
-            if (!domElements.button1 || !domElements.button2 || !domElements.button3 || !domElements.button4 || !domElements.button5 || !domElements.button6) {
-              const missing = [
-                !domElements.button1 && 'button1',
-                !domElements.button2 && 'button2',
-                !domElements.button3 && 'button3',
-                !domElements.button4 && 'button4',
-                !domElements.button5 && 'button5',
-                !domElements.button6 && 'button6'
-              ].filter(Boolean);
-              structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
-              dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
-              return;
-            }
-            const currentTime = performance.now();
-            const grid = availableGrids.find(g => g.id === settings.gridType);
-            const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
-            const language = availableLanguages.find(l => l.id === settings.language);
-            const button1Text = settingsMode
-              ? await getText('button1.settings.text', { gridName: grid?.id || 'Grid' }, 'text')
-              : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
-            const button1Aria = settingsMode
-              ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
-              : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
-            if (currentTime - lastTTSTime >= ttsCooldown) {
-              await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
-                state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
-              });
-            }
-            // ...existing code...
-            lastTTSTime = currentTime;
-            structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
-          } catch (err) {
-            structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
-            handlers.logError({ message: `UI update error: ${err.message}` });
-          }
-        };
-        const handlers = {
-          updateUI: debounce(_updateUI, 40), // ~25fps max
-          ? await getText('button4.settings.text', {}, 'text')
-          : await getText(`button4.normal.${settings.autoFPS ? 'auto' : 'manual'}.text`, { fps: Math.round(1000 / settings.updateInterval) }, 'text');
-        const button4Aria = settingsMode
-          ? await getText('button4.settings.aria', {}, 'aria')
-          : await getText('button4.normal.aria', {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button4.tts.${settingsMode ? 'saveSettings' : 'fpsBtn'}`, {
-            state: settingsMode ? 'save' : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
-          });
         }
-        if (DOM.button4) {
-          DOM.button4.textContent = button4Text;
-          DOM.button4.setAttribute('aria-label', button4Aria);
-        } else {
-          structuredLog('WARN', 'Element not found for text update', { text: button4Text });
-        }
-
-        const button5Text = settingsMode
-          ? await getText('button5.settings.text', {}, 'text')
-          : await getText('button5.normal.text', {}, 'text');
-        const button5Aria = settingsMode
-          ? await getText('button5.settings.aria', {}, 'aria')
-          : await getText('button5.normal.aria', {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button5.tts.${settingsMode ? 'loadSettings' : 'emailDebug'}`, {
-            state: settingsMode ? 'load' : 'email'
-          });
-        }
-        if (DOM.button5) {
-          DOM.button5.textContent = button5Text;
-          DOM.button5.setAttribute('aria-label', button5Aria);
-        } else {
-          structuredLog('WARN', 'Element not found for text update', { text: button5Text });
-        }
-
-        const button6Text = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.text`, {}, 'text');
-        const button6Aria = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.aria`, {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText('button6.tts.settingsToggle', { state: settingsMode ? 'off' : 'on' });
-        }
-        if (DOM.button6) {
-          DOM.button6.textContent = button6Text;
-          DOM.button6.setAttribute('aria-label', button6Aria);
-        } else {
-          structuredLog('WARN', 'Element not found for text update', { text: button6Text });
-        }
+      } catch (err) {
+        structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `UI update error: ${err.message}` });
+      }
+  },
 
         lastTTSTime = currentTime;
         structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
@@ -213,19 +131,34 @@ export async function createEventDispatcher(domElements) {
     processFrame: (() => {
       let frameCanvas = null;
       let frameCtx = null;
+      let prevWidth = 0;
+      let prevHeight = 0;
+      // Debounced resize to handle orientation changes without jank
+      const debouncedResize = debounce((newWidth, newHeight) => {
+        frameCanvas.width = newWidth;
+        frameCanvas.height = newHeight;
+        prevWidth = newWidth;
+        prevHeight = newHeight;
+      }, 200);
       return async () => {
         try {
           if (!frameCanvas) {
             frameCanvas = document.createElement('canvas');
-            frameCanvas.width = DOM.videoFeed.videoWidth;
-            frameCanvas.height = DOM.videoFeed.videoHeight;
             frameCtx = frameCanvas.getContext('2d');
             domElements.frameCanvas = frameCanvas; // store for debugging
+            // initial size
+            const initW = DOM.videoFeed.videoWidth;
+            const initH = DOM.videoFeed.videoHeight;
+            frameCanvas.width = initW;
+            frameCanvas.height = initH;
+            prevWidth = initW;
+            prevHeight = initH;
           }
-          // Resize if video dimensions change
-          if (frameCanvas.width !== DOM.videoFeed.videoWidth || frameCanvas.height !== DOM.videoFeed.videoHeight) {
-            frameCanvas.width = DOM.videoFeed.videoWidth;
-            frameCanvas.height = DOM.videoFeed.videoHeight;
+          // Resize if video dimensions change (debounced)
+          const curW = DOM.videoFeed.videoWidth;
+          const curH = DOM.videoFeed.videoHeight;
+          if (curW !== prevWidth || curH !== prevHeight) {
+            debouncedResize(curW, curH);
           }
           frameCtx.drawImage(DOM.videoFeed, 0, 0, frameCanvas.width, frameCanvas.height);
           const frameData = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height).data;

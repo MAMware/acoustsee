@@ -57,12 +57,11 @@ The webapp runs from a Internet browsers and mobile hardware from 2021.
 
 Working at **Milestone 6 (Current)**
 
-- UI Detaching from the core logic to enable customization
+- UI Detaching from the core logic to enable customization of skin
 - Adding support for new video and audio techniques
   - ml-depth-processor.js # New: Monocular depth estimation (TF.js + MiDaS; config-driven)
   - hrtf-processor.js     # New: HRTF logic (PannerNode, positional filtering)
-- Strict arquitectural paradigm to no hardcoding and no fallbacks
-
+- Strict architectural paradigm to no hardcoding and no fallbacks
  
 ### [Changelog](docs/CHANGELOG.md)
 
