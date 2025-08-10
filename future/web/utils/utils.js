@@ -18,6 +18,10 @@ export function initializeLanguageIfNeeded() {
       structuredLog('INFO', 'Auto-set language to first available', { language: settings.language });
     }
   }
+
+  // Preload translations for the selected language
+  preloadTranslations(settings.language);
+
   return settings.language;
 }
 
@@ -117,5 +121,19 @@ export function announceMessage(message) {
   const announcements = document.getElementById('announcements');
   if (announcements) {
     announcements.textContent = message;
+  }
+}
+
+/**
+ * Pre-loads all translation keys into the cache when the language changes.
+ */
+export async function preloadTranslations(languageId) {
+  try {
+    const response = await fetch(`./languages/${languageId}.json`);
+    if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
+    const translations = await response.json();
+    translationsCache[languageId] = translations;
+  } catch (err) {
+    structuredLog('ERROR', 'Failed to preload translations', { languageId, message: err.message });
   }
 }

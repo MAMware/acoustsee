@@ -232,22 +232,49 @@ export function initializeMicAudio(micStream) {
 }
 
 /**
- * Get an oscillator from the pool, reusing inactive or creating new
+ * Get an oscillator from the pool, reusing inactive or recycling the oldest if the pool exceeds the cap.
  */
 export function getOscillator() {
+  const cap = 100; // Define a cap for the oscillator pool
   let oscObj = oscillatorPool.find(o => !o.active);
+
   if (!oscObj && audioContext) {
-    const osc = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    const panner = audioContext.createStereoPanner();
-    osc.type = "sine";
-    osc.connect(gain).connect(panner).connect(audioContext.destination);
-    osc.start();
-    oscObj = { osc, gain, panner, active: false };
+    if (oscillatorPool.length >= cap) {
+      // Recycle the oldest oscillator
+      oscObj = oscillatorPool.shift();
+      oscObj.osc.frequency.setValueAtTime(0, audioContext.currentTime);
+      oscObj.gain.gain.setValueAtTime(0, audioContext.currentTime);
+      oscObj.panner.pan.setValueAtTime(0, audioContext.currentTime);
+      structuredLog('INFO', 'getOscillator: Recycled oldest oscillator', { poolSize: oscillatorPool.length });
+    } else {
+      // Create a new oscillator if under the cap
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const panner = audioContext.createStereoPanner();
+      osc.type = "sine";
+      osc.connect(gain).connect(panner).connect(audioContext.destination);
+      osc.start();
+      oscObj = { osc, gain, panner, active: false };
+      structuredLog('INFO', 'getOscillator: Created new oscillator', { poolSize: oscillatorPool.length });
+    }
     oscillatorPool.push(oscObj);
   }
-  if (oscObj) oscObj.active = true;
+
+  if (oscObj) {
+    oscObj.active = true;
+    structuredLog('INFO', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
+  } else {
+    structuredLog('WARN', 'getOscillator: No available oscillator found');
+  }
   return oscObj;
 }
 
-export { audioContext, isAudioInitialized, oscillators, oscillatorPool, modulators };
+/**
+ * Release an oscillator back to the pool, marking it as inactive.
+ */
+export function releaseOscillator(oscObj) {
+  if (oscObj) {
+    oscObj.active = false;
+    structuredLog('INFO', 'releaseOscillator: Oscillator released back to pool', { poolSize: oscillatorPool.length });
+  }
+}
