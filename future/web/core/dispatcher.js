@@ -285,6 +285,7 @@ export async function createEventDispatcher(domElements) {
 
   toggleLanguage: async () => {
       try {
+        const currentTime = performance.now();
         const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
         const nextIndex = (currentIndex + 1) % availableLanguages.length;
         settings.language = availableLanguages[nextIndex].id;
@@ -293,13 +294,19 @@ export async function createEventDispatcher(domElements) {
         if (window.speechSynthesis?.cancel) {
           window.speechSynthesis.cancel();
         }
-        await getText('button3.tts.languageSelect', { state: settings.language });
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText('button3.tts.languageSelect', { state: settings.language });
+          lastTTSTime = currentTime;
+        }
         // Refresh UI elements for new language
         dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {
         structuredLog('ERROR', 'toggleLanguage error', { message: err.message, stack: err.stack });
         handlers.logError({ message: `Language toggle error: ${err.message}` });
-        await getText('button3.tts.languageError');
+        if (performance.now() - lastTTSTime >= ttsCooldown) {
+          await getText('button3.tts.languageError');
+          lastTTSTime = performance.now();
+        }
       }
     },
 
