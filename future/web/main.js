@@ -151,16 +151,26 @@ async function init() {
       const tempLog = console.log;
       const tempWarn = console.warn;
       const tempError = console.error;
+      let threw = false;
       try {
         console.log = originalConsole.log;
         console.warn = originalConsole.warn;
         console.error = originalConsole.error;
-
         structuredLog(level, message, data, persist, sample);
-      } finally {
+      } catch (err) {
+        threw = true;
+        // Restore temp overrides immediately if structuredLog throws
         console.log = tempLog;
         console.warn = tempWarn;
         console.error = tempError;
+        // Optionally log the error using originalConsole
+        originalConsole.error('safeStructuredLog error:', err);
+      } finally {
+        if (!threw) {
+          console.log = tempLog;
+          console.warn = tempWarn;
+          console.error = tempError;
+        }
       }
     }
 
