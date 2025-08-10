@@ -24,7 +24,14 @@ export async function initializeAudio(context) {
     audioContext = context;
     if (audioContext.state === "suspended") {
       structuredLog('INFO', 'initializeAudio: Resuming AudioContext');
-      await audioContext.resume();
+      try {
+        await audioContext.resume();
+        structuredLog('INFO', 'initializeAudio: AudioContext resumed');
+      } catch (error) {
+        structuredLog('ERROR', 'initializeAudio: Failed to resume AudioContext', { message: error.message });
+        dispatchEvent('logError', { message: `Audio resume failed: ${error.message}` });
+        throw error;
+      }
     }
     if (audioContext.state !== "running") {
       throw new Error(`AudioContext not running, state: ${audioContext.state}`);
@@ -61,21 +68,41 @@ export async function initializeAudio(context) {
 }
 
 export async function playAudio(notes) {
-  if (!isAudioInitialized || !audioContext || audioContext.state !== "running") {
-    structuredLog('WARN', 'playAudio: Audio not initialized or context not running', {
-      isAudioInitialized,
-      audioContext: !!audioContext,
-      state: audioContext?.state,
-    });
-    // Attempt to resume AudioContext on mobile (requires user gesture).
-    if (audioContext && audioContext.state === "suspended") {
+  // Ensure AudioContext is running, with configurable resume attempts
+  const maxAttempts = settings.audioResumeAttempts || 2;
+  const resumeDelay = settings.audioResumeDelayMs || 100;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (!audioContext) {
+      structuredLog('WARN', 'playAudio: No AudioContext available');
+      return;
+    }
+    if (audioContext.state === 'running') {
+      if (!isAudioInitialized) {
+        structuredLog('WARN', 'playAudio: Audio not initialized', { isAudioInitialized });
+        return;
+      }
+      break; // ready to play
+    }
+    if (audioContext.state === 'suspended') {
       try {
         await audioContext.resume();
-        structuredLog('INFO', 'playAudio: Resumed AudioContext');
+        structuredLog('INFO', 'playAudio: Resumed suspended AudioContext');
+        break;
       } catch (err) {
         structuredLog('ERROR', 'playAudio: Failed to resume AudioContext', { message: err.message });
+        dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
+        if (attempt < maxAttempts) {
+          await new Promise(r => setTimeout(r, resumeDelay));
+          continue;
+        }
+        // Final failure fallback
+        structuredLog('ERROR', 'playAudio: Unable to resume AudioContext after retries');
+        dispatchEvent('audioError', { message: 'Audio unavailable—tap to retry' });
+        return;
       }
     }
+    // Unexpected state (closed/interrupted)
+    structuredLog('WARN', 'playAudio: Invalid AudioContext state', { state: audioContext.state });
     return;
   }
   try {

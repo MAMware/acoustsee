@@ -398,7 +398,9 @@ export async function createEventDispatcher(domElements) {
           updateInterval: settings.updateInterval,
           dayNightMode: settings.dayNightMode,
           ttsEnabled: settings.ttsEnabled,
-          resetStateOnError: settings.resetStateOnError
+          resetStateOnError: settings.resetStateOnError,
+          audioResumeAttempts: settings.audioResumeAttempts,
+          audioResumeDelayMs: settings.audioResumeDelayMs
         };
         localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
         await getText('button4.tts.saveSettings');
@@ -421,7 +423,7 @@ export async function createEventDispatcher(domElements) {
             throw new Error(`Invalid JSON in localStorage: ${parseErr.message}`);
           }
 
-          const expectedKeys = ['gridType', 'synthesisEngine', 'language', 'autoFPS', 'updateInterval', 'dayNightMode', 'ttsEnabled', 'resetStateOnError'];
+          const expectedKeys = ['gridType', 'synthesisEngine', 'language', 'autoFPS', 'updateInterval', 'dayNightMode', 'ttsEnabled', 'resetStateOnError', 'audioResumeAttempts', 'audioResumeDelayMs'];
           const expectedTypes = {
             gridType: 'string',
             synthesisEngine: 'string',
@@ -430,7 +432,9 @@ export async function createEventDispatcher(domElements) {
             updateInterval: 'number',
             dayNightMode: 'string',
             ttsEnabled: 'boolean',
-            resetStateOnError: 'boolean'
+            resetStateOnError: 'boolean',
+            audioResumeAttempts: 'number',
+            audioResumeDelayMs: 'number'
           };
 
           expectedKeys.forEach(key => {

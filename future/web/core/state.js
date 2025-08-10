@@ -17,6 +17,8 @@ export let settings = {
   language: null, 
   isSettingsMode: false,
   micStream: null,
+  audioResumeAttempts: 2,  // Number of attempts to resume AudioContext before failing
+  audioResumeDelayMs: 100,  // Delay (ms) between resume attempts
   ttsEnabled: false,
   dayNightMode: 'day',
   resetStateOnError: true, // New flag to control state reset on errors
