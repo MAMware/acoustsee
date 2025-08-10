@@ -79,43 +79,27 @@ export async function playAudio(notes) {
     return;
   }
   try {
-    // Use cached engines loaded at startup
+    // Dynamic engine loading, pass notes and context
     const availableEngines = settings.availableEngines;
     const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
     if (!engine) {
       structuredLog('ERROR', `playAudio: Engine not found`, { synthesisEngine: settings.synthesisEngine });
       dispatchEvent('logError', { message: `Engine not found: ${settings.synthesisEngine}` });
-      return;
-    }activeCount = 0;
-    notes.forEach((note, i) => {
-      let oscObj = oscillatorPool.find(o => !o.active);
-      if (!oscObj) {
-        // If pool exhausted, create new
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        const panner = audioContext.createStereoPanner();
-        osc.type = "sine";
-        osc.connect(gain).connect(panner).connect(audioContext.destination);
-        osc.start();
-    // --- Oscillator Pool: Reuse inactive oscillators ---
-    let 
-        oscObj = { osc, gain, panner, active: false };
-        oscillatorPool.push(oscObj);
-      }
-      oscObj.active = true;
-      oscObj.osc.frequency.setValueAtTime(note.frequency, audioContext.currentTime);
-      oscObj.gain.gain.setValueAtTime(note.velocity || 0.5, audioContext.currentTime);
-      oscObj.panner.pan.setValueAtTime(note.pan || 0, audioContext.currentTime);
-      activeCount++;
-    });
-    // Deactivate unused oscillators
-    oscillatorPool.forEach((oscObj, i) => {
-      if (i >= notes.length && oscObj.active) {
-        oscObj.gain.gain.setValueAtTime(0, audioContext.currentTime);
-        oscObj.active = false;
-      }
-    });
-    structuredLog('INFO', 'playAudio: Played notes with oscillator pool', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
+      throw new Error('Invalid engine');
+    }
+    const contextObj = {};
+    // For future ML/HRTF: contextObj.depthData, contextObj.hrtfPositions, etc.
+    const engineModule = await import(`../synths/${engine.id}.js`);
+    // Normalize to camelCase (e.g., fm-synthesis -> playFmSynthesis)
+    const engineName = engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+    const playFunction = engineModule[`play${engineName}`];
+    if (playFunction) {
+      playFunction(notes, contextObj);
+      structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
+    } else {
+      structuredLog('ERROR', `playAudio: Play function not found`, { engine: engine.id });
+      dispatchEvent('logError', { message: `Play function for ${engine.id} not found` });
+    }
   } catch (err) {
     structuredLog('ERROR', 'playAudio error', { message: err.message });
     dispatchEvent('logError', { message: `Play audio error: ${err.message}` });
@@ -125,12 +109,13 @@ export async function playAudio(notes) {
 export async function cleanupAudio() {
   if (isAudioInitialized && audioContext) {
     try {
-      oscillators.forEach(({ osc, gain, panner }) => {
+      oscillatorPool.forEach(({ osc, gain, panner }) => {
         osc.stop();
         osc.disconnect();
         gain.disconnect();
         panner.disconnect();
       });
+      oscillatorPool = [];
       if (micSource && micGainNode) {
         micSource.disconnect();
         micGainNode.disconnect();
@@ -191,4 +176,23 @@ export function initializeMicAudio(micStream) {
   }
 }
 
-export { audioContext, isAudioInitialized, oscillators, modulators };
+/**
+ * Get an oscillator from the pool, reusing inactive or creating new
+ */
+export function getOscillator() {
+  let oscObj = oscillatorPool.find(o => !o.active);
+  if (!oscObj && audioContext) {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const panner = audioContext.createStereoPanner();
+    osc.type = "sine";
+    osc.connect(gain).connect(panner).connect(audioContext.destination);
+    osc.start();
+    oscObj = { osc, gain, panner, active: false };
+    oscillatorPool.push(oscObj);
+  }
+  if (oscObj) oscObj.active = true;
+  return oscObj;
+}
+
+export { audioContext, isAudioInitialized, oscillators, oscillatorPool, modulators };

@@ -1,4 +1,4 @@
-// Generated on: 2025-07-30 18:17:33 +0000
+// Generated on: 2025-08-10 03:05:01 +0000
 
 // File: web/utils/logging.js
 // web/utils/logging.js
@@ -6,20 +6,30 @@
 // Supports async to avoid blocking high-throughput paths (e.g., frame processing).
 // Sampling reduces log volume for DEBUG level in performance-critical scenarios.
 
-import { addIdbLog } from './idb-logger.js';  // Updated to use IndexedDB.
+import { addIdbLog } from './idb-logger.js';
+import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
 
-const LOG_LEVELS = {
-  DEBUG: 0,
-  INFO: 1,
-  WARN: 2,
-  ERROR: 3,
-};
+// Safely stringify objects, handling circular refs and Error instances
+function safeStringify(obj) {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, val) => {
+    if (typeof val === 'object' && val !== null) {
+      if (seen.has(val)) return '[Circular]';
+      seen.add(val);
+    }
+    if (val instanceof Error) {
+      return { message: val.message, stack: val.stack };
+    }
+    return val;
+  });
+}
 
-let currentLogLevel = LOG_LEVELS.DEBUG;  // Default; can be set from settings.debugLogging.
+// LOG_LEVELS now imported from constants.js
+
+let currentLogLevel = LOG_LEVELS[DEFAULT_LOG_LEVEL];
 const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
 let sampleRate = isMobile ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 
-// Helper to set global log level (e.g., from settings.isSettingsMode or debugLogging).
 export function setLogLevel(level) {
   const upperLevel = level.toUpperCase();
   if (Object.keys(LOG_LEVELS).includes(upperLevel)) {
@@ -63,11 +73,20 @@ export async function structuredLog(level, message, data = {}, persist = true, s
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, level: level.toUpperCase(), message, data };
     // Use global console to avoid circular import
-    const fn = (console[level.toLowerCase()] || console.log).bind(console);
-    fn(`[${timestamp}] ${logEntry.level}: ${message}`, data);
+  const consoleMethod = (console[level.toLowerCase()] || console.log).bind(console);
+    // Serialize only own properties to a JSON payload string to prevent endless prototype expansion
+    let payload = '';
+    if (Object.keys(data).length) {
+      try {
+        payload = ' ' + safeStringify(data);
+      } catch (e) {
+        payload = ' [Unserializable data]';
+      }
+    }
+  consoleMethod(`[${timestamp}] ${logEntry.level}: ${message}${payload}`);
     if (persist) {
       addIdbLog(logEntry).catch(err => {
-        originalConsole.warn('Failed to persist log to IndexedDB:', err.message);
+        console.warn('Failed to persist log to IndexedDB:', err.message);
       });
     }
   } finally {
@@ -92,6 +111,38 @@ export async function withErrorBoundary(fn, ...args) {
   }
 }
 
+/**
+ * Debounce function for throttling UI updates and frame processing
+ * @param {Function} fn - Function to debounce
+ * @param {number} delay - Delay in ms
+ * @returns {Function}
+ */
+export function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+/**
+ * requestAnimationFrame-based throttle for autoFPS
+ * @param {Function} fn - Function to throttle
+ * @returns {Function}
+ */
+export function rafThrottle(fn) {
+  let running = false;
+  return function(...args) {
+    if (!running) {
+      running = true;
+      requestAnimationFrame(() => {
+        fn.apply(this, args);
+        running = false;
+      });
+    }
+  };
+}
+
 // File: web/utils/idb-logger.js
 // web/utils/idb-logger.js
 // IndexedDB wrapper for persistent logging: Append JSON logs, retrieve all, cap size, export.
@@ -101,29 +152,37 @@ export async function withErrorBoundary(fn, ...args) {
 const DB_NAME = 'AcoustSeeLogsDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'logs';
-const MAX_ENTRIES = 1000;  // Cap to prevent unbounded growth.
+const MAX_ENTRIES = 1000;
 let dbPromise = null;
 
 // Check IndexedDB support (technical: Feature detection to avoid errors in non-supporting envs like some iframes or old browsers).
 const isIndexedDBSupported = 'indexedDB' in window;
 
-// Open (or create) DB asynchronously.
-function openDB() {
+import { structuredLog } from './logging.js';
+// Open (or create) DB asynchronously with retry on transient errors.
+function openDB(retries = 3) {
   if (!isIndexedDBSupported) {
     return Promise.reject(new Error('IndexedDB not supported in this environment'));
   }
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { autoIncrement: true });
-      }
+    const attempt = (count) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => {
+        if (count > 0) {
+          setTimeout(() => attempt(count - 1), 500);
+        } else {
+          reject(request.error);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { autoIncrement: true });
+        }
+      };
     };
+    attempt(retries);
   });
 }
 
@@ -143,6 +202,7 @@ export async function addIdbLog(logEntry) {
   const db = await getDB();
   if (!db) {
     console.warn('DB unavailable; logging to console:', logEntry);
+    structuredLog('WARN', 'IDB fallback to console', { entry: logEntry }, false, false);
     return;  // Fallback: No persistence.
   }
   return new Promise((resolve, reject) => {
@@ -217,17 +277,27 @@ export async function clearIdbLogs() {
 }
 
 // File: web/utils/utils.js
-import { settings, availableLanguages } from '../core/state.js';
+import { settings } from '../core/state.js';
 import { structuredLog } from './logging.js';
 
-export function tryVibrate(event) {
-  if (event.cancelable && navigator.vibrate) {
-    try {
-      navigator.vibrate(50);
-    } catch (err) {
-      console.warn('Vibration blocked:', err.message);
+/**
+ * Initializes language if not set, using available configs.
+ * Call this once upfront (e.g., after loadConfigs in main.js) to avoid races.
+ * @returns {string} The selected language ID.
+ */
+export function initializeLanguageIfNeeded() {
+  if (!settings.language) {
+    structuredLog('WARN', 'Language not initialized; setting default');
+    if (settings.availableLanguages.length === 0) {
+      // Configs likely not loaded; use ultimate fallback (assumes loadConfigs awaited upstream)
+      settings.language = 'en-US';
+      structuredLog('INFO', 'Using ultimate fallback language', { language: settings.language });
+    } else {
+      settings.language = settings.availableLanguages[0].id;
+      structuredLog('INFO', 'Auto-set language to first available', { language: settings.language });
     }
   }
+  return settings.language;
 }
 
 export function hapticCount(count) {
@@ -239,17 +309,40 @@ export function hapticCount(count) {
 
 const translationsCache = {};
 
-export async function getText(key, params = {}, type = 'tts') {
+/**
+ * Fetches and formats a translated message. No DOM/TTS side-effects—callers handle those.
+ * @param {string} key - Translation key (dot-notated).
+ * @param {Object} [params={}] - Params for placeholder replacement.
+ * @returns {Promise<string>} The formatted message, or key on failure.
+ */
+export async function getText(key, params = {}) {
   try {
-    const language = availableLanguages.find(l => l.id === settings.language);
-    if (!language) throw new Error(`Language not found: ${settings.language}`);
+    const languageId = settings.language;
+    if (!languageId) {
+      throw new Error('Language not set; call initializeLanguageIfNeeded first');
+    }
+
+    const language = settings.availableLanguages.find(l => l.id === languageId);
+    if (!language) {
+      structuredLog('ERROR', 'Language not found', {
+        requestedLanguage: languageId,
+        availableLanguages: settings.availableLanguages.map(l => l.id),
+        key
+      });
+      return key; // No fallback mutation—caller decides
+    }
 
     let translations = translationsCache[language.id];
     if (!translations) {
-      const response = await fetch(`./languages/${language.id}.json`);
-      if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
-      translations = await response.json();
-      translationsCache[language.id] = translations;
+      try {
+        const response = await fetch(`./languages/${language.id}.json`);
+        if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
+        translations = await response.json();
+        translationsCache[language.id] = translations;
+      } catch (fetchErr) {
+        structuredLog('ERROR', 'Language file fetch error', { message: fetchErr.message, key });
+        return key; // Fallback on network/parse error
+      }
     }
 
     let finalMessage = translations;
@@ -259,42 +352,40 @@ export async function getText(key, params = {}, type = 'tts') {
     if (typeof finalMessage === 'object') {
       finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
     }
+
+    // Safer placeholder replacement (exact match to avoid partial brace issues)
     for (const [paramKey, paramValue] of Object.entries(params)) {
-      const placeholderRegex = new RegExp(`\\{${paramKey}\\}`, 'g');
-      finalMessage = finalMessage.replace(placeholderRegex, paramValue);
+      finalMessage = finalMessage.replaceAll(`{${paramKey}}`, paramValue);
     }
-    if (type === 'tts' && settings.ttsEnabled) {
-      const utterance = new SpeechSynthesisUtterance(finalMessage);
-      utterance.lang = settings.language;
-      window.speechSynthesis.speak(utterance);
-    }
-    const announcements = document.getElementById('announcements');
-    if (announcements) {
-      announcements.textContent = finalMessage;
-    }
+
     return finalMessage;
   } catch (err) {
-    console.error(`${type} error:`, err.message);
-    const announcements = document.getElementById('announcements');
-    if (announcements) {
-      announcements.textContent = `${type} error: Unable to process message`;
-    }
-    return key;
+    structuredLog('ERROR', 'getText error', { message: err.message, key, params });
+    throw err; // Rethrow for callers to handle (e.g., fallback or announce)
   }
 }
 
-export function parseBrowserVersion(userAgent) {
-  const rx = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
-  const m = userAgent.match(rx);
-  return (m && (m[1] || m[2] || m[3] || m[4])) || 'Unknown';
+/**
+ * Speaks the message via TTS if enabled.
+ * @param {string} message - Message to speak.
+ * @param {string} [type='tts'] - Type (for logging).
+ */
+export function speakText(message, type = 'tts') {
+  if (type === 'tts' && settings.ttsEnabled) {
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = settings.language;
+    window.speechSynthesis.speak(utterance);
+  }
 }
 
-export function setTextAndAriaLabel(element, text, ariaLabel) {
-  if (element) {
-    element.textContent = text;
-    element.setAttribute('aria-label', ariaLabel);
-  } else {
-    structuredLog('WARN', 'Element not found for text update', { text });
+/**
+ * Updates the announcements element with a message.
+ * @param {string} message - Message to announce.
+ */
+export function announceMessage(message) {
+  const announcements = document.getElementById('announcements');
+  if (announcements) {
+    announcements.textContent = message;
   }
 }
 
@@ -302,7 +393,7 @@ export function setTextAndAriaLabel(element, text, ariaLabel) {
 import { setupAudioControls } from '../audio/audio-controls.js';
 import { setupUISettings } from './ui-settings.js';
 import { setupCleanupManager } from './cleanup-manager.js';
-import { setupVideoCapture } from './video-capture.js';
+import { setupVideoCapture } from '../video/video-capture.js';
 // Importa los módulos de configuración cuando los tengas
 // import { setupSaveSettings, setupLoadSettings } from './settings-manager.js';
 
@@ -320,16 +411,12 @@ export function setupUIController({ dispatchEvent, DOM }) {
 }
 
 // File: web/ui/ui-settings.js
+// File: web/ui/ui-settings.js
 import { settings } from '../core/state.js';
-import { getText, tryVibrate, hapticCount } from '../utils/utils.js';
+import { getText, hapticCount } from '../utils/utils.js';
+import { structuredLog } from '../utils/logging.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
-  if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 ||
-      !DOM.button4 || !DOM.button5 || !DOM.button6) {
-    console.error('Missing DOM elements in ui-settings');
-    dispatchEvent('logError', { message: 'Missing DOM elements in ui-settings' });
-    return;
-  }
 
   // Helper: wire a single pointer event for both touch & click
   function wireButton(el, id, { normal, settings: settingsAction }, {
@@ -338,7 +425,13 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     el.addEventListener('pointerdown', async (event) => {
       if (event.cancelable) event.preventDefault();
       console.log(`${id} event`, { settingsMode: settings.isSettingsMode });
-      tryVibrate(event);
+      if (event.cancelable && navigator.vibrate) {
+        try {
+          navigator.vibrate(50);
+        } catch (err) {
+          console.warn('Vibration blocked:', err.message);
+        }
+      }
       hapticCount(Number(id.replace('button', '')));
       try {
         if (!settings.isSettingsMode) {
@@ -358,6 +451,35 @@ export function setupUISettings({ dispatchEvent, DOM }) {
         await getText(key, params());
       }
     });
+    // Additional touchstart for compatibility (from settings-handlers.js)
+    el.addEventListener('touchstart', async (event) => {
+      if (event.cancelable) event.preventDefault();
+      console.log(`${id} touched`);
+      if (event.cancelable && navigator.vibrate) {
+        try {
+          navigator.vibrate(50);
+        } catch (err) {
+          console.warn('Vibration blocked:', err.message);
+        }
+      }
+      try {
+        if (!settings.isSettingsMode) {
+          await normal();
+        } else {
+          await settingsAction();
+        }
+        dispatchEvent('updateUI', {
+          settingsMode: settings.isSettingsMode,
+          streamActive: !!settings.stream,
+          micActive: !!settings.micStream,
+        });
+      } catch (err) {
+        console.error(`${id} error:`, err.message);
+        dispatchEvent('logError', { message: `${id} error: ${err.message}` });
+        await getText(`${id}.tts.${!settings.isSettingsMode ? normalError.split('.').pop() : settingsError.split('.').pop()}`, params());
+      }
+    });
+    console.log(`${id} event listeners attached`);
   }
 
   // Button 1
@@ -469,7 +591,6 @@ export function setupUISettings({ dispatchEvent, DOM }) {
   console.log('setupUISettings: Setup complete');
 }
 
-
 // File: web/ui/cleanup-manager.js
 import { settings, setStream, setAudioInterval } from '../core/state.js';
 import { cleanupAudio } from '../audio/audio-processor.js';
@@ -487,8 +608,8 @@ export function setupCleanupManager() {
       settings.micStream.getTracks().forEach((track) => track.stop());
       settings.micStream = null;
     }
-    if (settings.audioInterval) {
-      clearInterval(settings.audioInterval);
+    if (settings.audioTimerId) {
+      clearInterval(settings.audioTimerId);
       setAudioInterval(null);
     }
     if (isAudioInitialized && audioContext) {
@@ -545,11 +666,22 @@ export function initDOM() {
     const checkDOMReady = () => {
       if (document.readyState === 'complete' || document.readyState === 'interactive') {
         assignDOMElements();
-        const missingElements = Object.entries(DOM).filter(([_, value]) => !value);
-        if (missingElements.length > 0) {
-          const missingKeys = missingElements.map(([key]) => key).join(', ');
-          console.error(`Critical DOM elements missing: ${missingKeys}. Check index.html IDs.`);
-          reject(new Error(`Missing DOM elements: ${missingKeys}`));
+        // Enhanced validation
+        const missing = [];
+        const available = [];
+        Object.entries(DOM).forEach(([key, value]) => {
+          if (!value) {
+            missing.push(key);
+          } else {
+            available.push(key);
+          }
+        });
+
+        if (missing.length > 0) {
+          const errorMsg = `Missing DOM elements: ${missing.join(', ')}. Available: ${available.join(', ')}`;
+          console.error(errorMsg);
+          structuredLog('ERROR', 'DOM validation failed', { missing, available });
+          reject(new Error(errorMsg));
         } else {
           resolve(DOM);
         }
@@ -564,258 +696,65 @@ export function initDOM() {
   });
 }
 
-// File: web/ui/settings-handlers.js
-// future/web/ui/settings-handlers.js
-import { settings } from "../state.js";
-import { speak } from "./utils.js";
-
-export function setupSettingsHandlers({ dispatchEvent, DOM }) {
-  console.log("setupSettingsHandlers: Starting setup");
-
-  if (!DOM) {
-    console.error("DOM is undefined in setupSettingsHandlers");
-    return;
-  }
-
-  function tryVibrate(event) {
-    if (event.cancelable && navigator.vibrate) {
-      try {
-        navigator.vibrate(50);
-      } catch (err) {
-        console.warn("Vibration blocked:", err.message);
-      }
-    }
-  }
-
-  // Button 1: Start/Stop
-  if (DOM.button1) {
-    DOM.button1.addEventListener("touchstart", async (event) => {
-      if (event.cancelable) event.preventDefault();
-      console.log("button1 touched");
-      tryVibrate(event);
-      try {
-        dispatchEvent("startStop", { settingsMode: settings.isSettingsMode });
-      } catch (err) {
-        console.error("button1 error:", err.message);
-        dispatchEvent("logError", { message: `button1 error: ${err.message}` });
-        await speak("startStop", { state: "error" });
-      }
-    });
-    console.log("button1 event listener attached");
-  }
-
-  // Button 2: Audio On/Off (Mic)
-  if (DOM.button2) {
-    DOM.button2.addEventListener("touchstart", async (event) => {
-      if (event.cancelable) event.preventDefault();
-      console.log("button2 touched");
-      tryVibrate(event);
-      try {
-        dispatchEvent("toggleAudio", { settingsMode: settings.isSettingsMode });
-      } catch (err) {
-        console.error("button2 error:", err.message);
-        dispatchEvent("logError", { message: `button2 error: ${err.message}` });
-        await speak("audioError");
-      }
-    });
-    console.log("button2 event listener attached");
-  }
-
-  // Button 3: FPS
-  if (DOM.button3) {
-    DOM.button3.addEventListener("touchstart", async (event) => {
-      if (event.cancelable) event.preventDefault();
-      console.log("button3 touched");
-      tryVibrate(event);
-      try {
-        if (settings.isSettingsMode) {
-          dispatchEvent("toggleInput");
-        } else {
-          if (settings.autoFPS) {
-            settings.autoFPS = false;
-            settings.updateInterval = 1000 / 20;
-          } else {
-            const fpsOptions = [20, 30, 60];
-            const currentFps = 1000 / settings.updateInterval;
-            const currentIndex = fpsOptions.indexOf(currentFps);
-            if (currentIndex === fpsOptions.length - 1) {
-              settings.autoFPS = true;
-            } else {
-              const nextFps = fpsOptions[currentIndex + 1];
-              settings.updateInterval = 1000 / nextFps;
-            }
-          }
-          dispatchEvent("updateFrameInterval", {
-            interval: settings.updateInterval,
-          });
-          await speak("fpsBtn", {
-            fps: settings.autoFPS
-              ? "auto"
-              : Math.round(1000 / settings.updateInterval),
-          });
-        }
-        dispatchEvent("updateUI", {
-          settingsMode: settings.isSettingsMode,
-          streamActive: !!settings.stream,
-        });
-      } catch (err) {
-        console.error("button3 error:", err.message);
-        dispatchEvent("logError", { message: `button3 error: ${err.message}` });
-        await speak("fpsError");
-      }
-    });
-    console.log("button3 event listener attached");
-  }
-
-  // Button 4: Save Settings
-  if (DOM.button4) {
-    DOM.button4.addEventListener("touchstart", async (event) => {
-      if (event.cancelable) event.preventDefault();
-      console.log("button4 touched");
-      tryVibrate(event);
-      try {
-        dispatchEvent("saveSettings", {
-          settingsMode: settings.isSettingsMode,
-        });
-      } catch (err) {
-        console.error("button4 error:", err.message);
-        dispatchEvent("logError", { message: `button4 error: ${err.message}` });
-        await speak("saveError");
-      }
-    });
-    console.log("button4 event listener attached");
-  }
-
-  // Button 5: Load Settings
-  if (DOM.button5) {
-    DOM.button5.addEventListener("touchstart", async (event) => {
-      if (event.cancelable) event.preventDefault();
-      console.log("button5 touched");
-      tryVibrate(event);
-      try {
-        dispatchEvent("loadSettings", {
-          settingsMode: settings.isSettingsMode,
-        });
-      } catch (err) {
-        console.error("button5 error:", err.message);
-        dispatchEvent("logError", { message: `button5 error: ${err.message}` });
-        await speak("loadError");
-      }
-    });
-    console.log("button5 event listener attached");
-  }
-
-  // Button 6: Settings Toggle
-  if (DOM.button6) {
-    DOM.button6.addEventListener("touchstart", async (event) => {
-      if (event.cancelable) event.preventDefault();
-      console.log("button6 touched");
-      tryVibrate(event);
-      try {
-        settings.isSettingsMode = !settings.isSettingsMode;
-        dispatchEvent("updateUI", {
-          settingsMode: settings.isSettingsMode,
-          streamActive: !!settings.stream,
-        });
-        dispatchEvent("toggleDebug", { show: settings.isSettingsMode });
-      } catch (err) {
-        console.error("button6 error:", err.message);
-        dispatchEvent("logError", { message: `button6 error: ${err.message}` });
-        await speak("settingsError");
-      }
-    });
-    console.log("button6 event listener attached");
-  }
-
-  console.log("setupSettingsHandlers: Setup complete");
-}
-
-
-// File: web/ui/video-capture.js
-import { settings } from '../core/state.js';
-import { structuredLog } from '../utils/logging.js';
-import { getText } from '../utils/utils.js';
-import { dispatchEvent } from '../core/dispatcher.js';
-import { getDOM } from '../core/context.js';
-
-export async function setupVideoCapture(DOM) {
-  try {
-    if (!DOM.videoFeed || !DOM.frameCanvas) {
-      const msg = 'Missing videoFeed or frameCanvas in setupVideoCapture';
-      structuredLog('ERROR', msg);
-      dispatchEvent('logError', { message: msg });
-      return false;
-    }
-
-    DOM.videoFeed.setAttribute('autoplay', '');
-    DOM.videoFeed.setAttribute('muted', '');
-    DOM.videoFeed.setAttribute('playsinline', '');
-    DOM.frameCanvas.style.display = 'none';
-    DOM.frameCanvas.setAttribute('aria-hidden', 'true');
-
-    structuredLog('INFO', 'setupVideoCapture: Video feed and canvas initialized');
-    return true;
-  } catch (err) {
-    structuredLog('ERROR', 'setupVideoCapture error', { message: err.message });
-    dispatchEvent('logError', { message: `Video capture setup error: ${err.message}` });
-    return false;
-  }
-}
-
-export async function cleanupVideoCapture() {
-  const DOM = getDOM();
-  if (DOM.videoFeed?.srcObject) {
-    DOM.videoFeed.srcObject.getTracks().forEach(track => track.stop());
-    DOM.videoFeed.srcObject = null;
-  }
-  DOM.frameCanvas.width = 0;
-  DOM.frameCanvas.height = 0;
-  structuredLog('INFO', 'cleanupVideoCapture: Video capture cleaned up');
-}
-
+// File: web/core/dispatcher.js
 // File: web/core/dispatcher.js
 /* @ts-nocheck */
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
-import { getText, parseBrowserVersion, setTextAndAriaLabel } from '../utils/utils.js';
-import { withErrorBoundary } from '../utils/async.js';
+import { TTS_COOLDOWN_MS } from './constants.js';
+import { getText } from '../utils/utils.js';
+import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
 import { initializeMicAudio } from '../audio/audio-processor.js';
-import { processFrame } from './frame-processor.js';
-import { cleanupFrameProcessor } from './frame-processor.js';
-import { dispatchEvent, setDispatcher } from './dispatcher.js';
+import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
 
+let _dispatcherFn = null;
+
+export function setDispatcher(fn) {
+  _dispatcherFn = fn;
+}
+
+export function dispatchEvent(eventName, payload) {
+  if (_dispatcherFn) {
+    structuredLog('DEBUG', `dispatchEvent: ${eventName}`, { payload });
+    return _dispatcherFn(eventName, payload);
+  } else {
+    structuredLog('ERROR', 'dispatchEvent called before initialization', { eventName, payload });
+  }
+}
+
 let lastTTSTime = 0;
-const ttsCooldown = 3000;
+const ttsCooldown = TTS_COOLDOWN_MS;
 let fpsSamplerInterval = null;
 let frameCount = 0;
 
-export async function createEventDispatcher(DOM) {
-  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!DOM });
-  if (!DOM) {
-    structuredLog('ERROR', 'DOM is undefined in createEventDispatcher');
-    return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined DOM') };
+export async function createEventDispatcher(domElements) {
+  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!domElements });
+  if (!domElements) {
+    structuredLog('ERROR', 'domElements is undefined in createEventDispatcher');
+    return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined domElements') };
   }
 
   structuredLog('DEBUG', 'DOM elements received', {
-    hasButton1: !!DOM.button1,
-    hasButton2: !!DOM.button2,
-    hasButton3: !!DOM.button3,
-    hasButton4: !!DOM.button4,
-    hasButton5: !!DOM.button5,
-    hasButton6: !!DOM.button6,
-    hasVideoFeed: !!DOM.videoFeed,
+    hasButton1: !!domElements.button1,
+    hasButton2: !!domElements.button2,
+    hasButton3: !!domElements.button3,
+    hasButton4: !!domElements.button4,
+    hasButton5: !!domElements.button5,
+    hasButton6: !!domElements.button6,
+    hasVideoFeed: !!domElements.videoFeed,
   });
-
-  const [availableGrids, availableEngines, availableLanguages] = await Promise.all([
-    fetch('./synthesis-grids/available-grids.json').then(res => res.json()),
-    fetch('./audio/synthesis-engines/available-engines.json').then(res => res.json()),
-    fetch('./languages/available-languages.json').then(res => res.json())
-  ]);
+  
+  // Use the centrally loaded configurations from the settings object.
+  const { availableGrids, availableEngines, availableLanguages } = settings;
 
   const browserInfo = {
     userAgent: navigator.userAgent,
     platform: navigator.platform,
-    parsedBrowserVersion: parseBrowserVersion(navigator.userAgent),
+    parsedBrowserVersion: (() => {
+      const browserVersionRegex = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
+      const m = navigator.userAgent.match(browserVersionRegex);
+      return (m && (m[1] || m[2] || m[3] || m[4])) || 'Unknown';
+    })(),
     hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
     deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
     screen: `${screen.width}x${screen.height}`,
@@ -839,14 +778,14 @@ export async function createEventDispatcher(DOM) {
   const handlers = {
     updateUI: async ({ settingsMode, streamActive, micActive }) => {
       try {
-        if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
+        if (!domElements.button1 || !domElements.button2 || !domElements.button3 || !domElements.button4 || !domElements.button5 || !domElements.button6) {
           const missing = [
-            !DOM.button1 && 'button1',
-            !DOM.button2 && 'button2',
-            !DOM.button3 && 'button3',
-            !DOM.button4 && 'button4',
-            !DOM.button5 && 'button5',
-            !DOM.button6 && 'button6'
+            !domElements.button1 && 'button1',
+            !domElements.button2 && 'button2',
+            !domElements.button3 && 'button3',
+            !domElements.button4 && 'button4',
+            !domElements.button5 && 'button5',
+            !domElements.button6 && 'button6'
           ].filter(Boolean);
           structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
           dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
@@ -869,35 +808,51 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
           });
         }
-        setTextAndAriaLabel(DOM.button1, button1Text, button1Aria);
-
-        const button2Text = settingsMode
-          ? await getText('button2.settings.text', { engineName: engine?.id || 'Engine' }, 'text')
-          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.text`, {}, 'text');
-        const button2Aria = settingsMode
-          ? await getText('button2.settings.aria', { synthesisEngine: settings.synthesisEngine }, 'aria')
-          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.aria`, {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button2.tts.${settingsMode ? 'synthesisSelect' : 'micToggle'}`, {
-            state: settingsMode ? settings.synthesisEngine : (micActive ? 'turningOff' : 'turningOn')
-          });
-        }
-        setTextAndAriaLabel(DOM.button2, button2Text, button2Aria);
-
-        const button3Text = settingsMode
-          ? await getText('button3.settings.text', { languageName: language?.id || 'Language' }, 'text')
-          : await getText('button3.normal.text', { languageName: language?.id || 'Language' }, 'text');
-        const button3Aria = settingsMode
-          ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
-          : await getText('button3.normal.aria', { language: settings.language }, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button3.tts.${settingsMode ? 'videoSourceSelect' : 'languageSelect'}`, {
-            state: settingsMode ? (DOM.videoFeed?.srcObject?.getVideoTracks()[0]?.getSettings().facingMode || 'unknown') : settings.language
-          });
-        }
-        setTextAndAriaLabel(DOM.button3, button3Text, button3Aria);
-
-        const button4Text = settingsMode
+        if (domElements.button1) {
+          domElements.button1.textContent = button1Text;
+          domElements.button1.setAttribute('aria-label', button1Aria);
+        // --- Performance: Debounced UI update ---
+        import { debounce, rafThrottle } from '../utils/async.js';
+        const _updateUI = async ({ settingsMode, streamActive, micActive }) => {
+          try {
+            if (!domElements.button1 || !domElements.button2 || !domElements.button3 || !domElements.button4 || !domElements.button5 || !domElements.button6) {
+              const missing = [
+                !domElements.button1 && 'button1',
+                !domElements.button2 && 'button2',
+                !domElements.button3 && 'button3',
+                !domElements.button4 && 'button4',
+                !domElements.button5 && 'button5',
+                !domElements.button6 && 'button6'
+              ].filter(Boolean);
+              structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
+              dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
+              return;
+            }
+            const currentTime = performance.now();
+            const grid = availableGrids.find(g => g.id === settings.gridType);
+            const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
+            const language = availableLanguages.find(l => l.id === settings.language);
+            const button1Text = settingsMode
+              ? await getText('button1.settings.text', { gridName: grid?.id || 'Grid' }, 'text')
+              : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
+            const button1Aria = settingsMode
+              ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
+              : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
+            if (currentTime - lastTTSTime >= ttsCooldown) {
+              await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
+                state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
+              });
+            }
+            // ...existing code...
+            lastTTSTime = currentTime;
+            structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
+          } catch (err) {
+            structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
+            handlers.logError({ message: `UI update error: ${err.message}` });
+          }
+        };
+        const handlers = {
+          updateUI: debounce(_updateUI, 40), // ~25fps max
           ? await getText('button4.settings.text', {}, 'text')
           : await getText(`button4.normal.${settings.autoFPS ? 'auto' : 'manual'}.text`, { fps: Math.round(1000 / settings.updateInterval) }, 'text');
         const button4Aria = settingsMode
@@ -908,7 +863,12 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? 'save' : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
           });
         }
-        setTextAndAriaLabel(DOM.button4, button4Text, button4Aria);
+        if (DOM.button4) {
+          DOM.button4.textContent = button4Text;
+          DOM.button4.setAttribute('aria-label', button4Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button4Text });
+        }
 
         const button5Text = settingsMode
           ? await getText('button5.settings.text', {}, 'text')
@@ -921,14 +881,24 @@ export async function createEventDispatcher(DOM) {
             state: settingsMode ? 'load' : 'email'
           });
         }
-        setTextAndAriaLabel(DOM.button5, button5Text, button5Aria);
+        if (DOM.button5) {
+          DOM.button5.textContent = button5Text;
+          DOM.button5.setAttribute('aria-label', button5Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button5Text });
+        }
 
         const button6Text = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.text`, {}, 'text');
         const button6Aria = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.aria`, {}, 'aria');
         if (currentTime - lastTTSTime >= ttsCooldown) {
           await getText('button6.tts.settingsToggle', { state: settingsMode ? 'off' : 'on' });
         }
-        setTextAndAriaLabel(DOM.button6, button6Text, button6Aria);
+        if (DOM.button6) {
+          DOM.button6.textContent = button6Text;
+          DOM.button6.setAttribute('aria-label', button6Aria);
+        } else {
+          structuredLog('WARN', 'Element not found for text update', { text: button6Text });
+        }
 
         lastTTSTime = currentTime;
         structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
@@ -938,20 +908,44 @@ export async function createEventDispatcher(DOM) {
       }
     },
 
-    processFrame: async () => {
-      const { data: result, error } = await withErrorBoundary(processFrame, DOM.videoFeed.videoWidth, DOM.videoFeed.videoHeight);
-      if (error) {
-        structuredLog('ERROR', 'processFrame handler error', { message: error.message, stack: error.stack });
-        handlers.logError({ message: `Frame processing handler error: ${error.message}` });
-        return;
-      }
-      if (!result) {
-        structuredLog('WARN', 'processFrame: No result returned', { width: DOM.videoFeed?.videoWidth, height: DOM.videoFeed?.videoHeight });
-        return;
-      }
-      structuredLog('DEBUG', 'processFrame result', { notesCount: result.notes?.length || 0, avgIntensity: result.avgIntensity });
-      frameCount++;
-    },
+    // --- Performance: Reusable offscreen canvas for frame processing ---
+    processFrame: (() => {
+      let frameCanvas = null;
+      let frameCtx = null;
+      return async () => {
+        try {
+          if (!frameCanvas) {
+            frameCanvas = document.createElement('canvas');
+            frameCanvas.width = DOM.videoFeed.videoWidth;
+            frameCanvas.height = DOM.videoFeed.videoHeight;
+            frameCtx = frameCanvas.getContext('2d');
+            domElements.frameCanvas = frameCanvas; // store for debugging
+          }
+          // Resize if video dimensions change
+          if (frameCanvas.width !== DOM.videoFeed.videoWidth || frameCanvas.height !== DOM.videoFeed.videoHeight) {
+            frameCanvas.width = DOM.videoFeed.videoWidth;
+            frameCanvas.height = DOM.videoFeed.videoHeight;
+          }
+          frameCtx.drawImage(DOM.videoFeed, 0, 0, frameCanvas.width, frameCanvas.height);
+          const frameData = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height).data;
+          const { data: result, error } = await withErrorBoundary(processFrameWithState, frameData, DOM.videoFeed.videoWidth, DOM.videoFeed.videoHeight);
+          if (error) {
+            structuredLog('ERROR', 'processFrame handler error', { message: error.message, stack: error.stack });
+            handlers.logError({ message: `Frame processing handler error: ${error.message}` });
+            return;
+          }
+          if (!result) {
+            structuredLog('WARN', 'processFrame: No result returned', { width: DOM.videoFeed?.videoWidth, height: DOM.videoFeed?.videoHeight });
+            return;
+          }
+          structuredLog('DEBUG', 'processFrame result', { notesCount: result.notes?.length || 0, avgIntensity: result.avgIntensity });
+          frameCount++;
+        } catch (err) {
+          structuredLog('ERROR', 'processFrame error', { message: err.message, stack: err.stack });
+          handlers.logError({ message: `Frame processing error: ${err.message}` });
+        }
+      };
+    })(),
 
     startStop: async ({ settingsMode }) => {
       try {
@@ -962,7 +956,15 @@ export async function createEventDispatcher(DOM) {
           await getText('button1.tts.gridSelect', { state: settings.gridType });
         } else {
           if (!settings.stream) {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            // first try user-facing video + no audio (audio toggled separately)
+            let constraints = { video: { facingMode: 'user' }, audio: false };
+            let stream;
+            try {
+              stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (err) {
+              structuredLog('WARN', 'getUserMedia(user) failed, retrying default video', { message: err.message });
+              stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            }
             DOM.videoFeed.srcObject = stream;
             await new Promise((resolve, reject) => {
               DOM.videoFeed.addEventListener('loadedmetadata', () => {
@@ -975,9 +977,9 @@ export async function createEventDispatcher(DOM) {
               DOM.videoFeed.addEventListener('error', reject, { once: true });
             });
             setStream(stream);
-            setAudioInterval(setInterval(() => {
-              dispatchEvent('processFrame');
-            }, settings.updateInterval));
+            // schedule frame processing
+            const timerId = setInterval(() => dispatchEvent('processFrame'), settings.updateInterval);
+            setAudioInterval(timerId);
             await getText('button1.tts.startStop', { state: 'starting' });
           } else {
             settings.stream.getVideoTracks().forEach(track => track.stop());
@@ -1259,61 +1261,52 @@ export async function createEventDispatcher(DOM) {
   return { dispatchEvent };
 }
 
-// File: web/core/frame-processor.js
-import { settings } from "./state.js";
-import { dispatchEvent } from "./dispatcher.js";
+// File: web/core/constants.js
+// Shared constants for the acoustsee project
+export const TTS_COOLDOWN_MS = 3000;
+export const DEFAULT_FPS = 20;
+export const FALLBACK_LANGUAGE = 'en-US';
+export const DEFAULT_LOG_LEVEL = 'DEBUG';
+export const LOG_LEVELS = {
+  DEBUG: 'debug',
+  INFO: 'info',
+  WARN: 'warn',
+  ERROR: 'error'
+};
 
-export async function mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
-  try {
-    // Use cached grids loaded at startup
-    const availableGrids = settings.availableGrids;
-    const grid = availableGrids.find((g) => g.id === settings.gridType);
-    if (!grid) {
-      console.error(`Grid not found: ${settings.gridType}`);
-      dispatchEvent("logError", { message: `Grid not found: ${settings.gridType}` });
-      return { notes: [], prevFrameDataLeft, prevFrameDataRight };
-    }
-    const gridModule = await import(`./synthesis-methods/grids/${grid.id}.js`);
-    const mapFunction = gridModule[`mapFrameTo${grid.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
-    if (!mapFunction) {
-      console.error(`Map function for ${grid.id} not found`);
-      dispatchEvent("logError", { message: `Map function for ${grid.id} not found` });
-      return { notes: [], prevFrameDataLeft, prevFrameDataRight };
-    }
-    // Determine split buffers and copy full RGBA pixels
-    const halfWidth = Math.floor(width / 2);
-    const frameSize = halfWidth * height * 4;
-    const leftFrameData = new Uint8ClampedArray(frameSize);
-    const rightFrameData = new Uint8ClampedArray(frameSize);
 
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < halfWidth; x++) {
-        const fullIdx = (y * width + x) * 4;
-        const halfIdx = (y * halfWidth + x) * 4;
-        // Copy left RGBA
-        leftFrameData.set(frameData.subarray(fullIdx, fullIdx + 4), halfIdx);
-        // Copy right RGBA
-        const fullIdxR = (y * width + x + halfWidth) * 4;
-        rightFrameData.set(frameData.subarray(fullIdxR, fullIdxR + 4), halfIdx);
-      }
-    }
-    const leftResult = mapFunction(leftFrameData, halfWidth, height, prevFrameDataLeft, -1);
-    const rightResult = mapFunction(rightFrameData, halfWidth, height, prevFrameDataRight, 1);
-    const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
-    return {
-      notes: allNotes,
-      prevFrameDataLeft: leftResult.newFrameData,
-      prevFrameDataRight: rightResult.newFrameData,
-    };
-  } catch (err) {
-    console.error("mapFrameToNotes error:", err.message);
-    dispatchEvent("logError", { message: `Frame mapping error: ${err.message}` });
-    return { notes: [], prevFrameDataLeft, prevFrameDataRight };
+// File: web/core/context.js
+let domElements = null;
+let dispatchEvent = null;
+
+export function setDOM(dom) {
+  domElements = dom;
+}
+
+export function getDOM() {
+  if (!domElements) {
+    console.error("domElements not initialized");
+    throw new Error("domElements not initialized");
   }
+  return domElements;
+}
+
+export function setDispatchEvent(dispatcher) {
+  dispatchEvent = dispatcher;
+}
+
+export function getDispatchEvent() {
+  if (!dispatchEvent) {
+    console.error("dispatchEvent not initialized");
+    throw new Error("dispatchEvent not initialized");
+  }
+  return dispatchEvent;
 }
 
 // File: web/core/state.js
-import { structuredLog } from '../utils/logging.js';  // Top import.
+// File: web/core/state.js
+import { structuredLog } from '../utils/logging.js';
+import { FALLBACK_LANGUAGE } from './constants.js';
 import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';  // New import for DB logging.
 
 export let settings = {
@@ -1331,28 +1324,95 @@ export let settings = {
   isSettingsMode: false,
   micStream: null,
   ttsEnabled: false,
-  dayNightMode: 'day'
+  dayNightMode: 'day',
+  resetStateOnError: true, // New flag to control state reset on errors
+  motionThreshold: 20 // Default threshold for motion detection
 };
 
-export const loadConfigs = (async () => {
-  try {
-    const [grids, engines, languages, intervals] = await Promise.all([
-      fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
-      fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
-      fetch('./languages/availableLanguages.json').then(res => res.json()),
-      Promise.resolve([50, 33, 16])
-    ]);
-    settings.availableGrids = grids;
-    settings.availableEngines = engines;
-    settings.availableLanguages = languages;
-    settings.gridType = grids[0]?.id || settings.gridType;
-    settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
-    settings.language = languages[0]?.id || settings.language;
-    settings.updateInterval = intervals[0] || settings.updateInterval;
-  } catch (err) {
-    structuredLog('ERROR', 'Failed to load configurations', { message: err.message });
+/**
+ * Initializes default settings from the loaded configuration files.
+ * This runs after the config files have been fetched and parsed.
+ */
+function initializeDefaults() {
+  structuredLog('INFO', 'Initializing settings from loaded configs.');
+
+  if (settings.availableGrids.length > 0 && !settings.gridType) {
+    settings.gridType = settings.availableGrids[0].id;
   }
-})();
+
+  if (settings.availableEngines.length > 0 && !settings.synthesisEngine) {
+    settings.synthesisEngine = settings.availableEngines[0].id;
+  }
+
+  if (settings.availableLanguages.length > 0) {
+    if (!settings.language || !settings.availableLanguages.some(l => l.id === settings.language)) {
+      settings.language = settings.availableLanguages[0].id;
+    }
+  }
+  
+  structuredLog('INFO', 'Settings initialized', { settings });
+}
+
+export const loadConfigs = Promise.all([
+  fetch('./video/grids/available-grids.json')
+    .then(async res => {
+      if (!res.ok) throw new Error(`Failed to fetch available-grids.json: ${res.status}`);
+      const clone = res.clone();
+      const data = await res.json();
+      settings.availableGrids = data;
+      console.log('Debug: availableGrids raw JSON', await clone.text());
+      if (settings.availableGrids.length === 0) console.warn('Debug: availableGrids is empty array');
+      return data;
+    })
+    .catch(err => {
+      console.error('available-grids load error:', err.message);
+      structuredLog('ERROR', 'available-grids load error', { message: err.message });
+      settings.availableGrids = [];
+      return [];
+    }),
+
+  fetch('./audio/synths/available-engines.json')
+    .then(async res => {
+      if (!res.ok) throw new Error(`Failed to fetch available-engines.json: ${res.status}`);
+      const clone = res.clone();
+      const data = await res.json();
+      settings.availableEngines = data;
+      console.log('Debug: availableEngines raw JSON', await clone.text());
+      if (settings.availableEngines.length === 0) console.warn('Debug: availableEngines is empty array');
+      return data;
+    })
+    .catch(err => {
+      console.error('available-engines load error:', err.message);
+      structuredLog('ERROR', 'available-engines load error', { message: err.message });
+      settings.availableEngines = [];
+      return [];
+    }),
+
+  fetch('./languages/available-languages.json')
+    .then(async res => {
+      if (!res.ok) throw new Error(`Failed to fetch available-languages.json: ${res.status}`);
+      const clone = res.clone();
+      const data = await res.json();
+      settings.availableLanguages = data;
+      console.log('Debug: availableLanguages raw JSON', await clone.text());
+      if (settings.availableLanguages.length === 0) console.warn('Debug: availableLanguages is empty array');
+      return data;
+    })
+    .catch(err => {
+      console.error('available-languages load error:', err.message);
+      structuredLog('ERROR', 'available-languages load error', { message: err.message });
+      settings.availableLanguages = [];
+      return [];
+    }),
+])
+  .then(() => {
+    initializeDefaults();  // Derive defaults from loaded (or empty) arrays
+  })
+  .catch(err => {
+    console.error('Configs load aggregate error:', err.message);
+    structuredLog('ERROR', 'Configs load aggregate error', { message: err.message });
+    initializeDefaults();  // Ensure defaults even if failed
+  });
 
 export async function getLogs() {
   // Fetch from IndexedDB and pretty-print for readability.
@@ -1381,6 +1441,390 @@ export function setAudioInterval(timerId) {
   }
 }
 
+export function setMicStream(micStream) {
+  settings.micStream = micStream;
+  if (settings.debugLogging) {
+    structuredLog('INFO', 'setMicStream', { micStreamSet: !!micStream });
+  }
+}
+
+// File: web/video/grids/available-grids.json
+
+[
+  {
+    "id": "hex-tonnetz",
+    "createdAt": 1750899236982.1191
+  },
+  {
+    "id": "circle-of-fifths",
+    "createdAt": 1750899236950.1191
+  }
+]
+
+// File: web/video/grids/hex-tonnetz.js
+import { settings } from "../../core/state.js";
+import { structuredLog } from "../../utils/logging.js";
+
+const gridSize = 32;
+const notesPerOctave = 12;
+const octaves = 5;
+const minFreq = 100;
+const maxFreq = 3200;
+const frequencies = [];
+for (let octave = 0; octave < octaves; octave++) {
+  for (let note = 0; note < notesPerOctave; note++) {
+    const freq = minFreq * Math.pow(2, octave + note / notesPerOctave);
+    if (freq <= maxFreq) frequencies.push(freq);
+  }
+}
+const tonnetzGrid = Array(gridSize)
+  .fill()
+  .map(() => Array(gridSize).fill(0));
+for (let y = 0; y < gridSize; y++) {
+  for (let x = 0; x < gridSize; x++) {
+    const octave = Math.floor((y / gridSize) * octaves);
+    const noteOffset = (x + (y % 2) * 6) % notesPerOctave;
+    const freqIndex = octave * notesPerOctave + noteOffset;
+    tonnetzGrid[y][x] =
+      frequencies[freqIndex % frequencies.length] ||
+      frequencies[frequencies.length - 1];
+  }
+}
+
+export function mapFrameToHexTonnetz(
+  frameData,
+  width,
+  height,
+  prevFrameData,
+  panValue,
+) {
+  const gridWidth = width / gridSize;
+  const gridHeight = height / gridSize;
+  const movingRegions = [];
+  const newFrameData = new Uint8ClampedArray(frameData);
+ 
+ // Correct avgIntensity over pixels (skip alpha)
+ let avgIntensity = 0;
+ for (let i = 0; i < frameData.length; i += 4) {
+   const r = frameData[i];
+   const g = frameData[i + 1];
+   const b = frameData[i + 2];
+   avgIntensity += (r + g + b) / 3;
+ }
+ avgIntensity /= (frameData.length / 4);  
+
+ if (prevFrameData) {
+   for (let y = 0; y < height; y++) {
+     for (let x = 0; x < width; x++) {
+       const idx = (y * width + x) * 4;
+       const r = frameData[idx];
+       const g = frameData[idx + 1];
+       const b = frameData[idx + 2];
+       const intensity = (r + g + b) / 3;
+
+       const pr = prevFrameData[idx];
+       const pg = prevFrameData[idx + 1];
+       const pb = prevFrameData[idx + 2];
+       const prevIntensity = (pr + pg + pb) / 3;
+
+       const delta = Math.abs(intensity - prevIntensity);
+       if (delta > (settings.motionThreshold || 20)) {
+         const gridX = Math.floor(x / gridWidth);
+         const gridY = Math.floor(y / gridHeight);
+         movingRegions.push({ gridX, gridY, intensity, delta });
+       }
+     }
+   }
+   structuredLog('DEBUG', 'Motion regions detected', { count: movingRegions.length, threshold: settings.motionThreshold || 20 });
+ }
+
+  movingRegions.sort((a, b) => b.delta - a.delta);
+  const notes = [];
+  const usedCells = new Set();
+  for (let i = 0; i < Math.min(16, movingRegions.length); i++) {
+    const { gridX, gridY, intensity } = movingRegions[i];
+    const cellKey = `${gridX},${gridY}`;
+    if (usedCells.has(cellKey)) continue;
+    usedCells.add(cellKey);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        usedCells.add(`${gridX + dx},${gridY + dy}`);
+      }
+    }
+    const freq = tonnetzGrid[gridY][gridX];
+    const amplitude =
+      settings.dayNightMode === "day"
+        ? 0.02 + (intensity / 255) * 0.06
+        : 0.08 - (intensity / 255) * 0.06;
+    const harmonics = [freq * Math.pow(2, 7 / 12), freq * Math.pow(2, 4 / 12)];
+    notes.push({ pitch: freq, intensity: amplitude, harmonics, pan: panValue });
+  }
+
+  return { notes, newFrameData, avgIntensity };
+}
+
+
+// File: web/video/grids/circle-of-fifths.js
+import { settings } from "../../core/state.js";
+import { structuredLog } from "../../utils/logging.js";
+
+const notesPerOctave = 12;
+const octaves = 5;
+const minFreq = 100;
+const maxFreq = 3200;
+const frequencies = [];
+for (let octave = 0; octave < octaves; octave++) {
+  for (let note = 0; note < notesPerOctave; note++) {
+    const freq = minFreq * Math.pow(2, octave + note / notesPerOctave);
+    if (freq <= maxFreq) frequencies.push(freq);
+  }
+}
+
+export function mapFrameToCircleOfFifths(
+  frameData,
+  width,
+  height,
+  prevFrameData,
+  panValue,
+) {
+  const gridWidth = width / 12;
+  const gridHeight = height / 12;
+  const movingRegions = [];
+  const newFrameData = new Uint8ClampedArray(frameData);
+  const motionThreshold = settings.motionThreshold || 20;
+  // Correct avgIntensity over pixels (skip alpha)
+  let avgIntensity = 0;
+  for (let i = 0; i < frameData.length; i += 4) {
+    const r = frameData[i];
+    const g = frameData[i + 1];
+    const b = frameData[i + 2];
+    avgIntensity += (r + g + b) / 3;
+  }
+  avgIntensity /= (frameData.length / 4);
+
+  if (prevFrameData) {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = frameData[idx];
+        const g = frameData[idx + 1];
+        const b = frameData[idx + 2];
+        const intensity = (r + g + b) / 3;
+
+        const pr = prevFrameData[idx];
+        const pg = prevFrameData[idx + 1];
+        const pb = prevFrameData[idx + 2];
+        const prevIntensity = (pr + pg + pb) / 3;
+
+        const delta = Math.abs(intensity - prevIntensity);
+        if (delta > motionThreshold) {
+          const gridX = Math.floor(x / gridWidth);
+          const gridY = Math.floor(y / gridHeight);
+          movingRegions.push({ gridX, gridY, intensity, delta });
+        }
+      }
+    }
+    structuredLog('DEBUG', 'Motion regions detected', { count: movingRegions.length, threshold: motionThreshold });
+  }
+
+  movingRegions.sort((a, b) => b.delta - a.delta);
+  const notes = [];
+  const usedCells = new Set();
+  for (let i = 0; i < Math.min(8, movingRegions.length); i++) {
+    const { gridX, gridY, intensity } = movingRegions[i];
+    const cellKey = `${gridX},${gridY}`;
+    if (usedCells.has(cellKey)) continue;
+    usedCells.add(cellKey);
+    const noteIndex = (gridX + gridY) % notesPerOctave;
+    const freq = frequencies[noteIndex] || frequencies[frequencies.length - 1];
+    const amplitude =
+      settings.dayNightMode === "day"
+        ? 0.02 + (intensity / 255) * 0.06
+        : 0.08 - (intensity / 255) * 0.06;
+    const harmonics = [freq * Math.pow(2, 7 / 12), freq * Math.pow(2, 4 / 12)];
+    notes.push({ pitch: freq, intensity: amplitude, harmonics, pan: panValue });
+  }
+
+  return { notes, newFrameData, avgIntensity };
+}
+
+
+// File: web/video/video-capture.js
+import { settings } from '../core/state.js';
+import { structuredLog } from '../utils/logging.js';
+import { getText } from '../utils/utils.js';
+import { dispatchEvent } from '../core/dispatcher.js';
+import { getDOM } from '../core/context.js';
+
+export async function setupVideoCapture(DOM) {
+  try {
+    if (!DOM.videoFeed || !DOM.frameCanvas) {
+      const msg = 'Missing videoFeed or frameCanvas in setupVideoCapture';
+      structuredLog('ERROR', msg);
+      dispatchEvent('logError', { message: msg });
+      return false;
+    }
+
+    DOM.videoFeed.setAttribute('autoplay', '');
+    DOM.videoFeed.setAttribute('muted', '');
+    DOM.videoFeed.setAttribute('playsinline', '');
+    DOM.frameCanvas.style.display = 'none';
+    DOM.frameCanvas.setAttribute('aria-hidden', 'true');
+
+    structuredLog('INFO', 'setupVideoCapture: Video feed and canvas initialized');
+    return true;
+  } catch (err) {
+    structuredLog('ERROR', 'setupVideoCapture error', { message: err.message });
+    dispatchEvent('logError', { message: `Video capture setup error: ${err.message}` });
+    return false;
+  }
+}
+
+export async function cleanupVideoCapture() {
+  const DOM = getDOM();
+  if (DOM.videoFeed?.srcObject) {
+    DOM.videoFeed.srcObject.getTracks().forEach(track => track.stop());
+    DOM.videoFeed.srcObject = null;
+  }
+  DOM.frameCanvas.width = 0;
+  DOM.frameCanvas.height = 0;
+  structuredLog('INFO', 'cleanupVideoCapture: Video capture cleaned up');
+}
+
+// File: web/video/frame-processor.js
+import { settings } from "../core/state.js";
+import { dispatchEvent } from "../core/dispatcher.js";
+import { structuredLog } from "../utils/logging.js";
+
+// Module-level state for stateful wrapper
+let prevFrameDataLeft = null;
+let prevFrameDataRight = null;
+
+export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRight) {
+  try {
+    // Guard against invalid dimensions
+    if (!width || !height || width <= 0 || height <= 0) {
+      structuredLog('ERROR', 'Invalid dimensions for frame processing', { width, height });
+      dispatchEvent("logError", { message: `Invalid dimensions for frame processing: ${width}x${height}` });
+      // Reset state on dimension error if configured
+      if (settings.resetStateOnError) {
+        return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
+      }
+      return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+    }
+
+    // Validate frameData
+    if (!frameData || !(frameData instanceof Uint8ClampedArray) || frameData.length < width * height * 4) {
+      structuredLog('ERROR', 'Invalid frameData for processing', { frameDataLength: frameData?.length || 0 });
+      dispatchEvent("logError", { message: `Invalid frameData: length ${frameData?.length || 0}` });
+      if (settings.resetStateOnError) {
+        return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
+      }
+      return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+    }
+    // New: Initial frame prev data check
+    if (!prevLeft || !prevRight) {
+      structuredLog('INFO', 'mapFrameToNotes: Initial frame, no prev data', { width, height });
+    }
+
+    // Use cached grids loaded at startup
+    const availableGrids = settings.availableGrids;
+    const grid = availableGrids.find((g) => g.id === settings.gridType);
+    if (!grid) {
+      console.error(`Grid not found: ${settings.gridType}`);
+      dispatchEvent("logError", { message: `Grid not found: ${settings.gridType}` });
+      return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+    }
+    const gridModule = await import(`../synthesis-grids/${grid.id}.js`);
+    const mapFunction = gridModule[`mapFrameTo${grid.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
+    if (!mapFunction) {
+      console.error(`Map function for ${grid.id} not found`);
+      dispatchEvent("logError", { message: `Map function for ${grid.id} not found` });
+      return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+    }
+
+    // Determine split buffers and copy full RGBA pixels
+    const halfWidth = Math.floor(width / 2);
+    const frameSize = halfWidth * height * 4;
+    const leftFrameData = new Uint8ClampedArray(frameSize);
+    const rightFrameData = new Uint8ClampedArray(frameSize);
+
+    // TODO: Optimize with buffer pooling or single-pass copy if performance becomes an issue
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < halfWidth; x++) {
+        const fullIdx = (y * width + x) * 4;
+        const halfIdx = (y * halfWidth + x) * 4;
+        // Copy left RGBA
+        leftFrameData.set(frameData.subarray(fullIdx, fullIdx + 4), halfIdx);
+        // Copy right RGBA
+        const fullIdxR = (y * width + x + halfWidth) * 4;
+        rightFrameData.set(frameData.subarray(fullIdxR, fullIdxR + 4), halfIdx);
+      }
+    }
+
+    const leftResult = mapFunction(leftFrameData, halfWidth, height, prevLeft, -1);
+    const rightResult = mapFunction(rightFrameData, halfWidth, height, prevRight, 1);
+    const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
+
+    // Compute average intensity across both frames
+    const avgIntensity = ((leftResult.avgIntensity || 0) + (rightResult.avgIntensity || 0)) / 2;
+
+    return {
+      notes: allNotes,
+      prevFrameDataLeft: leftResult.newFrameData,
+      prevFrameDataRight: rightResult.newFrameData,
+      avgIntensity
+    };
+  } catch (err) {
+    console.error("mapFrameToNotes error:", err.message);
+    dispatchEvent("logError", { message: `Frame mapping error: ${err.message}` });
+    if (settings.resetStateOnError) {
+      return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
+    }
+    return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+  }
+}
+
+// Stateful wrapper for dispatcher integration
+export async function processFrameWithState(frameData, width, height) {
+  // New: Validate frameData variance
+  let hasVariance = false;
+  let sampleSum = 0;
+  for (let i = 0; i < Math.min(1000, frameData.length); i += 4) {
+    const intensity = (frameData[i] + frameData[i+1] + frameData[i+2]) / 3;
+    sampleSum += intensity;
+    if (intensity > 0) hasVariance = true;
+  }
+  if (!hasVariance) {
+    structuredLog('WARN', 'processFrame: No variance in frame data', { sampleAvg: sampleSum / 250 });
+    return { notes: [], avgIntensity: 0 };
+  }
+
+  const result = await mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight);
+  prevFrameDataLeft = result.prevFrameDataLeft;
+  prevFrameDataRight = result.prevFrameDataRight;
+  return result;
+}
+
+// Expose mapFrameToNotes as processFrame for backward compatibility
+export { mapFrameToNotes as processFrame };
+
+/** Cleanup function for frame processor */
+export async function cleanupFrameProcessor() {
+  try {
+    structuredLog('INFO', 'cleanupFrameProcessor: Resetting frame processor state');
+    prevFrameDataLeft = null;
+    prevFrameDataRight = null;
+    return { prevFrameDataLeft: null, prevFrameDataRight: null };
+  } catch (err) {
+    structuredLog('ERROR', 'cleanupFrameProcessor error', { message: err.message });
+    dispatchEvent('logError', { message: `Frame processor cleanup error: ${err.message}` });
+    prevFrameDataLeft = null;
+    prevFrameDataRight = null;
+    return { prevFrameDataLeft: null, prevFrameDataRight: null };
+  }
+}
 
 // File: web/languages/es-ES.json
 {
@@ -1511,18 +1955,6 @@ export function setAudioInterval(timerId) {
     }
   }
 }
-
-// File: web/languages/availableLanguages.json
-[
-  {
-    "id": "es-ES",
-    "createdAt": 1751622668665.7266
-  },
-  {
-    "id": "en-US",
-    "createdAt": 1751622636604.726
-  }
-]
 
 // File: web/languages/en-US.json
 {
@@ -1670,6 +2102,18 @@ export function setAudioInterval(timerId) {
   }
 }
 
+// File: web/languages/available-languages.json
+[
+  {
+    "id": "es-ES",
+    "createdAt": 1751622668665.7266
+  },
+  {
+    "id": "en-US",
+    "createdAt": 1751622636604.726
+  }
+]
+
 // File: web/styles.css
 body {
   font-family: Arial, sans-serif;
@@ -1774,182 +2218,16 @@ body {
 }
 
 
-// File: web/audio/synthesis-engines/sine-wave.js
-import { audioContext, oscillators } from "../../audio-processor.js";
-
-export function playSineWave(notes) {
-  let oscIndex = 0;
-  const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
-  for (let i = 0; i < oscillators.length; i++) {
-    const oscData = oscillators[i];
-    if (oscIndex < allNotes.length && i < oscillators.length) {
-      const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
-      oscData.osc.type = "sine";
-      oscData.osc.frequency.setTargetAtTime(
-        pitch,
-        audioContext.currentTime,
-        0.015,
-      );
-      oscData.gain.gain.setTargetAtTime(
-        intensity,
-        audioContext.currentTime,
-        0.015,
-      );
-      oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
-      oscData.active = true;
-      if (
-        harmonics.length &&
-        oscIndex + harmonics.length < oscillators.length
-      ) {
-        for (
-          let h = 0;
-          h < harmonics.length && oscIndex + h < oscillators.length;
-          h++
-        ) {
-          oscIndex++;
-          const harmonicOsc = oscillators[oscIndex];
-          harmonicOsc.osc.type = "sine";
-          harmonicOsc.osc.frequency.setTargetAtTime(
-            harmonics[h],
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.gain.gain.setTargetAtTime(
-            intensity * 0.5,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.panner.pan.setTargetAtTime(
-            pan,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.active = true;
-        }
-      }
-      oscIndex++;
-    } else {
-      oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
-      oscData.active = false;
-    }
-  }
-}
-
-
-// File: web/audio/synthesis-engines/fm-synthesis.js
-import { audioContext, oscillators, modulators } from "../../audio-processor.js";
-
-export function playFmSynthesis(notes) {
-  let oscIndex = 0;
-  let modIndex = 0;
-  const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
-  for (let i = 0; i < oscillators.length; i++) {
-    const oscData = oscillators[i];
-    if (oscIndex < allNotes.length) {
-      const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
-      oscData.osc.type = "sine";
-      oscData.osc.frequency.setTargetAtTime(
-        pitch,
-        audioContext.currentTime,
-        0.015,
-      );
-      oscData.gain.gain.setTargetAtTime(
-        intensity,
-        audioContext.currentTime,
-        0.015,
-      );
-      oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
-      oscData.active = true;
-      if (harmonics.length) {
-        // handle one modulator per note, reuse or create
-        let modData;
-        if (modIndex < modulators.length) {
-          modData = modulators[modIndex];
-        } else {
-          const mOsc = audioContext.createOscillator();
-          const mGain = audioContext.createGain();
-          modulators.push({ osc: mOsc, gain: mGain, started: false });
-          modData = modulators[modulators.length - 1];
-        }
-        // configure modulator
-        modData.osc.type = "sine";
-        modData.osc.frequency.setTargetAtTime(
-          pitch * 2,
-          audioContext.currentTime,
-          0.015,
-        );
-        modData.gain.gain.setTargetAtTime(
-          intensity * 100,
-          audioContext.currentTime,
-          0.015,
-        );
-        // connect and start only once
-        modData.osc.connect(modData.gain).connect(oscData.osc.frequency);
-        if (!modData.started) {
-          modData.osc.start();
-          modData.started = true;
-        }
-        modIndex++;
-        // Use next oscillator for main harmonic
-        if (oscIndex + 1 < oscillators.length) {
-          const harmonicOsc = oscillators[oscIndex + 1];
-          harmonicOsc.osc.type = "sine";
-          harmonicOsc.osc.frequency.setTargetAtTime(
-            harmonics[0],
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.gain.gain.setTargetAtTime(
-            intensity * 0.5,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.panner.pan.setTargetAtTime(
-            pan,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.active = true;
-        }
-      }
-      oscIndex++;
-    } else {
-      oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
-      oscData.active = false;
-    }
-  }
-  // silence any unused modulators
-  for (let i = modIndex; i < modulators.length; i++) {
-    modulators[i].gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
-  }
-}
-
-
-// File: web/audio/synthesis-engines/availableEngines.json
-[
-  {
-    "id": "sine-wave",
-    "createdAt": 1750899236911.1191
-  },
-  {
-    "id": "fm-synthesis",
-    "createdAt": 1750899236897.1191
-  }
-]
-
-// File: web/audio/synthesis-engines/available-engines.json
-
-
-
 // File: web/audio/audio-controls.js
 // Update web/ui/audio-controls.js: Remove { passive: true } from touchstart listener to ensure it counts as a user gesture for AudioContext
 
-import { getText } from "./utils.js";
-import { initializeAudio, cleanupAudio } from "../audio-processor.js";
+import { getText } from "../utils/utils.js";
+import { initializeAudio } from "./audio-processor.js";
 import { structuredLog } from "../utils/logging.js";
+import { AudioManager } from "./audio-manager.js";
 
+const audioManager = new AudioManager();
 let isAudioContextInitialized = false;
-let audioContext = null;
 
 export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
   if (!DOM || !DOM.powerOn) {
@@ -1960,19 +2238,10 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
 
   const initializeAudioContext = async (event) => {
     console.log(`powerOn: ${event.type} event`);
-    const maxRetries = 3;
-    for (let i = 0; i <= maxRetries; i++) {
-      try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
-        if (!audioContext) throw new Error("AudioContext creation failed");
-        if (audioContext.state === "suspended") {
-          console.log("AudioContext is suspended, attempting to resume");
-          await audioContext.resume();
-        }
-        if (audioContext.state !== "running") {
-          throw new Error(`AudioContext failed to start, state: ${audioContext.state}`);
-        }
-        await initializeAudio(audioContext);
+    try {
+      const success = await audioManager.initialize();
+      if (success) {
+        await initializeAudio(audioManager.context);
         isAudioContextInitialized = true;
         DOM.splashScreen.style.display = "none";
         DOM.mainContainer.style.display = "grid";
@@ -1980,14 +2249,14 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
         dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
         console.log("powerOn: AudioContext initialized, UI updated");
         return;
-      } catch (err) {
-        if (err.message.includes("Permission denied")) {
-          structuredLog('ERROR', 'Audio init permission denied', { message: err.message });
-          await getText('button2.tts.micError');
-        }
-        console.error(`Attempt ${i + 1} failed: ${err.message}`);
-        dispatch("logError", { message: `Audio init attempt ${i + 1} failed: ${err.message}` });
       }
+    } catch (err) {
+      if (err.message.includes("Permission denied")) {
+        structuredLog('ERROR', 'Audio init permission denied', { message: err.message });
+        await getText('button2.tts.micError');
+      }
+      console.error(`Audio init failed: ${err.message}`);
+      dispatch("logError", { message: `Audio init failed: ${err.message}` });
     }
     await getText("audioError");
     DOM.powerOn.textContent = await getText("powerOn.failed.text", {}, 'text');
@@ -1999,7 +2268,7 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
       await initializeAudioContext(event);
     } else {
       console.log("powerOn: Audio already initialized, cleaning up");
-      await cleanupAudio();
+      await audioManager.cleanup();
       isAudioContextInitialized = false;
       DOM.splashScreen.style.display = "flex";
       DOM.mainContainer.style.display = "none";
@@ -2015,8 +2284,61 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
 }
 
 
+// File: web/audio/audio-manager.js
+import { structuredLog } from '../utils/logging.js';
+import { dispatchEvent } from '../core/dispatcher.js';
+
+export class AudioManager {
+  constructor() {
+    this.context = null;
+    this.state = 'uninitialized';
+  }
+
+  async initialize() {
+    if (this.state !== 'uninitialized') {
+      structuredLog('WARN', 'AudioManager: Already initialized', { currentState: this.state });
+      return this.context?.state === 'running';
+    }
+
+    try {
+      this.state = 'initializing';
+      this.context = new (window.AudioContext || window.webkitAudioContext)();
+      
+      if (this.context.state === 'suspended') {
+        structuredLog('INFO', 'AudioManager: Resuming suspended context');
+        await this.context.resume();
+      }
+      
+      if (this.context.state !== 'running') {
+        throw new Error(`AudioContext failed to reach running state: ${this.context.state}`);
+      }
+      
+      this.state = 'ready';
+      structuredLog('INFO', 'AudioManager: Initialized', { sampleRate: this.context.sampleRate, state: this.state });
+      return true;
+    } catch (error) {
+      this.state = 'error';
+      structuredLog('ERROR', 'AudioManager init error', { message: error.message });
+      dispatchEvent('logError', { message: `Audio init error: ${error.message}` });
+      throw error;
+    }
+  }
+
+  async cleanup() {
+    if (this.context) {
+      await this.context.close();
+      this.context = null;
+      this.state = 'uninitialized';
+      structuredLog('INFO', 'AudioManager: Cleaned up');
+    }
+  }
+
+  getState() {
+    return { state: this.state, contextState: this.context?.state };
+  }
+}
+
 // File: web/audio/audio-processor.js
-// future/web/audio-processor.js
 import { settings } from "../core/state.js";
 import { dispatchEvent } from "../core/dispatcher.js";
 import { structuredLog } from "../utils/logging.js";  // Add for detailed logging.
@@ -2024,6 +2346,7 @@ import { structuredLog } from "../utils/logging.js";  // Add for detailed loggin
 let audioContext = null;
 let isAudioInitialized = false;
 let oscillators = [];
+let oscillatorPool = [];
 let modulators = [];
 let micSource = null;
 let micGainNode = null;
@@ -2047,22 +2370,27 @@ export async function initializeAudio(context) {
     if (audioContext.state !== "running") {
       throw new Error(`AudioContext not running, state: ${audioContext.state}`);
     }
-    oscillators = Array(24)
-      .fill()
-      .map(() => {
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        const panner = audioContext.createStereoPanner();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(0, audioContext.currentTime);
-        gain.gain.setValueAtTime(0, audioContext.currentTime);
-        panner.pan.setValueAtTime(0, audioContext.currentTime);
-        osc.connect(gain).connect(panner).connect(audioContext.destination);
-        osc.start();
-        return { osc, gain, panner, active: false };
-      });
+    // Determine max notes from grids
+    let maxNotes = 24;
+    if (settings.availableGrids && Array.isArray(settings.availableGrids)) {
+      maxNotes = Math.max(...settings.availableGrids.map(g => g.maxNotes || 24));
+    }
+    oscillatorPool = [];
+    for (let i = 0; i < maxNotes; i++) {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const panner = audioContext.createStereoPanner();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(0, audioContext.currentTime);
+      gain.gain.setValueAtTime(0, audioContext.currentTime);
+      panner.pan.setValueAtTime(0, audioContext.currentTime);
+      osc.connect(gain).connect(panner).connect(audioContext.destination);
+      osc.start();
+      oscillatorPool.push({ osc, gain, panner, active: false });
+    }
+    oscillators = oscillatorPool;
     isAudioInitialized = true;
-    structuredLog('INFO', 'initializeAudio: Audio initialized with 24 oscillators');
+    structuredLog('INFO', `initializeAudio: Audio initialized with ${maxNotes} oscillators`);
     return true;
   } catch (error) {
     structuredLog('ERROR', 'initializeAudio error', { message: error.message });
@@ -2092,7 +2420,7 @@ export async function playAudio(notes) {
     return;
   }
   try {
-    // Use cached engines loaded at startup
+    // Dynamic engine loading, pass notes and context
     const availableEngines = settings.availableEngines;
     const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
     if (!engine) {
@@ -2100,13 +2428,15 @@ export async function playAudio(notes) {
       dispatchEvent('logError', { message: `Engine not found: ${settings.synthesisEngine}` });
       return;
     }
-    const engineModule = await import(`./synthesis-methods/engines/${engine.id}.js`);
-    // Fix DEF-001: Normalize to camelCase (e.g., fm-synthesis -> playFmSynthesis).
+    const contextObj = {};
+    // For future ML/HRTF: contextObj.depthData, contextObj.hrtfPositions, etc.
+    const engineModule = await import(`../synths/${engine.id}.js`);
+    // Normalize to camelCase (e.g., fm-synthesis -> playFmSynthesis)
     const engineName = engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
     const playFunction = engineModule[`play${engineName}`];
     if (playFunction) {
-      playFunction(notes);
-      structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length });
+      playFunction(notes, contextObj);
+      structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
     } else {
       structuredLog('ERROR', `playAudio: Play function not found`, { engine: engine.id });
       dispatchEvent('logError', { message: `Play function for ${engine.id} not found` });
@@ -2120,12 +2450,13 @@ export async function playAudio(notes) {
 export async function cleanupAudio() {
   if (isAudioInitialized && audioContext) {
     try {
-      oscillators.forEach(({ osc, gain, panner }) => {
+      oscillatorPool.forEach(({ osc, gain, panner }) => {
         osc.stop();
         osc.disconnect();
         gain.disconnect();
         panner.disconnect();
       });
+      oscillatorPool = [];
       if (micSource && micGainNode) {
         micSource.disconnect();
         micGainNode.disconnect();
@@ -2186,15 +2517,174 @@ export function initializeMicAudio(micStream) {
   }
 }
 
-export { audioContext, isAudioInitialized, oscillators, modulators };
+/**
+ * Get an oscillator from the pool, reusing inactive or creating new
+ */
+export function getOscillator() {
+  let oscObj = oscillatorPool.find(o => !o.active);
+  if (!oscObj && audioContext) {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const panner = audioContext.createStereoPanner();
+    osc.type = "sine";
+    osc.connect(gain).connect(panner).connect(audioContext.destination);
+    osc.start();
+    oscObj = { osc, gain, panner, active: false };
+    oscillatorPool.push(oscObj);
+  }
+  if (oscObj) oscObj.active = true;
+  return oscObj;
+}
 
+export { audioContext, isAudioInitialized, oscillators, oscillatorPool, modulators };
+
+// File: web/audio/synths/sine-wave.js
+
+export function playSineWave(notes) {
+  // Deactivate all oscillators first
+  oscillatorPool.forEach(o => {
+    o.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+    o.active = false;
+  });
+  const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
+  for (let i = 0; i < allNotes.length; i++) {
+    const { pitch, intensity, harmonics = [], pan = 0 } = allNotes[i];
+    const oscData = getOscillator();
+    oscData.osc.type = "sine";
+    oscData.osc.frequency.setTargetAtTime(pitch, audioContext.currentTime, 0.015);
+    oscData.gain.gain.setTargetAtTime(intensity, audioContext.currentTime, 0.015);
+    oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
+    oscData.active = true;
+    // Harmonics: use additional oscillators from pool
+    for (let h = 0; h < harmonics.length; h++) {
+      const harmonicOsc = getOscillator();
+      harmonicOsc.osc.type = "sine";
+      harmonicOsc.osc.frequency.setTargetAtTime(harmonics[h], audioContext.currentTime, 0.015);
+      harmonicOsc.gain.gain.setTargetAtTime(intensity * 0.5, audioContext.currentTime, 0.015);
+      harmonicOsc.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
+      harmonicOsc.active = true;
+    }
+  }
+}
+
+
+// File: web/audio/synths/fm-synthesis.js
+export function playFmSynthesis(notes) {
+  // Deactivate all oscillators first
+  oscillatorPool.forEach(o => {
+    o.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+    o.active = false;
+  });
+  let modIndex = 0;
+  const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
+  for (let i = 0; i < allNotes.length; i++) {
+    const { pitch, intensity, harmonics = [], pan = 0 } = allNotes[i];
+    const oscData = getOscillator();
+    oscData.osc.type = "sine";
+    oscData.osc.frequency.setTargetAtTime(pitch, audioContext.currentTime, 0.015);
+    oscData.gain.gain.setTargetAtTime(intensity, audioContext.currentTime, 0.015);
+    oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
+    oscData.active = true;
+    // FM: handle one modulator per note, reuse or create
+    let modData;
+    if (modIndex < modulators.length) {
+      modData = modulators[modIndex];
+    } else {
+      const mOsc = audioContext.createOscillator();
+      const mGain = audioContext.createGain();
+      modulators.push({ osc: mOsc, gain: mGain, started: false });
+      modData = modulators[modulators.length - 1];
+    }
+    // configure modulator
+    modData.osc.type = "sine";
+    modData.osc.frequency.setTargetAtTime(pitch * 2, audioContext.currentTime, 0.015);
+    modData.gain.gain.setTargetAtTime(intensity * 100, audioContext.currentTime, 0.015);
+    // connect and start only once
+    modData.osc.connect(modData.gain).connect(oscData.osc.frequency);
+    if (!modData.started) {
+      modData.osc.start();
+      modData.started = true;
+    }
+    modIndex++;
+    // Harmonics: use additional oscillators from pool
+    for (let h = 0; h < harmonics.length; h++) {
+      const harmonicOsc = getOscillator();
+      harmonicOsc.osc.type = "sine";
+      harmonicOsc.osc.frequency.setTargetAtTime(harmonics[h], audioContext.currentTime, 0.015);
+      harmonicOsc.gain.gain.setTargetAtTime(intensity * 0.5, audioContext.currentTime, 0.015);
+      harmonicOsc.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
+      harmonicOsc.active = true;
+    }
+  }
+}
+          harmonicOsc.gain.gain.setTargetAtTime(
+            intensity * 0.5,
+            audioContext.currentTime,
+            0.015,
+          );
+          harmonicOsc.panner.pan.setTargetAtTime(
+            pan,
+            audioContext.currentTime,
+            0.015,
+          );
+          harmonicOsc.active = true;
+        }
+      }
+      oscIndex++;
+    } else {
+      oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+      oscData.active = false;
+    }
+  }
+  // silence any unused modulators
+  for (let i = modIndex; i < modulators.length; i++) {
+    modulators[i].gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+  }
+}
+
+
+// File: web/audio/synths/available-engines.json
+[
+  {
+    "id": "sine-wave",
+    "createdAt": 1750899236911.1191
+  },
+  {
+    "id": "fm-synthesis",
+    "createdAt": 1750899236897.1191
+  }
+]
+
+
+// File: web/main.js
 // File: web/main.js
 import { setupUIController } from './ui/ui-controller.js';
 import { createEventDispatcher } from './core/dispatcher.js';
 import { loadConfigs, settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
-import { getText } from './utils/utils.js';
+
+let getText, initializeLanguageIfNeeded, speakText, announceMessage;
+try {
+  ({ getText, initializeLanguageIfNeeded, speakText, announceMessage } = await import('./utils/utils.js'));
+  console.log('utils.js imported successfully');  // Confirm import worked
+} catch (importErr) {
+  console.error('Failed to import utils.js:', importErr.message);
+  getText = async (key) => {
+    console.warn('TTS fallback for key:', key);
+    return key;
+  };
+  initializeLanguageIfNeeded = () => {
+    structuredLog('WARN', 'Language init skipped due to import failure');
+    return 'en-US';  // Fallback return
+  };
+  speakText = () => {
+    structuredLog('WARN', 'TTS skipped due to import failure');
+  };
+  announceMessage = (msg) => {
+    structuredLog('WARN', 'Announcement skipped due to import failure', { msg });
+  };
+}
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),
@@ -2214,104 +2704,174 @@ const DOM = {
 // Initialize shared DOM context for modules that need it
 setDOM(DOM);
 
+// Custom Error class to attach metadata
+class CustomError extends Error {
+  constructor(message, data = {}) {
+    super(message);
+    this.data = data;
+  }
+}
+
+// Helper to validate DOM elements
+function validateDOM() {
+  const requiredIds = ['videoFeed', 'button1', 'button2', 'button3', 'button4', 'button5', 'button6', 'powerOn', 'splashScreen', 'mainContainer', 'debugPanel', 'frameCanvas'];
+  const missing = requiredIds.filter(id => !DOM[id]);
+  if (missing.length > 0) {
+    throw new CustomError('Missing DOM elements', { missing });
+  }
+}
+
 async function init() {
+  const originalConsole = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error
+  };
   try {
+    // Validate DOM early
+    validateDOM();
+
+    // Wait for configs to fully load and defaults to be set
     await loadConfigs;
-    let getText;
-    try {
-      ({ getText } = await import('./ui/utils.js'));
-      console.log('utils.js imported successfully');  // Confirm import worked
-    } catch (importErr) {
-      console.error('Failed to import utils.js:', importErr.message);
-      getText = async (key) => {  // Make async for consistency with await calls
-        console.warn('TTS fallback for key:', key);
-        return key;  // Return key as fallback string (better than '')
-      };
+    structuredLog('INFO', 'init: Configurations loaded', {
+      gridType: settings.gridType,
+      synthesisEngine: settings.synthesisEngine,
+      language: settings.language
+    });
+
+    // Handle missing configuration gracefully
+    if (!settings.gridType || !settings.synthesisEngine || !settings.language) {
+      const missing = [];
+      if (!settings.gridType) missing.push('grids');
+      if (!settings.synthesisEngine) missing.push('engines');
+      if (!settings.language) missing.push('languages');
+      const msg = await getText('initMissingConfigs', { missing: missing.join(', ') });
+      announceMessage(msg);
+      if (settings.ttsEnabled) speakText(msg);
+      structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
+
+    // Ensure language is initialized before translating
+    initializeLanguageIfNeeded();
+
     // Set aria and text for all relevant elements deriving from ID
     const staticElements = [
-      DOM.splashScreen,
-      DOM.mainContainer,
-      DOM.powerOn,
-      DOM.videoFeed,
-      DOM.frameCanvas,
-      DOM.debugPanel,
-      DOM.button1,
-      DOM.button2,
-      DOM.button3,
-      DOM.button4,
-      DOM.button5,
-      DOM.button6,
+      { el: DOM.splashScreen, baseKey: 'splashScreen', setText: false, setAria: false }, // Non-interactive, no aria/text
+      { el: DOM.mainContainer, baseKey: 'mainContainer', setText: false, setAria: false },
+      { el: DOM.powerOn, baseKey: 'powerOn', setText: true, setAria: true },
+      { el: DOM.videoFeed, baseKey: 'videoFeed', setText: false, setAria: true },
+      { el: DOM.frameCanvas, baseKey: 'frameCanvas', setText: false, setAria: false }, // Hidden, no aria
+      { el: DOM.debugPanel, baseKey: 'debugPanel', setText: false, setAria: true },
+      { el: DOM.button1, baseKey: 'button1', setText: true, setAria: true },
+      { el: DOM.button2, baseKey: 'button2', setText: true, setAria: true },
+      { el: DOM.button3, baseKey: 'button3', setText: true, setAria: true },
+      { el: DOM.button4, baseKey: 'button4', setText: true, setAria: true },
+      { el: DOM.button5, baseKey: 'button5', setText: true, setAria: true },
+      { el: DOM.button6, baseKey: 'button6', setText: true, setAria: true },
     ];
-    for (const el of staticElements) {
-      if (!el) {
-        console.warn(`Skipping null element in staticElements`);
-        continue;
-      }
-      const baseKey = el.id;
-      el.setAttribute('aria-label', await getText(`${baseKey}.aria`, {}, 'aria'));
-      // Set text content only for elements that need it (e.g., powerOn, buttons)
-      if (['powerOn'].includes(el.id) || el.tagName === 'BUTTON') {
-        el.textContent = await getText(`${baseKey}.text`, {}, 'text');
+    const setupErrors = [];
+    for (const { el, baseKey, setText: shouldSetText, setAria } of staticElements) {
+      if (!el) continue;  // Validation already threw; no need for warn here
+      try {
+        if (setAria) {
+          const ariaText = await getText(`${baseKey}.aria`, {});
+          el.setAttribute('aria-label', ariaText);
+          announceMessage(ariaText); // Announce if needed
+        }
+        if (shouldSetText) {
+          const text = await getText(`${baseKey}.text`, {});
+          el.textContent = text;
+          announceMessage(text);
+          speakText(text); // Speak if TTS enabled
+        }
+      } catch (textErr) {
+        setupErrors.push({ baseKey, message: textErr.message });
+        // Continue with best-effort: set fallback
+        if (setAria) {
+          el.setAttribute('aria-label', baseKey);
+          announceMessage(baseKey);
+        }
+        if (shouldSetText) {
+          el.textContent = baseKey;
+          announceMessage(baseKey);
+          speakText(baseKey);
+        }
       }
     }
-    if (!DOM.videoFeed || !DOM.button1 || !DOM.button2 || !DOM.button3 || 
-        !DOM.button4 || !DOM.button5 || !DOM.button6 || !DOM.powerOn || 
-        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel || !DOM.frameCanvas) {
-      throw new Error('Missing DOM elements in main.js');
+    if (setupErrors.length > 0) {
+      structuredLog('WARN', 'UI setup had partial failures', { errors: setupErrors });
     }
+
     const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
+
     // Console overrides moved here to break circular dependency
-    const originalConsole = {
-      log: console.log,
-      warn: console.warn,
-      error: console.error
-    };
-    const oldStructuredLog = structuredLog;
-    window.structuredLog = async (level, message, data = {}, persist = true, sample = true) => {
-      const backup = { log: console.log, warn: console.warn, error: console.error };
-      console.log = originalConsole.log;
-      console.warn = originalConsole.warn;
-      console.error = originalConsole.error;
-      await oldStructuredLog(level, message, data, persist, sample);
-      console.log = backup.log;
-      console.warn = backup.warn;
-      console.error = backup.error;
-    };
+    function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
+      const tempLog = console.log;
+      const tempWarn = console.warn;
+      const tempError = console.error;
+      try {
+        console.log = originalConsole.log;
+        console.warn = originalConsole.warn;
+        console.error = originalConsole.error;
+
+        structuredLog(level, message, data, persist, sample);
+      } finally {
+        console.log = tempLog;
+        console.warn = tempWarn;
+        console.error = tempError;
+      }
+    }
+
     console.log = (...args) => {
       originalConsole.log.apply(console, args);
-      if (settings.debugLogging) window.structuredLog('INFO', 'Console log', { args }, false);
+      if (settings.debugLogging) safeStructuredLog('INFO', 'Console log', { args }, false);
     };
     console.warn = (...args) => {
       originalConsole.warn.apply(console, args);
-      if (settings.debugLogging) window.structuredLog('WARN', 'Console warn', { args }, false);
+      if (settings.debugLogging) safeStructuredLog('WARN', 'Console warn', { args }, false);
     };
     console.error = (...args) => {
       originalConsole.error.apply(console, args);
-      window.structuredLog('ERROR', 'Console error', { args }, false);
+      safeStructuredLog('ERROR', 'Console error', { args }, false);
     };
+
     // Force initial UI update for dynamic content
     dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
-    console.log('init: UI setup complete');
+    structuredLog('INFO', 'init: UI setup complete');
   } catch (err) {
-    console.error('init error:', err.message);
+    let errorMessage = err.message;
+    let errorData = err instanceof CustomError ? err.data : {};
+    let specificMessage = errorMessage;
+    if (err.data?.missing) {
+      specificMessage = `Missing DOM elements: ${err.data.missing.join(', ')}`;
+    } else if (err.data?.language === null) {
+      specificMessage = 'Language configuration failed to initialize';
+    } // Add more categories as needed
+    structuredLog('ERROR', 'init error', { message: specificMessage, data: errorData, stack: err.stack });
+    originalConsole.error('init error:', err.message);
     try {
-      await getText('init.tts.error');
+      const errorText = await getText('init.tts.error');
+      speakText(errorText);
+      announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
     } catch (ttsErr) {
-      console.error('TTS error:', ttsErr.message);
+      originalConsole.error('TTS error:', ttsErr.message);
+      announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
     }
   }
 }
 
-// Adds uncaught error handler for global contexts (e.g., hangs/OOM).
+// Adds uncaught error handler for global contexts
 window.onerror = function (message, source, lineno, colno, error) {
   structuredLog('ERROR', 'Uncaught global error', { message, source, lineno, colno, stack: error ? error.stack : 'N/A' });
-  return true;  // Prevent default browser error logging.
+  if (settings?.debugLogging ?? true) {  // Safe check; default to true if settings null (pre-init)
+    console.error(message); // Allow bubbling in debug mode
+    return false; // Let browser handle
+  }
+  return true; // Suppress in production
 };
 
 init();
-
 
 // File: web/index.html
 <!DOCTYPE html>
@@ -2349,238 +2909,284 @@ init();
 </html>
 
 
-// File: web/context.js
-let DOM = null;
-let dispatchEvent = null;
+// File: web/README.md
+**a photon to phonon code**
 
-export function setDOM(dom) {
-  DOM = dom;
-}
+## [Introduction](#introduction)
 
-export function getDOM() {
-  if (!DOM) {
-    console.error("DOM not initialized");
-    throw new Error("DOM not initialized");
-  }
-  return DOM;
-}
+The content in this repository is meant to provide the code for a public infraestructure web app that aims to transform visual environments into soundscapes, empowering the users to experience the visual world by synthetic audio cues, in real time.
 
-export function setDispatchEvent(dispatcher) {
-  dispatchEvent = dispatcher;
-}
+> **Why?** We believe in enhancing humanity with open-source software in a fast, accessible and impactful way. You are invited to join us to improve its mission and make a difference!
 
-export function getDispatchEvent() {
-  if (!dispatchEvent) {
-    console.error("dispatchEvent not initialized");
-    throw new Error("dispatchEvent not initialized");
-  }
-  return dispatchEvent;
-}
+### Project Vision
 
-// File: web/synthesis-grids/availableGrids.json
-[
-  {
-    "id": "hex-tonnetz",
-    "createdAt": 1750899236982.1191
-  },
-  {
-    "id": "circle-of-fifths",
-    "createdAt": 1750899236950.1191
-  }
-]
+- Synesthetic Translation: Converting visual data into stereo audio cues, mapping colors, motion to distinct sound signatures.
+- Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
+- Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
 
-// File: web/synthesis-grids/available-grids.json
+### Tech stack needed
 
+Run the version of your choice in any internet browser from year 2020 and up.
+The design is tested with a mobile phone anda its front camera
+Input: Mobile camera for real-time visual data capture.
+Audio Output: Stereo headphones for spatial audio effects.
 
+### Hipothetic Use Case
 
-// File: web/synthesis-grids/hex-tonnetz.js
-import { settings } from "../../state.js";
+Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, a mobile phone worn as a necklace captures surrounding visuals like a swing in motion, as the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
 
-const gridSize = 32;
-const notesPerOctave = 12;
-const octaves = 5;
-const minFreq = 100;
-const maxFreq = 3200;
-const frequencies = [];
-for (let octave = 0; octave < octaves; octave++) {
-  for (let note = 0; note < notesPerOctave; note++) {
-    const freq = minFreq * Math.pow(2, octave + note / notesPerOctave);
-    if (freq <= maxFreq) frequencies.push(freq);
-  }
-}
-const tonnetzGrid = Array(gridSize)
-  .fill()
-  .map(() => Array(gridSize).fill(0));
-for (let y = 0; y < gridSize; y++) {
-  for (let x = 0; x < gridSize; x++) {
-    const octave = Math.floor((y / gridSize) * octaves);
-    const noteOffset = (x + (y % 2) * 6) % notesPerOctave;
-    const freqIndex = octave * notesPerOctave + noteOffset;
-    tonnetzGrid[y][x] =
-      frequencies[freqIndex % frequencies.length] ||
-      frequencies[frequencies.length - 1];
-  }
-}
+### Development
 
-export function mapFrameToHexTonnetz(
-  frameData,
-  width,
-  height,
-  prevFrameData,
-  panValue,
-) {
-  const gridWidth = width / gridSize;
-  const gridHeight = height / gridSize;
-  const movingRegions = [];
-  const newFrameData = new Uint8ClampedArray(frameData);
+Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts 
+Milestone 5 wich is a work in progress is getting help from OpenAI ChatGPT 4.1, 04-mini, Anthropic Claude 4 via @github copilot at codespaces and also Grok 4 wich is charge of the re-estructuring from v0.5.12
+
+>We welcome contributors! 
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Usage](docs/USAGE.md)
+- [Status](#status)
+- [Project structure](#project_structure)
+- [Changelog](docs/CHANGELOG.md)
+- [Contributing](docs/CONTRIBUTING.md)
+- [To-Do List](docs/TO_DO.md)
+- [Diagrams](docs/DIAGRAMS.md)
+- [License](docs/LICENSE.md)
+- [FAQ](docs/FAQ.md)
+
+### [Usage](docs/USAGE.md)
+
+The webapp runs from a Internet browsers and mobile hardware from 2021.
+
+- Current version [RUN](https://mamware.github.io/acoustsee/present/)
+- Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
+- Test version in development [RUN](https://mamware.github.io/acoustsee/future/web)
+
+### Check [Usage](docs/USAGE.md) for further details
+
+### [Current Status](#status) 
+
+Working at **Milestone 6 (Current)**
+
+- UI Detaching from the core logic to enable customization
+- Adding support for new video and audio techniques
+  - ml-depth-processor.js # New: Monocular depth estimation (TF.js + MiDaS; config-driven)
+  - hrtf-processor.js     # New: HRTF logic (PannerNode, positional filtering)
+- Strict arquitectural paradigm to no hardcoding and no fallbacks
+
  
- // Correct avgIntensity over pixels (skip alpha)
- let avgIntensity = 0;
- for (let i = 0; i < frameData.length; i += 4) {
-   const r = frameData[i];
-   const g = frameData[i + 1];
-   const b = frameData[i + 2];
-   avgIntensity += (r + g + b) / 3;
- }
- avgIntensity /= (frameData.length / 4);  
+### [Changelog](docs/CHANGELOG.md)
 
- if (prevFrameData) {
-   for (let y = 0; y < height; y++) {
-     for (let x = 0; x < width; x++) {
-       const idx = (y * width + x) * 4;
-       const r = frameData[idx];
-       const g = frameData[idx + 1];
-       const b = frameData[idx + 2];
-       const intensity = (r + g + b) / 3;
+- Current "stable" version from "present" is v0.4.7, link above logs the history and details past milestones achieved.
+- Current "future" version in development starts from v0.6 
 
-       const pr = prevFrameData[idx];
-       const pg = prevFrameData[idx + 1];
-       const pb = prevFrameData[idx + 2];
-       const prevIntensity = (pr + pg + pb) / 3;
+### ["future" Project structure](#project_structure)
 
-       const delta = Math.abs(intensity - prevIntensity);
-       if (delta > 20) {
-         const gridX = Math.floor(x / gridWidth);
-         const gridY = Math.floor(y / gridHeight);
-         movingRegions.push({ gridX, gridY, intensity, delta });
-       }
-     }
-   }
- }
+```
 
-  movingRegions.sort((a, b) => b.delta - a.delta);
-  const notes = [];
-  const usedCells = new Set();
-  for (let i = 0; i < Math.min(16, movingRegions.length); i++) {
-    const { gridX, gridY, intensity } = movingRegions[i];
-    const cellKey = `${gridX},${gridY}`;
-    if (usedCells.has(cellKey)) continue;
-    usedCells.add(cellKey);
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        usedCells.add(`${gridX + dx},${gridY + dy}`);
-      }
-    }
-    const freq = tonnetzGrid[gridY][gridX];
-    const amplitude =
-      settings.dayNightMode === "day"
-        ? 0.02 + (intensity / 255) * 0.06
-        : 0.08 - (intensity / 255) * 0.06;
-    const harmonics = [freq * Math.pow(2, 7 / 12), freq * Math.pow(2, 4 / 12)];
-    notes.push({ pitch: freq, intensity: amplitude, harmonics, pan: panValue });
+web/
+├── audio/                    # Audio synthesis/processing (notes-to-sound, HRTF, mic)
+│   ├── audio-controls.js     # PowerOn/AudioContext init
+│   ├── audio-manager.js      # AudioContext management
+│   ├── audio-processor.js    # Core audio (oscillators, playAudio, cleanup; integrates HRTF/ML depth)
+│   ├── hrtf-processor.js     # HRTF logic (PannerNode, positional filtering)
+│   └── synths/               # Synth methods (extend with HRTF; renamed for brevity)
+│       ├── sine-wave.js
+│       ├── fm-synthesis.js
+│       └── available-engines.json
+├── video/                    # Video capture/mapping (camera-to-notes/positions; includes ML depth)
+│   ├── video-capture.js      # Stream setup/cleanup
+│   ├── frame-processor.js    # Frame analysis (emits notes/positions; calls ML if enabled)
+│   ├── ml-depth-processor.js # New: Monocular depth estimation (TF.js + MiDaS; config-driven)
+│   └── grids/                # Visual mappings (output pitch/intensity/position; renamed)
+│       ├── hex-tonnetz.js
+│       ├── circle-of-fifths.js
+│       └── available-grids.json
+├── core/                     # Orchestration (events, state)
+│   ├── dispatcher.js         # Event handling (add 'depthEstimated' for ML)
+│   ├── state.js              # Settings/configs (add depthEngine: 'midas', spatialAudio: 'hrtf')
+│   └── context.js            # Shared refs
+├── ui/                       # Presentation (buttons, DOM; optional ML/HRTF toggles)
+│   ├── ui-controller.js      # UI setup
+│   ├── ui-settings.js        # Button bindings (add toggles for depth/HRTF)
+│   ├── cleanup-manager.js    # Teardown listeners
+│   └── dom.js                # DOM init
+├── utils/                    # Cross-cutting tools (TTS, haptics, logs)
+│   ├── async.js              # Error wrappers
+│   ├── idb-logger.js         # Persistent logs
+│   ├── logging.js            # Structured logs
+│   └── utils.js              # Helpers (getText, headphone detect for HRTF)
+├── languages/                # Localization (add ML/HRTF strings)
+│   ├── es-ES.json
+│   ├── en-US.json
+│   └── available-languages.json
+├── test/                     # Tests (grouped by category)
+│   ├── audio/                # Audio/HRTF tests
+│   │   ├── audio-processor.test.js
+│   │   └── hrtf-processor.test.js
+│   ├── video/                # Video/grid/ML tests
+│   │   ├── frame-processor.test.js
+│   │   └── ml-depth-processor.test.js  # New: Test depth estimation
+│   ├── core/                 # Dispatcher/state tests (if added)
+│   ├── ui/                   # UI tests
+│   │   ├── ui-settings.test.js
+│   │   └── video-capture.test.js
+│   └── utils/                # Utils tests (if added)
+├── .eslintrc.json            # Linting
+├── index.html                # HTML entry
+├── main.js                   # Bootstrap (update imports for moves/ML init)
+├── README.md                 # Docs (update structure/ML/HRTF)
+└── styles.css                # Styles
+
+```
+
+### [Contributing](docs/CONTRIBUTING.md)
+
+- Please follow the link above for the detailed contributing guidelines, branching strategy and examples.
+
+### [To-Do List](docs/TO_DO.md)
+
+- At this document linked above, you will find the list for our current TO TO list, now from milestone 5 (v0.5.2)
+
+### [Code flow diagrams](docs/DIAGRAMS.md) 
+
+
+
+
+
+Diagrams covering the Turnk Based Development approach (v0.2). 
+
+Reflecting:  
+  - Process Frame Flow
+  - Audio Generation Flow
+  - Motion Detection such as oscillator logic.
+
+### [FAQ](docs/FAQ.md)
+
+- Follow the link for list of the Frecuently Asqued Questions.
+
+### [License](docs/LICENSE.md)
+
+- GPL-3.0 license details
+  
+Peace
+Love
+Union
+Respect
+
+
+
+
+// File: web/test/frame-processor.test.js
+import { mapFrameToNotes, processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
+import { structuredLog } from '../utils/logging.js';
+import { dispatchEvent } from '../core/dispatcher.js';
+import { settings } from '../core/state.js';
+
+jest.mock('../utils/logging.js', () => ({
+  structuredLog: jest.fn(),
+}));
+jest.mock('../core/dispatcher.js', () => ({
+  dispatchEvent: jest.fn(),
+}));
+jest.mock('../core/state.js', () => ({
+  settings: {
+    availableGrids: [{ id: 'hex-tonnetz' }],
+    gridType: 'hex-tonnetz',
+    dayNightMode: 'day',
+    resetStateOnError: true
   }
+}));
+jest.mock('../synthesis-grids/hex-tonnetz.js', () => ({
+  mapFrameToHexTonnetz: jest.fn(() => ({
+    notes: [{ pitch: 440, intensity: 0.05, harmonics: [], pan: -1 }],
+    newFrameData: new Uint8ClampedArray(1000),
+    avgIntensity: 50
+  }))
+}));
 
-  return { notes, newFrameData, avgIntensity };
-}
+describe('frame-processor', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    settings.resetStateOnError = true;
+  });
 
+  test('mapFrameToNotes handles invalid dimensions', async () => {
+    const result = await mapFrameToNotes(new Uint8ClampedArray(1000), 0, 0, null, null);
+    expect(result).toEqual({
+      notes: [],
+      prevFrameDataLeft: null,
+      prevFrameDataRight: null,
+      avgIntensity: 0
+    });
+    expect(structuredLog).toHaveBeenCalledWith('ERROR', 'Invalid dimensions for frame processing', { width: 0, height: 0 });
+    expect(dispatchEvent).toHaveBeenCalledWith('logError', { message: 'Invalid dimensions for frame processing: 0x0' });
+  });
 
-// File: web/synthesis-grids/circle-of-fifths.js
-import { settings } from "../../state.js";
+  test('mapFrameToNotes handles invalid frameData', async () => {
+    const result = await mapFrameToNotes(null, 100, 100, null, null);
+    expect(result).toEqual({
+      notes: [],
+      prevFrameDataLeft: null,
+      prevFrameDataRight: null,
+      avgIntensity: 0
+    });
+    expect(structuredLog).toHaveBeenCalledWith('ERROR', 'Invalid frameData for processing', { frameDataLength: 0 });
+  });
 
-const notesPerOctave = 12;
-const octaves = 5;
-const minFreq = 100;
-const maxFreq = 3200;
-const frequencies = [];
-for (let octave = 0; octave < octaves; octave++) {
-  for (let note = 0; note < notesPerOctave; note++) {
-    const freq = minFreq * Math.pow(2, octave + note / notesPerOctave);
-    if (freq <= maxFreq) frequencies.push(freq);
-  }
-}
+  test('mapFrameToNotes preserves state when resetStateOnError is false', async () => {
+    settings.resetStateOnError = false;
+    const prevLeft = new Uint8ClampedArray(1000);
+    const prevRight = new Uint8ClampedArray(1000);
+    const result = await mapFrameToNotes(null, 100, 100, prevLeft, prevRight);
+    expect(result).toEqual({
+      notes: [],
+      prevFrameDataLeft: prevLeft,
+      prevFrameDataRight: prevRight,
+      avgIntensity: 0
+    });
+  });
 
-export function mapFrameToCircleOfFifths(
-  frameData,
-  width,
-  height,
-  prevFrameData,
-  panValue,
-) {
-  const gridWidth = width / 12;
-  const gridHeight = height / 12;
-  const movingRegions = [];
-  const newFrameData = new Uint8ClampedArray(frameData);
- // Correct avgIntensity over pixels (skip alpha)
- let avgIntensity = 0;
- for (let i = 0; i < frameData.length; i += 4) {
-   const r = frameData[i];
-   const g = frameData[i + 1];
-   const b = frameData[i + 2];
-   avgIntensity += (r + g + b) / 3;
- }
- avgIntensity /= (frameData.length / 4);
+  test('mapFrameToNotes processes valid data', async () => {
+    const frameData = new Uint8ClampedArray(100 * 100 * 4);
+    const result = await mapFrameToNotes(frameData, 100, 100, null, null);
+    expect(result.notes).toHaveLength(2); // One from each side
+    expect(result.avgIntensity).toBe(50); // (50 + 50) / 2
+    expect(result.prevFrameDataLeft).toBeInstanceOf(Uint8ClampedArray);
+    expect(result.prevFrameDataRight).toBeInstanceOf(Uint8ClampedArray);
+  });
 
- if (prevFrameData) {
-   for (let y = 0; y < height; y++) {
-     for (let x = 0; x < width; x++) {
-       const idx = (y * width + x) * 4;
-       const r = frameData[idx];
-       const g = frameData[idx + 1];
-       const b = frameData[idx + 2];
-       const intensity = (r + g + b) / 3;
+  test('processFrameWithState updates module state', async () => {
+    const frameData = new Uint8ClampedArray(100 * 100 * 4);
+    const result = await processFrameWithState(frameData, 100, 100);
+    expect(result.notes).toHaveLength(2);
+    expect(result.avgIntensity).toBe(50);
+    expect(result.prevFrameDataLeft).toBeInstanceOf(Uint8ClampedArray);
+    expect(result.prevFrameDataRight).toBeInstanceOf(Uint8ClampedArray);
+  });
 
-       const pr = prevFrameData[idx];
-       const pg = prevFrameData[idx + 1];
-       const pb = prevFrameData[idx + 2];
-       const prevIntensity = (pr + pg + pb) / 3;
+  test('cleanupFrameProcessor resets module state', async () => {
+    const result = await cleanupFrameProcessor();
+    expect(result).toEqual({ prevFrameDataLeft: null, prevFrameDataRight: null });
+    expect(structuredLog).toHaveBeenCalledWith('INFO', 'cleanupFrameProcessor: Resetting frame processor state');
+  });
 
-       const delta = Math.abs(intensity - prevIntensity);
-       if (delta > 20) {
-         const gridX = Math.floor(x / gridWidth);
-         const gridY = Math.floor(y / gridHeight);
-         movingRegions.push({ gridX, gridY, intensity, delta });
-       }
-     }
-   }
- }
-
-  movingRegions.sort((a, b) => b.delta - a.delta);
-  const notes = [];
-  const usedCells = new Set();
-  for (let i = 0; i < Math.min(8, movingRegions.length); i++) {
-    const { gridX, gridY, intensity } = movingRegions[i];
-    const cellKey = `${gridX},${gridY}`;
-    if (usedCells.has(cellKey)) continue;
-    usedCells.add(cellKey);
-    const noteIndex = (gridX + gridY) % notesPerOctave;
-    const freq = frequencies[noteIndex] || frequencies[frequencies.length - 1];
-    const amplitude =
-      settings.dayNightMode === "day"
-        ? 0.02 + (intensity / 255) * 0.06
-        : 0.08 - (intensity / 255) * 0.06;
-    const harmonics = [freq * Math.pow(2, 7 / 12), freq * Math.pow(2, 4 / 12)];
-    notes.push({ pitch: freq, intensity: amplitude, harmonics, pan: panValue });
-  }
-
-  return { notes, newFrameData, avgIntensity };
-}
-
+  test('cleanupFrameProcessor handles errors', async () => {
+    structuredLog.mockImplementationOnce(() => {
+      throw new Error('Test error');
+    });
+    const result = await cleanupFrameProcessor();
+    expect(result).toEqual({ prevFrameDataLeft: null, prevFrameDataRight: null });
+    expect(structuredLog).toHaveBeenCalledWith('ERROR', 'cleanupFrameProcessor error', expect.any(Object));
+    expect(dispatchEvent).toHaveBeenCalledWith('logError', expect.any(Object));
+  });
+});
 
 // File: web/test/ui-settings.test.js
 // test/ui-settings.test.js
 import { setupUISettings } from '../ui/ui-settings.js';
-import { settings } from '../state.js';
+import { settings } from '../core/state.js';
 
 jest.mock('../state.js', () => ({
   settings: { isSettingsMode: false, stream: null, micStream: null },
@@ -2618,17 +3224,58 @@ describe('ui-settings', () => {
 
 
 // File: web/test/video-capture.test.js
-describe('processFrame', () => {
-  test('handles non-finite dimensions', async () => {
-    jest.spyOn(global.console, 'error').mockImplementation(() => {});
-    jest.spyOn(structuredLog, 'call').mockImplementation(() => {});
-    const DOM = { frameCanvas: { getContext: () => null }, videoFeed: {} };
-    jest.spyOn(getDOM, 'call').mockReturnValue(DOM);
-    const result = await processFrame(NaN, 240);
-    expect(result).toEqual({ notes: [], newFrameData: null, avgIntensity: 0 });
-    expect(structuredLog).toHaveBeenCalledWith('DEBUG', 'processFrame dimensions', { rawWidth: NaN, rawHeight: 240 });
-    expect(console.error).toHaveBeenCalledWith("Canvas context not found");
+// File: web/test/video-capture.test.js
+import { setupVideoCapture, cleanupVideoCapture } from '../video/video-capture.js';
+import { structuredLog } from '../utils/logging.js';
+import { getDOM } from '../core/context.js';
+import { dispatchEvent } from '../core/dispatcher.js';
+
+jest.mock('../utils/logging.js', () => ({
+  structuredLog: jest.fn()
+}));
+jest.mock('../core/context.js', () => ({
+  getDOM: jest.fn()
+}));
+jest.mock('../core/dispatcher.js', () => ({
+  dispatchEvent: jest.fn()
+}));
+
+describe('video-capture', () => {
+  test('setupVideoCapture handles missing DOM elements', async () => {
+    const DOM = { videoFeed: null, frameCanvas: null };
+    const result = await setupVideoCapture(DOM);
+    expect(result).toBe(false);
+    expect(structuredLog).toHaveBeenCalledWith('ERROR', 'Missing videoFeed or frameCanvas in setupVideoCapture');
+    expect(dispatchEvent).toHaveBeenCalledWith('logError', { message: 'Missing videoFeed or frameCanvas in setupVideoCapture' });
+  });
+
+  test('setupVideoCapture initializes video feed and canvas', async () => {
+    const DOM = {
+      videoFeed: { setAttribute: jest.fn() },
+      frameCanvas: { style: { display: '' }, setAttribute: jest.fn() }
+    };
+    const result = await setupVideoCapture(DOM);
+    expect(result).toBe(true);
+    expect(DOM.videoFeed.setAttribute).toHaveBeenCalledWith('autoplay', '');
+    expect(DOM.videoFeed.setAttribute).toHaveBeenCalledWith('muted', '');
+    expect(DOM.videoFeed.setAttribute).toHaveBeenCalledWith('playsinline', '');
+    expect(DOM.frameCanvas.style.display).toBe('none');
+    expect(DOM.frameCanvas.setAttribute).toHaveBeenCalledWith('aria-hidden', 'true');
+    expect(structuredLog).toHaveBeenCalledWith('INFO', 'setupVideoCapture: Video feed and canvas initialized');
+  });
+
+  test('cleanupVideoCapture clears video feed and canvas', async () => {
+    const DOM = {
+      videoFeed: { srcObject: { getTracks: () => [{ stop: jest.fn() }] }, srcObject: null },
+      frameCanvas: { width: 0, height: 0 }
+    };
+    getDOM.mockReturnValue(DOM);
+    await cleanupVideoCapture();
+    expect(DOM.videoFeed.srcObject.getTracks()[0].stop).toHaveBeenCalled();
+    expect(DOM.videoFeed.srcObject).toBe(null);
+    expect(DOM.frameCanvas.width).toBe(0);
+    expect(DOM.frameCanvas.height).toBe(0);
+    expect(structuredLog).toHaveBeenCalledWith('INFO', 'cleanupVideoCapture: Video capture cleaned up');
   });
 });
-
 
