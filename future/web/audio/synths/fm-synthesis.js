@@ -1,7 +1,10 @@
 export function playFmSynthesis(notes) {
-  // Deactivate all oscillators first
+  // Deactivate all oscillators first with short fade-out to prevent clicks
+  const now = audioContext.currentTime;
+  const releaseTime = 0.05; // seconds for fade-out
   oscillatorPool.forEach(o => {
-    o.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+    o.gain.gain.cancelScheduledValues(now);
+    o.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
     o.active = false;
   });
   let modIndex = 0;
@@ -45,28 +48,10 @@ export function playFmSynthesis(notes) {
       harmonicOsc.active = true;
     }
   }
-}
-          harmonicOsc.gain.gain.setTargetAtTime(
-            intensity * 0.5,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.panner.pan.setTargetAtTime(
-            pan,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.active = true;
-        }
-      }
-      oscIndex++;
-    } else {
-      oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
-      oscData.active = false;
-    }
-  }
-  // silence any unused modulators
+  // Silence any unused modulators with fade-out
   for (let i = modIndex; i < modulators.length; i++) {
-    modulators[i].gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+    const m = modulators[i];
+    m.gain.gain.cancelScheduledValues(now);
+    m.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
   }
 }

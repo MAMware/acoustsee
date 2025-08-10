@@ -1,8 +1,12 @@
 
 export function playSineWave(notes) {
-  // Deactivate all oscillators first
+  // Deactivate all oscillators first with a short fade-out to avoid clicks
+  const now = audioContext.currentTime;
+  const releaseTime = 0.05; // seconds
   oscillatorPool.forEach(o => {
-    o.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+    // cancel any scheduled values and ramp down gain
+    o.gain.gain.cancelScheduledValues(now);
+    o.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
     o.active = false;
   });
   const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
