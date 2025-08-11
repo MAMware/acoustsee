@@ -12,7 +12,7 @@ let dbPromise = null;
 // Check IndexedDB support (technical: Feature detection to avoid errors in non-supporting envs like some iframes or old browsers).
 const isIndexedDBSupported = 'indexedDB' in window;
 
-import { structuredLog } from './logging.js';
+import { output } from './core-logger.js';
 // Open (or create) DB asynchronously with retry on transient errors.
 function openDB(retries = 3) {
   if (!isIndexedDBSupported) {
@@ -55,8 +55,8 @@ async function getDB() {
 export async function addIdbLog(logEntry) {
   const db = await getDB();
   if (!db) {
-    console.warn('DB unavailable; logging to console:', logEntry);
-    structuredLog('WARN', 'IDB fallback to console', { entry: logEntry }, false, false);
+  output('warn', `DB unavailable; logging to console: ${JSON.stringify(logEntry)}`);
+  output('warn', `IDB fallback to console: ${JSON.stringify(logEntry)}`);
     return;  // Fallback: No persistence.
   }
   return new Promise((resolve, reject) => {

@@ -8,25 +8,26 @@ The content in this repository is meant to provide the code for a public infraes
 
 ### Project Vision
 
-- Synesthetic Translation: Converting visual data into stereo audio cues, mapping colors, motion to distinct sound signatures.
+- Synesthetic Translation: Converting visual data into stereo audio cues, mapping motion to distinct sound signatures.
 - Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
 - Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
 
-### Tech stack needed
+### System requeriments
 
-Run the version of your choice in any internet browser from year 2020 and up.
-The design is tested with a mobile phone anda its front camera
-Input: Mobile camera for real-time visual data capture.
-Audio Output: Stereo headphones for spatial audio effects.
+The software is designed to run in a web browser from year 2021 and up.
+This design is tested with a mobile phone front camera as input and outputs stereo audio to headphones for the spatial audio effects.
 
 ### Hipothetic Use Case
 
-Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, a mobile phone worn as a necklace captures surrounding visuals like a swing in motion, as the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
+Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, a mobile phone camera captures surrounding visuals. i.e. a swing in motion, as the swing moves away the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
 
 ### Development
 
-Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts 
-Milestone 5 wich is a work in progress is getting help from OpenAI ChatGPT 4.1, 04-mini, Anthropic Claude 4 via @github copilot at codespaces and also Grok 4 wich is charge of the re-estructuring from v0.5.12
+````
+Milestone 4 from 0 was exclusively coded by xAI Grok 3 as per @MAMware instructions.
+Milestone 5 Grok and MAMware found themself into a debbugin rabbit hole that looked like dog chasing its own tail so we seeled for help from Gemini 2.5 pro, OpenAI ChatGPT 4.1 & 04-mini and Anthropic Claude 4.
+Milestone 6 is being developed at github.dev, Grok.com is acting as the project manager in charge of the restructuring from v0.6. Gemini 2.5 pro is used for a tiny amount of reviews and ChatGPT is acting as agent at VS Codespaces.
+````
 
 >We welcome contributors! 
 
@@ -45,7 +46,7 @@ Milestone 5 wich is a work in progress is getting help from OpenAI ChatGPT 4.1, 
 
 ### [Usage](docs/USAGE.md)
 
-The webapp runs from a Internet browsers and mobile hardware from 2021.
+Ths webapp is built to run from a internet browser, its developed mobile hardware contraints in care and should run with operating systems ranging from 2021 and up.
 
 - Current version [RUN](https://mamware.github.io/acoustsee/present/)
 - Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
@@ -55,20 +56,20 @@ The webapp runs from a Internet browsers and mobile hardware from 2021.
 
 ### [Current Status](#status) 
 
-Working at **Milestone 6 (Current)**
+Working at **Milestone 6**
 
-- UI Detaching from the core logic to enable customization of skin
+- UI Detached from the core logic to enable customization of skins
 - Adding support for new video and audio techniques
-  - ml-depth-processor.js # New: Monocular depth estimation (TF.js + MiDaS; config-driven)
-  - hrtf-processor.js     # New: HRTF logic (PannerNode, positional filtering)
 - Strict architectural paradigm to no hardcoding and no fallbacks
+- Adhering the dispatcher to single resonsability principle
+- Tweaks and bugfixing here and there
  
 ### [Changelog](docs/CHANGELOG.md)
 
-- Current "stable" version from "present" is v0.4.7, link above logs the history and details past milestones achieved.
+- Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
 - Current "future" version in development starts from v0.6 
 
-### ["future" Project structure](#project_structure)
+### [v0.5 Project structure](#project_structure)
 
 ```
 
@@ -85,18 +86,18 @@ web/
 ├── video/                    # Video capture/mapping (camera-to-notes/positions; includes ML depth)
 │   ├── video-capture.js      # Stream setup/cleanup
 │   ├── frame-processor.js    # Frame analysis (emits notes/positions; calls ML if enabled)
-│   ├── ml-depth-processor.js # New: Monocular depth estimation (TF.js + MiDaS; config-driven)
-│   └── grids/                # Visual mappings (output pitch/intensity/position; renamed)
+│   ├── ml-depth-processor.js # New: Monocular depth estimation 
+│   └── grids/                # Visual mappings 
 │       ├── hex-tonnetz.js
 │       ├── circle-of-fifths.js
 │       └── available-grids.json
 ├── core/                     # Orchestration (events, state)
-│   ├── dispatcher.js         # Event handling (add 'depthEstimated' for ML)
-│   ├── state.js              # Settings/configs (add depthEngine: 'midas', spatialAudio: 'hrtf')
+│   ├── dispatcher.js         # Event handling 
+│   ├── state.js              # Settings/configs 
 │   └── context.js            # Shared refs
 ├── ui/                       # Presentation (buttons, DOM; optional ML/HRTF toggles)
 │   ├── ui-controller.js      # UI setup
-│   ├── ui-settings.js        # Button bindings (add toggles for depth/HRTF)
+│   ├── ui-settings.js        # Button bindings 
 │   ├── cleanup-manager.js    # Teardown listeners
 │   └── dom.js                # DOM init
 ├── utils/                    # Cross-cutting tools (TTS, haptics, logs)
@@ -139,9 +140,6 @@ web/
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
 
-
-
-
 Diagrams covering the Turnk Based Development approach (v0.2). 
 
 Reflecting:  
@@ -155,11 +153,51 @@ Reflecting:
 
 ### [License](docs/LICENSE.md)
 
-- GPL-3.0 license details
+## Licensing
+
+AcoustSee is available under two distinct licenses, allowing you to choose the one that best suits your needs.
+
+**1. Open Source License (GPL-3.0)**
+
+This project is licensed under the **GNU General Public License v3.0**.
+
+This means that while you are free to use, share, and modify this software for open-source projects, academic research, and personal use. Any derivative work must also be licensed under the GPL-3.0 and you must provide the complete corresponding source code. 
+
+
+**2. Commercial License**
+
+The terms of the GPL-3.0 are not suitable if you want to integrate AcoustSee into a proprietary, closed-source commercial product, for that use a commercial license is available from us.
+
+A commercial license exempts you from the "share-alike" requirements of the GPL and allows for private, commercial use.
+
+**To inquire about purchasing a commercial license, contact us**.
+
+For full details, see the [LICENSE.md](LICENSE.md) file.
+
+
+## Usage analytics
+
+**Privacy, Analytics, and Your Control**
+
+To build the best possible version of AcoustSee, we need to understand how it's being used in the real world. For this purpose, the application collects a small amount of completely anonymous usage data when it starts. This data is vital for helping us prioritize new features, fix bugs, and ensure compatibility.
+
+**What This Means for You**
+When the app loads, it sends a single, anonymous data packet to our secure analytics endpoint. This is a one-time event per session and is designed to have zero impact on performance or your experience.
+
+**Our Data Promise:**
+We are only interested in statistical trends, not individuals.
+*   **Data We Collect:** A random session ID (which is deleted when you close your tab), your browser's language, your device type (mobile/desktop), and the app version.
+*   **Data We Never Collect:** Your IP address, location, browser history, or any other personally identifiable information. We do not use cookies or any form of persistent tracking.
+
+**Your Control**
+We believe you should have the final say over your data. While this anonymous data is incredibly helpful to the project, we provide an option to disable it in the application's settings.
+
+The entire process is open and transparent. The code that sends this data can be reviewed in `web/main.js`. We are committed to ethical analytics and protecting your privacy.
+
   
-Peace
-Love
-Union
-Respect
+*Peace.*
+**Love.**
+*Union.*
+**Respect.**
 
 

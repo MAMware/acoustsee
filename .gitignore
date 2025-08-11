@@ -1,4 +1,9 @@
+.gitignore
 node_modules/
+acoustsee-analytics/
+future/project-files.txt
+
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

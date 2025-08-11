@@ -4,6 +4,7 @@ import { createEventDispatcher } from './core/dispatcher.js';
 import { loadConfigs, settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
+import { trackFeatureUse } from './core/telemetry.js';
 
 let getText, initializeLanguageIfNeeded, speakText, announceMessage;
 // Translation cache for static keys
@@ -15,26 +16,6 @@ async function getTextCached(key, params = {}) {
   const result = await getText(key, params);
   translationCache[cacheKey] = result;
   return result;
-}
-try {
-  ({ getText, initializeLanguageIfNeeded, speakText, announceMessage } = await import('./utils/utils.js'));
-  console.log('utils.js imported successfully');  // Confirm import worked
-} catch (importErr) {
-  console.error('Failed to import utils.js:', importErr.message);
-  getText = async (key) => {
-    console.warn('TTS fallback for key:', key);
-    return key;
-  };
-  initializeLanguageIfNeeded = () => {
-    structuredLog('WARN', 'Language init skipped due to import failure');
-    return 'en-US';  // Fallback return
-  };
-  speakText = () => {
-    structuredLog('WARN', 'TTS skipped due to import failure');
-  };
-  announceMessage = (msg) => {
-    structuredLog('WARN', 'Announcement skipped due to import failure', { msg });
-  };
 }
 
 const DOM = {
@@ -104,7 +85,8 @@ async function init() {
 
     // Ensure language is initialized before translating
     initializeLanguageIfNeeded();
-
+ 
+    
     // Set aria and text for all relevant elements deriving from ID (with translation cache)
     const staticElements = [
       { el: DOM.splashScreen, baseKey: 'splashScreen', setText: false, setAria: false }, // Non-interactive, no aria/text
@@ -155,6 +137,7 @@ async function init() {
 
     const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
+    const TELEMETRY_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev'; 
 
     // Console overrides moved here to break circular dependency
     function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
@@ -167,6 +150,8 @@ async function init() {
         console.warn = originalConsole.warn;
         console.error = originalConsole.error;
         structuredLog(level, message, data, persist, sample);
+        // send to telemetry worker
+        trackFeatureUse(level, { message, ...data });
       } catch (err) {
         threw = true;
         // Restore temp overrides immediately if structuredLog throws
@@ -224,7 +209,10 @@ async function init() {
 
 // Adds uncaught error handler for global contexts
 window.onerror = function (message, source, lineno, colno, error) {
-  structuredLog('ERROR', 'Uncaught global error', { message, source, lineno, colno, stack: error ? error.stack : 'N/A' });
+  const errorPayload = { message, source, lineno, colno, stack: error ? error.stack : 'N/A' };
+  structuredLog('ERROR', 'Uncaught global error', errorPayload);
+  // send error telemetry
+  trackFeatureUse('globalError', errorPayload);
   if (settings?.debugLogging ?? true) {  // Safe check; default to true if settings null (pre-init)
     console.error(message); // Allow bubbling in debug mode
     return false; // Let browser handle
@@ -233,3 +221,8 @@ window.onerror = function (message, source, lineno, colno, error) {
 };
 
 init();
+
+// Track session end and duration on pagehide
+window.addEventListener('pagehide', () => {
+  trackFeatureUse('session-end', { duration: Math.round(performance.now() / 1000) });
+});

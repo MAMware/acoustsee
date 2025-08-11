@@ -42,7 +42,7 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
       dispatchEvent("logError", { message: `Grid not found: ${settings.gridType}` });
       return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
     }
-    const gridModule = await import(`../synthesis-grids/${grid.id}.js`);
+    const gridModule = await import(`./grids/${grid.id}.js`);
     const mapFunction = gridModule[`mapFrameTo${grid.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
     if (!mapFunction) {
       console.error(`Map function for ${grid.id} not found`);

@@ -4,6 +4,7 @@
 // Sampling reduces log volume for DEBUG level in performance-critical scenarios.
 
 import { addIdbLog } from './idb-logger.js';
+import { output } from './core-logger.js';
 import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
 
 // Safely stringify objects, handling circular refs and Error instances
@@ -69,9 +70,7 @@ export async function structuredLog(level, message, data = {}, persist = true, s
   try {
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, level: level.toUpperCase(), message, data };
-    // Use global console to avoid circular import
-  const consoleMethod = console[level.toLowerCase()] || console.log;
-    // Serialize only own properties to a JSON payload string to prevent endless prototype expansion
+  // Use core-logger to output formatted message
     let payload = '';
     if (Object.keys(data).length) {
       try {
@@ -80,7 +79,7 @@ export async function structuredLog(level, message, data = {}, persist = true, s
         payload = ' [Unserializable data]';
       }
     }
-  consoleMethod(`[${timestamp}] ${logEntry.level}: ${message}${payload}`);
+  output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${message}${payload}`);
     if (persist) {
       addIdbLog(logEntry).catch(err => {
         console.warn('Failed to persist log to IndexedDB:', err.message);
