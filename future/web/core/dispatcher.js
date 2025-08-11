@@ -7,6 +7,13 @@ import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
 import { initializeMicAudio, resizeOscillatorPool } from '../audio/audio-processor.js';
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
+import { videoHandlers } from './handlers/video-handlers.js';
+import { audioHandlers } from './handlers/audio-handlers.js';
+import { uiHandlers } from './handlers/ui-handlers.js';
+import { settingsHandlers } from './handlers/settings-handlers.js';
+import { gridHandlers } from './handlers/grid-handlers.js';
+import { debugHandlers } from './handlers/debug-handlers.js';
+
 // Reusable offscreen canvas for frame processing
 let offscreenCanvas = null;
 let offscreenCtx = null;

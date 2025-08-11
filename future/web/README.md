@@ -1,10 +1,10 @@
-**a photon to phonon code**
+**photon to phonon by code**
 
 ## [Introduction](#introduction)
 
-The content in this repository is meant to provide the code for a public infraestructure web app that aims to transform visual environments into soundscapes, empowering the users to experience the visual world by synthetic audio cues, in real time.
+The content in this repository builds a web app that aims to transform visual environments into soundscapes, by doin this the users to experience the visual world by synthetic audio cues in real time.
 
-> **Why?** We believe in enhancing humanity with open-source software in a fast, accessible and impactful way. You are invited to join us to improve its mission and make a difference!
+> **Why?** We believe in building open-source software that aims to improve quality of life in a accessible and impactful way. You are invited to join us to improve its mission and make a difference!
 
 ### Project Vision
 
@@ -26,7 +26,7 @@ Launch the app on a mobile device to translate live camera input into a dynamic 
 ````
 Milestone 4 from 0 was exclusively coded by xAI Grok 3 as per @MAMware instructions.
 Milestone 5 Grok and MAMware found themself into a debbugin rabbit hole that looked like dog chasing its own tail so we seeled for help from Gemini 2.5 pro, OpenAI ChatGPT 4.1 & 04-mini and Anthropic Claude 4.
-Milestone 6 is being developed at github.dev, Grok.com is acting as the project manager in charge of the restructuring from v0.6. Gemini 2.5 pro is used for a tiny amount of reviews and ChatGPT is acting as agent at VS Codespaces.
+Milestone 6 is being developed at github.dev, Grok.com is acting as the project manager in charge of the restructuring from v0.6. Gemini 2.5 pro does some reviews and ChatGPT is acting as agent at VS Codespaces.
 ````
 
 >We welcome contributors! 
@@ -79,7 +79,7 @@ web/
 │   ├── audio-manager.js      # AudioContext management
 │   ├── audio-processor.js    # Core audio (oscillators, playAudio, cleanup; integrates HRTF/ML depth)
 │   ├── hrtf-processor.js     # HRTF logic (PannerNode, positional filtering)
-│   └── synths/               # Synth methods (extend with HRTF; renamed for brevity)
+│   └── synths/               # Synth methods (extend with HRTF)
 │       ├── sine-wave.js
 │       ├── fm-synthesis.js
 │       └── available-engines.json
@@ -104,7 +104,7 @@ web/
 │   ├── async.js              # Error wrappers
 │   ├── idb-logger.js         # Persistent logs
 │   ├── logging.js            # Structured logs
-│   └── utils.js              # Helpers (getText, headphone detect for HRTF)
+│   └── utils.js              # Helpers (getText, ...)
 ├── languages/                # Localization (add ML/HRTF strings)
 │   ├── es-ES.json
 │   ├── en-US.json
@@ -132,15 +132,118 @@ web/
 ### [Contributing](docs/CONTRIBUTING.md)
 
 - Please follow the link above for the detailed contributing guidelines, branching strategy and examples.
+- No fallbacks
+- No magic numbers (hardcoding)
+- No left overs
+
 
 ### [To-Do List](docs/TO_DO.md)
 
-- At this document linked above, you will find the list for our current TO TO list, now from milestone 5 (v0.5.2)
+- Refactoring Plan (Adhering to Conventions)
+
+- Starting from v0.6 (milestone 6) we are adhering the `//core/dispatcher.js` to a single responsability principle, the folder `core` should keep hyphenated names and we should clean leftovers `//core/dispatcher.js` and export objects (e.g., `videoHandlers`) with handler functions
+
+```
+web/
+├── core/                 # Orchestration hub, including handlers
+│   ├── handlers/
+│   │   ├── video-handlers.js
+│   │   ├── audio-handlers.js
+│   │   ├── ui-handlers.js
+│   │   ├── settings-handlers.js
+│   │   ├── grid-handlers.js
+│   │   └── debug-handlers.js
+│   ├── dispatcher.js
+│   ├── state.js
+│   └── context.js
+├── index.html
+└── ... (audio/, video/, etc.)
+```
+
+'../cleanup-manager.js'; 
+
+The idea behind pulling out a “cleanup manager” into its own module is simply separation of concerns. Till milestone 5 the dispatcher and UI‐handler code are doing three things at once:
+
+• Routing events (e.g. “teardownUI”)
+• Manipulating DOM elements (adding/removing listeners, cleaning up nodes)
+• Keeping track of which listeners have been registered
+
+By moving all of the actual listener‐teardown logic into a cleanup-manager.js we:
+
+Keep our handlers focused purely on “which event do I fire” instead of “how do we undo that wiring.”
+Give ourselves a single place to track, batch, and test tear-down routines (so we don’t accidentally leave stray listeners around).
+Make it far easier to extend or change our UI teardown process in one spot (for example if we swap from native event handlers to a virtual-DOM framework).
+In short the dispatcher and handlers decide what needs to happen, and cleanup‐manager.js encapsulates how you actually detach everything.
+
+````
+// web/core/handlers/audio-handlers.js
+    // TODO: wire up note synthesis logic (e.g., playAudio)
+    // TODO: apply HRTF using PannerNode or hrtf-processor
+````
+````
+// web/core/handlers/settings-handlers.js
+    // TODO: read settings from state/localStorage
+    // TODO: write newSettings to state/localStorage
+````
+````
+// web/core/handlers/grid-handlers.js
+    // TODO: set gridType in settings and trigger grid rendering
+````    
+````
+// web/core/handlers/ui-handlers.js
+    // TODO: wire up button UI updates
+    // TODO: remove UI event listeners, cleanup DOM
+    // cleanupAllListeners(context);
+
+````
+
+````
+// web/core/handlers/debug-handlers.js` 
+  // TODO: 
+
+Separation of concerns
+• Good: You’ve pulled out “logEvent” and “inspectState” so that your dispatcher doesn’t need to know the details of how debugging works.
+• Could improve: Rather than calling getLogs().then(console.log), consider returning a promise or emitting a structured debug event—this makes it easier to build UIs or remote‐ship logs instead of only dumping to the console.
+
+Consistency with your logging/telemetry layer
+• Right now you mix structuredLog('DEBUG', …) with a raw console.log. If you already have a telemetry/IndexedDB pipeline in telemetry.js or state.js, lean on that so your debug output goes through the same filters/formatters and obeys your debugLogging flag.
+
+Naming and API shape
+• logEvent({ event }) overlaps conceptually with your existing structuredLog; it may be redundant unless you’re transforming or storing the event somewhere different.
+• inspectState({ context }) never uses context—either remove the unused parameter or allow callers to pass a callback/context for more flexible introspection (e.g. UI dialog vs console).
+
+Extensibility
+• If you ever want live debugging tools (hot toggles, wire up a REPL in the page, remote debug), you’ll want a richer API than just two methods. Think about returning structured objects or exposing hooks for subscribers rather than only side-effects.
+
+The next step is to align them more closely with your existing telemetry/logging infrastructure, tighten up their API (parameters, return values), and ensure they’re genuinely adding value beyond what structuredLog already gives us.
+````
+
+
+
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
+- Work in progress at `//core/dispatcher.js`
 
-Diagrams covering the Turnk Based Development approach (v0.2). 
+```
+graph TD
+    A[dispatcher.js] -->|routes| B[core/handlers/]
+    B --> C[video-handlers.js]
+    B --> D[audio-handlers.js]
+    B --> E[ui-handlers.js]
+    B --> F[settings-handlers.js]
+    B --> G[grid-handlers.js]
+    B --> H[debug-handlers.js]
+    C -->|calls| I[video/frame-processor.js]
+    D -->|calls| J[audio/audio-processor.js]
+    E -->|updates| K[ui/ui-settings.js]
+    F -->|uses| L[utils/utils.js]
+    A -->|state| M[state.js]
+    A -->|logs| N[utils/logging.js]
+    B -->|future| O[ml-handlers.js]
+````
+
+- (outdated) Diagrams covering the Turnk Based Development approach (v0.2). 
 
 Reflecting:  
   - Process Frame Flow
@@ -179,10 +282,10 @@ For full details, see the [LICENSE.md](LICENSE.md) file.
 
 **Privacy, Analytics, and Your Control**
 
-To build the best possible version of AcoustSee, we need to understand how it's being used in the real world. For this purpose, the application collects a small amount of completely anonymous usage data when it starts. This data is vital for helping us prioritize new features, fix bugs, and ensure compatibility.
+To build the best possible version of AcoustSee, we need to understand how it's being used in the real world. For this purpose, the application collects a small amount of completely anonymous usage data. This data is vital for helping us prioritize new features, fix bugs, and ensure compatibility.
 
 **What This Means for You**
-When the app loads, it sends a single, anonymous data packet to our secure analytics endpoint. This is a one-time event per session and is designed to have zero impact on performance or your experience.
+When the app loads, it sends anonymous data packets to our secure cloudfare analytics endpoint. This is a one-time event per session and is designed to have zero impact on performance or your experience.
 
 **Our Data Promise:**
 We are only interested in statistical trends, not individuals.
@@ -192,7 +295,7 @@ We are only interested in statistical trends, not individuals.
 **Your Control**
 We believe you should have the final say over your data. While this anonymous data is incredibly helpful to the project, we provide an option to disable it in the application's settings.
 
-The entire process is open and transparent. The code that sends this data can be reviewed in `web/main.js`. We are committed to ethical analytics and protecting your privacy.
+The entire process is open and transparent. The code that sends this data can be reviewed in `core/telemetry.js`. We are committed to ethical analytics and protecting your privacy.
 
   
 *Peace.*
