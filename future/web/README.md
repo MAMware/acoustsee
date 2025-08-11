@@ -69,7 +69,7 @@ Working at **Milestone 6**
 - Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
 - Current "future" version in development starts from v0.6 
 
-### [v0.5 Project structure](#project_structure)
+### [v0.6 Project structure, work in progress](#project_structure)
 
 ```
 

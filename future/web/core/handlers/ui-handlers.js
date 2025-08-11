@@ -1,18 +1,24 @@
-// web/core/handlers/ui-handlers.js
+// ui-handlers.js
+// Handles UI updates and teardown, integrates with cleanup manager
 
 import { structuredLog } from '../../utils/logging.js';
 import { getText } from '../../utils/utils.js';
-import { cleanupAllListeners } from '../cleanup-manager.js'; // hypothetical
+import { cleanupAllListeners } from '../../ui/cleanup-manager.js';
 
-export const uiHandlers = {
-  updateSettingsUI: ({ settings, context }) => {
-    // TODO: wire up button UI updates
-    structuredLog('DEBUG', 'uiHandlers.updateSettingsUI called', { settings });
-  },
+/**
+ * Updates UI elements (e.g., buttons) based on current settings/state.
+ */
+export function updateSettingsUI(settings, context) {
+  // Example: update button labels, enable/disable controls
+  structuredLog('INFO', 'uiHandlers.updateSettingsUI', { settings });
+  // ...actual UI update logic here...
+}
 
-  teardownUI: ({ context }) => {
-    // TODO: remove UI event listeners, cleanup DOM
-    structuredLog('DEBUG', 'uiHandlers.teardownUI called');
-    // cleanupAllListeners(context);
-  }
-};
+/**
+ * Tears down UI event listeners and cleans up DOM resources.
+ */
+export function teardownUI(context) {
+  structuredLog('INFO', 'uiHandlers.teardownUI: Cleaning up UI listeners');
+  cleanupAllListeners();
+  // ...additional DOM cleanup logic here...
+}

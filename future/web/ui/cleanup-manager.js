@@ -1,37 +1,35 @@
-import { settings, setStream, setAudioInterval } from '../core/state.js';
-import { cleanupAudio } from '../audio/audio-processor.js';
+// Centralizes teardown of event listeners and DOM cleanup
+const listeners = [];
 
-let isAudioInitialized = false;
-let audioContext = null;
-
-export function setupCleanupManager() {
-  window.addEventListener("beforeunload", async () => {
-    if (settings.stream) {
-      settings.stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-    }
-    if (settings.micStream) {
-      settings.micStream.getTracks().forEach((track) => track.stop());
-      settings.micStream = null;
-    }
-    if (settings.audioTimerId) {
-      clearInterval(settings.audioTimerId);
-      setAudioInterval(null);
-    }
-    if (isAudioInitialized && audioContext) {
-      await cleanupAudio();
-      await audioContext.close();
-      isAudioInitialized = false;
-      audioContext = null;
-    }
-    console.log("cleanupManager: Cleanup completed");
-  });
-
-  console.log("setupCleanupManager: Setup complete");
+export function registerListener(target, type, handler) {
+  target.addEventListener(type, handler);
+  listeners.push({ target, type, handler });
 }
 
-// Expose for audio-controls.js to update audioContext state
-export function setAudioContextState(context, initialized) {
-  audioContext = context;
-  isAudioInitialized = initialized;
+export function cleanupAllListeners() {
+  listeners.forEach(({ target, type, handler }) => {
+    target.removeEventListener(type, handler);
+  });
+  listeners.length = 0;
+}
+
+// Resource cleanup for audio/video streams and intervals
+export async function cleanupResources({ settings, audioContext, cleanupAudio }) {
+  if (settings?.stream) {
+    settings.stream.getTracks().forEach((track) => track.stop());
+    if (settings.setStream) settings.setStream(null);
+  }
+  if (settings?.micStream) {
+    settings.micStream.getTracks().forEach((track) => track.stop());
+    settings.micStream = null;
+  }
+  if (settings?.audioTimerId) {
+    clearInterval(settings.audioTimerId);
+    if (settings.setAudioInterval) settings.setAudioInterval(null);
+  }
+  if (audioContext) {
+    if (cleanupAudio) await cleanupAudio();
+    await audioContext.close();
+  }
+  console.log("cleanupManager: Cleanup completed");
 }
