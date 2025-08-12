@@ -2,7 +2,7 @@
 /* @ts-nocheck */
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
 import { TTS_COOLDOWN_MS } from './constants.js';
-import { getText, clearTranslationsCache } from '../utils/utils.js';
+import { getText, clearTranslationsCache, speakText } from '../utils/utils.js';
 import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
 import { initializeMicAudio, resizeOscillatorPool } from '../audio/audio-processor.js';
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
@@ -120,10 +120,12 @@ export async function createEventDispatcher(domElements) {
       const button1Aria = settingsMode
         ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
         : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
-      if (currentTime - lastTTSTime >= ttsCooldown) {
-        await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
-          state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
-        });
+      if (settings.ttsEnabled) {
+        const ttsMsg = await getText(
+          `button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`,
+          { state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting') }
+        );
+        speakText(ttsMsg);
       }
       if (domElements.button1) {
         domElements.button1.textContent = button1Text;

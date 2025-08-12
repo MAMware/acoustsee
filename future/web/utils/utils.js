@@ -43,22 +43,13 @@ export function clearTranslationsCache() {
 }
 
 /**
- * Fetches and formats a translated message. No DOM/TTS side-effects.
- * Enforces a global TTS cooldown using lastTTSTime from state.js.
+ * Fetches and formats a translated message. No DOM or TTS side-effects.
  * @param {string} key - Translation key (dot-notated).
  * @param {Object} [params={}] - Params for placeholder replacement.
  * @returns {Promise<string>} The formatted message, or key on failure.
  */
 export async function getText(key, params = {}) {
   try {
-    const now = Date.now();
-    if (now - lastTTSTime < 3000) { // 3-second cooldown
-      structuredLog('WARN', 'TTS cooldown active', { lastTTSTime, now });
-      return 'Cooldown active';
-    }
-
-    lastTTSTime = now; // Update the last TTS time
-
     const languageId = settings.language;
     if (!languageId) {
       throw new Error('Language not set; call initializeLanguageIfNeeded first');
@@ -110,12 +101,18 @@ export async function getText(key, params = {}) {
 }
 
 /**
- * Speaks the message via TTS if enabled.
+ * Speaks the message via TTS if enabled, enforcing a 3-second cooldown.
  * @param {string} message - Message to speak.
  * @param {string} [type='tts'] - Type (for logging).
  */
 export function speakText(message, type = 'tts') {
   if (type === 'tts' && settings.ttsEnabled) {
+    const now = Date.now();
+    if (now - lastTTSTime < 3000) {
+      structuredLog('INFO', 'TTS cooldown active, speech skipped.', { message, lastTTSTime, now });
+      return;
+    }
+    lastTTSTime = now;
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = settings.language;
     window.speechSynthesis.speak(utterance);

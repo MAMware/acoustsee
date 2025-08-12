@@ -5,8 +5,49 @@ import { loadConfigs, settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
 import { trackFeatureUse } from './core/telemetry.js';
+import { getText, initializeLanguageIfNeeded, speakText, announceMessage } from './utils/utils.js';
 
-let getText, initializeLanguageIfNeeded, speakText, announceMessage;
+// --- SESSION HEALTH MONITORING STATE ---
+const sessionErrors = [];
+const HEALTH_CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
+const ERROR_THRESHOLD = 5; // Alert if more than 5 errors
+const ERROR_TIMEFRAME_MS = 2 * 60 * 1000; // Look at last 2 minutes
+const MAX_BUFFER_SIZE = 100; // Prevent memory leaks
+
+function addSessionError(errorPayload) {
+  sessionErrors.push({
+    ...errorPayload,
+    timestamp: Date.now()
+  });
+  // Cap buffer size
+  if (sessionErrors.length > MAX_BUFFER_SIZE) sessionErrors.shift();
+}
+
+// --- HEALTH CHECKER ---
+setInterval(() => {
+  const now = Date.now();
+  // Only consider errors from the last ERROR_TIMEFRAME_MS
+  const recentErrors = sessionErrors.filter(e => now - e.timestamp < ERROR_TIMEFRAME_MS);
+
+  // Count repeated error messages
+  const errorCounts = {};
+  for (const err of recentErrors) {
+    errorCounts[err.message] = (errorCounts[err.message] || 0) + 1;
+  }
+  const repeated = Object.entries(errorCounts).filter(([msg, count]) => count > 2);
+
+  if (recentErrors.length > ERROR_THRESHOLD || repeated.length > 0) {
+    trackFeatureUse('session-health-degraded', {
+      errorCount: recentErrors.length,
+      repeatedErrors: repeated,
+      sample: recentErrors.slice(-5).map(e => e.message),
+      timeframeMinutes: ERROR_TIMEFRAME_MS / (60 * 1000),
+      lastErrorMessage: recentErrors[recentErrors.length - 1]?.message
+    });
+    // Clear buffer after reporting
+    sessionErrors.length = 0;
+  }
+}, HEALTH_CHECK_INTERVAL_MS);
 // Translation cache for static keys
 const translationCache = {};
 // Cached getText wrapper
@@ -213,6 +254,7 @@ window.onerror = function (message, source, lineno, colno, error) {
   structuredLog('ERROR', 'Uncaught global error', errorPayload);
   // send error telemetry
   trackFeatureUse('globalError', errorPayload);
+  addSessionError(errorPayload); // <-- Add to buffer for health monitoring
   if (settings?.debugLogging ?? true) {  // Safe check; default to true if settings null (pre-init)
     console.error(message); // Allow bubbling in debug mode
     return false; // Let browser handle

@@ -1,6 +1,6 @@
 // File: web/ui/ui-settings.js
 import { settings } from '../core/state.js';
-import { getText, hapticCount } from '../utils/utils.js';
+import { getText, speakText, hapticCount } from '../utils/utils.js';
 import { structuredLog } from '../utils/logging.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
@@ -35,7 +35,8 @@ export function setupUISettings({ dispatchEvent, DOM }) {
         console.error(`${id} error:`, err.message);
         dispatchEvent('logError', { message: `${id} error: ${err.message}` });
         const key = !settings.isSettingsMode ? normalError : settingsError;
-        await getText(key, params());
+        const errMsg = await getText(key, params());
+        speakText(errMsg);
       }
     }, { passive: false });
     console.log(`${id} event listener attached (pointerdown only)`);
@@ -95,9 +96,10 @@ export function setupUISettings({ dispatchEvent, DOM }) {
           }
         }
         dispatchEvent('updateFrameInterval', { interval: settings.updateInterval });
-        await getText('button4.tts.fpsBtn', {
+        const fpsMsg = await getText('button4.tts.fpsBtn', {
           fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval)
         });
+        speakText(fpsMsg);
       },
       settings: () => dispatchEvent('saveSettings', { settingsMode: true })
     },
@@ -112,7 +114,8 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     {
       normal: async () => {
         dispatchEvent('emailDebug');
-        await getText('button5.tts.emailDebug');
+        const emailMsg = await getText('button5.tts.emailDebug');
+        speakText(emailMsg);
       },
       settings: () => dispatchEvent('loadSettings', { settingsMode: true })
     },
@@ -129,16 +132,18 @@ export function setupUISettings({ dispatchEvent, DOM }) {
       normal: async () => {
         settings.isSettingsMode = !settings.isSettingsMode;
         dispatchEvent('toggleDebug', { show: settings.isSettingsMode });
-        await getText('button6.tts.settingsToggle', {
+        const toggleMsg = await getText('button6.tts.settingsToggle', {
           state: settings.isSettingsMode ? 'on' : 'off'
         });
+        speakText(toggleMsg);
       },
       settings: async () => {
         settings.isSettingsMode = !settings.isSettingsMode;
         dispatchEvent('toggleDebug', { show: settings.isSettingsMode });
-        await getText('button6.tts.settingsToggle', {
+        const toggleMsg2 = await getText('button6.tts.settingsToggle', {
           state: settings.isSettingsMode ? 'on' : 'off'
         });
+        speakText(toggleMsg2);
       }
     },
     {

@@ -55,9 +55,9 @@ async function getDB() {
 export async function addIdbLog(logEntry) {
   const db = await getDB();
   if (!db) {
-  output('warn', `DB unavailable; logging to console: ${JSON.stringify(logEntry)}`);
-  output('warn', `IDB fallback to console: ${JSON.stringify(logEntry)}`);
-    return;  // Fallback: No persistence.
+    // Directly call native console.warn to avoid recursive logging
+    console.warn(`[IDB FALLBACK] DB unavailable; logging to console: ${JSON.stringify(logEntry)}`);
+    return;  
   }
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], 'readwrite');
