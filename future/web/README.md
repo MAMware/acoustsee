@@ -61,7 +61,6 @@ Working at **Milestone 6**
 - UI Detached from the core logic to enable customization of skins
 - Adding support for new video and audio techniques
 - Strict architectural paradigm to no hardcoding and no fallbacks
-- Adhering the dispatcher to single resonsability principle
 - Tweaks and bugfixing here and there
  
 ### [Changelog](docs/CHANGELOG.md)

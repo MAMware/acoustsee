@@ -1,24 +1,18 @@
-// debug-handlers.js
-// Handles debug logging and async state inspection
-
+// web/core/handlers/debug-handlers.js
 import { structuredLog } from '../../utils/logging.js';
 import { getLogs } from '../state.js';
 
-/**
- * Logs an event with structured logging for debugging purposes.
- */
-export function logEvent(event, context) {
-  structuredLog('DEBUG', 'debugHandlers.logEvent', { event, context });
-}
+// The logEvent function has been removed.
 
 /**
  * Asynchronously inspects and returns state logs for debugging.
- * Returns a promise that resolves to the logs array.
+ * This is a reusable data provider for UI panels or log exports.
+ * @returns {Promise<Array<Object>>} A promise that resolves to the array of log objects.
  */
-export async function inspectState(context) {
+export async function inspectState() { // <-- The 'context' parameter is gone.
   try {
     const logs = await getLogs();
-    structuredLog('INFO', 'debugHandlers.inspectState: State logs', { logs });
+    structuredLog('INFO', 'debugHandlers.inspectState: Retrieved state logs', { logCount: logs.length });
     return logs;
   } catch (err) {
     structuredLog('ERROR', 'debugHandlers.inspectState: Failed to get logs', { error: err.message });
