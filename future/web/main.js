@@ -1,7 +1,7 @@
 // File: web/main.js
 import { setupUIController } from './ui/ui-controller.js';
 import { createEventDispatcher } from './core/dispatcher.js';
-import { loadConfigs, settings } from './core/state.js';
+import { settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
 import { trackFeatureUse } from './core/telemetry.js';
@@ -105,7 +105,7 @@ async function init() {
     validateDOM();
 
     // Wait for configs to fully load and defaults to be set
-    await loadConfigs;
+  // configs are now loaded synchronously via import
     structuredLog('INFO', 'init: Configurations loaded', {
       gridType: settings.gridType,
       synthesisEngine: settings.synthesisEngine,

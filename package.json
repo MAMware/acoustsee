@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "eslint-plugin-jsonc": "^2.20.1"
+  }
+}

@@ -1,28 +1,33 @@
 // File: web/core/state.js
 import { structuredLog } from '../utils/logging.js';
 import { FALLBACK_LANGUAGE } from './constants.js';
-import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';  // New import for DB logging.
+import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';
+
+// --- ADD STATIC IMPORTS ---
+import availableGridsData from '../video/grids/available-grids.json';
+import availableEnginesData from '../audio/synths/available-engines.json';
+import availableLanguagesData from '../languages/available-languages.json';
 
 export let settings = {
   debugLogging: true,
   stream: null,
-  availableGrids: [],    // Loaded once at startup
-  availableEngines: [],  // Loaded once at startup
-  availableLanguages: [], // Loaded once at startup
-  audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
-  updateInterval: 30, 
+  availableGrids: availableGridsData || [],
+  availableEngines: availableEnginesData || [],
+  availableLanguages: availableLanguagesData || [],
+  audioTimerId: null,
+  updateInterval: 30,
   autoFPS: true,
-  gridType: null, 
-  synthesisEngine: null, 
-  language: null, 
+  gridType: null,
+  synthesisEngine: null,
+  language: null,
   isSettingsMode: false,
   micStream: null,
-  audioResumeAttempts: 2,  // Number of attempts to resume AudioContext before failing
-  audioResumeDelayMs: 100,  // Delay (ms) between resume attempts
+  audioResumeAttempts: 2,
+  audioResumeDelayMs: 100,
   ttsEnabled: false,
   dayNightMode: 'day',
-  resetStateOnError: true, // New flag to control state reset on errors
-  motionThreshold: 20 // Default threshold for motion detection
+  resetStateOnError: true,
+  motionThreshold: 20
 };
 
 /**
@@ -100,66 +105,7 @@ function initializeDefaults() {
   structuredLog('INFO', 'Settings initialized', { settings });
 }
 
-export const loadConfigs = Promise.all([
-  fetch('./video/grids/available-grids.json')
-    .then(async res => {
-      if (!res.ok) throw new Error(`Failed to fetch available-grids.json: ${res.status}`);
-      const clone = res.clone();
-      const data = await res.json();
-      settings.availableGrids = data;
-      console.log('Debug: availableGrids raw JSON', await clone.text());
-      if (settings.availableGrids.length === 0) console.warn('Debug: availableGrids is empty array');
-      return data;
-    })
-    .catch(err => {
-      console.error('available-grids load error:', err.message);
-      structuredLog('ERROR', 'available-grids load error', { message: err.message });
-      settings.availableGrids = [];
-      return [];
-    }),
-
-  fetch('./audio/synths/available-engines.json')
-    .then(async res => {
-      if (!res.ok) throw new Error(`Failed to fetch available-engines.json: ${res.status}`);
-      const clone = res.clone();
-      const data = await res.json();
-      settings.availableEngines = data;
-      console.log('Debug: availableEngines raw JSON', await clone.text());
-      if (settings.availableEngines.length === 0) console.warn('Debug: availableEngines is empty array');
-      return data;
-    })
-    .catch(err => {
-      console.error('available-engines load error:', err.message);
-      structuredLog('ERROR', 'available-engines load error', { message: err.message });
-      settings.availableEngines = [];
-      return [];
-    }),
-
-  fetch('./languages/available-languages.json')
-    .then(async res => {
-      if (!res.ok) throw new Error(`Failed to fetch available-languages.json: ${res.status}`);
-      const clone = res.clone();
-      const data = await res.json();
-      settings.availableLanguages = data;
-      console.log('Debug: availableLanguages raw JSON', await clone.text());
-      if (settings.availableLanguages.length === 0) console.warn('Debug: availableLanguages is empty array');
-      return data;
-    })
-    .catch(err => {
-      console.error('available-languages load error:', err.message);
-      structuredLog('ERROR', 'available-languages load error', { message: err.message });
-      settings.availableLanguages = [];
-      return [];
-    }),
-])
-  .then(() => {
-    initializeDefaults();  // Derive defaults from loaded (or empty) arrays
-  })
-  .catch(err => {
-    console.error('Configs load aggregate error:', err.message);
-    structuredLog('ERROR', 'Configs load aggregate error', { message: err.message });
-    initializeDefaults();  // Ensure defaults even if failed
-  });
+// --- REMOVED loadConfigs: configs are now loaded statically via import ---
 
 export async function getLogs() {
   // Fetch from IndexedDB and pretty-print for readability.

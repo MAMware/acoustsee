@@ -1,5 +1,18 @@
 // future/web/.eslintrc.json
 {
   "env": { "browser": true, "es2020": true },
-  "parserOptions": { "ecmaVersion": 2020, "sourceType": "module" }
+  "parserOptions": { "ecmaVersion": 2020, "sourceType": "module" },
+
+"plugins": [
+    "jsonc" 
+  ],
+  "extends": [
+    "plugin:jsonc/recommended-with-json"
+  ],
+  "overrides": [
+    {
+      "files": ["*.json", "*.json5", "*.jsonc"],
+      "parser": "jsonc-eslint-parser"
+    }
+  ]
 }
