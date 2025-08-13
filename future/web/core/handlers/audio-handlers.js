@@ -1,7 +1,7 @@
 // web/core/handlers/audio-handlers.js
 
 import { structuredLog } from '../../utils/logging.js';
-import availableEngines from '../../audio/synths/available-engines.json';
+import availableEngines from '../../audio/synths/available-synths.js';
 import { resizeOscillatorPool, initializeAudio } from '../../audio/audio-processor.js';
 import { settings } from '../state.js';
 import { applyHRTF as hrtfSpatialize } from '../../audio/hrtf-processor.js';
