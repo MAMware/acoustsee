@@ -1,6 +1,6 @@
 // File: web/core/dispatcher.js
 /* @ts-nocheck */
-import { settings } from './state.js';
+import { settings, setAudioInterval, setStream, setMicStream } from './state.js';
 import { getText, speakText } from '../utils/utils.js';
 import { debounce } from '../utils/async.js';
 import { structuredLog } from '../utils/logging.js';
@@ -11,16 +11,17 @@ import { startStop, toggleVideoSource, processFrame } from './handlers/video-han
 import { toggleLanguage, updateFrameInterval } from './handlers/ui-handlers.js';
 import { toggleDebug, emailDebug } from './handlers/debug-handlers.js';
 
-export function setDispatcher(fn) {
-  _dispatcherFn = fn;
-}
+// --- 1. SIMPLIFIED DISPATCHER STATE ---
+// This will hold the actual function that does the work.
+let dispatchFunction = null;
 
+// --- 2. A CLEANER, SIMPLER dispatchEvent ---
 export function dispatchEvent(eventName, payload) {
-  if (_dispatcherFn) {
+  if (dispatchFunction) {
     structuredLog('DEBUG', `dispatchEvent: ${eventName}`, { payload });
-    return _dispatcherFn(eventName, payload);
+    dispatchFunction(eventName, payload);
   } else {
-    structuredLog('ERROR', 'dispatchEvent called before initialization', { eventName, payload });
+    structuredLog('ERROR', 'dispatchEvent called before dispatcher is initialized', { eventName, payload });
   }
 }
 
@@ -129,21 +130,25 @@ export async function createEventDispatcher(domElements) {
     }
   };
 
-  setDispatcher((eventName, payload = {}) => {
+  // --- 4. DIRECTLY ASSIGN THE DISPATCH LOGIC ---
+  dispatchFunction = (eventName, payload = {}) => {
     if (handlers[eventName]) {
       try {
-        structuredLog('DEBUG', `Dispatching event: ${eventName}`, { payload });
         handlers[eventName](payload);
       } catch (err) {
-        structuredLog('ERROR', `Error in handler ${eventName}`, { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
+        structuredLog('ERROR', `Error in handler for event: ${eventName}`, { message: err.message, stack: err.stack });
+        if (handlers.logError) {
+          handlers.logError({ message: `Handler for ${eventName} threw an error: ${err.message}` });
+        }
       }
     } else {
       structuredLog('ERROR', `No handler found for event: ${eventName}`);
-      handlers.logError({ message: `No handler for event: ${eventName}` });
+      if (handlers.logError) {
+        handlers.logError({ message: `No handler found for event: ${eventName}` });
+      }
     }
-  });
+  };
 
-  structuredLog('INFO', 'createEventDispatcher: Dispatcher initialized');
+  structuredLog('INFO', 'createEventDispatcher: Dispatcher initialized and ready.');
   return { dispatchEvent };
 }
