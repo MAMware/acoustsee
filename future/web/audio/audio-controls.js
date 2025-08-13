@@ -56,8 +56,7 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
     }
   };
 
-  DOM.powerOn.addEventListener("click", handlePowerOn);
-  DOM.powerOn.addEventListener("touchstart", handlePowerOn);  // Removed { passive: true }
+  DOM.powerOn.addEventListener("pointerdown", handlePowerOn);
 
   console.log("setupAudioControls: Audio controls initialized");
 }
