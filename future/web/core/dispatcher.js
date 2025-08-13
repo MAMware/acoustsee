@@ -62,16 +62,6 @@ export async function createEventDispatcher(domElements) {
   };
   structuredLog('INFO', 'Enhanced browser and app debug info', browserInfo);
 
-  if (settings.debugLogging) {
-    fpsSamplerInterval = setInterval(() => {
-      if (settings.stream) {
-        const avgFPS = frameCount / 10;
-        structuredLog('DEBUG', 'Average FPS sample', { avgFPS, overSeconds: 10 });
-        frameCount = 0;
-      }
-    }, 10000);
-  }
-
   // Debounced version of updateUI to prevent rapid consecutive UI updates
   const debouncedUpdateUI = debounce(async ({ settingsMode, streamActive, micActive }) => {
     try {
