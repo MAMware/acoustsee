@@ -1,7 +1,7 @@
 // video-handlers.js
 // Handles video frame processing and grid/capture logic
 
-import { settings, setStream, setAudioInterval } from "../state.js";
+import { settings, setStream, setAudioInterval, setSettings, saveConfigs } from "../state.js";
 import { getText, speakText } from "../../utils/utils.js";
 import {
   processFrameWithState,
@@ -109,8 +109,9 @@ export async function startStop(settingsMode, domElements) {
       const currentIndex = availableGrids.findIndex(
         (g) => g.id === settings.gridType,
       );
-      settings.gridType =
-        availableGrids[(currentIndex + 1) % availableGrids.length].id;
+      const newGridType = availableGrids[(currentIndex + 1) % availableGrids.length].id;
+      setSettings({ ...settings, gridType: newGridType });
+      saveConfigs(); // Save user preferences after updating grid type
       const msg = await getText("button1.tts.gridSelect", { state: settings.gridType });
       speakText(msg);
       structuredLog("INFO", "videoHandlers.startStop: Grid switched", {
