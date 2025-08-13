@@ -1,39 +1,76 @@
-// settings-handlers.js
-// Handles reading/writing settings from state and localStorage
+// File: web/core/handlers/settings-handlers.js
 
-import { settings, setSettings } from '../state.js';
+import { settings } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
+import { getText, speakText } from '../../utils/utils.js';
+import { dispatchEvent } from '../dispatcher.js';
 
-/**
- * Loads settings from localStorage (if available) and merges with current state.
- * Returns a promise for async usage.
- */
-export async function loadConfig(context) {
+export async function saveSettings() {
   try {
-    const stored = localStorage.getItem('acoustsee-settings');
-    let loaded = stored ? JSON.parse(stored) : {};
-    // Merge loaded settings into current state
-    setSettings({ ...settings, ...loaded });
-    structuredLog('INFO', 'settingsHandlers.loadConfig: Loaded settings', { loaded });
-    return loaded;
+    const settingsToSave = {
+      gridType: settings.gridType,
+      synthesisEngine: settings.synthesisEngine,
+      language: settings.language,
+      autoFPS: settings.autoFPS,
+      updateInterval: settings.updateInterval,
+      dayNightMode: settings.dayNightMode,
+      ttsEnabled: settings.ttsEnabled,
+      resetStateOnError: settings.resetStateOnError,
+      audioResumeAttempts: settings.audioResumeAttempts,
+      audioResumeDelayMs: settings.audioResumeDelayMs,
+      maxNotes: settings.maxNotes
+    };
+    localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
+    const msg = await getText('button4.tts.saveSettings');
+    speakText(msg);
   } catch (err) {
-    structuredLog('ERROR', 'settingsHandlers.loadConfig: Failed to load', { error: err.message });
-    throw err;
+    structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
+    const errorMsg = await getText('button4.tts.saveError');
+    speakText(errorMsg);
   }
 }
 
-/**
- * Saves new settings to localStorage and updates state.
- * Returns a promise for async usage.
- */
-export async function saveConfig(newSettings, context) {
+export async function loadSettings() {
   try {
-    setSettings(newSettings);
-    localStorage.setItem('acoustsee-settings', JSON.stringify(newSettings));
-    structuredLog('INFO', 'settingsHandlers.saveConfig: Saved settings', { newSettings });
-    return true;
+    const savedSettings = localStorage.getItem('acoustsee-settings');
+    if (savedSettings) {
+      const parsedSettings = JSON.parse(savedSettings);
+      
+      const expectedSettings = {
+        gridType: 'string',
+        synthesisEngine: 'string',
+        language: 'string',
+        autoFPS: 'boolean',
+        updateInterval: 'number',
+        dayNightMode: 'string',
+        ttsEnabled: 'boolean',
+        resetStateOnError: 'boolean',
+        audioResumeAttempts: 'number',
+        audioResumeDelayMs: 'number',
+        maxNotes: 'number'
+      };
+
+      for (const key in expectedSettings) {
+        if (Object.hasOwn(parsedSettings, key) && typeof parsedSettings[key] === expectedSettings[key]) {
+          settings[key] = parsedSettings[key];
+        }
+      }
+
+      const msg = await getText('button5.tts.loadSettings.loaded');
+      speakText(msg);
+    } else {
+      const msg = await getText('button5.tts.loadSettings.none');
+      speakText(msg);
+    }
   } catch (err) {
-    structuredLog('ERROR', 'settingsHandlers.saveConfig: Failed to save', { error: err.message });
-    throw err;
+    structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
+    const errorMsg = await getText('button5.tts.loadError');
+    speakText(errorMsg);
+  } finally {
+    dispatchEvent('updateUI', { 
+      settingsMode: settings.isSettingsMode, 
+      streamActive: !!settings.stream, 
+      micActive: !!settings.micStream 
+    });
   }
 }

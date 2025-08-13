@@ -13,6 +13,7 @@ import { uiHandlers } from './handlers/ui-handlers.js';
 import { settingsHandlers } from './handlers/settings-handlers.js';
 import { gridHandlers } from './handlers/grid-handlers.js';
 import { debugHandlers } from './handlers/debug-handlers.js';
+import { saveSettings, loadSettings } from './handlers/settings-handlers.js';
 
 // Reusable offscreen canvas for frame processing
 let offscreenCanvas = null;
@@ -423,79 +424,9 @@ export async function createEventDispatcher(domElements) {
       }
     },
 
-    saveSettings: async () => {
-      try {
-        const settingsToSave = {
-          gridType: settings.gridType,
-          synthesisEngine: settings.synthesisEngine,
-          language: settings.language,
-          autoFPS: settings.autoFPS,
-          updateInterval: settings.updateInterval,
-          dayNightMode: settings.dayNightMode,
-          ttsEnabled: settings.ttsEnabled,
-          resetStateOnError: settings.resetStateOnError,
-          audioResumeAttempts: settings.audioResumeAttempts,
-          audioResumeDelayMs: settings.audioResumeDelayMs
-        };
-        localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
-        await getText('button4.tts.saveSettings');
-      } catch (err) {
-        structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Save settings error: ${err.message}` });
-        await getText('button4.tts.saveError');
-      }
-      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-    },
+    saveSettings: saveSettings,
 
-    loadSettings: async () => {
-      try {
-        const savedSettings = localStorage.getItem('acoustsee-settings');
-        if (savedSettings) {
-          let parsedSettings;
-          try {
-            parsedSettings = JSON.parse(savedSettings);
-          } catch (parseErr) {
-            throw new Error(`Invalid JSON in localStorage: ${parseErr.message}`);
-          }
-
-          const expectedKeys = ['gridType', 'synthesisEngine', 'language', 'autoFPS', 'updateInterval', 'dayNightMode', 'ttsEnabled', 'resetStateOnError', 'audioResumeAttempts', 'audioResumeDelayMs'];
-          const expectedTypes = {
-            gridType: 'string',
-            synthesisEngine: 'string',
-            language: 'string',
-            autoFPS: 'boolean',
-            updateInterval: 'number',
-            dayNightMode: 'string',
-            ttsEnabled: 'boolean',
-            resetStateOnError: 'boolean',
-            audioResumeAttempts: 'number',
-            audioResumeDelayMs: 'number'
-          };
-
-          expectedKeys.forEach(key => {
-            if (Object.hasOwn(parsedSettings, key) && typeof parsedSettings[key] === expectedTypes[key]) {
-              settings[key] = parsedSettings[key];
-            } else if (Object.hasOwn(parsedSettings, key)) {
-              structuredLog('WARN', 'Invalid type for setting during load', { key, receivedType: typeof parsedSettings[key] });
-            }
-          });
-
-          const extraKeys = Object.keys(parsedSettings).filter(key => !expectedKeys.includes(key));
-          if (extraKeys.length > 0) {
-            structuredLog('WARN', 'Extra keys ignored in loaded settings (potential pollution)', { extraKeys });
-          }
-
-          await getText('button5.tts.loadSettings.loaded');
-        } else {
-          await getText('button5.tts.loadSettings.none');
-        }
-      } catch (err) {
-        structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Load settings error: ${err.message}` });
-        await getText('button5.tts.loadError');
-      }
-      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-    },
+    loadSettings: loadSettings,
 
     emailDebug: async () => {
       try {
