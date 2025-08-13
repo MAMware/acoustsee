@@ -6,8 +6,9 @@ import path from 'path';
 // We now define how to generate the JS content for each registry
 const targets = [
   {
-    dir: '../web/video/grids',
-    output: '../web/video/grids/available-grids.js',
+    dir: './web/video/grids',
+    output: './web/video/grids/available-grids.js',
+    sourceExt: '.js',
     // Generates the JS code for the grids registry
     generateContent: (files) => {
       const imports = files.map(file => {
@@ -28,8 +29,9 @@ const targets = [
     }
   },
   {
-    dir: '../web/audio/synths',
-    output: '../web/audio/synths/available-synths.js',
+    dir: './web/audio/synths',
+    output: './web/audio/synths/available-synths.js',
+    sourceExt: '.js',
     // Generates the JS code for the engines registry
     generateContent: (files) => {
         const imports = files.map(file => {
@@ -48,8 +50,9 @@ const targets = [
     }
   },
   {
-    dir: '../web/languages',
-    output: '../web/languages/available-languages.js',
+    dir: './web/languages',
+    output: './web/languages/available-languages.js',
+    sourceExt: '.json',
     // Generates the JS code for the languages registry
     generateContent: (files) => {
         const imports = files.map(file => {
@@ -69,20 +72,30 @@ const targets = [
 ];
 
 
-// --- The rest of the script logic is now generalized ---
-for (const { dir, output, generateContent } of targets) {
+// --- REVISED Script Logic ---
+for (const { dir, output, sourceExt, generateContent } of targets) {
   const absDir = path.resolve(dir);
   if (!fs.existsSync(absDir)) {
-    console.warn(`DIR NOT FOUND: ${absDir}`);
+    console.error(`ERROR: Source directory not found: ${absDir}`);
     continue;
   }
   
-  // Find all .js files, excluding the 'available*.js' registry files itself
+  // Get the base name of the output file (e.g., 'index.js' or 'available-grids.js')
+  const outputFileName = path.basename(output);
+
   const files = fs.readdirSync(absDir)
-    .filter(f => !f.startsWith('available.') && (f.endsWith('.js') || f.endsWith('.json')));
+    // The NEW, more robust filter logic:
+    .filter(f => 
+      f.endsWith(sourceExt) && // 1. Must have the correct extension
+      f !== outputFileName     // 2. Must NOT be the output file itself
+    );
 
   if (files.length === 0) {
-    console.warn(`NO SOURCE FILES FOUND in: ${absDir}`);
+    console.warn(`WARN: No source files with extension ${sourceExt} found in: ${absDir}`);
+    // Still generate an empty registry to prevent old data from persisting
+    const emptyContent = generateContent([]);
+    fs.writeFileSync(path.resolve(output), emptyContent);
+    console.log(`Empty registry file generated (no sources found): ${output}`);
     continue;
   }
   
