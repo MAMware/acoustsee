@@ -60,7 +60,13 @@ function validateSettingsSchema(settingsObj) {
     const expectedType = schema[key];
     const actualValue = settingsObj[key];
 
-    if (Array.isArray(expectedType)) {
+    // Use explicit array type check when schema expects 'array'
+    if (expectedType === 'array') {
+      if (!Array.isArray(actualValue)) {
+        structuredLog('ERROR', `Invalid type for ${key}`, { expected: 'array', actual: typeof actualValue });
+        return false;
+      }
+    } else if (Array.isArray(expectedType)) {
       if (!expectedType.some(type => type === typeof actualValue || (type === 'null' && actualValue === null))) {
         structuredLog('ERROR', `Invalid type for ${key}`, { expected: expectedType, actual: typeof actualValue });
         return false;
