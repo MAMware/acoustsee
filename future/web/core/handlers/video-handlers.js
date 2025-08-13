@@ -7,25 +7,18 @@ import { getText, speakText } from '../../utils/utils.js';
 import { cleanupFrameProcessor } from '../../video/frame-processor.js';
 import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../../audio/audio-processor.js';
+import { toggleGrid } from './grid-handlers.js';
 
-// Note: The processFrame logic can remain in the dispatcher for now, as it's tightly coupled
-// with the offscreen canvas defined there. We can move it later if needed.
+// Note: The processFrame logic is handled via dispatched events and is not directly tied to this function.
+// The toggleGrid handler is now responsible for managing grid-related settings.
 
 export async function startStop({ settingsMode }) {
   const DOM = getDOM();
   try {
     if (settingsMode) {
-      // This is actually GRID selection logic, not video logic.
-      // We will move this to grid-handlers.js in a future step.
-      // For now, we leave it here to ensure functionality isn't broken.
-      const { availableGrids } = settings;
-      const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
-      const nextIndex = (currentIndex + 1) % availableGrids.length;
-      settings.gridType = availableGrids[nextIndex].id;
-      
-      const msg = await getText('button1.tts.gridSelect', { state: settings.gridType });
-      speakText(msg);
-
+      await toggleGrid();
+      // Returning here does not skip the finally block; it will still execute as expected
+      return; 
     } else {
       // This is the core video start/stop logic
       if (!settings.stream) {

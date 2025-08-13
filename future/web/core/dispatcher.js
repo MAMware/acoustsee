@@ -8,7 +8,7 @@ import { initializeMicAudio, resizeOscillatorPool } from '../audio/audio-process
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
 import { audioHandlers, toggleAudio } from './handlers/audio-handlers.js';
-import { gridHandlers } from './handlers/grid-handlers.js';
+import { gridHandlers, toggleGrid } from './handlers/grid-handlers.js';
 import { saveSettings, loadSettings } from './handlers/settings-handlers.js';
 import { startStop, toggleVideoSource } from './handlers/video-handlers.js';
 import { toggleLanguage, updateFrameInterval } from './handlers/ui-handlers.js';
@@ -208,6 +208,7 @@ export async function createEventDispatcher(domElements) {
     saveSettings: saveSettings,
     loadSettings: loadSettings,
     emailDebug: emailDebug,
+    toggleGrid: toggleGrid,
 
     logError: ({ message }) => {
       structuredLog('ERROR', 'Error logged', { message });
