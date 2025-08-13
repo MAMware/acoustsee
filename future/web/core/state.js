@@ -1,12 +1,11 @@
 // File: web/core/state.js
 import { structuredLog } from '../utils/logging.js';
-import { FALLBACK_LANGUAGE } from './constants.js';
 import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';
 
 // --- ADD STATIC IMPORTS ---
-import availableGridsData from '../video/grids/available-grids.json';
-import availableEnginesData from '../audio/synths/available-engines.json';
-import availableLanguagesData from '../languages/available-languages.json';
+import availableGridsData from '../video/grids/available-grids.js';
+import availableEnginesData from '../audio/synths/available-engines.js';
+import availableLanguagesData from '../languages/available-languages.js';
 
 export let settings = {
   debugLogging: true,
@@ -27,7 +26,8 @@ export let settings = {
   ttsEnabled: false,
   dayNightMode: 'day',
   resetStateOnError: true,
-  motionThreshold: 20
+  motionThreshold: 20,
+  maxNotes: 24 // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value
 };
 
 /**
