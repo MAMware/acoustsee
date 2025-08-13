@@ -227,6 +227,13 @@ async function init() {
     dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
     structuredLog('INFO', 'init: UI setup complete');
   } catch (err) {
+    // --- EMERGENCY TELEMETRY BEACON ---
+    emergencyTrack('init-failure', {
+      message: err.message,
+      stack: err.stack,
+      data: err.data || {}
+    });
+
     let errorMessage = err.message;
     let errorData = err instanceof CustomError ? err.data : {};
     let specificMessage = errorMessage;
@@ -245,6 +252,41 @@ async function init() {
       originalConsole.error('TTS error:', ttsErr.message);
       announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
     }
+  }
+}
+
+// --- NEW: Emergency Telemetry Beacon ---
+// This function has ZERO internal dependencies. It can run even if everything else is broken.
+function emergencyTrack(eventName, errorPayload = {}) {
+   const emergencyEndpoint = 'https://acoustsee-ingest.mamware.workers.dev';
+  try {
+    // navigator.sendBeacon is the ideal tool for this. It's designed to be
+    // non-blocking and likely to succeed even when a page is crashing or closing.
+    if (navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify({
+        event: eventName,
+        payload: errorPayload,
+        timestamp: Date.now(),
+        isEmergency: true
+      })], { type: 'application/json' });
+      navigator.sendBeacon(emergencyEndpoint, blob);
+    } else {
+      // Fallback to a simple, non-blocking fetch for older browsers
+      fetch(emergencyEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true, // Also helps ensure the request is sent
+        body: JSON.stringify({
+          event: eventName,
+          payload: errorPayload,
+          timestamp: Date.now(),
+          isEmergency: true
+        })
+      });
+    }
+  } catch (e) {
+    // If the emergency beacon itself fails, there's nothing more we can do.
+    // We intentionally do not log this failure to avoid any risk of a recursive loop.
   }
 }
 
