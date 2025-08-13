@@ -1,24 +1,61 @@
-// ui-handlers.js
-// Handles UI updates and teardown, integrates with cleanup manager
+// File: web/core/handlers/ui-handlers.js
 
+import { settings, setAudioInterval } from '../state.js';
+import { dispatchEvent } from '../dispatcher.js';
 import { structuredLog } from '../../utils/logging.js';
-import { getText } from '../../utils/utils.js';
-import { cleanupAllListeners } from '../../ui/cleanup-manager.js';
+import { getText, speakText, clearTranslationsCache } from '../../utils/utils.js';
 
-/**
- * Updates UI elements (e.g., buttons) based on current settings/state.
- */
-export function updateSettingsUI(settings, context) {
-  // Example: update button labels, enable/disable controls
-  structuredLog('INFO', 'uiHandlers.updateSettingsUI', { settings });
-  // ...actual UI update logic here...
+export async function toggleLanguage() {
+  try {
+    const { availableLanguages } = settings;
+    const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
+    const nextIndex = (currentIndex + 1) % availableLanguages.length;
+    settings.language = availableLanguages[nextIndex].id;
+    
+    clearTranslationsCache();
+    if (window.speechSynthesis?.cancel) {
+      window.speechSynthesis.cancel();
+    }
+    
+    const msg = await getText('button3.tts.languageSelect', { state: settings.language });
+    speakText(msg);
+
+  } catch (err) {
+    structuredLog('ERROR', 'toggleLanguage error', { message: err.message, stack: err.stack });
+    const errorMsg = await getText('button3.tts.languageError');
+    speakText(errorMsg);
+  } finally {
+    dispatchEvent('updateUI', { 
+      settingsMode: settings.isSettingsMode, 
+      streamActive: !!settings.stream, 
+      micActive: !!settings.micStream 
+    });
+  }
 }
 
-/**
- * Tears down UI event listeners and cleans up DOM resources.
- */
-export function teardownUI(context) {
-  structuredLog('INFO', 'uiHandlers.teardownUI: Cleaning up UI listeners');
-  cleanupAllListeners();
-  // ...additional DOM cleanup logic here...
+export async function updateFrameInterval({ interval }) {
+  try {
+    settings.updateInterval = interval;
+    if (settings.stream && settings.audioTimerId) {
+      clearInterval(settings.audioTimerId);
+      const newTimerId = setInterval(() => dispatchEvent('processFrame'), settings.updateInterval);
+      setAudioInterval(newTimerId);
+    }
+
+    const msg = await getText('button4.tts.fpsBtn', {
+      fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval)
+    });
+    speakText(msg);
+
+  } catch (err) {
+    structuredLog('ERROR', 'updateFrameInterval error', { message: err.message, stack: err.stack });
+    const errorMsg = await getText('button4.tts.fpsError');
+    speakText(errorMsg);
+  } finally {
+    dispatchEvent('updateUI', { 
+      settingsMode: settings.isSettingsMode, 
+      streamActive: !!settings.stream, 
+      micActive: !!settings.micStream 
+    });
+  }
 }

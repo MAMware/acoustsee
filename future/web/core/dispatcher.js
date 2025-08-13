@@ -7,14 +7,12 @@ import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
 import { initializeMicAudio, resizeOscillatorPool } from '../audio/audio-processor.js';
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
-import { videoHandlers } from './handlers/video-handlers.js';
 import { audioHandlers, toggleAudio } from './handlers/audio-handlers.js';
-import { uiHandlers } from './handlers/ui-handlers.js';
-import { settingsHandlers } from './handlers/settings-handlers.js';
 import { gridHandlers } from './handlers/grid-handlers.js';
-import { debugHandlers } from './handlers/debug-handlers.js';
 import { saveSettings, loadSettings } from './handlers/settings-handlers.js';
 import { startStop, toggleVideoSource } from './handlers/video-handlers.js';
+import { toggleLanguage, updateFrameInterval } from './handlers/ui-handlers.js';
+import { toggleDebug, emailDebug } from './handlers/debug-handlers.js';
 
 // Reusable offscreen canvas for frame processing
 let offscreenCanvas = null;
@@ -204,35 +202,12 @@ export async function createEventDispatcher(domElements) {
     startStop: startStop,
     toggleVideoSource: toggleVideoSource,
     toggleAudio: toggleAudio,
+    toggleLanguage: toggleLanguage,
+    updateFrameInterval: updateFrameInterval,
+    toggleDebug: toggleDebug,
     saveSettings: saveSettings,
     loadSettings: loadSettings,
-
-    emailDebug: async () => {
-      try {
-        const logsText = await getLogs();
-        if (!logsText || logsText.trim() === '') {
-          structuredLog('WARN', 'emailDebug: No logs retrieved or empty from IndexedDB');
-          alert('No logs available to download. Try generating some actions first.');
-          await getText('button5.tts.emailDebug', { state: 'error' });
-          return;
-        }
-        const blob = new Blob([logsText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'acoustsee-debug-log.txt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        await getText('button5.tts.emailDebug');
-      } catch (err) {
-        structuredLog('ERROR', 'emailDebug error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Email debug error: ${err.message}` });
-        alert('Failed to download logs: ' + err.message);
-        await getText('button5.tts.emailDebug', { state: 'error' });
-      }
-    },
+    emailDebug: emailDebug,
 
     logError: ({ message }) => {
       structuredLog('ERROR', 'Error logged', { message });
