@@ -1,63 +1,98 @@
-// web/core/handlers/audio-handlers.js
+// File: web/core/handlers/audio-handlers.js
 
+import { settings, setMicStream } from '../state.js';
+import { dispatchEvent } from '../dispatcher.js';
 import { structuredLog } from '../../utils/logging.js';
-import { availableEnginesData } from '../../audio/synths/available-synths.js';
-import { resizeOscillatorPool, initializeAudio } from '../../audio/audio-processor.js';
-import { settings } from '../state.js';
+import { getText, speakText } from '../../utils/utils.js';
+import { initializeAudio, initializeMicAudio, playAudio } from '../../audio/audio-processor.js';
 import { applyHRTF as hrtfSpatialize } from '../../audio/hrtf-processor.js';
+import { getAudioContext } from '../../audio/audio-manager.js'; // We'll need a way to get the context
 
-export const audioHandlers = {
-  playNote: async ({ note, synth, context }) => {
-    // Use synth from state if not provided
-    const synthId = synth || settings.selectedSynth || 'sine-wave';
-    const engine = availableEnginesData.find(e => e.id === synthId);
-    if (!engine) {
-      structuredLog('ERROR', 'audioHandlers.playNote: Synth engine not found', { synth: synthId });
-      return;
-    }
-    // Optionally resize oscillator pool before playing
-    if (settings.maxNotes) resizeOscillatorPool(settings.maxNotes);
-    // Optionally initialize audio context
-    if (!context) {
-      context = await initializeAudio();
-    }
-    // Dynamic import of synth engine module
-    try {
-      const modulePath = `../../audio/synths/${engine.id}.js`;
-      const synthModule = await import(modulePath);
-      // Assume exported play function is named play{EngineId}
-      const playFnName = Object.keys(synthModule).find(fn => fn.startsWith('play'));
-      if (playFnName && typeof synthModule[playFnName] === 'function') {
-        synthModule[playFnName]([note]);
-        structuredLog('DEBUG', 'audioHandlers.playNote: Played note with engine', { synth: engine.id, note });
+/**
+ * Handles UI actions for toggling microphone or synthesis engine.
+ */
+export async function toggleAudio({ settingsMode }) {
+  try {
+    if (settingsMode) {
+      // Logic for selecting the next synthesis engine
+      const { availableEngines } = settings;
+      const currentIndex = availableEngines.findIndex(e => e.id === settings.synthesisEngine);
+      const nextIndex = (currentIndex + 1) % availableEngines.length;
+      settings.synthesisEngine = availableEngines[nextIndex].id;
+      
+      const msg = await getText('button2.tts.synthesisSelect', { state: settings.synthesisEngine });
+      speakText(msg);
+
+    } else {
+      // Logic for toggling the microphone on and off
+      if (!settings.micStream) {
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        setMicStream(micStream);
+        initializeMicAudio(micStream);
+        
+        const msg = await getText('button2.tts.micToggle', { state: 'turningOn' });
+        speakText(msg);
       } else {
-        structuredLog('ERROR', 'audioHandlers.playNote: No play function found in module', { synth: engine.id });
+        settings.micStream.getTracks().forEach(track => track.stop());
+        setMicStream(null);
+        initializeMicAudio(null);
+        
+        const msg = await getText('button2.tts.micToggle', { state: 'turningOff' });
+        speakText(msg);
       }
-    } catch (err) {
-      structuredLog('ERROR', 'audioHandlers.playNote: Dynamic import failed', { synth: engine.id, error: err.message });
     }
-  },
-
-  applyHRTF: ({ sourceNode, position, context }) => {
-    // Only apply HRTF if enabled in state
-    if (!settings.hrtfEnabled) {
-      structuredLog('INFO', 'audioHandlers.applyHRTF: HRTF disabled in settings');
-      return sourceNode;
-    }
-    if (!context || !sourceNode) {
-      structuredLog('ERROR', 'audioHandlers.applyHRTF: Missing context or sourceNode');
-      return null;
-    }
-    // Dynamic import for hrtf-processor (if you want to keep it agnostic)
-    // Otherwise, use static import as before
-    try {
-      // Static import for now
-      const panner = require('../../audio/hrtf-processor.js').applyHRTF(context, sourceNode, position);
-      structuredLog('DEBUG', 'audioHandlers.applyHRTF: Applied HRTF', { position });
-      return panner;
-    } catch (err) {
-      structuredLog('ERROR', 'audioHandlers.applyHRTF: Failed to apply HRTF', { error: err.message });
-      return sourceNode;
-    }
+  } catch (err) {
+    structuredLog('ERROR', 'toggleAudio error', { message: err.message, stack: err.stack });
+    const errorMsg = await getText('button2.tts.micError');
+    speakText(errorMsg);
+  } finally {
+    dispatchEvent('updateUI', { 
+      settingsMode, 
+      streamActive: !!settings.stream, 
+      micActive: !!settings.micStream 
+    });
   }
-};
+}
+
+/**
+ * Plays a single, discrete note. Useful for UI feedback or specific events.
+ * This is distinct from the continuous sonification loop.
+ * @param {object} note - A note object, e.g., { pitch: 440, intensity: 0.5 }
+ */
+export async function playNote(note) {
+    if (!note || typeof note.pitch !== 'number') {
+        structuredLog('WARN', 'playNote: Invalid note object provided.', { note });
+        return;
+    }
+    // The main playAudio function in audio-processor already handles the synthesis engine.
+    // We can simply wrap it.
+    playAudio([note]);
+}
+
+/**
+ * Applies HRTF spatialization to a given audio source node.
+ * This is a forward-looking function for when you integrate 3D audio.
+ * @param {AudioNode} sourceNode - The audio node to be spatialized.
+ * @param {object} position - The position in 3D space, e.g., { x: 1, y: 0, z: -1 }
+ * @returns {AudioNode} The new panner node that is connected to the destination.
+ */
+export function applyHRTF(sourceNode, position) {
+    const audioContext = getAudioContext(); // Assumes audio-manager exposes a getter for the context
+    if (!settings.hrtfEnabled) {
+      structuredLog('INFO', 'applyHRTF: HRTF is disabled in settings.');
+      return sourceNode; // Return the original node if HRTF is off
+    }
+    if (!audioContext || !sourceNode || !position) {
+        structuredLog('ERROR', 'applyHRTF: Missing audioContext, sourceNode, or position.');
+        return sourceNode;
+    }
+    
+    try {
+        const panner = hrtfSpatialize(audioContext, sourceNode, position);
+        structuredLog('DEBUG', 'applyHRTF: HRTF applied.', { position });
+        return panner;
+    } catch (err) {
+        structuredLog('ERROR', 'applyHRTF: Failed to apply HRTF.', { error: err.message });
+        return sourceNode; // Return original node on failure
+    }
+}

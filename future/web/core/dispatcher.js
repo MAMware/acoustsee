@@ -8,7 +8,7 @@ import { initializeMicAudio, resizeOscillatorPool } from '../audio/audio-process
 import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
 import { videoHandlers } from './handlers/video-handlers.js';
-import { audioHandlers } from './handlers/audio-handlers.js';
+import { audioHandlers, toggleAudio } from './handlers/audio-handlers.js';
 import { uiHandlers } from './handlers/ui-handlers.js';
 import { settingsHandlers } from './handlers/settings-handlers.js';
 import { gridHandlers } from './handlers/grid-handlers.js';
@@ -142,7 +142,7 @@ export async function createEventDispatcher(domElements) {
   }, 100);
 
   const handlers = {
-  updateUI: debouncedUpdateUI,
+    updateUI: debouncedUpdateUI,
     // --- Performance: Reusable offscreen canvas for frame processing ---
     processFrame: (() => {
       return async () => {
@@ -203,6 +203,7 @@ export async function createEventDispatcher(domElements) {
  
     startStop: startStop,
     toggleVideoSource: toggleVideoSource,
+    toggleAudio: toggleAudio,
     saveSettings: saveSettings,
     loadSettings: loadSettings,
 

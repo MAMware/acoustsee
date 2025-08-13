@@ -1,10 +1,15 @@
 import { structuredLog } from '../utils/logging.js';
 import { dispatchEvent } from '../core/dispatcher.js';
 
+let globalAudioManager = null;
+
 export class AudioManager {
   constructor() {
     this.context = null;
     this.state = 'uninitialized';
+    if (!globalAudioManager) {
+      globalAudioManager = this;
+    }
   }
 
   async initialize() {
@@ -49,4 +54,12 @@ export class AudioManager {
   getState() {
     return { state: this.state, contextState: this.context?.state };
   }
+}
+
+/**
+ * Provides access to the singleton AudioContext instance.
+ * @returns {AudioContext|null} The global AudioContext, or null if not initialized.
+ */
+export function getAudioContext() {
+    return globalAudioManager ? globalAudioManager.context : null;
 }
