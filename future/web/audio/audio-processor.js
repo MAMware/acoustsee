@@ -55,36 +55,18 @@ export async function initializeAudio(context) {
     audioContext = context;
     if (audioContext.state === "suspended") {
       structuredLog('INFO', 'initializeAudio: Resuming AudioContext');
-      try {
-        await audioContext.resume();
-        structuredLog('INFO', 'initializeAudio: AudioContext resumed');
-      } catch (error) {
-        structuredLog('ERROR', 'initializeAudio: Failed to resume AudioContext', { message: error.message });
-        dispatchEvent('logError', { message: `Audio resume failed: ${error.message}` });
-        throw error;
-      }
+      await audioContext.resume();
+      structuredLog('INFO', 'initializeAudio: AudioContext resumed');
     }
     if (audioContext.state !== "running") {
       throw new Error(`AudioContext not running, state: ${audioContext.state}`);
     }
-    // Determine max notes from current grid
-    let maxNotes = settings.availableGrids.find(g => g.id === settings.gridType)?.maxNotes || 24;
-    oscillatorPool = [];
-    for (let i = 0; i < Math.min(maxNotes, 100); i++) {
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const panner = audioContext.createStereoPanner();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(0, audioContext.currentTime);
-      gain.gain.setValueAtTime(0, audioContext.currentTime);
-      panner.pan.setValueAtTime(0, audioContext.currentTime);
-      osc.connect(gain).connect(panner).connect(audioContext.destination);
-      osc.start();
-      oscillatorPool.push({ osc, gain, panner, active: false });
-    }
-    oscillators = oscillatorPool;
+    // --- THIS IS THE CORRECTED LOGIC ---
+    // Initialize the oscillator pool based on the global, decoupled setting.
+    resizeOscillatorPool(settings.maxNotes);
+    oscillators = oscillatorPool; // Ensure the legacy 'oscillators' array is also updated.
     isAudioInitialized = true;
-    structuredLog('INFO', `initializeAudio: Audio initialized with ${maxNotes} oscillators`);
+    structuredLog('INFO', `initializeAudio: Audio initialized with a pool size of ${settings.maxNotes}.`);
     return true;
   } catch (error) {
     structuredLog('ERROR', 'initializeAudio error', { message: error.message });
@@ -134,27 +116,20 @@ export async function playAudio(notes) {
     return;
   }
   try {
-    // Dynamic engine loading, pass notes and context
-    const availableEngines = settings.availableEngines;
-    const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
-    if (!engine) {
-      structuredLog('ERROR', `playAudio: Engine not found`, { synthesisEngine: settings.synthesisEngine });
+    // --- REFACTOR: Replace dynamic import with a simple, synchronous find ---
+    const engine = settings.availableEngines.find((e) => e.id === settings.synthesisEngine);
+    if (!engine || typeof engine.playFunction !== 'function') {
+      structuredLog('ERROR', `playAudio: Engine or playFunction not found`, { synthesisEngine: settings.synthesisEngine });
       dispatchEvent('logError', { message: `Engine not found: ${settings.synthesisEngine}` });
-      throw new Error('Invalid engine');
+      return;
     }
-    const contextObj = {};
-    // For future ML/HRTF: contextObj.depthData, contextObj.hrtfPositions, etc.
-    const engineModule = await import(`../synths/${engine.id}.js`);
-    // Normalize to camelCase (e.g., fm-synthesis -> playFmSynthesis)
-    const engineName = engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
-    const playFunction = engineModule[`play${engineName}`];
-    if (playFunction) {
-      playFunction(notes, contextObj);
-      structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
-    } else {
-      structuredLog('ERROR', `playAudio: Play function not found`, { engine: engine.id });
-      dispatchEvent('logError', { message: `Play function for ${engine.id} not found` });
-    }
+   
+    const playFunction = engine.playFunction; // Directly access the function
+    const contextObj = {}; // For future use
+   
+    playFunction(notes, contextObj);
+    structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
+
   } catch (err) {
     structuredLog('ERROR', 'playAudio error', { message: err.message });
     dispatchEvent('logError', { message: `Play audio error: ${err.message}` });

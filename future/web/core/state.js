@@ -105,6 +105,8 @@ function initializeDefaults() {
   structuredLog('INFO', 'Settings initialized', { settings });
 }
 
+initializeDefaults();
+
 // --- REMOVED loadConfigs: configs are now loaded statically via import ---
 
 export async function getLogs() {

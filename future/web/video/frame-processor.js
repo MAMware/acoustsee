@@ -34,21 +34,14 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
       structuredLog('INFO', 'mapFrameToNotes: Initial frame, no prev data', { width, height });
     }
 
-    // Use cached grids loaded at startup
-    const availableGrids = settings.availableGrids;
-    const grid = availableGrids.find((g) => g.id === settings.gridType);
-    if (!grid) {
-      console.error(`Grid not found: ${settings.gridType}`);
+    // --- REFACTOR: Replace dynamic import with a simple, synchronous find ---
+    const grid = settings.availableGrids.find((g) => g.id === settings.gridType);
+    if (!grid || typeof grid.mapFunction !== 'function') {
+      console.error(`Grid or mapFunction not found for gridType: ${settings.gridType}`);
       dispatchEvent("logError", { message: `Grid not found: ${settings.gridType}` });
       return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
     }
-    const gridModule = await import(`./grids/${grid.id}.js`);
-    const mapFunction = gridModule[`mapFrameTo${grid.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
-    if (!mapFunction) {
-      console.error(`Map function for ${grid.id} not found`);
-      dispatchEvent("logError", { message: `Map function for ${grid.id} not found` });
-      return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
-    }
+    const mapFunction = grid.mapFunction; // Directly access the function, no 'await' needed.
 
     // Determine split buffers and copy full RGBA pixels
     const halfWidth = Math.floor(width / 2);
