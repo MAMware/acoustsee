@@ -1,9 +1,9 @@
 // grid-handlers.js
 // Handles grid type selection and rendering
 
-import { settings, setSettings } from '../state.js';
+import { settings, setSettings, saveConfigs } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
-import availableGrids from '../../video/grids/available-grids.json';
+import { availableGrids } from '../../video/grids/available-grids.js';
 
 /**
  * Applies a grid type by updating settings and triggering rendering.
@@ -15,6 +15,7 @@ export function applyGrid(gridName, context) {
     return false;
   }
   setSettings({ ...settings, gridType: gridName });
+  saveConfigs(); // Save user preferences after updating settings
   structuredLog('INFO', 'gridHandlers.applyGrid: Grid applied', { gridName });
   // Optionally trigger grid rendering here (e.g., via dispatcher)
   return true;
