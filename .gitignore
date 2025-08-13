@@ -181,3 +181,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 future/project-files.txt
+future/scripts/file-indexer.js
+.gitignore
