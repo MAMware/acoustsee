@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcoustSee</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="top-rectangle" id="settingsToggle" aria-label="Toggle settings mode">Settings</button>
+    <div class="main-container">
+        <button class="left-rectangle" id="modeBtn" aria-label="Toggle day/night mode">Daylight</button>
+        <div class="center-rectangle" id="centerRectangle" aria-live="polite">
+            <video id="videoFeed" autoplay playsinline muted aria-label="Live video feed for audio synthesis">
+                <source src="video.mp4" type="video/mp4">
+                <source src="video.webm" type="video/webm">
+                Your browser does not support the video tag.
+            </video>
+            <canvas id="imageCanvas" aria-hidden="true"></canvas>
+            <div id="loadingIndicator" aria-hidden="true">Loading...</div>
+        </div>
+        <button class="right-rectangle" id="languageBtn" aria-label="Cycle language">Language</button>
+    </div>
+    <button class="bottom-rectangle" id="startStopBtn" aria-label="Start navigation">Start</button>
+    <div id="debug" aria-hidden="true">
+        <button id="closeDebug" aria-label="Close debug panel">X</button>
+        <pre id="debugText"></pre>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

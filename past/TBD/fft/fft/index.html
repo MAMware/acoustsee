@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Webcam FFT Audio</title>
+  <style>
+    canvas { 
+      border: 1px solid black; 
+      margin: 10px; 
+    }
+    #error { 
+      color: red; 
+      margin: 10px; 
+      font-family: Arial, sans-serif;
+    }
+    #log { 
+      margin: 10px; 
+      padding: 10px; 
+      background: #fff; 
+      border: 1px solid #ccc; 
+      min-height: 100px; 
+      max-height: 200px; 
+      overflow-y: auto; 
+      font-family: monospace; 
+      font-size: 14px; 
+      display: block;
+    }
+    button { 
+      padding: 10px 20px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      margin: 10px;
+    }
+    button:disabled {
+      cursor: not-allowed; 
+      opacity: 0.5;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay width="320" height="240" style="display: none;" playsinline></video>
+  <canvas id="canvas" width="320" height="240"></canvas>
+  <button onclick="toggleAudio()" disabled>Start Audio</button>
+  <button onclick="toggleLog()">Toggle Log</button>
+  <p id="error"></p>
+  <div id="log"></div>
+
+  <script src="fft.js"></script>
+  <script>
+    // Global variables
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const errorDisplay = document.getElementById('error');
+    const audioButton = document.querySelector('button[onclick="toggleAudio()"]');
+    const logDisplay = document.getElementById('log');
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+    let videoStream = null;
+    let fft = null;
+    const logs = [];
+
+    // On-screen logging
+    function addLog(message) {
+      logs.push(`${new Date().toLocaleTimeString()}: ${message}`);
+      if (logs.length > 20) logs.shift();
+      logDisplay.textContent = logs.join('\n');
+      logDisplay.scrollTop = logDisplay.scrollHeight;
+    }
+
+    // Initialize log
+    addLog('AcoustSee started');
+
+    // Override console
+    console.log = function(message) {
+      addLog(message);
+    };
+    console.error = function(message) {
+      addLog('ERROR: ' + message);
+    };
+
+    // Toggle log visibility
+    function toggleLog() {
+      logDisplay.style.display = logDisplay.style.display === 'none' ? 'block' : 'none';
+      console.log('Log display: ' + logDisplay.style.display);
+    }
+
+    // Webcam setup
+    async function setupWebcam() {
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            width: { ideal: 320 }, 
+            height: { ideal: 240 }, 
+            frameRate: { ideal: 30 }, 
+            facingMode: 'user' 
+          }
+        });
+        video.srcObject = videoStream;
+        video.play();
+        video.oncanplay = () => {
+          console.log('Video ready, starting frame processing');
+          console.log(`Video resolution: ${video.videoWidth}x${video.videoHeight}`);
+          errorDisplay.textContent = '';
+          audioButton.disabled = false;
+
+          // Adjust canvas for aspect ratio
+          const videoWidth = video.videoWidth;
+          const videoHeight = video.videoHeight;
+          const canvasAspect = canvas.width / canvas.height;
+          const videoAspect = videoWidth / videoHeight;
+          if (Math.abs(canvasAspect - videoAspect) > 0.01) {
+            canvas.height = canvas.width / videoAspect;
+            console.log(`Adjusted canvas height to ${canvas.height} for aspect ratio ${videoAspect}`);
+          }
+
+          // Initialize FFT
+          const fftSize = 65536;
+          if (typeof FFT === 'undefined') {
+            console.error('FFT.js library not loaded');
+            errorDisplay.textContent = 'Error: FFT.js library failed to load.';
+          } else {
+            try {
+              fft = new FFT(fftSize);
+              console.log('FFT initialized with size ' + fftSize);
+            } catch (err) {
+              console.error('FFT initialization failed: ' + err.message);
+              errorDisplay.textContent = 'Error: FFT initialization failed.';
+            }
+          }
+
+          processFrame();
+        };
+      } catch (err) {
+        console.error('Webcam access failed: ' + err.message);
+        errorDisplay.textContent = 'Error: No webcam detected or access denied. Audio disabled.';
+        audioButton.disabled = true;
+      }
+    }
+
+    // Audio toggle
+    function toggleAudio() {
+      if (audioButton.disabled) {
+        console.log('Audio button disabled, ignoring click');
+        return;
+      }
+      if (!audioCtx) {
+        audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume().then(() => console.log('AudioContext resumed'));
+        }
+        oscillator = audioCtx.createOscillator();
+        gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+        oscillator.connect(gainNode).connect(audioCtx.destination);
+        oscillator.start();
+        audioButton.textContent = 'Stop Audio';
+        console.log('Audio started');
+      } else {
+        oscillator.stop();
+        oscillator.disconnect();
+        audioCtx.close();
+        audioCtx = null;
+        oscillator = null;
+        gainNode = null;
+        audioButton.textContent = 'Start Audio';
+        console.log('Audio stopped');
+      }
+    }
+
+    // FFT setup
+    const width = canvas.width;
+    let height = canvas.height;
+    const fftSize = 65536;
+    let input = new Array(fftSize).fill(0);
+    let output = new Array(fftSize * 2).fill(0);
+
+    // Frame processing
+    let lastFrameTime = 0;
+    function processFrame(timestamp) {
+      try {
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+          console.log(`Video not ready, readyState: ${video.readyState}`);
+          requestAnimationFrame(processFrame);
+          return;
+        }
+
+        height = canvas.height;
+        ctx.drawImage(video, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height).data;
+
+        // Subsample for FFT
+        const pixelCount = width * height;
+        for (let i = 0, j = 0; i < fftSize && j < imageData.length; i++, j += Math.floor(pixelCount / fftSize) * 4) {
+          const r = imageData[j];
+          const g = imageData[j + 1];
+          const b = imageData[j + 2];
+          input[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+        }
+
+        let energy = 0;
+        if (fft) {
+          fft.realTransform(output, input);
+          console.log('FFT processed');
+          const lowFreqCount = Math.floor(fftSize / 10);
+          for (let i = 0; i < lowFreqCount * 2; i += 2) {
+            const real = output[i];
+            const imag = output[i + 1];
+            energy += Math.sqrt(real * real + imag * imag);
+          }
+          energy /= lowFreqCount;
+
+          if (audioCtx && oscillator) {
+            const freq = 100 + (energy / 255) * 700;
+            oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.01);
+            console.log('Frequency: ' + freq.toFixed(2) + ' Hz');
+          }
+        } else {
+          console.log('Skipping FFT: library not loaded');
+        }
+
+        // Visualize FFT energy
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, 20, height);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, height - (energy / 255 * height), 20, 20);
+
+        requestAnimationFrame(processFrame);
+      } catch (err) {
+        console.error('Frame processing error: ' + err.message);
+        requestAnimationFrame(processFrame);
+      }
+    }
+
+    // Initialize webcam
+    setupWebcam();
+  </script>
+</body>
+</html>

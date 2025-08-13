@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcoustSee - Spatial Audio Navigation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="videoContainer">
+        <button id="gridBtn" role="button" aria-label="Grid type selector" tabindex="0">FPS</button>
+        <button id="dayNightBtn" role="button" aria-label="Toggle day or night mode" tabindex="0">Day/Night</button>
+        <button id="langBtn" role="button" aria-label="Toggle languaje for speech sinthetizer" tabindex="0">Speech lang</button>
+        <video id="videoFeed" autoplay></video>
+        <button id="startStopBtn" role="button" aria-label="Start or stop navigation audio" tabindex="0">Start/Stop</button>
+    </div>
+    <div id="debug" style="display: none; position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.9); color: white; padding: 5px; z-index: 20;">
+        <p id="debugText"></p>
+    </div>
+    <canvas id="imageCanvas" width="64" height="48" style="display: none;"></canvas>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

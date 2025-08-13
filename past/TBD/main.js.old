@@ -1,0 +1,121 @@
+const imageInput = document.getElementById('imageInput');
+const cameraButton = document.getElementById('cameraButton');
+const playButton = document.getElementById('playButton');
+const videoFeed = document.getElementById('videoFeed');
+const canvas = document.getElementById('imageCanvas');
+const ctx = canvas.getContext('2d');
+let stream = null;
+let audioInterval = null;
+
+// Process image or video frame
+function processFrame(source, width, height) {
+    ctx.drawImage(source, 0, 0, width, height);
+    const imageData = ctx.getImageData(0, 0, width, height).data;
+    let leftSum = 0, rightSum = 0;
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            const idx = (y * width + x) * 4;
+            const gray = (imageData[idx] + imageData[idx + 1] + imageData[idx + 2]) / 3;
+            if (x < width / 2) leftSum += gray;
+            else rightSum += gray;
+        }
+    }
+    const leftEnergy = leftSum / ((width / 2) * height);
+    const rightEnergy = rightSum / ((width / 2) * height);
+    return { leftEnergy, rightEnergy };
+}
+
+// Generate audio with HRTF
+function playAudio(leftEnergy, rightEnergy) {
+    const audioCtx = new AudioContext();
+    const oscillator = audioCtx.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+
+    const noiseBuffer = audioCtx.createBuffer(1, 2 * audioCtx.sampleRate, audioCtx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i++) {
+        noiseData[i] = Math.random() * 2 - 1;
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    noise.loop = true;
+
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.02;
+    noise.connect(noiseGain);
+
+    const hrtfContainer = new HRTFContainer();
+    const hrtfPanner = new HRTFPanner(audioCtx, oscillator, hrtfContainer);
+    const noisePanner = new HRTFPanner(audioCtx, noiseGain, hrtfContainer);
+
+    // Map energy difference to azimuth (-80 to 80 degrees)
+    const azimuth = 80 * (rightEnergy - leftEnergy) / 255;
+    const elevation = 0; // Fixed for now
+    hrtfPanner.update(azimuth, elevation);
+    noisePanner.update(azimuth, elevation);
+
+    hrtfPanner.connect(audioCtx.destination);
+    noisePanner.connect(audioCtx.destination);
+
+    noise.start();
+    oscillator.start();
+    setTimeout(() => {
+        noise.stop();
+        oscillator.stop();
+        audioCtx.close();
+    }, 2000);
+}
+
+// Handle image upload
+imageInput.addEventListener('change', (event) => {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        videoFeed.style.display = 'none';
+        canvas.style.display = 'block';
+    }
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const img = new Image();
+    img.onload = () => {
+        canvas.width = 320;
+        canvas.height = 240;
+        const { leftEnergy, rightEnergy } = processFrame(img, 320, 240);
+        playButton.disabled = false;
+        playButton.onclick = () => playAudio(leftEnergy, rightEnergy);
+    };
+    img.src = URL.createObjectURL(file);
+});
+
+// Handle camera feed
+cameraButton.addEventListener('click', async () => {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        videoFeed.style.display = 'none';
+        canvas.style.display = 'block';
+        cameraButton.textContent = 'Use Camera';
+        clearInterval(audioInterval);
+        return;
+    }
+
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoFeed.srcObject = stream;
+        videoFeed.style.display = 'block';
+        canvas.style.display = 'none';
+        cameraButton.textContent = 'Stop Camera';
+        canvas.width = 320;
+        canvas.height = 240;
+
+        audioInterval = setInterval(() => {
+            const { leftEnergy, rightEnergy } = processFrame(videoFeed, 320, 240);
+            playAudio(leftEnergy, rightEnergy);
+        }, 2000); // Update every 2 seconds
+    } catch (err) {
+        console.error('Camera access failed:', err);
+        alert('Failed to access camera. Please allow camera access.');
+    }
+});

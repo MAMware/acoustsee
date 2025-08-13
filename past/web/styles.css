@@ -1,0 +1,41 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    position: relative;
+    background: #000;
+    touch-action: manipulation;
+}
+#videoContainer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+button {
+    width: 80px;
+    height: 30px;
+    border: 2px solid;
+    border-radius: 5px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    outline: none;
+    user-select: none;
+}
+#fpsBtn { border-color: red; }
+#modeBtn { border-color: grey; position: absolute; left: -90px; top: 50%; transform: translateY(-50%); }
+#langBtn { border-color: blue; position: absolute; right: -90px; top: 50%; transform: translateY(-50%); }
+#startStopBtn { border-color: gren; }
+button:focus { background: #555; }
+#videoFeed {
+    width: 64px;
+    height: 48px;
+    display: block;
+}

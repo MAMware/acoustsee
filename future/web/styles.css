@@ -1,0 +1,94 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background-color: #f0f0f0;
+}
+
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 30;
+}
+
+.power-on-button {
+  font-size: 5vw;
+  padding: 2vw 4vw;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 1vw;
+  cursor: pointer;
+}
+
+.instructions-button {
+  font-size: 5vw;
+  padding: 2vw 4vw;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 1vw;
+  cursor: pointer;
+}
+
+.main-container {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 50%);
+  grid-template-rows: repeat(3, 33.33%);
+  gap: 1vw;
+  padding: 1vw;
+  box-sizing: border-box;
+}
+
+.grid-button {
+  font-size: 3vw;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 1vw;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.video-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.video-container .button-text {
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.5vw 1vw;
+  border-radius: 0.5vw;
+  color: white;
+  font-size: 3vw;
+}
