@@ -8,6 +8,11 @@ import { cleanupFrameProcessor } from '../../video/frame-processor.js';
 import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../../audio/audio-processor.js';
 import { toggleGrid } from './grid-handlers.js';
+import { processFrameWithState } from '../../video/frame-processor.js'; 
+import { withErrorBoundary } from '../../utils/async.js'; 
+
+let offscreenCanvas = null;
+let offscreenCtx = null;
 
 // Note: The processFrame logic is handled via dispatched events and is not directly tied to this function.
 // The toggleGrid handler is now responsible for managing grid-related settings.
@@ -120,4 +125,53 @@ export async function toggleVideoSource() {
         const errorMsg = await getText('button3.tts.videoSourceError');
         speakText(errorMsg);
     }
+}
+
+export async function processFrame() {
+  const DOM = getDOM();
+  try {
+    if (!DOM.videoFeed || DOM.videoFeed.videoWidth <= 0) {
+      // Don't process if video isn't ready
+      return;
+    }
+
+    // Create or resize offscreen canvas if needed
+    if (!offscreenCanvas ||
+        offscreenCanvas.width !== DOM.videoFeed.videoWidth ||
+        offscreenCanvas.height !== DOM.videoFeed.videoHeight) {
+      offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = DOM.videoFeed.videoWidth;
+      offscreenCanvas.height = DOM.videoFeed.videoHeight;
+      offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+      structuredLog('INFO', 'video-handler: Created/Resized offscreen canvas', {
+        width: offscreenCanvas.width,
+        height: offscreenCanvas.height
+      });
+    }
+
+    // Draw current video frame into offscreen canvas
+    offscreenCtx.drawImage(DOM.videoFeed, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+
+    // Read pixel data
+    const frameData = offscreenCtx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height).data;
+
+    const { data: result, error } = await withErrorBoundary(
+      processFrameWithState,
+      frameData,
+      offscreenCanvas.width,
+      offscreenCanvas.height
+    );
+
+    if (error) {
+      structuredLog('ERROR', 'processFrame handler error', { message: error.message });
+      dispatchEvent('logError', { message: `Frame processing handler error: ${error.message}` });
+      return;
+    }
+
+    // You could dispatch another event here if needed, e.g., dispatchEvent('frameProcessed', result);
+
+  } catch (err) {
+    structuredLog('ERROR', 'processFrame error', { message: err.message });
+    dispatchEvent('logError', { message: `Frame processing error: ${err.message}` });
+  }
 }

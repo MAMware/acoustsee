@@ -10,21 +10,15 @@ import { structuredLog } from '../utils/logging.js';
 import { audioHandlers, toggleAudio } from './handlers/audio-handlers.js';
 import { gridHandlers, toggleGrid } from './handlers/grid-handlers.js';
 import { saveSettings, loadSettings } from './handlers/settings-handlers.js';
-import { startStop, toggleVideoSource } from './handlers/video-handlers.js';
+import { startStop, toggleVideoSource, processFrame } from './handlers/video-handlers.js';
 import { toggleLanguage, updateFrameInterval } from './handlers/ui-handlers.js';
 import { toggleDebug, emailDebug } from './handlers/debug-handlers.js';
 
-// Reusable offscreen canvas for frame processing
-let offscreenCanvas = null;
-let offscreenCtx = null;
-
-// Clear offscreen canvas on window resize
-window.addEventListener('resize', debounce(() => {
-  offscreenCanvas = null;
-  offscreenCtx = null;
-}, 200));
-
-let _dispatcherFn = null;
+// Cooldown management for TTS
+let lastTTSTime = 0;
+const ttsCooldown = TTS_COOLDOWN_MS;
+let fpsSamplerInterval = null;
+let frameCount = 0;
 
 export function setDispatcher(fn) {
   _dispatcherFn = fn;
@@ -38,11 +32,6 @@ export function dispatchEvent(eventName, payload) {
     structuredLog('ERROR', 'dispatchEvent called before initialization', { eventName, payload });
   }
 }
-
-let lastTTSTime = 0;
-const ttsCooldown = TTS_COOLDOWN_MS;
-let fpsSamplerInterval = null;
-let frameCount = 0;
 
 export async function createEventDispatcher(domElements) {
   structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!domElements });
@@ -141,74 +130,18 @@ export async function createEventDispatcher(domElements) {
 
   const handlers = {
     updateUI: debouncedUpdateUI,
-    // --- Performance: Reusable offscreen canvas for frame processing ---
-    processFrame: (() => {
-      return async () => {
-        try {
-          // Create or resize offscreen canvas if needed
-          if (!offscreenCanvas ||
-              offscreenCanvas.width !== DOM.videoFeed.videoWidth ||
-              offscreenCanvas.height !== DOM.videoFeed.videoHeight) {
-            offscreenCanvas = document.createElement('canvas');
-            offscreenCanvas.width = DOM.videoFeed.videoWidth;
-            offscreenCanvas.height = DOM.videoFeed.videoHeight;
-            offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
-            structuredLog('INFO', 'processFrame: Created/Resized offscreen canvas', {
-              width: offscreenCanvas.width,
-              height: offscreenCanvas.height
-            });
-          }
-          // Draw current video frame into offscreen canvas
-          offscreenCtx.drawImage(DOM.videoFeed, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
-          // Read pixel data with error handling
-          let frameData;
-          try {
-            frameData = offscreenCtx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height).data;
-          } catch (err) {
-            structuredLog('ERROR', 'processFrame getImageData failed', { message: err.message });
-            // Fallback to empty frame buffer
-            frameData = new Uint8ClampedArray(offscreenCanvas.width * offscreenCanvas.height * 4);
-          }
-          const { data: result, error } = await withErrorBoundary(
-            processFrameWithState,
-            frameData,
-            DOM.videoFeed.videoWidth,
-            DOM.videoFeed.videoHeight
-          );
-          if (error) {
-            structuredLog('ERROR', 'processFrame handler error', { message: error.message, stack: error.stack });
-            handlers.logError({ message: `Frame processing handler error: ${error.message}` });
-            return;
-          }
-          if (!result) {
-            structuredLog('WARN', 'processFrame: No result returned', {
-              width: DOM.videoFeed?.videoWidth,
-              height: DOM.videoFeed?.videoHeight
-            });
-            return;
-          }
-          structuredLog('DEBUG', 'processFrame result', {
-            notesCount: result.notes?.length || 0,
-            avgIntensity: result.avgIntensity
-          });
-          frameCount++;
-        } catch (err) {
-          structuredLog('ERROR', 'processFrame error', { message: err.message, stack: err.stack });
-          handlers.logError({ message: `Frame processing error: ${err.message}` });
-        }
-      };
-    })(),
- 
+    // Pure routing table using imported handlers
+    processFrame: processFrame,
     startStop: startStop,
     toggleVideoSource: toggleVideoSource,
     toggleAudio: toggleAudio,
+    toggleGrid: toggleGrid,
     toggleLanguage: toggleLanguage,
     updateFrameInterval: updateFrameInterval,
     toggleDebug: toggleDebug,
     saveSettings: saveSettings,
     loadSettings: loadSettings,
     emailDebug: emailDebug,
-    toggleGrid: toggleGrid,
 
     logError: ({ message }) => {
       structuredLog('ERROR', 'Error logged', { message });
