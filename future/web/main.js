@@ -258,7 +258,7 @@ async function init() {
 // --- NEW: Emergency Telemetry Beacon ---
 // This function has ZERO internal dependencies. It can run even if everything else is broken.
 function emergencyTrack(eventName, errorPayload = {}) {
-   const emergencyEndpoint = 'https://acoustsee-ingest.mamware.workers.dev';
+   const emergencyEndpoint = 'https://acoustsee-telemetry.mamware.workers.dev';
   try {
     // navigator.sendBeacon is the ideal tool for this. It's designed to be
     // non-blocking and likely to succeed even when a page is crashing or closing.
@@ -310,3 +310,54 @@ init();
 window.addEventListener('pagehide', () => {
   trackFeatureUse('session-end', { duration: Math.round(performance.now() / 1000) });
 });
+
+/**
+ * A simple, globally-accessible function to test the telemetry pipeline.
+ * Call this from the browser's developer console to send a test event.
+ * Usage: > pingTelemetry()
+ */
+function pingTelemetry() {
+  const endpoint = 'https://acoustsee-telemetry.mamware.workers.dev'; // Use your new endpoint name
+  const testPayload = {
+    event: 'telemetry-ping',
+    payload: {
+      message: 'Ping from client at ' + new Date().toISOString(),
+      randomId: Math.random().toString(36).substring(7)
+    },
+    timestamp: Date.now()
+  };
+
+  console.log('Pinging telemetry endpoint:', endpoint);
+  console.log('Payload:', testPayload);
+
+  fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(testPayload)
+  })
+  .then(response => {
+    if (response.ok) {
+      console.log('%cTelemetry Ping Succeeded!', 'color: green; font-weight: bold;');
+      console.log('Status:', response.status);
+      return response.text(); // Use .text() in case the response body is empty
+    } else {
+      console.error('%cTelemetry Ping Failed!', 'color: red; font-weight: bold;');
+      console.error('Status:', response.status);
+      return response.text().then(text => Promise.reject(new Error(text)));
+    }
+  })
+  .then(responseText => {
+    if (responseText) {
+      console.log('Response Body:', responseText);
+    }
+  })
+  .catch(error => {
+    console.error('Fetch Error:', error);
+    console.error('This could be a CORS issue, a network problem, or the endpoint is down.');
+  });
+}
+
+// Attach the function to the window object to make it globally accessible from the console.
+window.pingTelemetry = pingTelemetry;
+
+console.log('Telemetry ping function is available. Type `pingTelemetry()` in the console to test.');
