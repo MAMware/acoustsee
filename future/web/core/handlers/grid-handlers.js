@@ -3,7 +3,7 @@
 
 import { settings, setSettings } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
-import availableGrids from '../../video/grids/available-grids.json';
+import availableGrids from '../../video/grids/available-grids.js';
 
 /**
  * Applies a grid type by updating settings and triggering rendering.
