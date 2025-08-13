@@ -4,7 +4,7 @@ import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';
 
 // --- ADD STATIC IMPORTS ---
 import availableGridsData from '../video/grids/available-grids.js';
-import availableEnginesData from '../audio/synths/available-engines.js';
+import availableEnginesData from '../audio/synths/available-synths.js';
 import availableLanguagesData from '../languages/available-languages.js';
 
 export let settings = {
