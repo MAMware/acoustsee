@@ -1,11 +1,8 @@
 // File: web/core/dispatcher.js
 /* @ts-nocheck */
-import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
-import { TTS_COOLDOWN_MS } from './constants.js';
-import { getText, clearTranslationsCache, speakText } from '../utils/utils.js';
-import { withErrorBoundary, debounce, rafThrottle } from '../utils/async.js';
-import { initializeMicAudio, resizeOscillatorPool } from '../audio/audio-processor.js';
-import { processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
+import { settings } from './state.js';
+import { getText, speakText } from '../utils/utils.js';
+import { debounce } from '../utils/async.js';
 import { structuredLog } from '../utils/logging.js';
 import { toggleAudio } from './handlers/audio-handlers.js';
 import { toggleGrid } from './handlers/grid-handlers.js';
@@ -13,12 +10,6 @@ import { saveSettings, loadSettings } from './handlers/settings-handlers.js';
 import { startStop, toggleVideoSource, processFrame } from './handlers/video-handlers.js';
 import { toggleLanguage, updateFrameInterval } from './handlers/ui-handlers.js';
 import { toggleDebug, emailDebug } from './handlers/debug-handlers.js';
-
-// Cooldown management for TTS
-let lastTTSTime = 0;
-const ttsCooldown = TTS_COOLDOWN_MS;
-let fpsSamplerInterval = null;
-let frameCount = 0;
 
 export function setDispatcher(fn) {
   _dispatcherFn = fn;

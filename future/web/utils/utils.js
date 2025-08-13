@@ -1,3 +1,4 @@
+import { TTS_COOLDOWN_MS } from '../core/constants.js';
 import { settings, lastTTSTime } from '../core/state.js';
 import { structuredLog } from './logging.js';
 
@@ -108,10 +109,10 @@ export async function getText(key, params = {}) {
 export function speakText(message, type = 'tts') {
   if (type === 'tts' && settings.ttsEnabled) {
     const now = Date.now();
-    if (now - lastTTSTime < 3000) {
-      structuredLog('INFO', 'TTS cooldown active, speech skipped.', { message, lastTTSTime, now });
-      return;
-    }
+    if (now - lastTTSTime < TTS_COOLDOWN_MS) { 
+    structuredLog('INFO', 'TTS cooldown active, speech skipped.', { message, lastTTSTime, now });
+    return;
+  }
     lastTTSTime = now;
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = settings.language;

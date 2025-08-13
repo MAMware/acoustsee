@@ -13,6 +13,8 @@ import { withErrorBoundary } from '../../utils/async.js';
 
 let offscreenCanvas = null;
 let offscreenCtx = null;
+let fpsSamplerInterval = null;
+let frameCount = 0;
 
 // Note: The processFrame logic is handled via dispatched events and is not directly tied to this function.
 // The toggleGrid handler is now responsible for managing grid-related settings.
@@ -53,6 +55,13 @@ export async function startStop({ settingsMode }) {
         
         const msg = await getText('button1.tts.startStop', { state: 'starting' });
         speakText(msg);
+        if (settings.debugLogging && !fpsSamplerInterval) {
+          fpsSamplerInterval = setInterval(() => {
+            const avgFPS = frameCount / 10;
+            structuredLog('DEBUG', 'Average FPS sample', { avgFPS, overSeconds: 10 });
+            frameCount = 0;
+          }, 10000);
+        }
       } else {
         settings.stream.getTracks().forEach(track => track.stop());
         setStream(null);
@@ -69,6 +78,11 @@ export async function startStop({ settingsMode }) {
         
         const msg = await getText('button1.tts.startStop', { state: 'stopping' });
         speakText(msg);
+        if (fpsSamplerInterval) {
+          clearInterval(fpsSamplerInterval);
+          fpsSamplerInterval = null;
+          structuredLog('INFO', 'FPS sampler cleared on stream stop');
+        }
       }
     }
   } catch (err) {
@@ -168,8 +182,7 @@ export async function processFrame() {
       return;
     }
 
-    // You could dispatch another event here if needed, e.g., dispatchEvent('frameProcessed', result);
-
+    frameCount++;
   } catch (err) {
     structuredLog('ERROR', 'processFrame error', { message: err.message });
     dispatchEvent('logError', { message: `Frame processing error: ${err.message}` });
