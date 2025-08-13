@@ -1,7 +1,7 @@
 // web/core/handlers/audio-handlers.js
 
 import { structuredLog } from '../../utils/logging.js';
-import { availableEngines } from '../../audio/synths/available-synths.js';
+import { availableEnginesData } from '../../audio/synths/available-synths.js';
 import { resizeOscillatorPool, initializeAudio } from '../../audio/audio-processor.js';
 import { settings } from '../state.js';
 import { applyHRTF as hrtfSpatialize } from '../../audio/hrtf-processor.js';
@@ -10,7 +10,7 @@ export const audioHandlers = {
   playNote: async ({ note, synth, context }) => {
     // Use synth from state if not provided
     const synthId = synth || settings.selectedSynth || 'sine-wave';
-    const engine = availableEngines.find(e => e.id === synthId);
+    const engine = availableEnginesData.find(e => e.id === synthId);
     if (!engine) {
       structuredLog('ERROR', 'audioHandlers.playNote: Synth engine not found', { synth: synthId });
       return;
