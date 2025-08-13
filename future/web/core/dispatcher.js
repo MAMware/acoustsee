@@ -106,7 +106,6 @@ export async function createEventDispatcher(domElements) {
       structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
       handlers.logError({ message: `UI update error: ${err.message}` });
     }
-    lastTTSTime = performance.now();
     structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
   }, 100);
 
