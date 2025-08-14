@@ -12,7 +12,8 @@ export class AudioManager {
     }
   }
 
-  async initialize() {
+  // Initialize optionally accepts a pre-created AudioContext
+  async initialize(preCreatedContext = null) {
     if (this.state !== 'uninitialized') {
       structuredLog('WARN', 'AudioManager: Already initialized', { currentState: this.state });
       return this.context?.state === 'running';
@@ -20,7 +21,8 @@ export class AudioManager {
 
     try {
       this.state = 'initializing';
-      this.context = new (window.AudioContext || window.webkitAudioContext)();
+      // Use preCreatedContext if provided, otherwise create new AudioContext
+      this.context = preCreatedContext || new (window.AudioContext || window.webkitAudioContext)();
       
       if (this.context.state === 'suspended') {
         structuredLog('INFO', 'AudioManager: Resuming suspended context');

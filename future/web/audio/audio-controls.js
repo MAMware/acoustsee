@@ -16,10 +16,10 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
     return;
   }
 
-  const initializeAudioContext = async (event) => {
-    console.log(`powerOn: ${event.type} event`);
+  // Orchestrates setup after AudioContext is created on user gesture
+  const initializeAudioFlow = async (audioCtx) => {
     try {
-      const success = await audioManager.initialize();
+      const success = await audioManager.initialize(audioCtx);
       if (success) {
         await initializeAudio(audioManager.context);
         isAudioContextInitialized = true;
@@ -45,13 +45,16 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
       console.log("Initialization in progress – ignoring extra tap.");
       return;
     }
+    // Create AudioContext synchronously inside the user gesture
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    isInitializing = true;
+  isInitializing = true; // lock to prevent concurrent init
     DOM.powerOn.disabled = true; // <<< VISUAL FEEDBACK
 
     try {
       if (!isAudioContextInitialized) {
-        await initializeAudioContext(event);
+        // Pass the pre-created context to preserve user gesture
+        await initializeAudioFlow(audioCtx);
       } else {
         console.log("powerOn: Audio already initialized, cleaning up");
         await audioManager.cleanup();
