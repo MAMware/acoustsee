@@ -47,5 +47,21 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
   // We use `pointerdown` for responsiveness, but also add `once: true`.
   DOM.powerOn.addEventListener("pointerdown", handlePowerOn, { once: true });
 
+  // Fallback: if the splash button doesn't receive the gesture (some overlays
+  // or OS behaviours can swallow it), capture the first document-level
+  // gesture and call the same handler. This is safe because the handler is
+  // idempotent and `pointerdown` on the button will remove this listener.
+  const docFallback = (ev) => {
+    try {
+      // Only call handler if button still present and not disabled.
+      if (DOM.powerOn && !DOM.powerOn.disabled) handlePowerOn(ev);
+    } finally {
+      document.removeEventListener('pointerdown', docFallback, { passive: true });
+      document.removeEventListener('touchstart', docFallback, { passive: true });
+    }
+  };
+  document.addEventListener('pointerdown', docFallback, { passive: true });
+  document.addEventListener('touchstart', docFallback, { passive: true });
+
   console.log("setupAudioControls: Initialized with one-time unlock listener.");
 }
