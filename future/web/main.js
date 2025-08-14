@@ -6,6 +6,9 @@ import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
 import { trackFeatureUse } from './core/telemetry.js';
 import { getText, initializeLanguageIfNeeded, speakText, announceMessage } from './utils/utils.js';
+import { initializeAudio } from './audio/audio-processor.js';
+import AudioManager from './audio/audio-manager.js';
+import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
 
 // --- SESSION HEALTH MONITORING STATE ---
 const sessionErrors = [];
@@ -178,6 +181,51 @@ async function init() {
 
     const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
+
+    // --- Audio manager and gated startup (user gesture required) ---
+    // Create a shared AudioManager and expose it on the DOM for other modules.
+  const audioManager = new AudioManager();
+  DOM.audioManager = audioManager;
+  // Let the audio-processor bind to the shared manager so it receives events
+  try { bindAudioProcessor(audioManager); } catch (e) { console.warn('bindAudioProcessor failed', e); }
+
+    // Power-on button: a single, clear user gesture to unlock audio and show main UI.
+    if (DOM.powerOn) {
+      DOM.powerOn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try {
+          // Visual transition: hide splash, show main container
+          if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
+          if (DOM.mainContainer) DOM.mainContainer.style.display = '';
+
+          // Attempt to unlock audio in the context of the user gesture.
+          const unlocked = await audioManager.unlockAudio(ev);
+          if (unlocked) {
+            try {
+              await audioManager.initialize();
+              // Ensure audio-processor initializes with the manager's context
+              try { await initializeAudio(audioManager.context); } catch(e){}
+              await audioManager.resume();
+            } catch (inner) {
+              addSessionError({ message: 'audio-init-failed', error: inner?.message || String(inner) });
+              structuredLog('ERROR', 'Audio initialization failed after unlock', { error: inner?.message || String(inner) });
+              announceMessage('Audio initialization failed. You may need to tap again.');
+            }
+            structuredLog('INFO', 'Startup: audio unlocked and initialized');
+            try { trackFeatureUse('power-on', { success: true }); } catch(e){}
+          } else {
+            announceMessage('Audio unavailable. Tap to try again.');
+            try { trackFeatureUse('power-on', { success: false }); } catch(e){}
+          }
+          // Mark button pressed state for accessibility
+          DOM.powerOn.setAttribute('aria-pressed', 'true');
+        } catch (err) {
+          addSessionError({ message: 'power-on-failed', error: err?.message || String(err) });
+          structuredLog('ERROR', 'Power on handler failed', { error: err?.message || String(err) });
+          announceMessage('Startup failed. Check console for details.');
+        }
+      }, { once: false });
+    }
 
     // --- Video -> Canvas sizing and frame capture helper ---
     // Ensure the hidden canvas matches the incoming video stream size so

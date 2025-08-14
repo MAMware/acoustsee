@@ -46,6 +46,24 @@ export function setAudioContext(newContext) {
   isAudioInitialized = false;
 }
 
+// Bind a shared AudioManager instance so this module can react to unlock/resume events.
+export function bindAudioManager(audioManager) {
+  if (!audioManager) return;
+  try {
+    // If audioManager already has a context, use it
+    if (audioManager.context) setAudioContext(audioManager.context);
+    // When the manager emits 'unlocked' or 'resumed', attempt initialization
+    audioManager.on && audioManager.on('unlocked', async () => {
+      try { await initializeAudio(audioManager.context); } catch(e) { /* handled below */ }
+    });
+    audioManager.on && audioManager.on('resumed', async () => {
+      try { await initializeAudio(audioManager.context); } catch(e) { /* handled below */ }
+    });
+  } catch (e) {
+    structuredLog('WARN', 'bindAudioManager failed', { message: e?.message || String(e) });
+  }
+}
+
 export async function initializeAudio(context) {
   if (isAudioInitialized || !context) {
     structuredLog('WARN', 'initializeAudio: Already initialized or no context');
@@ -125,8 +143,13 @@ export async function playAudio(notes) {
     }
    
     const playFunction = engine.playFunction; // Directly access the function
-    const contextObj = {}; // For future use
-   
+    const contextObj = {
+      audioContext,
+      getOscillator,
+      oscillatorPool,
+      modulators
+    };
+
     playFunction(notes, contextObj);
     structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
 
