@@ -92,3 +92,31 @@ body {
   color: white;
   font-size: 3vw;
 }
+
+/* Visually-hidden helper for screen readers */
+.sr-only {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+  margin: -1px;
+}
+
+/* Overlay toggle sits above the video */
+.video-wrapper .overlay-toggle {
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: none;
+  padding: 0.5vw 1vw;
+  border-radius: 0.5vw;
+  cursor: pointer;
+  font-size: 3vw;
+}

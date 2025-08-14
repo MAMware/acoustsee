@@ -178,6 +178,79 @@ async function init() {
 
     const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
+
+    // --- Video -> Canvas sizing and frame capture helper ---
+    // Ensure the hidden canvas matches the incoming video stream size so
+    // frame processing (drawImage, pixel reads, ML, etc.) works and does
+    // not operate on a 0x0 surface.
+    (function setupFrameCapture() {
+      const video = DOM.videoFeed;
+      const canvas = DOM.frameCanvas;
+      if (!video || !canvas) return; // defensive
+
+      let frameLoopId = null;
+      let running = false;
+
+      function resizeCanvasToVideo() {
+        // Use natural video dimensions when available, otherwise use sensible defaults
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 480;
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        canvas.style.display = 'none'; // keep visually hidden but usable
+        canvas.setAttribute('aria-hidden', 'true');
+      }
+
+      function startLoop() {
+        if (running) return;
+        try {
+          resizeCanvasToVideo();
+          const ctx = canvas.getContext('2d');
+          running = true;
+          (function loop() {
+            if (!running) return;
+            try {
+              if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                // Placeholder: emit or process the frame here if needed
+              }
+            } catch (e) {
+              // Add to session errors for health monitoring but don't crash the loop
+              addSessionError({ message: 'frame-draw-error', error: e?.message || String(e) });
+            }
+            frameLoopId = requestAnimationFrame(loop);
+          })();
+        } catch (e) {
+          addSessionError({ message: 'start-frame-loop-failed', error: e?.message || String(e) });
+        }
+      }
+
+      function stopLoop() {
+        running = false;
+        if (frameLoopId != null) {
+          cancelAnimationFrame(frameLoopId);
+          frameLoopId = null;
+        }
+      }
+
+      // When metadata is available, ensure the canvas is sized correctly
+      video.addEventListener('loadedmetadata', () => {
+        try { resizeCanvasToVideo(); } catch (e) { addSessionError({ message: 'resize-on-metadata-failed', error: e?.message || String(e) }); }
+      });
+
+      // Start drawing when the video plays; stop when paused or ended
+      video.addEventListener('play', startLoop);
+      video.addEventListener('playing', startLoop);
+      video.addEventListener('pause', stopLoop);
+      video.addEventListener('ended', stopLoop);
+
+  // Expose simple controls on DOM for other modules (safe no-op if missing)
+  // Named explicitly for camera/frame capture to avoid confusion with network streams
+  DOM._startCameraFrameCapture = startLoop;
+  DOM._stopCameraFrameCapture = stopLoop;
+    })();
     const TELEMETRY_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev'; 
 
     // Console overrides moved here to break circular dependency
@@ -226,6 +299,66 @@ async function init() {
     // Force initial UI update for dynamic content
     dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
     structuredLog('INFO', 'init: UI setup complete');
+    
+    // --- Camera toggle helper bound to overlay button (#button1) ---
+    (function setupCameraToggle() {
+      const btn = DOM.button1;
+      const video = DOM.videoFeed;
+      let cameraStream = null;
+
+      if (!btn || !video) return;
+
+      async function startCamera() {
+        try {
+          // Ask for camera permission and prefer environment-facing if available
+          const constraints = { video: { facingMode: 'environment' }, audio: false };
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          cameraStream = stream;
+          video.srcObject = stream;
+          // Play the video element if not auto-playing
+          try { await video.play(); } catch (e) { /* play may be blocked until user interacts */ }
+          btn.setAttribute('aria-pressed', 'true');
+          const stopLabel = btn.querySelector('.button-text');
+          if (stopLabel) stopLabel.textContent = 'Stop';
+          // Start frame capture loop if helper provided
+          DOM._startCameraFrameCapture && DOM._startCameraFrameCapture();
+          trackFeatureUse('camera-start', { timestamp: Date.now() });
+        } catch (e) {
+          addSessionError({ message: 'start-camera-failed', error: e?.message || String(e) });
+          structuredLog('ERROR', 'Failed to start camera', { error: e?.message || String(e) });
+          announceMessage('Unable to access camera.');
+        }
+      }
+
+      function stopCamera() {
+        try {
+          if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+          }
+          video.pause();
+          video.srcObject = null;
+          btn.setAttribute('aria-pressed', 'false');
+          const startLabel = btn.querySelector('.button-text');
+          if (startLabel) startLabel.textContent = 'Start';
+          DOM._stopCameraFrameCapture && DOM._stopCameraFrameCapture();
+          trackFeatureUse('camera-stop', { timestamp: Date.now() });
+        } catch (e) {
+          addSessionError({ message: 'stop-camera-failed', error: e?.message || String(e) });
+          structuredLog('WARN', 'Failed to fully stop camera', { error: e?.message || String(e) });
+        }
+      }
+
+      btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const pressed = btn.getAttribute('aria-pressed') === 'true';
+        if (pressed) {
+          stopCamera();
+        } else {
+          await startCamera();
+        }
+      });
+    })();
   } catch (err) {
     // --- EMERGENCY TELEMETRY BEACON ---
     emergencyTrack('init-failure', {
