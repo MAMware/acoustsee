@@ -1,0 +1,144 @@
+{
+"powerOn": {
+    "text": "Power On",
+    "aria": "Power On to enable audio",
+    "failed": {
+      "text": "Audio Failed - Retry",
+      "aria": "Retry audio initialization"
+    }
+  },
+  "videoFeed": {
+    "aria": "Video Feed"
+  },
+  "frameCanvas": {
+    "aria": "Hidden Frame Processing Canvas"
+  },
+  "debugPanel": {
+    "aria": "Debug Panel"
+  },
+  
+  "button1": {
+    "normal": {
+      "start": {
+        "text": "Start",
+        "aria": "Processing video started"
+      },
+      "stop": {
+        "text": "Stop",
+        "aria": "Processing video stopped"
+      }
+    },
+    "settings": {
+      "text": "Kernel: {gridType}",
+      "aria": "Kernel selection {gridType}"
+    },
+    "tts": {
+      "startStop": {
+        "starting": "Startinng syneshesia",
+        "stopping": "Stopping synesthesia",
+        "error": "Error starting or stopping processing"
+      },
+      "cameraError": "Camera access error",
+      "gridSelect": "Kernel set to {state}"
+    }
+  },
+  "button2": {
+    "normal": {
+      "on": {
+        "text": "Mic On",
+        "aria": "Turn on microphone"
+      },
+      "off": {
+        "text": "Mic Off",
+        "aria": "Turn off microphone"
+      }
+    },
+    "settings": {
+      "text": "Sound synthetizer: {synthesisEngine}",
+      "aria": "Select synthesis engine {synthesisEngine}"
+    },
+    "tts": {
+      "micToggle": {
+        "turningOn": "Turning on microphone",
+        "turningOff": "Turning off microphone"
+      },
+      "micError": "Microphone access error",
+      "synthesisSelect": "Synthesis set to {state}"
+    }
+  },
+  "button3": {
+    "normal": {
+      "text": "Language: {languageName}",
+      "aria": "Select language {languageName}"
+    },
+    "settings": {
+      "text": "Input: {inputType}",
+      "aria": "Input selector: {inputType}"
+    },
+    "tts": {
+      "languageSelect": "Language set to {languageName}",
+      "fpsError": "Language toggle error"
+    }
+  },
+  "button4": {
+    "normal": {
+      "auto": {
+        "text": "Auto FPS",
+        "aria": "Select frame rate"
+      },
+      "manual": {
+        "text": "{fps} FPS",
+        "aria": "Select frame rate"
+      },
+      "aria": "Select frame rate"
+    },
+    "settings": {
+      "text": "Save Settings",
+      "aria": "Save settings"
+    },
+    "tts": {
+      "fpsBtn": "Frame rate set to {fps}",
+      "fpsError": "Frame rate error",
+      "saveSettings": "Settings saved",
+      "saveError": "Error saving settings"
+    }
+  },
+  "button5": {
+    "normal": {
+      "text": "Email Console Log",
+      "aria": "Email console log"
+    },
+    "settings": {
+      "text": "Load Settings",
+      "aria": "Load settings"
+    },
+    "tts": {
+      "emailDebug": {
+        "email": "Emailing console log for debuggin",
+        "error": "Error emailing console log"
+      },
+      "loadSettings": {
+        "loaded": "Settings loaded",
+        "none": "No settings found"
+      },
+      "loadError": "Error loading settings"
+    }
+  },
+  "button6": {
+    "normal": {
+      "text": "Settings",
+      "aria": "Enter settings mode"
+    },
+    "settings": {
+      "text": "Exit Settings",
+      "aria": "Exit settings mode"
+    },
+    "tts": {
+      "settingsToggle": {
+        "on": "Entering settings mode",
+        "off": "Exiting settings mode"
+      },
+      "settingsError": "Settings toggle error"
+    }
+  }
+}
