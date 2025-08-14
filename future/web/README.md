@@ -288,6 +288,35 @@ The entire process is open and transparent. The code that sends this data can be
 - Follow the link for list of the Frecuently Asqued Questions.
 
  
+## Plugin contract & audio lifecycle
+
+This project supports pluggable synth and grid modules. Add the following short guidelines for plugin authors and integrators:
+
+- PLUGIN-META: place a JSON metadata block at the top of the plugin file inside a comment so the indexer can extract it without executing the module. Example:
+
+    ```js
+    /* PLUGIN-META
+    {
+        "id": "sine-wave",
+        "name": "Sine Wave",
+        "author": "You",
+        "description": "Simple sine-wave engine",
+        "version": "0.1.0"
+    }
+    */
+    ```
+
+- Synth engines: export a play function with the signature `export function play(notes, ctx = {})`.
+    - `notes` is an array of note objects (engine-specific).
+    - `ctx` is an audio runtime object provided by the app. Engines should read audio resources from `ctx` and must NOT create their own `AudioContext` or global oscillator pools.
+    - Minimum fields to expect on `ctx` (check for presence): `audioContext`, `getOscillator`, `oscillatorPool`, and `modulators`.
+
+- Grids: export a mapping function that converts frame data into engine inputs. Use the same `ctx` pattern when audio resources are needed.
+
+- Lifecycle: the shared `AudioManager` owns the `AudioContext` and user-gesture unlock/resume. The app exposes it via `DOM.audioManager`. Bind to it using `bindAudioManager()` from `audio-processor` or reference `DOM.audioManager` directly in early initialization code.
+
+- Best practices: be defensive (check for missing `ctx.audioContext`), avoid long-running initialization in top-level module execution, and keep plugins dependency-free at runtime.
+
 *Peace.*
 **Love.**
 *Union.*

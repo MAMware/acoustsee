@@ -40,6 +40,10 @@ let oscillatorPool = [];
 let modulators = [];
 let micSource = null;
 let micGainNode = null;
+// Reference to a bound AudioManager (if any). When present we should delegate
+// lifecycle operations (like closing the context) to the manager so we don't
+// race to close an AudioContext owned elsewhere.
+let audioManagerRef = null;
 
 export function setAudioContext(newContext) {
   audioContext = newContext;
@@ -50,6 +54,8 @@ export function setAudioContext(newContext) {
 export function bindAudioManager(audioManager) {
   if (!audioManager) return;
   try {
+  // Keep a reference so cleanupAudio can delegate closing to the manager
+  audioManagerRef = audioManager;
     // If audioManager already has a context, use it
     if (audioManager.context) setAudioContext(audioManager.context);
     // When the manager emits 'unlocked' or 'resumed', attempt initialization
@@ -160,38 +166,51 @@ export async function playAudio(notes) {
 }
 
 export async function cleanupAudio() {
-  if (isAudioInitialized && audioContext) {
-    try {
-      oscillatorPool.forEach(({ osc, gain, panner }) => {
-        osc.stop();
-        osc.disconnect();
-        gain.disconnect();
-        panner.disconnect();
-      });
-      oscillatorPool = [];
-      if (micSource && micGainNode) {
-        micSource.disconnect();
-        micGainNode.disconnect();
-        micSource = null;
-        micGainNode = null;
+  if (!isAudioInitialized && !audioContext) return;
+  try {
+    // Stop and disconnect oscillators and nodes regardless of who owns the context
+    oscillatorPool.forEach(({ osc, gain, panner }) => {
+      try { osc.stop(); } catch(e) {}
+      try { osc.disconnect(); } catch(e) {}
+      try { gain.disconnect(); } catch(e) {}
+      try { panner.disconnect(); } catch(e) {}
+    });
+    oscillatorPool = [];
+    if (micSource && micGainNode) {
+      try { micSource.disconnect(); } catch(e) {}
+      try { micGainNode.disconnect(); } catch(e) {}
+      micSource = null;
+      micGainNode = null;
+    }
+    oscillators = [];
+    // cleanup modulators
+    modulators.forEach(({ osc, gain }) => {
+      try { osc.stop(); } catch(e) {}
+      try { osc.disconnect(); } catch(e) {}
+      try { gain.disconnect(); } catch(e) {}
+    });
+    modulators = [];
+
+    // Delegate closing of the AudioContext to the bound AudioManager when present.
+    if (audioManagerRef && typeof audioManagerRef.close === 'function') {
+      structuredLog('INFO', 'cleanupAudio: Delegating AudioContext close to AudioManager');
+      try {
+        await audioManagerRef.close();
+      } catch (e) {
+        structuredLog('WARN', 'cleanupAudio: audioManager.close failed', { message: e?.message || String(e) });
       }
-      oscillators = [];
-      // cleanup modulators
-      modulators.forEach(({ osc, gain }) => {
-        osc.stop();
-        osc.disconnect();
-        gain.disconnect();
-      });
-      modulators = [];
-      // Fully close AudioContext to release system resources
+      audioContext = null;
+    } else if (audioContext) {
+      // No manager bound — fall back to closing the context here
       await audioContext.close();
       audioContext = null;
-      isAudioInitialized = false;
-      structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up and context closed');
-    } catch (err) {
-      structuredLog('ERROR', 'cleanupAudio error', { message: err.message });
-      dispatchEvent('logError', { message: `Cleanup audio error: ${err.message}` });
     }
+
+    isAudioInitialized = false;
+    structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up and context closed');
+  } catch (err) {
+    structuredLog('ERROR', 'cleanupAudio error', { message: err.message });
+    dispatchEvent('logError', { message: `Cleanup audio error: ${err.message}` });
   }
 }
 
