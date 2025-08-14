@@ -7,34 +7,51 @@ export class AudioManager {
   constructor() {
     this.context = null;
     this.state = 'uninitialized';
+    // Create the context immediately, it will be in a suspended state.
+    try {
+      this.context = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      this.state = 'error';
+      structuredLog('ERROR', 'AudioContext creation failed.', { message: e.message });
+    }
+
     if (!globalAudioManager) {
       globalAudioManager = this;
     }
   }
 
-  // Initialize optionally accepts a pre-created AudioContext
-  async initialize(preCreatedContext = null) {
-    if (this.state !== 'uninitialized') {
-      structuredLog('WARN', 'AudioManager: Already initialized', { currentState: this.state });
-      return this.context?.state === 'running';
+  /**
+   * This is a synchronous function designed to be called directly
+   * from a user gesture event listener (e.g., 'pointerdown').
+   */
+  unlockAudio() {
+    if (!this.context) return Promise.reject(new Error("AudioContext not created."));
+    if (this.context.state === 'suspended') {
+      structuredLog('INFO', 'AudioManager: Attempting to resume suspended context.');
+      return this.context.resume(); // This returns a promise
+    }
+    // If it's already running or closed, resolve immediately.
+    return Promise.resolve();
+  }
+
+  async initialize() {
+    if (this.state === 'ready') {
+      structuredLog('WARN', 'AudioManager: Already initialized.');
+      return true;
+    }
+    if (!this.context) {
+      throw new Error("Cannot initialize, AudioContext creation failed.");
     }
 
+    this.state = 'initializing';
     try {
-      this.state = 'initializing';
-      // Use preCreatedContext if provided, otherwise create new AudioContext
-      this.context = preCreatedContext || new (window.AudioContext || window.webkitAudioContext)();
-      
-      if (this.context.state === 'suspended') {
-        structuredLog('INFO', 'AudioManager: Resuming suspended context');
-        await this.context.resume();
-      }
-      
+      // The context is already created. We just check its state.
       if (this.context.state !== 'running') {
-        throw new Error(`AudioContext failed to reach running state: ${this.context.state}`);
+        throw new Error(`AudioContext is not in a running state after unlock attempt. State: ${this.context.state}`);
       }
-      
+
       this.state = 'ready';
-      structuredLog('INFO', 'AudioManager: Initialized', { sampleRate: this.context.sampleRate, state: this.state });
+      structuredLog('INFO', 'AudioManager: Initialized.', { sampleRate: this.context.sampleRate, state: this.state });
       return true;
     } catch (error) {
       this.state = 'error';
@@ -58,10 +75,6 @@ export class AudioManager {
   }
 }
 
-/**
- * Provides access to the singleton AudioContext instance.
- * @returns {AudioContext|null} The global AudioContext, or null if not initialized.
- */
 export function getAudioContext() {
-    return globalAudioManager ? globalAudioManager.context : null;
+  return globalAudioManager ? globalAudioManager.context : null;
 }
