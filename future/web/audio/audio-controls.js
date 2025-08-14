@@ -1,5 +1,7 @@
 import { AudioManager } from "./audio-manager.js";
+
 const audioManager = new AudioManager();
+
 export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
   if (!DOM || !DOM.powerOn) {
     // Missing elements; abort.
@@ -15,7 +17,6 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
         // SUCCESS: The context is now running.
         await audioManager.initialize(); // Now we can initialize the rest.
         await initializeAudio(audioManager.context);
-
         DOM.splashScreen.style.display = "none";
         DOM.mainContainer.style.display = "grid";
         const onMsg = await getText("audioOn");
