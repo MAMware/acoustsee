@@ -126,6 +126,28 @@ export function setupUISettings({ dispatchEvent, DOM }) {
     }
   );
 
+  // Sponsor opt-out flow: when in settings mode, Button5 opens sponsor page and
+  // allows user to enter a keyword found on the sponsor page to opt-out of telemetry.
+  // This is intentionally simple and visible.
+  async function sponsorOptOutFlow() {
+    try {
+      const sponsorUrl = 'https://github.com/sponsors/MAMware';
+      // Open sponsor in a new tab so user can see the keyword.
+      window.open(sponsorUrl, '_blank');
+      const promptMsg = await getText('sponsor.prompt', {});
+      const keyword = prompt(promptMsg + '\n\n(Enter keyword to disable telemetry)');
+      if (keyword && keyword.trim().toLowerCase() === 'invisible') {
+        settings.ingestEnabled = false;
+        try { localStorage.setItem('ingestEnabled', '0'); } catch (e) {}
+        const msg = await getText('sponsor.thanks', {});
+        speakText(msg);
+        structuredLog('INFO', 'User disabled telemetry via sponsor opt-out');
+      }
+    } catch (e) {
+      console.error('Sponsor opt-out failed:', e.message);
+    }
+  }
+
   // Button 6
   wireButton(DOM.button6, 'button6',
     {

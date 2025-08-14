@@ -5,7 +5,16 @@
  * @param {string} event - The event name or level.
  * @param {{}} payload - Additional data to send.
  */
+import { settings } from './state.js';
+
 export async function trackFeatureUse(event, payload = {}) {
+  try {
+    if (!settings?.ingestEnabled) return;
+  } catch (e) {
+    // If settings can't be read, don't block the app; no telemetry sent.
+    return;
+  }
+
   try {
     await fetch('https://acoustsee-analytics.mamware.workers.dev', {
       method: 'POST',

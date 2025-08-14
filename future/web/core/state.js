@@ -22,6 +22,7 @@ export let settings = {
   audioResumeAttempts: 2,
   audioResumeDelayMs: 100,
   ttsEnabled: false,
+  ingestEnabled: true,
   dayNightMode: 'day',
   resetStateOnError: true,
   motionThreshold: 20,
@@ -107,6 +108,14 @@ function initializeDefaults() {
   }
   
   structuredLog('INFO', 'Settings initialized', { settings });
+
+  try {
+    const t = localStorage.getItem('ingestEnabled');
+    if (t === '0') settings.ingestEnabled = false;
+    else if (t === '1') settings.ingestEnabled = true;
+  } catch (e) {
+    // ignore localStorage access errors
+  }
 }
 
 initializeDefaults();
