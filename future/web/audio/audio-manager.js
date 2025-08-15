@@ -1,6 +1,6 @@
 // Robust AudioManager
 import { structuredLog } from '../utils/logging.js';
-import { trackFeatureUse } from '../core/telemetry.js';
+import { trackFeatureUse } from '../core/ingest.js';
 // - Call unlockAudio(event) from a real user gesture (tap/click/pointerdown).
 // - After unlock succeeds, call initialize() to build any audio graph nodes.
 

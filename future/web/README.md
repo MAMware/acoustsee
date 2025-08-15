@@ -197,7 +197,7 @@ Separation of concerns
 • Could improve: Rather than calling getLogs().then(console.log), consider returning a promise or emitting a structured debug event—this makes it easier to build UIs or remote‐ship logs instead of only dumping to the console.
 
 Consistency with your logging/telemetry layer
-• Right now you mix structuredLog('DEBUG', …) with a raw console.log. If you already have a telemetry/IndexedDB pipeline in telemetry.js or state.js, lean on that so your debug output goes through the same filters/formatters and obeys your debugLogging flag.
+• Right now you mix structuredLog('DEBUG', …) with a raw console.log. If you already have an ingest/IndexedDB pipeline in `core/ingest.js` or `state.js`, lean on that so your debug output goes through the same filters/formatters and obeys your debugLogging flag.
 
 Naming and API shape
 • logEvent({ event }) overlaps conceptually with your existing structuredLog; it may be redundant unless you’re transforming or storing the event somewhere different.
@@ -281,7 +281,7 @@ We are only interested in statistical trends, not individuals.
 **Your Control**
 We believe you should have the final say over your data. While this anonymous data is incredibly helpful to the project, we provide an option to disable it in the application's settings.
 
-The entire process is open and transparent. The code that sends this data can be reviewed in `core/telemetry.js`. We are committed to ethical analytics and protecting your privacy.
+The entire process is open and transparent. The code that sends this data can be reviewed in `core/ingest.js`. We are committed to ethical analytics and protecting your privacy.
 
 ### [FAQ](docs/FAQ.md)
 

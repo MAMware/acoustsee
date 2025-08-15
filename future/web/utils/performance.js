@@ -170,3 +170,58 @@ export async function getPreferredIntervalMs({ forceBenchmark = false, maxAgeMs 
     return computeDefaultUpdateInterval();
   }
 }
+
+// --- Session health helpers (lightweight, DOM-free state) ---
+const sessionErrors = [];
+const DEFAULT_MAX_BUFFER = 100;
+
+/**
+ * Add an error payload to the session buffer for later aggregation.
+ */
+export function addSessionError(errorPayload) {
+  try {
+    sessionErrors.push({ ...(errorPayload || {}), timestamp: Date.now() });
+    if (sessionErrors.length > DEFAULT_MAX_BUFFER) sessionErrors.shift();
+  } catch (e) {
+    // swallow; health logging must not throw
+  }
+}
+
+/**
+ * Start a periodic health checker that aggregates recent session errors and
+ * calls reportFn(eventName, payload) when thresholds are exceeded.
+ * Returns a stop function.
+ */
+export function startHealthChecker({ reportFn, intervalMs = 60 * 1000, errorThreshold = 5, timeframeMs = 2 * 60 * 1000 } = {}) {
+  if (typeof reportFn !== 'function') throw new Error('reportFn required');
+
+  const id = setInterval(() => {
+    try {
+      const now = Date.now();
+      const recent = sessionErrors.filter(e => now - e.timestamp < timeframeMs);
+
+      const counts = {};
+      for (const e of recent) counts[e.message] = (counts[e.message] || 0) + 1;
+      const repeated = Object.entries(counts).filter(([_, c]) => c > 2);
+
+      if (recent.length > errorThreshold || repeated.length > 0) {
+        try {
+          reportFn('session-health-degraded', {
+            errorCount: recent.length,
+            repeatedErrors: repeated,
+            sample: recent.slice(-5).map(e => e.message),
+            timeframeMinutes: timeframeMs / (60 * 1000),
+            lastErrorMessage: recent[recent.length - 1]?.message
+          });
+        } catch (e) {
+          // swallow; reporter may throw
+        }
+        sessionErrors.length = 0;
+      }
+    } catch (e) {
+      // swallow - health checker should be resilient
+    }
+  }, intervalMs);
+
+  return () => clearInterval(id);
+}

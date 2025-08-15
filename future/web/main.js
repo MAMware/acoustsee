@@ -4,55 +4,17 @@ import { createEventDispatcher } from './core/dispatcher.js';
 import { settings, setAutoFpsBenchmark } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
-import { trackFeatureUse } from './core/telemetry.js';
+import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
 import { getText, initializeLanguageIfNeeded, speakText, announceMessage } from './utils/utils.js';
 import { initializeAudio } from './audio/audio-processor.js';
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
 import { processFrameWithState } from './video/frame-processor.js';
-import { getPreferredIntervalMs } from './utils/performance.js';
+import { getPreferredIntervalMs, addSessionError, startHealthChecker } from './utils/performance.js';
 
-// --- SESSION HEALTH MONITORING STATE ---
-const sessionErrors = [];
 const HEALTH_CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
 const ERROR_THRESHOLD = 5; // Alert if more than 5 errors
 const ERROR_TIMEFRAME_MS = 2 * 60 * 1000; // Look at last 2 minutes
-const MAX_BUFFER_SIZE = 100; // Prevent memory leaks
-
-function addSessionError(errorPayload) {
-  sessionErrors.push({
-    ...errorPayload,
-    timestamp: Date.now()
-  });
-  // Cap buffer size
-  if (sessionErrors.length > MAX_BUFFER_SIZE) sessionErrors.shift();
-}
-
-// --- HEALTH CHECKER ---
-setInterval(() => {
-  const now = Date.now();
-  // Only consider errors from the last ERROR_TIMEFRAME_MS
-  const recentErrors = sessionErrors.filter(e => now - e.timestamp < ERROR_TIMEFRAME_MS);
-
-  // Count repeated error messages
-  const errorCounts = {};
-  for (const err of recentErrors) {
-    errorCounts[err.message] = (errorCounts[err.message] || 0) + 1;
-  }
-  const repeated = Object.entries(errorCounts).filter(([msg, count]) => count > 2);
-
-  if (recentErrors.length > ERROR_THRESHOLD || repeated.length > 0) {
-    trackFeatureUse('session-health-degraded', {
-      errorCount: recentErrors.length,
-      repeatedErrors: repeated,
-      sample: recentErrors.slice(-5).map(e => e.message),
-      timeframeMinutes: ERROR_TIMEFRAME_MS / (60 * 1000),
-      lastErrorMessage: recentErrors[recentErrors.length - 1]?.message
-    });
-    // Clear buffer after reporting
-    sessionErrors.length = 0;
-  }
-}, HEALTH_CHECK_INTERVAL_MS);
 // Translation cache for static keys
 const translationCache = {};
 // Cached getText wrapper
@@ -395,9 +357,8 @@ async function init() {
     // Expose both for compatibility and the preferred scheduler
     DOM.processFrame = processFrame;
     window.processFrame = processFrame;
-    DOM.scheduleProcessFrame = scheduleProcessFrame;
-    window.scheduleProcessFrame = scheduleProcessFrame;
-    const TELEMETRY_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev'; 
+  DOM.scheduleProcessFrame = scheduleProcessFrame;
+  window.scheduleProcessFrame = scheduleProcessFrame;
 
     // Console overrides moved here to break circular dependency
     function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
@@ -410,8 +371,8 @@ async function init() {
         console.warn = originalConsole.warn;
         console.error = originalConsole.error;
         structuredLog(level, message, data, persist, sample);
-        // send to telemetry worker
-        trackFeatureUse(level, { message, ...data });
+  // send to ingest worker
+  trackFeatureUse(level, { message, ...data });
       } catch (err) {
         threw = true;
         // Restore temp overrides immediately if structuredLog throws
@@ -445,6 +406,13 @@ async function init() {
     // Force initial UI update for dynamic content
     dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
     structuredLog('INFO', 'init: UI setup complete');
+    // Start health checker (aggregates session errors and reports via ingest)
+    const stopHealthChecker = startHealthChecker({
+      reportFn: trackFeatureUse,
+      intervalMs: HEALTH_CHECK_INTERVAL_MS,
+      errorThreshold: ERROR_THRESHOLD,
+      timeframeMs: ERROR_TIMEFRAME_MS
+    });
     
     // --- Camera toggle helper bound to overlay button (#button1) ---
     (function setupCameraToggle() {
@@ -525,7 +493,7 @@ async function init() {
       });
     })();
   } catch (err) {
-    // --- EMERGENCY TELEMETRY BEACON ---
+    // --- EMERGENCY INGEST BEACON ---
     emergencyTrack('init-failure', {
       message: err.message,
       stack: err.stack,
@@ -553,46 +521,11 @@ async function init() {
   }
 }
 
-// --- NEW: Emergency Telemetry Beacon ---
-// This function has ZERO internal dependencies. It can run even if everything else is broken.
-function emergencyTrack(eventName, errorPayload = {}) {
-   const emergencyEndpoint = 'https://acoustsee-telemetry.mamware.workers.dev';
-  try {
-    // navigator.sendBeacon is the ideal tool for this. It's designed to be
-    // non-blocking and likely to succeed even when a page is crashing or closing.
-    if (navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify({
-        event: eventName,
-        payload: errorPayload,
-        timestamp: Date.now(),
-        isEmergency: true
-      })], { type: 'application/json' });
-      navigator.sendBeacon(emergencyEndpoint, blob);
-    } else {
-      // Fallback to a simple, non-blocking fetch for older browsers
-      fetch(emergencyEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        keepalive: true, // Also helps ensure the request is sent
-        body: JSON.stringify({
-          event: eventName,
-          payload: errorPayload,
-          timestamp: Date.now(),
-          isEmergency: true
-        })
-      });
-    }
-  } catch (e) {
-    // If the emergency beacon itself fails, there's nothing more we can do.
-    // We intentionally do not log this failure to avoid any risk of a recursive loop.
-  }
-}
-
 // Adds uncaught error handler for global contexts
 window.onerror = function (message, source, lineno, colno, error) {
   const errorPayload = { message, source, lineno, colno, stack: error ? error.stack : 'N/A' };
   structuredLog('ERROR', 'Uncaught global error', errorPayload);
-  // send error telemetry
+  // send error ingest
   trackFeatureUse('globalError', errorPayload);
   addSessionError(errorPayload); // <-- Add to buffer for health monitoring
   if (settings?.debugLogging ?? true) {  // Safe check; default to true if settings null (pre-init)
@@ -610,52 +543,11 @@ window.addEventListener('pagehide', () => {
 });
 
 /**
- * A simple, globally-accessible function to test the telemetry pipeline.
+ * A simple, globally-accessible function to test the ingest pipeline.
  * Call this from the browser's developer console to send a test event.
- * Usage: > pingTelemetry()
+ * Usage: > ping()
  */
-function pingTelemetry() {
-  const endpoint = 'https://acoustsee-telemetry.mamware.workers.dev'; // Use your new endpoint name
-  const testPayload = {
-    event: 'telemetry-ping',
-    payload: {
-      message: 'Ping from client at ' + new Date().toISOString(),
-      randomId: Math.random().toString(36).substring(7)
-    },
-    timestamp: Date.now()
-  };
+// Attach the imported pingIngest to the window for console testing.
+window.pingIngest = pingIngest;
 
-  console.log('Pinging telemetry endpoint:', endpoint);
-  console.log('Payload:', testPayload);
-
-  fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(testPayload)
-  })
-  .then(response => {
-    if (response.ok) {
-      console.log('%cTelemetry Ping Succeeded!', 'color: green; font-weight: bold;');
-      console.log('Status:', response.status);
-      return response.text(); // Use .text() in case the response body is empty
-    } else {
-      console.error('%cTelemetry Ping Failed!', 'color: red; font-weight: bold;');
-      console.error('Status:', response.status);
-      return response.text().then(text => Promise.reject(new Error(text)));
-    }
-  })
-  .then(responseText => {
-    if (responseText) {
-      console.log('Response Body:', responseText);
-    }
-  })
-  .catch(error => {
-    console.error('Fetch Error:', error);
-    console.error('This could be a CORS issue, a network problem, or the endpoint is down.');
-  });
-}
-
-// Attach the function to the window object to make it globally accessible from the console.
-window.pingTelemetry = pingTelemetry;
-
-console.log('Telemetry ping function is available. Type `pingTelemetry()` in the console to test.');
+console.log('Ingest ping function is available. Type `pingIngest()` in the console to test.');
