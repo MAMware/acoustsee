@@ -48,8 +48,8 @@ export async function createEventDispatcher(domElements) {
 
   const ds = deviceSummary();
   const browserInfo = {
-    userAgent: ds.userAgent,
-    platform: ds.platform,
+    // include full device summary for richer telemetry downstream
+    device: ds,
     parsedBrowserVersion: (() => {
       const browserVersionRegex = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
       const m = ds.userAgent.match(browserVersionRegex);
@@ -57,11 +57,12 @@ export async function createEventDispatcher(domElements) {
     })(),
     hardwareConcurrency: ds.hardwareConcurrency || 'N/A',
     deviceMemory: ds.deviceMemory ? `${ds.deviceMemory} GB` : 'N/A',
-    screen: `${screen.width}x${screen.height}`,
-    audioContextState: typeof audioContext !== 'undefined' ? audioContext.state : 'Not initialized',
+    screen: (typeof screen !== 'undefined' && screen.width && screen.height) ? `${screen.width}x${screen.height}` : 'N/A',
+    audioContextState: (typeof audioContext !== 'undefined' && audioContext && audioContext.state) ? audioContext.state : 'Not initialized',
     streamActive: !!settings.stream,
     micActive: !!settings.micStream,
-    currentFPSInterval: settings.updateInterval
+    currentFPSInterval: settings.updateInterval,
+    announceDelayMs: computeAnnounceDelay()
   };
   structuredLog('INFO', 'Enhanced browser and app debug info', browserInfo);
 

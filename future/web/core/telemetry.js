@@ -6,6 +6,7 @@
  * @param {{}} payload - Additional data to send.
  */
 import { settings } from './state.js';
+import { deviceSummary } from '../utils/device.js';
 
 export async function trackFeatureUse(event, payload = {}) {
   try {
@@ -16,13 +17,17 @@ export async function trackFeatureUse(event, payload = {}) {
   }
 
   try {
+    const device = (() => {
+      try { return deviceSummary(); } catch (e) { return { error: 'device-summary-failed' }; }
+    })();
+
     await fetch('https://acoustsee-analytics.mamware.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
       body: JSON.stringify({
         event,
-        payload,
+        payload: Object.assign({}, payload, { device }),
         timestamp: Date.now()
       })
     });
