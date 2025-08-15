@@ -1,23 +1,23 @@
 /* PLUGIN-META
 {
-  "id": "karplus-strong-guitar",
-  "name": "Karplus-Strong Plucked Guitar",
-  "author": "Acoustsee",
+  "id": "strings",
+  "name": "strings",
+  "author": "GPT-5 mini (preview)",
   "description": "A lightweight Karplus–Strong plucked-string (guitar-like) synth plugin. No external assets required.",
   "version": "0.1.0"
 }
 */
 
 // Karplus–Strong plucked-string plugin (starter)
-// - Exports: play(notes, ctx = {})
+// - Exports: playKarplusStrongGuitar(notes, ctx = {})
 // - Notes array: items may contain { frequency, midi, duration, amplitude, decay, pan }
 // - Uses ctx.audioContext (required). Does NOT create or close AudioContext.
 // - Lightweight: creates short noise excitation and a feedback delay with damping filter.
 
-export function play(notes = [], ctx = {}) {
+export function playStrings(notes = [], ctx = {}) {
   const ac = ctx.audioContext;
   if (!ac) {
-    console.warn('karplus-strong-guitar: audioContext not available; skipping');
+    console.warn('strings: audioContext not available; skipping');
     return;
   }
 

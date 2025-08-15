@@ -1,0 +1,10 @@
+# filepath: /workspaces/acoustsee/.gitignore
+# Ignore everything by default
+*
+
+# Allow specific folders and their contents
+!\.gitignore
+!future/
+!future/web/
+!future/web/*
+!future/web/**

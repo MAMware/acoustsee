@@ -13,7 +13,7 @@
 // - Must NOT create or close an AudioContext
 // - Use `ctx` to access audio resources provided by the app
 
-export function play(notes = [], ctx = {}) {
+export function playPluginTemplate(notes = [], ctx = {}) {
   const { audioContext, getOscillator, oscillatorPool } = ctx;
 
   if (!audioContext) {
@@ -29,8 +29,8 @@ export function play(notes = [], ctx = {}) {
   // Very small example: for each note, obtain an oscillator from the shared pool,
   // set frequency and a simple gain envelope, then mark it inactive after duration.
   notes.forEach((note, i) => {
-    try {
-      const oscObj = getOscillator();
+  try {
+  const oscObj = getOscillator();
       if (!oscObj) return; // pool exhausted
 
       const { osc, gain, panner } = oscObj;

@@ -44,7 +44,7 @@ describe('video-capture', () => {
       frameCanvas: { width: 0, height: 0 }
     };
     getDOM.mockReturnValue(DOM);
-    await cleanupVideoCapture();
+  await cleanupVideoCapture({ force: true });
     expect(DOM.videoFeed.srcObject.getTracks()[0].stop).toHaveBeenCalled();
     expect(DOM.videoFeed.srcObject).toBe(null);
     expect(DOM.frameCanvas.width).toBe(0);
