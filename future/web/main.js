@@ -5,7 +5,8 @@ import { settings, setAutoFpsBenchmark } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
-import { getText, initializeLanguageIfNeeded, speakText, announceMessage } from './utils/utils.js';
+import { getText, initializeLanguageIfNeeded, speakText, announceMessage, preloadTranslations } from './utils/utils.js';
+import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './core/media-controller.js';
 import { initializeAudio } from './audio/audio-processor.js';
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
@@ -93,6 +94,14 @@ async function init() {
 
     // Ensure language is initialized before translating
     initializeLanguageIfNeeded();
+    // Preload translations and apply to DOM using data-i18n attributes
+    try {
+      await preloadTranslations(settings.language);
+      // Populate DOM elements marked with data-i18n / data-i18n-aria
+      translatePage(document);
+    } catch (e) {
+      structuredLog('WARN', 'Translation preload failed', { error: e?.message || String(e) });
+    }
  
     
     // Set aria and text for all relevant elements deriving from ID (with translation cache)
@@ -360,6 +369,105 @@ async function init() {
   DOM.scheduleProcessFrame = scheduleProcessFrame;
   window.scheduleProcessFrame = scheduleProcessFrame;
 
+  // --- simple translatePage helper using existing getText ---
+  function translatePage(root = document) {
+    try {
+      root.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (!key) return;
+        // getText supports dot-notated keys
+        getText(key).then(text => { el.textContent = text; }).catch(() => {});
+      });
+      root.querySelectorAll('[data-i18n-aria]').forEach(el => {
+        const key = el.getAttribute('data-i18n-aria');
+        if (!key) return;
+        getText(key).then(text => { el.setAttribute('aria-label', text); }).catch(() => {});
+      });
+    } catch (e) {
+      structuredLog('WARN', 'translatePage failed', { error: e?.message || String(e) });
+    }
+  }
+
+  // Helper: get a user-friendly language name for a language id
+  function languageNameFor(langId) {
+    try {
+      // Use Intl.DisplayNames when available to localize names
+      if (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function') {
+        // Ask for language display name in the current language if possible
+        const display = new Intl.DisplayNames([settings.language || 'en-US'], { type: 'language' });
+        // Intl expects BCP47 language, prefer the primary subtag
+        const tag = langId.split('-')[0];
+        const name = display.of(tag);
+        if (name) return name;
+      }
+    } catch (e) {
+      // ignore and fallback to id
+    }
+    return langId;
+  }
+
+  // Update the language button's visible label and aria using translations
+  async function updateLanguageButton() {
+    try {
+      if (!DOM.button3) return;
+      const langId = settings.language || (settings.availableLanguages[0] && settings.availableLanguages[0].id) || 'en-US';
+      const languageName = languageNameFor(langId);
+      const text = await getText('button3.normal.text', { languageName });
+      const aria = await getText('button3.normal.aria', { languageName });
+      const span = DOM.button3.querySelector('.button-text') || DOM.button3;
+      if (span) span.textContent = text;
+      DOM.button3.setAttribute('aria-label', aria || text);
+    } catch (e) {
+      structuredLog('WARN', 'updateLanguageButton failed', { error: e?.message || String(e) });
+    }
+  }
+
+  // Cycle to the next available language, preload translations, apply them, and announce
+  async function cycleLanguage() {
+    try {
+      const langs = (settings.availableLanguages || []).map(l => l.id);
+      if (!langs || langs.length === 0) return;
+      const current = settings.language || langs[0];
+      const idx = Math.max(0, langs.indexOf(current));
+      const next = langs[(idx + 1) % langs.length];
+      settings.language = next;
+      try {
+        await preloadTranslations(next);
+      } catch (e) {
+        structuredLog('WARN', 'preloadTranslations failed during language switch', { language: next, error: e?.message || String(e) });
+      }
+      // Re-run translation pass
+      translatePage(document);
+      await updateLanguageButton();
+      // Announce change via TTS and visible announcement
+      const languageName = languageNameFor(next);
+      try {
+        const announce = await getText('button3.tts.languageSelect', { state: languageName });
+        announceMessage(announce);
+        speakText(announce);
+      } catch (e) {
+        // fallback minimal announce
+        announceMessage(`Language set to ${languageName}`);
+        speakText(`Language set to ${languageName}`);
+      }
+      try { trackFeatureUse('language-switch', { language: next }); } catch (e) {}
+    } catch (e) {
+      structuredLog('ERROR', 'cycleLanguage failed', { error: e?.message || String(e) });
+    }
+  }
+
+  // Attach handler to DOM.button3 (language button)
+  try {
+    if (DOM.button3) {
+      DOM.button3.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        await cycleLanguage();
+      });
+    }
+  } catch (e) {
+    structuredLog('WARN', 'Failed to attach language switch handler', { error: e?.message || String(e) });
+  }
+
     // Console overrides moved here to break circular dependency
     function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
       const tempLog = console.log;
@@ -418,28 +526,17 @@ async function init() {
     (function setupCameraToggle() {
       const btn = DOM.button1;
       const video = DOM.videoFeed;
-      let cameraStream = null;
 
       if (!btn || !video) return;
 
       async function startCamera() {
         try {
-          // Ask for camera permission and prefer environment-facing if available
-          const constraints = { video: { facingMode: 'environment' }, audio: false };
-          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-          cameraStream = stream;
-          video.srcObject = stream;
-          // Play the video element if not auto-playing
-          try { await video.play(); } catch (e) { /* play may be blocked until user interacts */ }
+          await mediaStartCamera(video, { facingMode: 'environment' });
           btn.setAttribute('aria-pressed', 'true');
           const stopLabel = btn.querySelector('.button-text');
-          if (stopLabel) stopLabel.textContent = 'Stop';
-          // Start frame capture loop if helper provided
+          if (stopLabel) stopLabel.textContent = await getText('button1.normal.stop.text');
           DOM._startCameraFrameCapture && DOM._startCameraFrameCapture();
-          trackFeatureUse('camera-start', { timestamp: Date.now() });
-
-          // Run the auto-FPS runtime benchmark once per session after camera start.
-          // computeAutoInterval() persists the benchmark via setAutoFpsBenchmark.
+          // start auto-FPS benchmark (same behavior as before)
           (async () => {
             try {
               if (settings.autoFPS && !DOM._autoFpsBenchRun) {
@@ -457,25 +554,19 @@ async function init() {
             }
           })();
         } catch (e) {
-          addSessionError({ message: 'start-camera-failed', error: e?.message || String(e) });
           structuredLog('ERROR', 'Failed to start camera', { error: e?.message || String(e) });
-          announceMessage('Unable to access camera.');
         }
       }
 
-      function stopCamera() {
+      async function stopCamera() {
         try {
-          if (cameraStream) {
-            cameraStream.getTracks().forEach(t => t.stop());
-            cameraStream = null;
-          }
-          video.pause();
-          video.srcObject = null;
+          mediaStopCamera(video);
           btn.setAttribute('aria-pressed', 'false');
           const startLabel = btn.querySelector('.button-text');
-          if (startLabel) startLabel.textContent = 'Start';
+          if (startLabel) {
+            getText('button1.normal.start.text').then(text => { startLabel.textContent = text; }).catch(() => {});
+          }
           DOM._stopCameraFrameCapture && DOM._stopCameraFrameCapture();
-          trackFeatureUse('camera-stop', { timestamp: Date.now() });
         } catch (e) {
           addSessionError({ message: 'stop-camera-failed', error: e?.message || String(e) });
           structuredLog('WARN', 'Failed to fully stop camera', { error: e?.message || String(e) });
@@ -486,7 +577,7 @@ async function init() {
         ev.preventDefault();
         const pressed = btn.getAttribute('aria-pressed') === 'true';
         if (pressed) {
-          stopCamera();
+          await stopCamera();
         } else {
           await startCamera();
         }
