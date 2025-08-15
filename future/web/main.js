@@ -1,7 +1,7 @@
 // File: web/main.js
 import { setupUIController } from './ui/ui-controller.js';
 import { createEventDispatcher } from './core/dispatcher.js';
-import { settings } from './core/state.js';
+import { settings, setAutoFpsBenchmark } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
 import { trackFeatureUse } from './core/telemetry.js';
@@ -9,6 +9,8 @@ import { getText, initializeLanguageIfNeeded, speakText, announceMessage } from 
 import { initializeAudio } from './audio/audio-processor.js';
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
+import { processFrameWithState } from './video/frame-processor.js';
+import { getPreferredIntervalMs } from './utils/performance.js';
 
 // --- SESSION HEALTH MONITORING STATE ---
 const sessionErrors = [];
@@ -262,7 +264,19 @@ async function init() {
             try {
               if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                // Placeholder: emit or process the frame here if needed
+                // Non-blocking: let the dedicated frame-processor run and
+                // notify other modules via the dispatcher when ready.
+                try {
+                  if (DOM.scheduleProcessFrame && typeof DOM.scheduleProcessFrame === 'function') {
+                    // fire-and-forget scheduling; the scheduler will dispatch
+                    // processFrame events when a result is ready.
+                    DOM.scheduleProcessFrame().catch(err => {
+                      addSessionError({ message: 'scheduleProcessFrame-failed', error: err?.message || String(err) });
+                    });
+                  }
+                } catch (e) {
+                  addSessionError({ message: 'frame-callback-failed', error: e?.message || String(e) });
+                }
               }
             } catch (e) {
               // Add to session errors for health monitoring but don't crash the loop
@@ -299,6 +313,90 @@ async function init() {
   DOM._startCameraFrameCapture = startLoop;
   DOM._stopCameraFrameCapture = stopLoop;
     })();
+    
+    /**
+     * Lightweight processFrame wrapper - keep DOM/canvas guards here and
+     * delegate the heavy frame-mapping logic to `video/frame-processor.js`.
+     * This keeps main.js focused on orchestration while the frame-processor
+     * owns pixel-level analysis (Single Responsibility Principle).
+     */
+    async function processFrame() {
+      const video = DOM.videoFeed;
+      const canvas = DOM.frameCanvas;
+      if (!video || !canvas) return null;
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null;
+      const w = video.videoWidth || canvas.width;
+      const h = video.videoHeight || canvas.height;
+      if (w === 0 || h === 0) return null;
+      const ctx = canvas.getContext('2d');
+      try { ctx.drawImage(video, 0, 0, w, h); } catch (e) { return null; }
+      const img = ctx.getImageData(0, 0, w, h);
+      return processFrameWithState(img.data, w, h);
+    }
+
+    // Adaptive scheduler: combined rate-limit + single-run lock + one pending
+    let _processingFrame = false;
+    let _pendingFrame = false;
+    let _lastFrameTs = 0;
+
+    const DEFAULT_TARGET_FPS = 15;
+
+    async function computeAutoInterval() {
+      return computeAutoIntervalBenchmark(DOM.videoFeed, DOM.frameCanvas, processFrameWithState, DEFAULT_TARGET_FPS);
+    }
+
+    // Expose the frame processor so update-interval helper can call it when
+    // running a DOM benchmark. This is a pragmatic bridge; the helper prefers
+    // a direct function param but can fall back to this.
+    settings._frameProcessor = processFrameWithState;
+
+    async function getTargetIntervalMs() {
+      const cfg = settings || {};
+      if (cfg.autoFPS) return getPreferredIntervalMs();
+      const targetFPS = Number(cfg.updateInterval) || DEFAULT_TARGET_FPS;
+      return 1000 / targetFPS;
+    }
+
+    async function scheduleProcessFrame() {
+      const now = Date.now();
+      const MIN_INTERVAL_MS = await getTargetIntervalMs();
+
+      if (_processingFrame) {
+        _pendingFrame = true;
+        return;
+      }
+
+      if (now - _lastFrameTs < MIN_INTERVAL_MS) {
+        _pendingFrame = true;
+        return;
+      }
+
+      _processingFrame = true;
+      _lastFrameTs = now;
+
+      try {
+        const result = await processFrame();
+        try {
+          if (typeof dispatchEvent === 'function') dispatchEvent('processFrame', { payload: result || {} });
+        } catch (e) {
+          addSessionError({ message: 'dispatch-after-schedule-failed', error: e?.message || String(e) });
+        }
+      } catch (err) {
+        addSessionError({ message: 'scheduleProcessFrame-failed', error: err?.message || String(err) });
+      } finally {
+        _processingFrame = false;
+        if (_pendingFrame) {
+          _pendingFrame = false;
+          setTimeout(() => { try { scheduleProcessFrame(); } catch (e) { /* ignore */ } }, 0);
+        }
+      }
+    }
+
+    // Expose both for compatibility and the preferred scheduler
+    DOM.processFrame = processFrame;
+    window.processFrame = processFrame;
+    DOM.scheduleProcessFrame = scheduleProcessFrame;
+    window.scheduleProcessFrame = scheduleProcessFrame;
     const TELEMETRY_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev'; 
 
     // Console overrides moved here to break circular dependency
@@ -371,6 +469,25 @@ async function init() {
           // Start frame capture loop if helper provided
           DOM._startCameraFrameCapture && DOM._startCameraFrameCapture();
           trackFeatureUse('camera-start', { timestamp: Date.now() });
+
+          // Run the auto-FPS runtime benchmark once per session after camera start.
+          // computeAutoInterval() persists the benchmark via setAutoFpsBenchmark.
+          (async () => {
+            try {
+              if (settings.autoFPS && !DOM._autoFpsBenchRun) {
+                DOM._autoFpsBenchRun = true;
+                const intervalMs = await computeAutoInterval();
+                if (intervalMs && Number.isFinite(intervalMs)) {
+                  const fps = Math.max(8, Math.min(30, Math.round(1000 / intervalMs)));
+                  settings.updateInterval = fps; // store FPS as the updateInterval
+                  structuredLog('INFO', 'auto-fps-benchmark-complete', { intervalMs, fps });
+                  try { if (typeof dispatchEvent === 'function') dispatchEvent('updateUI', { autoFpsBenchmark: settings.autoFpsBenchmark }); } catch(e){}
+                }
+              }
+            } catch (e) {
+              addSessionError({ message: 'auto-fps-benchmark-failed', error: e?.message || String(e) });
+            }
+          })();
         } catch (e) {
           addSessionError({ message: 'start-camera-failed', error: e?.message || String(e) });
           structuredLog('ERROR', 'Failed to start camera', { error: e?.message || String(e) });

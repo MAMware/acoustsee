@@ -4,7 +4,7 @@ import { settings, setAudioInterval, setStream, setMicStream } from './state.js'
 import { getText, speakText } from '../utils/utils.js';
 import { debounce } from '../utils/async.js';
 import { structuredLog } from '../utils/logging.js';
-import { deviceSummary, computeAnnounceDelay } from '../utils/device.js';
+import { deviceSummary, computeAnnounceDelay } from '../utils/performance.js';
 import { toggleAudio } from './handlers/audio-handlers.js';
 import { toggleGrid } from './handlers/grid-handlers.js';
 import { saveSettings, loadSettings } from './handlers/settings-handlers.js';

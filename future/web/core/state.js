@@ -4,7 +4,7 @@ import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';
 import { availableGridsData } from '../video/grids/available-grids.js';
 import { availableEnginesData } from '../audio/synths/available-synths.js';
 import { availableLanguagesData } from '../languages/available-languages.js';
-import { computeDefaultUpdateInterval, computeDefaultMaxNotes, deviceSummary } from '../utils/device.js';
+import { computeDefaultUpdateInterval, computeDefaultMaxNotes, deviceSummary } from '../utils/performance.js';
 
 export let settings = {
   debugLogging: true,
@@ -15,6 +15,13 @@ export let settings = {
   audioTimerId: null,
   updateInterval: computeDefaultUpdateInterval(20),
   autoFPS: true,
+  // Stores the most recent auto-FPS benchmark results (measured interval in ms and metadata)
+  autoFpsBenchmark: {
+    lastIntervalMs: null,
+    measuredAt: null,
+    sampleCount: 0,
+    safetyFactor: 0.7
+  },
   gridType: null,
   synthesisEngine: null,
   language: null,
@@ -140,6 +147,15 @@ export function setStream(stream) {
   if (settings.debugLogging) {
     structuredLog('INFO', 'setStream', { streamSet: !!stream });
   }
+}
+
+export function setAutoFpsBenchmark({ intervalMs, sampleCount = 0, safetyFactor = 0.7 } = {}) {
+  settings.autoFpsBenchmark = settings.autoFpsBenchmark || {};
+  settings.autoFpsBenchmark.lastIntervalMs = intervalMs;
+  settings.autoFpsBenchmark.measuredAt = Date.now();
+  settings.autoFpsBenchmark.sampleCount = sampleCount;
+  settings.autoFpsBenchmark.safetyFactor = safetyFactor;
+  if (settings.debugLogging) structuredLog('INFO', 'setAutoFpsBenchmark', { settings: settings.autoFpsBenchmark });
 }
 
 export function setAudioInterval(timerId) {

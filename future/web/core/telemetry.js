@@ -6,7 +6,7 @@
  * @param {{}} payload - Additional data to send.
  */
 import { settings } from './state.js';
-import { deviceSummary } from '../utils/device.js';
+import { deviceSummary } from '../utils/performance.js';
 
 export async function trackFeatureUse(event, payload = {}) {
   try {

@@ -6,7 +6,7 @@
 import { addIdbLog } from './idb-logger.js';
 import { output } from './core-logger.js';
 import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
-import { isMobile } from './device.js';
+import { isMobile } from './performance.js';
 
 // Safely stringify objects, handling circular refs and Error instances
 function safeStringify(obj) {

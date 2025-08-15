@@ -1,7 +1,7 @@
 import { TTS_COOLDOWN_MS } from '../core/constants.js';
 import { settings, lastTTSTime } from '../core/state.js';
 import { structuredLog } from './logging.js';
-import { computeAnnounceDelay, deviceSummary } from './device.js';
+import { computeAnnounceDelay, deviceSummary } from './performance.js';
 
 // Configurable announce rewrite delay (ms). Tune this if you see missed
 // announcements on older/slow devices. Default is conservative.

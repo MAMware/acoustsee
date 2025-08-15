@@ -1,0 +1,172 @@
+// Consolidated performance utilities: device heuristics (DOM-free) and
+// an optional DOM runtime benchmark. This replaces the older `device.js`.
+import { setAutoFpsBenchmark, settings } from '../core/state.js';
+
+export function getUserAgent() {
+  try { return (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'node'; } catch (e) { return 'node'; }
+}
+
+export function getPlatform() {
+  try { return (typeof navigator !== 'undefined' && navigator.platform) ? navigator.platform : 'Unknown'; } catch (e) { return 'Unknown'; }
+}
+
+export function isMobile() {
+  const ua = getUserAgent();
+  return /Mobile|Android|iPhone|iPad/.test(ua);
+}
+
+export function getDeviceMemory() {
+  try { return (typeof navigator !== 'undefined' && navigator.deviceMemory) ? navigator.deviceMemory : null; } catch (e) { return null; }
+}
+
+export function getHardwareConcurrency() {
+  try { return (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) ? navigator.hardwareConcurrency : null; } catch (e) { return null; }
+}
+
+export function computeAnnounceDelay(base = 150) {
+  let delay = base;
+  try {
+    const ua = getUserAgent();
+    if (/Android|iPhone|iPad/.test(ua)) delay = Math.max(delay, 200);
+    if (/Android\s?(8|9)|Android\/8|Android\/9|iPhone OS 12|iPhone OS 13/.test(ua)) delay = Math.max(delay, 300);
+    const dm = getDeviceMemory();
+    if (dm && dm < 2) delay = Math.max(delay, 300);
+    const hc = getHardwareConcurrency();
+    if (hc && hc < 2) delay = Math.max(delay, 350);
+  } catch (e) {
+    // swallow and return base
+  }
+  return delay;
+}
+
+export function deviceSummary() {
+  return {
+    userAgent: getUserAgent(),
+    platform: getPlatform(),
+    isMobile: isMobile(),
+    deviceMemory: getDeviceMemory(),
+    hardwareConcurrency: getHardwareConcurrency()
+  };
+}
+
+export function computeDefaultUpdateInterval(baseFps = 20) {
+  try {
+    let fps = baseFps;
+    const dm = getDeviceMemory();
+    const hc = getHardwareConcurrency();
+    if (isMobile()) fps = Math.min(fps, 15);
+    if (dm && dm < 2) fps = Math.min(fps, 10);
+    if (hc && hc < 2) fps = Math.min(fps, 12);
+    fps = Math.max(8, Math.floor(fps));
+    return Math.round(1000 / fps);
+  } catch (e) {
+    return Math.round(1000 / baseFps);
+  }
+}
+
+export function computeDefaultMaxNotes(base = 24) {
+  try {
+    let max = base;
+    const dm = getDeviceMemory();
+    const hc = getHardwareConcurrency();
+    if (isMobile()) max = Math.min(max, 12);
+    if (dm && dm < 2) max = Math.min(max, 6);
+    if (hc && hc < 2) max = Math.min(max, 8);
+    max = Math.max(1, Math.floor(max));
+    return max;
+  } catch (e) {
+    return base;
+  }
+}
+
+// DOM-dependent runtime benchmark (kept here for consolidation). It is
+// guarded and will only run when a video/canvas/process function is provided.
+export async function computeAutoIntervalBenchmark(video, canvas, processFrameWithState, DEFAULT_TARGET_FPS = 15) {
+  try {
+    if (!video || !canvas || !processFrameWithState) return 1000 / DEFAULT_TARGET_FPS;
+
+    const waitForReady = (timeoutMs = 1000) => new Promise((resolve) => {
+      const start = Date.now();
+      (function check() {
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) return resolve(true);
+        if (Date.now() - start > timeoutMs) return resolve(false);
+        requestAnimationFrame(check);
+      })();
+    });
+
+    const ready = await waitForReady(1000);
+    if (!ready) return 1000 / DEFAULT_TARGET_FPS;
+
+    const ctx = canvas.getContext('2d');
+    const N = 4;
+    let totalMs = 0;
+    let measuredCount = 0;
+
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    for (let i = 0; i < N; i++) {
+      try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { break; }
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const t0 = performance.now();
+      try {
+        await processFrameWithState(img.data, canvas.width, canvas.height);
+      } catch (e) {
+        break;
+      }
+      const t1 = performance.now();
+      totalMs += (t1 - t0);
+      measuredCount += 1;
+      await new Promise(r => requestAnimationFrame(r));
+    }
+
+    if (!measuredCount) return 1000 / DEFAULT_TARGET_FPS;
+    const avgMs = totalMs / measuredCount;
+    const safetyFactor = 0.7;
+    const effectiveMs = Math.max(avgMs / safetyFactor, 1000 / 30);
+    const targetFps = Math.max(8, Math.min(Math.floor(1000 / effectiveMs), 30));
+
+    try {
+      setAutoFpsBenchmark({ intervalMs: Math.round(1000 / targetFps), sampleCount: measuredCount, safetyFactor });
+    } catch (e) {
+      // non-fatal
+    }
+
+    return 1000 / targetFps;
+  } catch (e) {
+    return 1000 / DEFAULT_TARGET_FPS;
+  }
+}
+
+/**
+ * Decision helper: prefer persisted benchmark (if recent), otherwise run DOM benchmark
+ * when allowed, and finally fall back to computeDefaultUpdateInterval.
+ */
+export async function getPreferredIntervalMs({ forceBenchmark = false, maxAgeMs = 24 * 60 * 60 * 1000 } = {}) {
+  try {
+    const baselineMs = computeDefaultUpdateInterval();
+    if (!settings?.autoFPS) return baselineMs;
+
+    const bench = settings.autoFpsBenchmark || {};
+    const now = Date.now();
+    if (!forceBenchmark && bench.lastIntervalMs && bench.measuredAt && (now - bench.measuredAt) < maxAgeMs) {
+      return bench.lastIntervalMs;
+    }
+
+    // Try DOM benchmark if possible
+    try {
+      const video = (typeof document !== 'undefined') ? document.getElementById('videoFeed') : null;
+      const canvas = (typeof document !== 'undefined') ? document.getElementById('frameCanvas') : null;
+      const proc = settings._frameProcessor || null;
+      if (video && canvas && proc) {
+        const ms = await computeAutoIntervalBenchmark(video, canvas, proc);
+        if (ms && Number.isFinite(ms)) return ms;
+      }
+    } catch (e) {
+      // fall back to baseline
+    }
+
+    return baselineMs;
+  } catch (e) {
+    return computeDefaultUpdateInterval();
+  }
+}
