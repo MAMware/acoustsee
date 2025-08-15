@@ -4,6 +4,7 @@ import { settings } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText } from '../../utils/utils.js';
 import { dispatchEvent } from '../dispatcher.js';
+import { resizeOscillatorPool } from '../../audio/audio-processor.js';
 
 export async function saveSettings() {
   try {
@@ -58,6 +59,13 @@ export async function loadSettings() {
 
       const msg = await getText('button5.tts.loadSettings.loaded');
       speakText(msg);
+
+      // Ensure audio oscillator pool matches saved maxNotes
+      try {
+        resizeOscillatorPool(settings.maxNotes);
+      } catch (e) {
+        structuredLog('WARN', 'resizeOscillatorPool failed after loadSettings', { err: e.message });
+      }
     } else {
       const msg = await getText('button5.tts.loadSettings.none');
       speakText(msg);

@@ -51,3 +51,41 @@ export function deviceSummary() {
     hardwareConcurrency: getHardwareConcurrency()
   };
 }
+
+/**
+ * Compute a conservative default updateInterval (ms) based on device heuristics.
+ * Returns milliseconds between frames (1000 / fps). Lower-end devices get lower fps.
+ */
+export function computeDefaultUpdateInterval(baseFps = 20) {
+  try {
+    let fps = baseFps;
+    const dm = getDeviceMemory();
+    const hc = getHardwareConcurrency();
+    if (isMobile()) fps = Math.min(fps, 15);
+    if (dm && dm < 2) fps = Math.min(fps, 10);
+    if (hc && hc < 2) fps = Math.min(fps, 12);
+    // ensure fps at least 8
+    fps = Math.max(8, Math.floor(fps));
+    return Math.round(1000 / fps);
+  } catch (e) {
+    return Math.round(1000 / baseFps);
+  }
+}
+
+/**
+ * Compute a conservative default for max polyphony (maxNotes) based on device heuristics.
+ */
+export function computeDefaultMaxNotes(base = 24) {
+  try {
+    let max = base;
+    const dm = getDeviceMemory();
+    const hc = getHardwareConcurrency();
+    if (isMobile()) max = Math.min(max, 12);
+    if (dm && dm < 2) max = Math.min(max, 6);
+    if (hc && hc < 2) max = Math.min(max, 8);
+    max = Math.max(1, Math.floor(max));
+    return max;
+  } catch (e) {
+    return base;
+  }
+}

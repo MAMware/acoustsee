@@ -4,6 +4,7 @@ import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';
 import { availableGridsData } from '../video/grids/available-grids.js';
 import { availableEnginesData } from '../audio/synths/available-synths.js';
 import { availableLanguagesData } from '../languages/available-languages.js';
+import { computeDefaultUpdateInterval, computeDefaultMaxNotes, deviceSummary } from '../utils/device.js';
 
 export let settings = {
   debugLogging: true,
@@ -12,7 +13,7 @@ export let settings = {
   availableEngines: availableEnginesData || [],
   availableLanguages: availableLanguagesData || [],
   audioTimerId: null,
-  updateInterval: 30,
+  updateInterval: computeDefaultUpdateInterval(20),
   autoFPS: true,
   gridType: null,
   synthesisEngine: null,
@@ -26,7 +27,7 @@ export let settings = {
   dayNightMode: 'day',
   resetStateOnError: true,
   motionThreshold: 20,
-  maxNotes: 24 // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value
+  maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value
 };
 
 /**

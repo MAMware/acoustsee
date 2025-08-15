@@ -9,8 +9,8 @@ const STORE_NAME = 'logs';
 const MAX_ENTRIES = 1000;
 let dbPromise = null;
 
-// Check IndexedDB support (technical: Feature detection to avoid errors in non-supporting envs like some iframes or old browsers).
-const isIndexedDBSupported = 'indexedDB' in window;
+// Check IndexedDB support (feature-detect safely so Node imports don't throw).
+const isIndexedDBSupported = (typeof window !== 'undefined') && ('indexedDB' in window);
 
 import { output } from './core-logger.js';
 // Open (or create) DB asynchronously with retry on transient errors.

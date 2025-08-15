@@ -180,3 +180,19 @@ export class AudioManager {
 }
 
 export default AudioManager;
+
+// Compatibility helpers for modules that expect a module-level getter
+export function getAudioManager() {
+  try {
+    if (typeof globalThis !== 'undefined' && globalThis.DOM && globalThis.DOM.audioManager) return globalThis.DOM.audioManager;
+    if (typeof window !== 'undefined' && window.DOM && window.DOM.audioManager) return window.DOM.audioManager;
+  } catch (e) {
+    // ignore
+  }
+  return null;
+}
+
+export function getAudioContext() {
+  const mgr = getAudioManager();
+  return mgr ? mgr.context : null;
+}
