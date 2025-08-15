@@ -6,6 +6,7 @@
 import { addIdbLog } from './idb-logger.js';
 import { output } from './core-logger.js';
 import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
+import { isMobile } from './device.js';
 
 // Safely stringify objects, handling circular refs and Error instances
 function safeStringify(obj) {
@@ -25,8 +26,7 @@ function safeStringify(obj) {
 // LOG_LEVELS now imported from constants.js
 
 let currentLogLevel = LOG_LEVELS[DEFAULT_LOG_LEVEL];
-const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
-let sampleRate = isMobile ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
+let sampleRate = isMobile() ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 
 export function setLogLevel(level) {
   const upperLevel = level.toUpperCase();

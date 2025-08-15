@@ -1,6 +1,11 @@
 import { TTS_COOLDOWN_MS } from '../core/constants.js';
 import { settings, lastTTSTime } from '../core/state.js';
 import { structuredLog } from './logging.js';
+import { computeAnnounceDelay, deviceSummary } from './device.js';
+
+// Configurable announce rewrite delay (ms). Tune this if you see missed
+// announcements on older/slow devices. Default is conservative.
+export const ANNOUNCE_REWRITE_DELAY_MS = 150;
 
 /**
  * Initializes language if not set, using available configs.
@@ -124,10 +129,45 @@ export function speakText(message, type = 'tts') {
  * Updates the announcements element with a message.
  * @param {string} message - Message to announce.
  */
+
 export function announceMessage(message) {
-  const announcements = document.getElementById('announcements');
+  const announcements = typeof document !== 'undefined' && document.getElementById ? document.getElementById('announcements') : null;
+  // Compute a conservative delay based on central device heuristics.
+  const delay = computeAnnounceDelay(ANNOUNCE_REWRITE_DELAY_MS);
+
   if (announcements) {
-    announcements.textContent = message;
+    // Clear then re-set to force some screen readers to re-announce identical messages
+    try { announcements.textContent = ''; } catch (e) { /* ignore DOM errors */ }
+    // Small async tick before setting text to ensure AT detects the change
+    setTimeout(() => { try { announcements.textContent = message; } catch (e) {} }, delay);
+
+    // Optional visible debug toast for manual testing on devices when debugLogging is enabled
+    try {
+      if (settings?.debugLogging) {
+        const toast = document.createElement('div');
+        toast.id = 'announce-toast';
+        toast.textContent = message;
+        Object.assign(toast.style, {
+          position: 'fixed',
+          bottom: '8%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.75)',
+          color: '#fff',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          zIndex: 99999,
+          fontSize: '14px',
+          pointerEvents: 'none',
+        });
+        document.body.appendChild(toast);
+        setTimeout(() => { try { toast.remove(); } catch (e) {} }, 2500);
+      }
+    } catch (e) { /* ignore toast errors */ }
+  } else {
+    // Fallback for non-DOM environments
+    structuredLog('INFO', 'announceMessage (fallback):', { message });
+    if (typeof console !== 'undefined') console.log('Announcement:', message);
   }
 }
 

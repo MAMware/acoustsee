@@ -31,7 +31,7 @@
   <canvas id="frameCanvas" style="display: none;" aria-hidden="true"></canvas>
   <div id="debugPanel" style="display: none;" role="log" aria-live="polite"></div>
   <button id="emailDebug" style="display: none;" aria-hidden="true"></button>
-  <div id="announcements" aria-live="polite" style="position: absolute; left: -9999px;"></div>  <!-- For TTS announcements -->
+  <div id="announcements" aria-live="polite" role="status" aria-atomic="true" class="sr-only"></div>  <!-- For TTS announcements -->
   <script type="module" src="./main.js"></script>
 </body>
 </html>

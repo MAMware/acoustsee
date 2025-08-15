@@ -4,6 +4,7 @@ import { settings, setAudioInterval, setStream, setMicStream } from './state.js'
 import { getText, speakText } from '../utils/utils.js';
 import { debounce } from '../utils/async.js';
 import { structuredLog } from '../utils/logging.js';
+import { deviceSummary, computeAnnounceDelay } from '../utils/device.js';
 import { toggleAudio } from './handlers/audio-handlers.js';
 import { toggleGrid } from './handlers/grid-handlers.js';
 import { saveSettings, loadSettings } from './handlers/settings-handlers.js';
@@ -45,16 +46,17 @@ export async function createEventDispatcher(domElements) {
   // Use the centrally loaded configurations from the settings object.
   const { availableGrids, availableEngines, availableLanguages } = settings;
 
+  const ds = deviceSummary();
   const browserInfo = {
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
+    userAgent: ds.userAgent,
+    platform: ds.platform,
     parsedBrowserVersion: (() => {
       const browserVersionRegex = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
-      const m = navigator.userAgent.match(browserVersionRegex);
+      const m = ds.userAgent.match(browserVersionRegex);
       return (m && (m[1] || m[2] || m[3] || m[4])) || 'Unknown';
     })(),
-    hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
-    deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
+    hardwareConcurrency: ds.hardwareConcurrency || 'N/A',
+    deviceMemory: ds.deviceMemory ? `${ds.deviceMemory} GB` : 'N/A',
     screen: `${screen.width}x${screen.height}`,
     audioContextState: typeof audioContext !== 'undefined' ? audioContext.state : 'Not initialized',
     streamActive: !!settings.stream,
