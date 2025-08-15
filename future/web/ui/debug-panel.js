@@ -32,7 +32,16 @@ export async function showDebugPanel() {
     });
     debugPanel.style.display = 'block';
   } catch (error) {
-    debugPanel.textContent = 'Failed to load logs.';
+    // Try to localize the error message using the shared utils getText helper.
+    // We import dynamically to avoid potential circular imports during runtime initialization.
+    try {
+      const m = await import('../utils/utils.js');
+      const msg = await m.getText('debugPanel.failed').catch(() => null);
+      debugPanel.textContent = msg || 'Failed to load logs.';
+    } catch (e) {
+      // Last-resort English fallback if translations or utils are unavailable.
+      debugPanel.textContent = 'Failed to load logs.';
+    }
     debugPanel.style.display = 'block';
   }
 }

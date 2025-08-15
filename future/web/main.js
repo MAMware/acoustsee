@@ -5,7 +5,7 @@ import { settings, setAutoFpsBenchmark } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
-import { getText, initializeLanguageIfNeeded, speakText, announceMessage, preloadTranslations } from './utils/utils.js';
+import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './core/media-controller.js';
 import { initializeAudio } from './audio/audio-processor.js';
 import AudioManager from './audio/audio-manager.js';
@@ -92,15 +92,13 @@ async function init() {
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
 
-    // Ensure language is initialized before translating
+    // Ensure language is initialized and preloaded before UI translation
     initializeLanguageIfNeeded();
-    // Preload translations and apply to DOM using data-i18n attributes
     try {
-      await preloadTranslations(settings.language);
-      // Populate DOM elements marked with data-i18n / data-i18n-aria
+      await setLanguage(settings.language);
       translatePage(document);
     } catch (e) {
-      structuredLog('WARN', 'Translation preload failed', { error: e?.message || String(e) });
+      structuredLog('WARN', 'setLanguage/translatePage failed', { error: e?.message || String(e) });
     }
  
     
@@ -369,24 +367,7 @@ async function init() {
   DOM.scheduleProcessFrame = scheduleProcessFrame;
   window.scheduleProcessFrame = scheduleProcessFrame;
 
-  // --- simple translatePage helper using existing getText ---
-  function translatePage(root = document) {
-    try {
-      root.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (!key) return;
-        // getText supports dot-notated keys
-        getText(key).then(text => { el.textContent = text; }).catch(() => {});
-      });
-      root.querySelectorAll('[data-i18n-aria]').forEach(el => {
-        const key = el.getAttribute('data-i18n-aria');
-        if (!key) return;
-        getText(key).then(text => { el.setAttribute('aria-label', text); }).catch(() => {});
-      });
-    } catch (e) {
-      structuredLog('WARN', 'translatePage failed', { error: e?.message || String(e) });
-    }
-  }
+  // translatePage moved to utils.utils and reused here
 
   // Helper: get a user-friendly language name for a language id
   function languageNameFor(langId) {
@@ -430,15 +411,11 @@ async function init() {
       const current = settings.language || langs[0];
       const idx = Math.max(0, langs.indexOf(current));
       const next = langs[(idx + 1) % langs.length];
-      settings.language = next;
-      try {
-        await preloadTranslations(next);
-      } catch (e) {
-        structuredLog('WARN', 'preloadTranslations failed during language switch', { language: next, error: e?.message || String(e) });
-      }
-      // Re-run translation pass
-      translatePage(document);
-      await updateLanguageButton();
+  // setLanguage persists the selection and preloads translations
+  await setLanguage(next);
+  // Re-run translation pass using shared helper
+  translatePage(document);
+  await updateLanguageButton();
       // Announce change via TTS and visible announcement
       const languageName = languageNameFor(next);
       try {
@@ -450,7 +427,9 @@ async function init() {
         announceMessage(`Language set to ${languageName}`);
         speakText(`Language set to ${languageName}`);
       }
-      try { trackFeatureUse('language-switch', { language: next }); } catch (e) {}
+  try { trackFeatureUse('language-switch', { language: next }); } catch (e) {}
+  // Notify dispatcher/other modules
+  try { if (typeof dispatchEvent === 'function') dispatchEvent('languageChanged', { language: next }); } catch (e) {}
     } catch (e) {
       structuredLog('ERROR', 'cycleLanguage failed', { error: e?.message || String(e) });
     }

@@ -1,7 +1,7 @@
 // File: web/core/dispatcher.js
 /* @ts-nocheck */
 import { settings, setAudioInterval, setStream, setMicStream } from './state.js';
-import { getText, speakText } from '../utils/utils.js';
+import { getText, speakText, translatePage } from '../utils/utils.js';
 import { debounce } from '../utils/async.js';
 import { structuredLog } from '../utils/logging.js';
 import { deviceSummary, computeAnnounceDelay } from '../utils/performance.js';
@@ -117,23 +117,9 @@ export async function createEventDispatcher(domElements) {
     // Language change notification: re-translate DOM and request UI update
     languageChanged: async ({ language }) => {
       try {
-        // Re-populate any data-i18n marked elements
-        if (typeof document !== 'undefined') {
-          // Use getText to refill selectors used by translatePage in main.js
-          const els = document.querySelectorAll('[data-i18n]');
-          for (const el of els) {
-            const key = el.getAttribute('data-i18n');
-            if (!key) continue;
-            try { const txt = await getText(key); el.textContent = txt; } catch (e) {}
-          }
-          const arEls = document.querySelectorAll('[data-i18n-aria]');
-          for (const el of arEls) {
-            const key = el.getAttribute('data-i18n-aria');
-            if (!key) continue;
-            try { const txt = await getText(key); el.setAttribute('aria-label', txt); } catch (e) {}
-          }
-        }
-        // Trigger a UI refresh so button labels that depend on state are updated too
+        // Re-run shared translatePage helper to populate DOM
+        translatePage(document);
+        // Trigger a UI refresh so stateful labels are updated too
         debouncedUpdateUI({ settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (e) {
         structuredLog('WARN', 'languageChanged handler failed', { error: e?.message || String(e) });

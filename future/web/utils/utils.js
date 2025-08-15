@@ -14,19 +14,29 @@ export const ANNOUNCE_REWRITE_DELAY_MS = 150;
  */
 export function initializeLanguageIfNeeded() {
   if (!settings.language) {
-    structuredLog('WARN', 'Language not initialized; setting default');
-    if (settings.availableLanguages.length === 0) {
-      // Configs likely not loaded; use ultimate fallback (assumes loadConfigs awaited upstream)
-      settings.language = 'en-US';
-      structuredLog('INFO', 'Using ultimate fallback language', { language: settings.language });
-    } else {
-      settings.language = settings.availableLanguages[0].id;
-      structuredLog('INFO', 'Auto-set language to first available', { language: settings.language });
+    structuredLog('WARN', 'Language not initialized; attempting persisted or default');
+    // Try persisted user selection first
+    try {
+      const persisted = (typeof localStorage !== 'undefined') ? localStorage.getItem('acoustsee.language') : null;
+      if (persisted && Array.isArray(settings.availableLanguages) && settings.availableLanguages.find(l => l.id === persisted)) {
+        settings.language = persisted;
+        structuredLog('INFO', 'Using persisted language', { language: settings.language });
+      } else if (settings.availableLanguages && settings.availableLanguages.length > 0) {
+        settings.language = settings.availableLanguages[0].id;
+        structuredLog('INFO', 'Auto-set language to first available', { language: settings.language });
+      } else {
+        // Fallback to ultimate default
+        settings.language = 'en-US';
+        structuredLog('INFO', 'Using ultimate fallback language', { language: settings.language });
+      }
+    } catch (e) {
+      structuredLog('WARN', 'Error reading persisted language; falling back', { error: e?.message || String(e) });
+      settings.language = settings.availableLanguages && settings.availableLanguages[0] ? settings.availableLanguages[0].id : 'en-US';
     }
   }
 
-  // Preload translations for the selected language
-  preloadTranslations(settings.language);
+  // Preload translations for the selected language (best-effort)
+  try { preloadTranslations(settings.language); } catch (e) { structuredLog('WARN', 'preloadTranslations failed in init', { error: e?.message || String(e) }); }
 
   return settings.language;
 }
@@ -182,5 +192,77 @@ export async function preloadTranslations(languageId) {
     translationsCache[languageId] = translations;
   } catch (err) {
     structuredLog('ERROR', 'Failed to preload translations', { languageId, message: err.message });
+  }
+}
+
+/**
+ * Set active language and optionally persist to localStorage.
+ * Ensures translations are preloaded into cache.
+ */
+export async function setLanguage(languageId, { persist = true } = {}) {
+  try {
+    settings.language = languageId;
+    await preloadTranslations(languageId);
+    if (persist && typeof localStorage !== 'undefined') {
+      try { localStorage.setItem('acoustsee.language', languageId); } catch (e) { /* ignore storage failures */ }
+    }
+    return languageId;
+  } catch (e) {
+    structuredLog('WARN', 'setLanguage failed', { languageId, error: e?.message || String(e) });
+    // Still set the language variable for app logic
+    settings.language = languageId;
+    return languageId;
+  }
+}
+
+/**
+ * Translate DOM elements annotated with data-i18n and data-i18n-aria.
+ */
+export function translatePage(root = document) {
+  try {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    const lang = settings.language;
+    const translations = translationsCache[lang];
+
+    // Fast path: if translations are preloaded use synchronous lookups
+    if (translations) {
+      const lookup = (key) => {
+        let node = translations;
+        for (const part of key.split('.')) {
+          if (!node) return key;
+          node = node[part];
+        }
+        if (typeof node === 'object') return (typeof node.default === 'string') ? node.default : key;
+        return (typeof node === 'string') ? node : key;
+      };
+
+      root.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (!key) return;
+        try { el.textContent = lookup(key); } catch (e) { /* ignore element errors */ }
+      });
+
+      root.querySelectorAll('[data-i18n-aria]').forEach(el => {
+        const key = el.getAttribute('data-i18n-aria');
+        if (!key) return;
+        try { el.setAttribute('aria-label', lookup(key)); } catch (e) { /* ignore */ }
+      });
+
+      return;
+    }
+
+    // Slow path: translations not loaded — fall back to per-key async resolution
+    root.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (!key) return;
+      getText(key).then(text => { el.textContent = text; }).catch(() => {});
+    });
+    root.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      const key = el.getAttribute('data-i18n-aria');
+      if (!key) return;
+      getText(key).then(text => { el.setAttribute('aria-label', text); }).catch(() => {});
+    });
+  } catch (e) {
+    structuredLog('WARN', 'translatePage failed', { error: e?.message || String(e) });
   }
 }

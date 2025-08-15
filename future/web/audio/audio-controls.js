@@ -30,7 +30,8 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
   const handlePowerOn = (event) => {
     // Prevent the button from being clicked multiple times.
     DOM.powerOn.disabled = true;
-    DOM.powerOn.textContent = 'Initializing...';
+    // Use localized initializing text when available
+    getText('powerOn.initializing').then(txt => { try { DOM.powerOn.textContent = txt; } catch(e){} }).catch(() => {});
 
     audioManager.unlockAudio()
       .then(async () => {
