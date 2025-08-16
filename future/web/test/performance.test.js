@@ -1,31 +1,21 @@
 // File: web/test/performance.test.js
+import { computeDefaultMaxNotes } from '../utils/performance.js';
 
 describe('computeDefaultMaxNotes', () => {
   it('should return a low value for a low-spec mobile device', () => {
-    // Reset modules so doMock will take effect
-    jest.resetModules();
+    // Arrange: Create mock helper functions
+    const mockIsMobile = () => true;
+    const mockGetDeviceMemory = () => 1; // 1 GB RAM
+    const mockGetHardwareConcurrency = () => 2; // 2 cores
 
-    // Merge the real module but override only the helper functions
-    const actual = jest.requireActual('../utils/performance.js');
-    jest.doMock('../utils/performance.js', () => ({
-      ...actual,
-      isMobile: jest.fn(() => true),
-      getDeviceMemory: jest.fn(() => 1),
-      getHardwareConcurrency: jest.fn(() => 2),
-    }));
-
-    // Require the module after mocking helpers
-    // eslint-disable-next-line global-require
-    const perf = require('../utils/performance.js');
-
-    // Act: call the real implementation but inject mocked helpers
-    const result = perf.computeDefaultMaxNotes(24, {
-      isMobile: () => true,
-      getDeviceMemory: () => 1,
-      getHardwareConcurrency: () => 2
+    // Act: Call the real function with injected mocked helpers
+    const result = computeDefaultMaxNotes(24, {
+      isMobile: mockIsMobile,
+      getDeviceMemory: mockGetDeviceMemory,
+      getHardwareConcurrency: mockGetHardwareConcurrency
     });
 
-    // Assert
+    // Assert: Check that the result is what we expect
     expect(result).toBe(6);
   });
 });
