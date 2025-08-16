@@ -1,35 +1,12 @@
-**a photon to phonon code**
-
 ## [Introduction](#introduction)
-
-The content in this repository builds a web app that aims to transform visual environments into soundscapes, by doin this the users to experience the visual world by synthetic audio cues in real time.
-
-> **Why?** We believe in building open-source software that aims to improve quality of life in a accessible and impactful way. You are invited to join us to improve its mission and make a difference!
 
 ### Project Vision
 
-- Synesthetic Translation: Converting visual data into stereo audio cues, mapping motion to distinct sound signatures.
-- Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
-- Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
+The content at this repository builds a web app that aims to transform visual environments into intuitive soundscapes thus experiencing the visual world by synthetic audio cues in real time, generating dynamic soundscapes by mapping motion into distinct sound signatures.
+ 
 
-### System requeriments
+> We believe in software that improves quality of life. Enhancing accessibility with open-source tools is central to this mission. You're welcome to contribute.
 
-The software is designed to run in a web browser from year 2021 and up.
-This design is tested with a mobile phone front camera as input and outputs stereo audio to headphones for the spatial audio effects.
-
-### Hipothetic Use Case
-
-Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, a mobile phone camera captures surrounding visuals. i.e. a swing in motion, as the swing moves away the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
-
-### Development
-
-````
-Milestone 4 from 0 was exclusively coded by xAI Grok 3 as per @MAMware instructions.
-Milestone 5 Grok and MAMware found themself into a debbugin rabbit hole that looked like dog chasing its own tail so we seeled for help from Gemini 2.5 pro, OpenAI ChatGPT 4.1 & 04-mini and Anthropic Claude 4.
-Milestone 6 is being developed at github.dev, Grok.com is acting as the project manager in charge of the restructuring from v0.6. Gemini 2.5 pro is used for a tiny amount of reviews and ChatGPT is acting as agent at VS Codespaces.
-````
-
->We welcome contributors! 
 
 ## Table of Contents
 
@@ -46,30 +23,27 @@ Milestone 6 is being developed at github.dev, Grok.com is acting as the project 
 
 ### [Usage](docs/USAGE.md)
 
-Ths webapp is built to run from a internet browser, its developed mobile hardware contraints in care and should run with operating systems ranging from 2021 and up.
-
 - Current version [RUN](https://mamware.github.io/acoustsee/present/)
 - Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
 - Test version in development [RUN](https://mamware.github.io/acoustsee/future/web)
 
-### Check [Usage](docs/USAGE.md) for further details
+### System requirements
+
+The software is designed to run in most modern mobile and desktop web browsers. Video processing runs locally in the browser; audio is produced in real time and routed to stereo output (headphones recommended).
+
+### Hypothetical Use Case
+
+Launch the app in a web browser to translate live camera input into a dynamic stereo soundscape. For example, a swinging object might map to a softer sound as it moves away and a louder, richer sound as it approaches. A distant car could render as a low hum, while objects to the left/right are localized with HRTF/panning. The goal is to enable perception of surroundings through an auditory interface, improving independence and situational awareness.
 
 ### [Current Status](#status) 
 
-Working at **Milestone 6**
+- Milestone 0 to 4: reached by vibecoding with xAI Grok 3 
+- Milestone 5:  reached byv ibecoded with SuperGrok 4. some assistance from Gemini 2.5 Pro (Preview), ChatGPT 4.1 & o4-mini agents + small reviews from Claude 4.
+- Milestone 6:  restructered with Gemini 2.5 Pro  and ChatGPT 4.1 & 04-mini agents 
+- Milestone 6.5: (WIP) robust architectural improvements and integration work by GPT-5 mini (Preview)
 
-- UI Detached from the core logic to enable customization of skins
-- Adding support for new video and audio techniques
-- Strict architectural paradigm to no hardcoding and no fallbacks
-- Adhering the dispatcher to single resonsability principle
-- Tweaks and bugfixing here and there
- 
-### [Changelog](docs/CHANGELOG.md)
 
-- Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
-- Current "future" version in development starts from v0.6 
-
-### [v0.5 Project structure](#project_structure)
+### [v0.6 Project structure, (in construction)](#project_structure)
 
 ```
 
@@ -131,73 +105,146 @@ web/
 
 ### [Contributing](docs/CONTRIBUTING.md)
 
-- Please follow the link above for the detailed contributing guidelines, branching strategy and examples.
+>We welcome contributors! 
+
+- See `docs/CONTRIBUTING.md` for detailed contributing guidelines, branching strategy, and examples.
+- Strict architecture: avoid hardcoding and implicit fallbacks, clean up leftovers.
+- UI separated from core logic to enable customizable skins (WIP)
+- Adding support for new video and audio techniques (WIP)
+- Ongoing tweaks and bugfixes
+
+## Plugin contract & audio lifecycle
+
+This project supports pluggable synth and grid modules. Guidelines for plugin authors:
+
+- PLUGIN-META: place a JSON metadata block at the top of the plugin file inside a comment so the indexer can extract it without executing the module. Example:
+
+```js
+/* PLUGIN-META
+{
+        "id": "sine-wave",
+        "name": "Sine Wave",
+        "author": "You",
+        "description": "Simple sine-wave engine",
+        "version": "0.1.0"
+}
+*/
+```
+
+- Synth engines: export a play function with the signature `export function play(notes, ctx = {})`.
+    - `notes` is an array of note objects (engine-specific).
+    - `ctx` is an audio runtime object provided by the app. Engines should read audio resources from `ctx` and must NOT create their own `AudioContext` or global oscillator pools.
+    - Minimum fields to expect on `ctx`: `audioContext`, `getOscillator`, `oscillatorPool`, and `modulators`.
+
+- Grids: export a mapping function that converts frame data into engine inputs. Use the same `ctx` pattern when audio resources are needed.
+
+- Lifecycle: the shared `AudioManager` owns the `AudioContext` and user-gesture unlock/resume. The app exposes it via `DOM.audioManager`. Bind to it using `bindAudioManager()` from `audio-processor` or reference `DOM.audioManager` directly in early initialization code.
+
+- Best practices: be defensive (check for missing `ctx.audioContext`), avoid long-running initialization in top-level module execution, and keep plugins dependency-free at runtime.
+
 
 ### [To-Do List](docs/TO_DO.md)
 
-- (outdated) At this document linked above, you will find the list for our current TO TO list, now from milestone 5 (v0.5.2)
+
+// web/core/handlers/audio-handlers.js
+// TODO: wire up note synthesis logic (e.g., playAudio)
+// TODO: apply HRTF using PannerNode or hrtf-processor
+
+// web/core/handlers/settings-handlers.js
+// TODO: read/write settings from state / localStorage
+
+// web/core/handlers/grid-handlers.js
+// TODO: set gridType in settings and trigger grid rendering
+
+// web/core/handlers/ui-handlers.js
+// TODO: wire up button UI updates
+// TODO: remove UI event listeners, cleanup DOM
+// cleanupAllListeners(context);
+
+// web/core/handlers/debug-handlers.js
+// TODO: add structured debug hooks
+
+Separation of concerns
+
+- Could improve: rather than calling `getLogs().then(console.log)`, return a promise or emit a structured debug event so UIs can consume logs programmatically.
+
+Consistency with logging
+
+- TODO: Avoid mixing raw `console.log` with `structuredLog('DEBUG', ...)`. Prefer a single pipeline (e.g., `core/ingest.js`) so debug output obeys project-wide filters and flags.
+
+Naming and API shape
+
+- `logEvent({ event })` may overlap with `structuredLog`; ensure each export has a clear purpose.
+- `inspectState({ context })` currently ignores `context`—either remove the parameter or support it meaningfully.
+
+Extensibility
+
+TODO: live debugging tools (hot toggles, wire up a REPL in the page, remote debug), you’ll want a richer API than just two methods. Think about returning structured objects or exposing hooks for subscribers rather than only side-effects.
+
+The next step is to align them more closely with the existing ingest/logging infrastructure, tighten up their API (parameters, return values), and ensure they’re genuinely adding value beyond what structuredLog already gives us.
+
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
+- Current work in progress at `//core/dispatcher.js`
 
-- (outdated) Diagrams covering the Turnk Based Development approach (v0.2). 
+```mermaid
+graph TD
+        A[dispatcher.js] -->|routes| B[core/handlers/]
+        B --> C[video-handlers.js]
+        B --> D[audio-handlers.js]
+        B --> E[ui-handlers.js]
+        B --> F[settings-handlers.js]
+        B --> G[grid-handlers.js]
+        B --> H[debug-handlers.js]
+        C -->|calls| I[video/frame-processor.js]
+        D -->|calls| J[audio/audio-processor.js]
+        E -->|updates| K[ui/ui-settings.js]
+        F -->|uses| L[utils/utils.js]
+        A -->|state| M[state.js]
+        A -->|logs| N[utils/logging.js]
+        B -->|future| O[ml-handlers.js]
+```
 
-Reflecting:  
+- Early stage diagrams covering the Trunk Based Development approach (v0.2) can be found at the link from above, reflecting:  
   - Process Frame Flow
   - Audio Generation Flow
   - Motion Detection such as oscillator logic.
 
-### [FAQ](docs/FAQ.md)
+### [Changelog](docs/CHANGELOG.md)
 
-- Follow the link for list of the Frecuently Asqued Questions.
+- Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
+- Current "future" version in development starts from v0.6 
+
 
 ### [License](docs/LICENSE.md)
 
 ## Licensing
 
-AcoustSee is available under two distinct licenses, allowing you to choose the one that best suits your needs.
+AcoustSee is available under two licenses. See `docs/LICENSE.md` for full text.
 
-**1. Open Source License (GPL-3.0)**
+**1. Open Source (GPL-3.0)**
 
-This project is licensed under the **GNU General Public License v3.0**.
+This project is licensed under the GNU General Public License v3.0. Derivative works distributed publicly must comply with GPL-3.0 obligations.
 
-This means that while you are free to use, share, and modify this software for open-source projects, academic research, and personal use. Any derivative work must also be licensed under the GPL-3.0 and you must provide the complete corresponding source code. 
+**2. Commercial**
+
+Commercial licenses are available for proprietary use. Contact the project maintainer for details.
+
+### Usage analytics
+
+We collect a small amount of anonymous usage data to help prioritize features and fix bugs. The code that sends analytics is in `core/ingest.js` .
+
+**Data we collect:** a random session id, browser language, device type, and app version.
+
+**Data we do not collect:** IP address, precise location, browser history, or other PII.
+
+### [FAQ](docs/FAQ.md)
+
+- See `docs/FAQ.md` for Frequently Asked Questions.
 
 
-**2. Commercial License**
-
-The terms of the GPL-3.0 are not suitable if you want to integrate AcoustSee into a proprietary, closed-source commercial product, for that use a commercial license is available from us.
-
-A commercial license exempts you from the "share-alike" requirements of the GPL and allows for private, commercial use.
-
-**To inquire about purchasing a commercial license, contact us**.
-
-For full details, see the [LICENSE.md](LICENSE.md) file.
-
-
-## Usage analytics
-
-**Privacy, Analytics, and Your Control**
-
-To build the best possible version of AcoustSee, we need to understand how it's being used in the real world. For this purpose, the application collects a small amount of completely anonymous usage data when it starts. This data is vital for helping us prioritize new features, fix bugs, and ensure compatibility.
-
-**What This Means for You**
-When the app loads, it sends a single, anonymous data packet to our secure analytics endpoint. This is a one-time event per session and is designed to have zero impact on performance or your experience.
-
-**Our Data Promise:**
-We are only interested in statistical trends, not individuals.
-*   **Data We Collect:** A random session ID (which is deleted when you close your tab), your browser's language, your device type (mobile/desktop), and the app version.
-*   **Data We Never Collect:** Your IP address, location, browser history, or any other personally identifiable information. We do not use cookies or any form of persistent tracking.
-
-**Your Control**
-We believe you should have the final say over your data. While this anonymous data is incredibly helpful to the project, we provide an option to disable it in the application's settings.
-
-The entire process is open and transparent. The code that sends this data can be reviewed in `web/main.js`. We are committed to ethical analytics and protecting your privacy.
-
-  
 *Peace.*
 **Love.**
 *Union.*
 **Respect.**
-
-
