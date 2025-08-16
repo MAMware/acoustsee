@@ -2,9 +2,12 @@
 # Ignore everything by default
 *
 
-# Allow specific folders and their contents
+
+
+# ! allows specific folders and their contents
 !\.gitignore
 !future/
 !future/web/
 !future/web/*
 !future/web/**
+future/web/no-deps-build-check.log
