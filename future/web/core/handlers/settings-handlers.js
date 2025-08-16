@@ -3,10 +3,11 @@
 import { settings } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText } from '../../utils/utils.js';
-import { dispatchEvent } from '../dispatcher.js';
 import { resizeOscillatorPool } from '../../audio/audio-processor.js';
 
-export async function saveSettings() {
+export function createSettingsHandlers(dispatch) {
+  return {
+    async saveSettings() {
   try {
     const settingsToSave = {
       gridType: settings.gridType,
@@ -24,14 +25,14 @@ export async function saveSettings() {
     localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
     const msg = await getText('button4.tts.saveSettings');
     speakText(msg);
-  } catch (err) {
-    structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
-    const errorMsg = await getText('button4.tts.saveError');
-    speakText(errorMsg);
-  }
-}
+    } catch (err) {
+      structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
+      const errorMsg = await getText('button4.tts.saveError');
+      speakText(errorMsg);
+    }
+  },
 
-export async function loadSettings() {
+    async loadSettings() {
   try {
     const savedSettings = localStorage.getItem('acoustsee-settings');
     if (savedSettings) {
@@ -66,19 +67,22 @@ export async function loadSettings() {
       } catch (e) {
         structuredLog('WARN', 'resizeOscillatorPool failed after loadSettings', { err: e.message });
       }
-    } else {
-      const msg = await getText('button5.tts.loadSettings.none');
-      speakText(msg);
+        } else {
+          const msg = await getText('button5.tts.loadSettings.none');
+          speakText(msg);
+        }
+      } catch (err) {
+        structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
+        const errorMsg = await getText('button5.tts.loadError');
+        speakText(errorMsg);
+      } finally {
+        // Use injected dispatch function instead of importing dispatcher directly
+        await dispatch('updateUI', {
+          settingsMode: settings.isSettingsMode,
+          streamActive: !!settings.stream,
+          micActive: !!settings.micStream
+        });
+      }
     }
-  } catch (err) {
-    structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
-    const errorMsg = await getText('button5.tts.loadError');
-    speakText(errorMsg);
-  } finally {
-    dispatchEvent('updateUI', { 
-      settingsMode: settings.isSettingsMode, 
-      streamActive: !!settings.stream, 
-      micActive: !!settings.micStream 
-    });
-  }
+  };
 }

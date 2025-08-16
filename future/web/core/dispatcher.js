@@ -5,12 +5,12 @@ import { getText, speakText, translatePage } from '../utils/utils.js';
 import { debounce } from '../utils/async.js';
 import { structuredLog } from '../utils/logging.js';
 import { deviceSummary, computeAnnounceDelay } from '../utils/performance.js';
-import { toggleAudio } from './handlers/audio-handlers.js';
-import { toggleGrid } from './handlers/grid-handlers.js';
-import { saveSettings, loadSettings } from './handlers/settings-handlers.js';
-import { startStop, toggleVideoSource, processFrame } from './handlers/video-handlers.js';
-import { toggleLanguage, updateFrameInterval } from './handlers/ui-handlers.js';
-import { toggleDebug, emailDebug } from './handlers/debug-handlers.js';
+import { createAudioHandlers } from './handlers/audio-handlers.js';
+import { createGridHandlers } from './handlers/grid-handlers.js';
+import { createSettingsHandlers } from './handlers/settings-handlers.js';
+import { createVideoHandlers } from './handlers/video-handlers.js';
+import { createUIHandlers } from './handlers/ui-handlers.js';
+import { createDebugHandlers } from './handlers/debug-handlers.js';
 
 // --- 1. SIMPLIFIED DISPATCHER STATE ---
 // This will hold the actual function that does the work.
@@ -112,6 +112,34 @@ export async function createEventDispatcher(domElements) {
     structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
   }, 100);
 
+  // Create a local dispatch that handlers will call to route events through this dispatcher.
+  const dispatch = async (eventName, payload = {}) => {
+    // Allow handlers to call this same dispatch recursively but guard against missing handlers
+    if (handlers && typeof handlers[eventName] === 'function') {
+      try {
+        return await handlers[eventName](payload);
+      } catch (err) {
+        structuredLog('ERROR', `Error in handler for event: ${eventName}`, { message: err.message, stack: err.stack });
+        if (handlers.logError) {
+          handlers.logError({ message: `Handler for ${eventName} threw an error: ${err.message}` });
+        }
+      }
+    } else {
+      structuredLog('ERROR', `No handler found for event: ${eventName}`);
+      if (handlers && handlers.logError) {
+        handlers.logError({ message: `No handler found for event: ${eventName}` });
+      }
+    }
+  };
+
+  // Instantiate handler factories with the local dispatch function to avoid circular imports
+  const audioHandlers = createAudioHandlers(dispatch);
+  const gridHandlers = createGridHandlers(dispatch);
+  const settingsHandlers = createSettingsHandlers(dispatch);
+  const videoHandlers = createVideoHandlers(dispatch);
+  const uiHandlers = createUIHandlers(dispatch);
+  const debugHandlers = createDebugHandlers(dispatch);
+
   const handlers = {
     updateUI: debouncedUpdateUI,
     // Language change notification: re-translate DOM and request UI update
@@ -125,18 +153,18 @@ export async function createEventDispatcher(domElements) {
         structuredLog('WARN', 'languageChanged handler failed', { error: e?.message || String(e) });
       }
     },
-    // Pure routing table using imported handlers
-    processFrame: processFrame,
-    startStop: startStop,
-    toggleVideoSource: toggleVideoSource,
-    toggleAudio: toggleAudio,
-    toggleGrid: toggleGrid,
-    toggleLanguage: toggleLanguage,
-    updateFrameInterval: updateFrameInterval,
-    toggleDebug: toggleDebug,
-    saveSettings: saveSettings,
-    loadSettings: loadSettings,
-    emailDebug: emailDebug,
+  // Pure routing table using instantiated handler functions
+  processFrame: videoHandlers.processFrame,
+  startStop: videoHandlers.startStop,
+  toggleVideoSource: videoHandlers.toggleVideoSource,
+  toggleAudio: audioHandlers.toggleAudio,
+  toggleGrid: gridHandlers.toggleGrid,
+  toggleLanguage: uiHandlers.toggleLanguage,
+  updateFrameInterval: uiHandlers.updateFrameInterval,
+  toggleDebug: debugHandlers.toggleDebug,
+  saveSettings: settingsHandlers.saveSettings,
+  loadSettings: settingsHandlers.loadSettings,
+  emailDebug: debugHandlers.emailDebug,
 
     logError: ({ message }) => {
       structuredLog('ERROR', 'Error logged', { message });
@@ -145,21 +173,8 @@ export async function createEventDispatcher(domElements) {
 
   // --- 4. DIRECTLY ASSIGN THE DISPATCH LOGIC ---
   dispatchFunction = (eventName, payload = {}) => {
-    if (handlers[eventName]) {
-      try {
-        handlers[eventName](payload);
-      } catch (err) {
-        structuredLog('ERROR', `Error in handler for event: ${eventName}`, { message: err.message, stack: err.stack });
-        if (handlers.logError) {
-          handlers.logError({ message: `Handler for ${eventName} threw an error: ${err.message}` });
-        }
-      }
-    } else {
-      structuredLog('ERROR', `No handler found for event: ${eventName}`);
-      if (handlers.logError) {
-        handlers.logError({ message: `No handler found for event: ${eventName}` });
-      }
-    }
+    // Forward to the local dispatch which calls handlers by name
+    dispatch(eventName, payload);
   };
 
   structuredLog('INFO', 'createEventDispatcher: Dispatcher initialized and ready.');

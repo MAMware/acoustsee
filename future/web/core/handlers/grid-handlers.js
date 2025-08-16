@@ -1,15 +1,13 @@
 // File: web/core/handlers/grid-handlers.js
 
 import { settings } from '../state.js';
-import { dispatchEvent } from '../dispatcher.js';
 import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText } from '../../utils/utils.js';
 import { resizeOscillatorPool } from '../../audio/audio-processor.js';
 
-/**
- * Cycles to the next available grid in the settings.
- */
-export async function toggleGrid() {
+export function createGridHandlers(dispatch) {
+  return {
+    async toggleGrid() {
   try {
     const { availableGrids } = settings;
     if (availableGrids.length === 0) {
@@ -32,13 +30,15 @@ export async function toggleGrid() {
     const msg = await getText('button1.tts.gridSelect', { state: settings.gridType });
     speakText(msg);
 
-  } catch (err) {
-    structuredLog('ERROR', 'toggleGrid error', { message: err.message, stack: err.stack });
-  } finally {
-    dispatchEvent('updateUI', { 
-      settingsMode: settings.isSettingsMode, 
-      streamActive: !!settings.stream, 
-      micActive: !!settings.micStream 
-    });
+    } catch (err) {
+      structuredLog('ERROR', 'toggleGrid error', { message: err.message, stack: err.stack });
+    } finally {
+      await dispatch('updateUI', { 
+        settingsMode: settings.isSettingsMode, 
+        streamActive: !!settings.stream, 
+        micActive: !!settings.micStream 
+      });
+    }
   }
+};
 }
