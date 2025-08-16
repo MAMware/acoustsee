@@ -1,4 +1,4 @@
-import { inspectState } from './core/handlers/debug-handlers.js';
+import { dispatchEvent } from '../dispatcher.js';
 
 /**
  * Downloads the current logs as a text file for the user.
@@ -6,7 +6,7 @@ import { inspectState } from './core/handlers/debug-handlers.js';
  */
 export async function downloadLogs() {
   try {
-    const logs = await inspectState();
+  const logs = await dispatchEvent('inspectState');
     if (!logs || logs.length === 0) {
       alert('No logs to download.');
       return;

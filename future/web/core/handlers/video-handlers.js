@@ -1,13 +1,11 @@
 // File: web/core/handlers/video-handlers.js
 
 import { settings, setStream, setAudioInterval, setMicStream } from '../state.js';
-import { dispatchEvent } from '../dispatcher.js';
 import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText } from '../../utils/utils.js';
 import { cleanupFrameProcessor } from '../../video/frame-processor.js';
 import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../../audio/audio-processor.js';
-import { toggleGrid } from './grid-handlers.js';
 import { processFrameWithState } from '../../video/frame-processor.js'; 
 import { withErrorBoundary } from '../../utils/async.js'; 
 

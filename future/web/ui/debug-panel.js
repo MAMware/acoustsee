@@ -1,4 +1,4 @@
-import { inspectState } from '../core/handlers/debug-handlers.js';
+import { dispatchEvent } from '../core/dispatcher.js';
 
 export async function showDebugPanel() {
   let debugPanel = document.getElementById('debugPanel');
@@ -21,7 +21,7 @@ export async function showDebugPanel() {
     document.body.appendChild(debugPanel);
   }
   try {
-    const logs = await inspectState();
+  const logs = await dispatchEvent('inspectState');
     debugPanel.innerHTML = '';
     logs.forEach(log => {
       const logElement = document.createElement('div');
