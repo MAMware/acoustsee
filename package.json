@@ -6,8 +6,10 @@
   "type": "module",
   "scripts": {
     "test": "jest --config jest.config.cjs",
-    "test:e2e": "npx playwright test --config=playwright.config.js",
-    "playwright:install": "npx playwright install"
+    "test:e2e": "npx playwright test --config=playwright.config.cjs",
+    "playwright:install": "npx playwright install",
+    "start:static": "node ./scripts/static-server.cjs",
+    "test:e2e:http": "npx playwright test --config=playwright.config.cjs"
   },
   "keywords": [],
   "author": "",

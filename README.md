@@ -35,6 +35,7 @@ The software is designed to run in most modern mobile and desktop web browsers. 
 
 Launch the app in a web browser to translate live camera input into a dynamic stereo soundscape. For example, a swinging object might map to a softer sound as it moves away and a louder, richer sound as it approaches. A distant car could render as a low hum, while objects to the left/right are localized with HRTF/panning. The goal is to enable perception of surroundings through an auditory interface, improving independence and situational awareness.
 
+
 ### [Current Status](#status) 
 
 - Milestone 0 to 4: reached by vibecoding with xAI Grok 3 
@@ -103,6 +104,7 @@ web/
 
 ```
 
+
 ### [Contributing](docs/CONTRIBUTING.md)
 
 >We welcome contributors! 
@@ -141,6 +143,24 @@ This project supports pluggable synth and grid modules. Guidelines for plugin au
 - Lifecycle: the shared `AudioManager` owns the `AudioContext` and user-gesture unlock/resume. The app exposes it via `DOM.audioManager`. Bind to it using `bindAudioManager()` from `audio-processor` or reference `DOM.audioManager` directly in early initialization code.
 
 - Best practices: be defensive (check for missing `ctx.audioContext`), avoid long-running initialization in top-level module execution, and keep plugins dependency-free at runtime.
+
+## Continuous Integration (E2E)
+
+This repository includes a GitHub Actions workflow that runs Playwright E2E tests against a local static server.
+
+- The Playwright config (`playwright.config.cjs`) uses the `webServer` option to start `npm run start:static` on port 3000; Playwright manages the server lifecycle.
+- The CI workflow (`.github/workflows/e2e.yml`) runs the tests across a browser matrix (Chromium, Firefox, WebKit) and uploads `test-results` on failure for debugging.
+- To run the E2E tests locally, run:
+
+```bash
+npm ci
+npm run playwright:install
+npm run test:e2e:http
+```
+
+Notes:
+- In CI `reuseExistingServer` is disabled so tests start with a fresh server instance. Locally, an existing server is reused to speed development.
+- For interactive debugging, run Playwright with the `--debug` flag and the `--project` option to pick a browser.
 
 
 ### [To-Do List](docs/TO_DO.md)
@@ -211,6 +231,7 @@ graph TD
   - Audio Generation Flow
   - Motion Detection such as oscillator logic.
 
+
 ### [Changelog](docs/CHANGELOG.md)
 
 - Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
@@ -238,6 +259,7 @@ We collect a small amount of anonymous usage data to help prioritize features an
 **Data we collect:** a random session id, browser language, device type, and app version.
 
 **Data we do not collect:** IP address, precise location, browser history, or other PII.
+
 
 ### [FAQ](docs/FAQ.md)
 
