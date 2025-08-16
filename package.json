@@ -9,7 +9,8 @@
     "test:e2e": "npx playwright test --config=playwright.config.cjs",
     "playwright:install": "npx playwright install",
     "start:static": "node ./scripts/static-server.cjs",
-    "test:e2e:http": "npx playwright test --config=playwright.config.cjs"
+  "test:e2e:http": "npx playwright test --config=playwright.config.cjs",
+  "collect:artifacts": "node ./scripts/collect-artifacts.cjs"
   },
   "keywords": [],
   "author": "",

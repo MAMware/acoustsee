@@ -1,3 +1,5 @@
+[![E2E Tests](https://github.com/MAMware/acoustsee/actions/workflows/e2e.yml/badge.svg?branch=developing)](https://github.com/MAMware/acoustsee/actions/workflows/e2e.yml) [![E2E Matrix](https://img.shields.io/github/actions/workflow/status/MAMware/acoustsee/.github/workflows/e2e.yml?branch=developing&label=E2E%20(matrix))](https://github.com/MAMware/acoustsee/actions/workflows/e2e.yml)
+
 ## [Introduction](#introduction)
 
 ### Project Vision
