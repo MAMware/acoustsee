@@ -37,20 +37,13 @@ Launch the app in a web browser to translate live camera input into a dynamic st
 
 ### [Current Status](#status) 
 
-Milestone 0 to 4 reached by vibecoding with xAI Grok 3 
-Milestone 5,  reached byvibecoded with SuperGrok 4 and assistance from Gemini 2.5 Pro (Previw), ChatGPT 4.1 & 04-mini agents and small reviews from Claude 4.
-Milestone 6,  restructered with Gemini 2.5 Pro  and ChatGPT 4.1 & 04-mini agents 
-Milestion 6.5, robust architectural improvements and integration work by GPT-5 mini (preview)
+- Milestone 0 to 4: reached by vibecoding with xAI Grok 3 
+- Milestone 5:  reached byv ibecoded with SuperGrok 4. some assistance from Gemini 2.5 Pro (Preview), ChatGPT 4.1 & o4-mini agents + small reviews from Claude 4.
+- Milestone 6:  restructered with Gemini 2.5 Pro  and ChatGPT 4.1 & 04-mini agents 
+- Milestone 6.5: (WIP) robust architectural improvements and integration work by GPT-5 mini (Preview)
 
 
-Work in progress at **Milestone 6**
-
-- Prefer strict architecture: avoid hardcoding and implicit fallbacks
-- UI separated from core logic to enable customizable skins
-- Adding support for new video and audio techniques
-- Ongoing tweaks and bugfixes
-
-### [v0.6 Project structure, work in progress](#project_structure)
+### [v0.6 Project structure, (in construction)](#project_structure)
 
 ```
 
@@ -115,7 +108,10 @@ web/
 >We welcome contributors! 
 
 - See `docs/CONTRIBUTING.md` for detailed contributing guidelines, branching strategy, and examples.
-- Development mantra: No fallbacks, no magic numbers & clean up leftovers.
+- Strict architecture: avoid hardcoding and implicit fallbacks, clean up leftovers.
+- UI separated from core logic to enable customizable skins (WIP)
+- Adding support for new video and audio techniques (WIP)
+- Ongoing tweaks and bugfixes
 
 ## Plugin contract & audio lifecycle
 
@@ -172,9 +168,9 @@ Separation of concerns
 
 - Could improve: rather than calling `getLogs().then(console.log)`, return a promise or emit a structured debug event so UIs can consume logs programmatically.
 
-Consistency with logging/telemetry
+Consistency with logging
 
-- Avoid mixing raw `console.log` with `structuredLog('DEBUG', ...)`. Prefer a single pipeline (e.g., `core/ingest.js`) so debug output obeys project-wide filters and flags.
+- TODO: Avoid mixing raw `console.log` with `structuredLog('DEBUG', ...)`. Prefer a single pipeline (e.g., `core/ingest.js`) so debug output obeys project-wide filters and flags.
 
 Naming and API shape
 
@@ -182,9 +178,10 @@ Naming and API shape
 - `inspectState({ context })` currently ignores `context`—either remove the parameter or support it meaningfully.
 
 Extensibility
-• If you ever want live debugging tools (hot toggles, wire up a REPL in the page, remote debug), you’ll want a richer API than just two methods. Think about returning structured objects or exposing hooks for subscribers rather than only side-effects.
 
-The next step is to align them more closely with your existing telemetry/logging infrastructure, tighten up their API (parameters, return values), and ensure they’re genuinely adding value beyond what structuredLog already gives us.
+TODO: live debugging tools (hot toggles, wire up a REPL in the page, remote debug), you’ll want a richer API than just two methods. Think about returning structured objects or exposing hooks for subscribers rather than only side-effects.
+
+The next step is to align them more closely with the existing ingest/logging infrastructure, tighten up their API (parameters, return values), and ensure they’re genuinely adding value beyond what structuredLog already gives us.
 
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
@@ -236,7 +233,7 @@ Commercial licenses are available for proprietary use. Contact the project maint
 
 ### Usage analytics
 
-We collect a small amount of anonymous usage data to help prioritize features and fix bugs. The code that sends analytics is in `core/ingest.js` and the feature can be disabled in the application's settings.
+We collect a small amount of anonymous usage data to help prioritize features and fix bugs. The code that sends analytics is in `core/ingest.js` .
 
 **Data we collect:** a random session id, browser language, device type, and app version.
 
