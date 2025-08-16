@@ -64,12 +64,12 @@ export function computeDefaultUpdateInterval(baseFps = 20) {
   }
 }
 
-export function computeDefaultMaxNotes(base = 24) {
+export function computeDefaultMaxNotes(base = 24, { isMobile: isMobileOverride, getDeviceMemory: getDeviceMemoryOverride, getHardwareConcurrency: getHardwareConcurrencyOverride } = {}) {
   try {
     let max = base;
-    const dm = getDeviceMemory();
-    const hc = getHardwareConcurrency();
-    if (isMobile()) max = Math.min(max, 12);
+    const dm = getDeviceMemoryOverride ? getDeviceMemoryOverride() : getDeviceMemory();
+    const hc = getHardwareConcurrencyOverride ? getHardwareConcurrencyOverride() : getHardwareConcurrency();
+    if (isMobileOverride ? isMobileOverride() : isMobile()) max = Math.min(max, 12);
     if (dm && dm < 2) max = Math.min(max, 6);
     if (hc && hc < 2) max = Math.min(max, 8);
     max = Math.max(1, Math.floor(max));
