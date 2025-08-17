@@ -1,13 +1,12 @@
 // File: web/main.js
 import { setupUIController } from './ui/ui-controller.js';
-import { createEventDispatcher } from './core/dispatcher.js';
 import { createEngine } from './core/engine.js';
 import { setupInputMapper } from './ui/ui-input-mapper.js';
 import { setupUIRenderer } from './ui/ui-renderer.js';
 import { setupUIEffectsHandler } from './ui/ui-effects-handler.js';
 import { settings, setAutoFpsBenchmark } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
-import { setDOM } from './core/context.js';
+import { setDOM, setDispatchEvent } from './core/context.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
 import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './core/media-controller.js';
@@ -156,28 +155,23 @@ async function init() {
       structuredLog('WARN', 'UI setup had partial failures', { errors: setupErrors });
     }
 
-    const { dispatchEvent } = await createEventDispatcher(DOM);
-    setupUIController({ dispatchEvent, DOM });
+  setupUIController({ DOM });
 
     // --- Headless engine: instantiate and wire a thin UI input mapper ---
     const engine = createEngine();
     try {
+      // Expose engine.dispatch via shared context for legacy modules that call getDispatchEvent()
+      try { setDispatchEvent(engine.dispatch); } catch (e) {}
       setupInputMapper(DOM, engine);
-  // UI renderer subscribes to engine state and updates DOM presentation
-  try { setupUIRenderer(DOM, engine); } catch (e) { structuredLog('WARN', 'setupUIRenderer failed', { error: e?.message || String(e) }); }
-  try { setupUIEffectsHandler(engine, DOM); } catch (e) { structuredLog('WARN', 'setupUIEffectsHandler failed', { error: e?.message || String(e) }); }
+      // UI renderer subscribes to engine state and updates DOM presentation
+      try { setupUIRenderer(DOM, engine); } catch (e) { structuredLog('WARN', 'setupUIRenderer failed', { error: e?.message || String(e) }); }
+      try { setupUIEffectsHandler(engine, DOM); } catch (e) { structuredLog('WARN', 'setupUIEffectsHandler failed', { error: e?.message || String(e) }); }
     } catch (e) {
       structuredLog('WARN', 'setupInputMapper failed', { error: e?.message || String(e) });
     }
 
-    // Bridge engine state changes to the existing dispatcher so legacy UI continues to work
-    engine.onStateChange((newState) => {
-      try {
-        if (typeof dispatchEvent === 'function') dispatchEvent('updateUI', { state: newState });
-      } catch (e) {
-        structuredLog('WARN', 'engine -> dispatchEvent updateUI failed', { error: e?.message || String(e) });
-      }
-    });
+  // Engine owns state notifications and UI rendering; no bridge to legacy dispatcher required.
+  // engine.onStateChange subscribers (UI renderer) will update DOM as needed.
 
     // --- Audio manager and gated startup (user gesture required) ---
     // Create a shared AudioManager and expose it on the DOM for other modules.
@@ -234,7 +228,7 @@ async function init() {
 
           const onMsg = await getTextCached('audioOn').catch(() => null);
           if (onMsg) speakText(onMsg);
-          try { dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false }); } catch (e) {}
+          try { if (engine && typeof engine.dispatch === 'function') engine.dispatch('updateUI', { settingsMode: false, streamActive: false, micActive: false }); } catch (e) {}
           try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
         } catch (err) {
           addSessionError({ message: 'power-on-failed', error: err?.message || String(err) });
@@ -412,8 +406,8 @@ async function init() {
       safeStructuredLog('ERROR', 'Console error', { args }, false);
     };
 
-    // Force initial UI update for dynamic content
-    dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
+  // Force initial UI update for dynamic content
+  try { if (engine && typeof engine.dispatch === 'function') engine.dispatch('updateUI', { settingsMode: false, streamActive: false, micActive: false }); } catch (e) {}
     structuredLog('INFO', 'init: UI setup complete');
     // Start health checker (aggregates session errors and reports via ingest)
     const stopHealthChecker = startHealthChecker({

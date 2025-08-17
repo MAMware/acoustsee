@@ -1,5 +1,5 @@
 import { settings } from "../core/state.js";
-import { dispatchEvent } from "../core/dispatcher.js";
+import { getDispatchEvent } from "../core/context.js";
 import { structuredLog } from "../utils/logging.js";  // Add for detailed logging.
 
 // New helper to resize oscillator pool based on grid maxNotes, capped at 100
@@ -94,7 +94,7 @@ export async function initializeAudio(context) {
     return true;
   } catch (error) {
     structuredLog('ERROR', 'initializeAudio error', { message: error.message });
-    dispatchEvent('logError', { message: `Audio init error: ${error.message}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Audio init error: ${error.message}` }); } catch (e) {}
     isAudioInitialized = false;
     audioContext = null;
     return false;
@@ -124,14 +124,14 @@ export async function playAudio(notes) {
         break;
       } catch (err) {
         structuredLog('ERROR', 'playAudio: Failed to resume AudioContext', { message: err.message });
-        dispatchEvent('logError', { message: `Audio resume failed: ${err.message}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Audio resume failed: ${err.message}` }); } catch (e) {}
         if (attempt < maxAttempts) {
           await new Promise(r => setTimeout(r, resumeDelay));
           continue;
         }
         // Final failure fallback
         structuredLog('ERROR', 'playAudio: Unable to resume AudioContext after retries');
-        dispatchEvent('audioError', { message: 'Audio unavailable—tap to retry' });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('audioError', { message: 'Audio unavailable—tap to retry' }); } catch (e) {}
         return;
       }
     }
@@ -144,7 +144,7 @@ export async function playAudio(notes) {
     const engine = settings.availableEngines.find((e) => e.id === settings.synthesisEngine);
     if (!engine || typeof engine.playFunction !== 'function') {
       structuredLog('ERROR', `playAudio: Engine or playFunction not found`, { synthesisEngine: settings.synthesisEngine });
-      dispatchEvent('logError', { message: `Engine not found: ${settings.synthesisEngine}` });
+    try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Engine not found: ${settings.synthesisEngine}` }); } catch (e) {}
       return;
     }
    
@@ -161,7 +161,7 @@ export async function playAudio(notes) {
 
   } catch (err) {
     structuredLog('ERROR', 'playAudio error', { message: err.message });
-    dispatchEvent('logError', { message: `Play audio error: ${err.message}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Play audio error: ${err.message}` }); } catch (e) {}
   }
 }
 
@@ -210,7 +210,7 @@ export async function cleanupAudio() {
     structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up and context closed');
   } catch (err) {
     structuredLog('ERROR', 'cleanupAudio error', { message: err.message });
-    dispatchEvent('logError', { message: `Cleanup audio error: ${err.message}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Cleanup audio error: ${err.message}` }); } catch (e) {}
   }
 }
 
@@ -243,7 +243,7 @@ export function initializeMicAudio(micStream) {
     return null;
   } catch (error) {
     structuredLog('ERROR', 'initializeMicAudio error', { message: error.message });
-    dispatchEvent('logError', { message: `Microphone init error: ${error.message}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Microphone init error: ${error.message}` }); } catch (e) {}
     return null;
   }
 }

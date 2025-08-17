@@ -1,5 +1,5 @@
 import { settings } from "../core/state.js";
-import { dispatchEvent } from "../core/dispatcher.js";
+import { getDispatchEvent } from "../core/context.js";
 import { structuredLog } from "../utils/logging.js";
 
 // Module-level state for stateful wrapper
@@ -12,7 +12,7 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
     if (!width || !height || width <= 0 || height <= 0) {
       const errorType = 'invalidDimensions';
       structuredLog('ERROR', 'Invalid dimensions for frame processing', { width, height });
-      dispatchEvent("logError", { message: `Invalid dimensions for frame processing: ${width}x${height}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Invalid dimensions for frame processing: ${width}x${height}` }); } catch (e) {}
       structuredLog('WARN', 'Frame error; state reset', { reset: settings.resetStateOnError, errorType });
       if (settings.resetStateOnError) {
         return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
@@ -24,7 +24,7 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
     if (!frameData || !(frameData instanceof Uint8ClampedArray) || frameData.length < width * height * 4) {
       const errorType = 'invalidFrameDataTransient';
       structuredLog('ERROR', 'Invalid frameData for processing', { frameDataLength: frameData?.length || 0 });
-      dispatchEvent("logError", { message: `Invalid frameData: length ${frameData?.length || 0}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Invalid frameData: length ${frameData?.length || 0}` }); } catch (e) {}
       // Transient error: preserve previous state to avoid audio interruption
       structuredLog('WARN', 'Frame error; transient, preserving state', { reset: false, errorType });
       return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
@@ -38,7 +38,7 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
     const grid = settings.availableGrids.find((g) => g.id === settings.gridType);
     if (!grid || typeof grid.mapFunction !== 'function') {
       console.error(`Grid or mapFunction not found for gridType: ${settings.gridType}`);
-      dispatchEvent("logError", { message: `Grid not found: ${settings.gridType}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Grid not found: ${settings.gridType}` }); } catch (e) {}
       return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
     }
     const mapFunction = grid.mapFunction; // Directly access the function, no 'await' needed.
@@ -78,7 +78,7 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
   } catch (err) {
     const errorType = 'exception';
     console.error("mapFrameToNotes error:", err.message);
-    dispatchEvent("logError", { message: `Frame mapping error: ${err.message}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Frame mapping error: ${err.message}` }); } catch (e) {}
     structuredLog('WARN', 'Frame error; state reset', { reset: settings.resetStateOnError, errorType });
     if (settings.resetStateOnError) {
       return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
@@ -121,7 +121,7 @@ export async function cleanupFrameProcessor() {
     return { prevFrameDataLeft: null, prevFrameDataRight: null };
   } catch (err) {
     structuredLog('ERROR', 'cleanupFrameProcessor error', { message: err.message });
-    dispatchEvent('logError', { message: `Frame processor cleanup error: ${err.message}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Frame processor cleanup error: ${err.message}` }); } catch (e) {}
     prevFrameDataLeft = null;
     prevFrameDataRight = null;
     return { prevFrameDataLeft: null, prevFrameDataRight: null };

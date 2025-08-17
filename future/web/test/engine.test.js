@@ -114,7 +114,7 @@ describe('engine camera and benchmark handlers', () => {
   });
 
   test('startProcessing sets interval and marks processing state', async () => {
-    jest.useFakeTimers();
+  jest.useFakeTimers();
     const videoEl = { srcObject: null, videoWidth: 100, videoHeight: 100, readyState: 4, getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(100 * 100 * 4) }) }) };
     media.isCameraActive.mockReturnValue(false);
     media.startCamera.mockImplementation(async (video) => { video.srcObject = {}; return {}; });
@@ -123,25 +123,29 @@ describe('engine camera and benchmark handlers', () => {
     const res = await engine.dispatch('startProcessing', { videoEl, canvasEl: { width: 100, height: 100, getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(100 * 100 * 4) }) }) } });
 
     expect(media.startCamera).toHaveBeenCalled();
-    // Timer ID should be stored on settings
-    expect(settings.processingTimerId).toBeDefined();
-    expect(settings.isProcessing).toBe(true);
-    jest.useRealTimers();
+  // Timer ID should be stored on settings (may be a Timeout object)
+  expect(settings.processingTimerId).toBeDefined();
+  expect(settings.isProcessing).toBe(true);
+  // Advance timers to allow scheduler to run at least once
+  jest.advanceTimersByTime(50);
+  jest.useRealTimers();
   });
 
   test('stopProcessing clears interval and unsets processing state', async () => {
-    jest.useFakeTimers();
-    // Simulate an existing timer
-    settings.processingTimerId = 12345;
-    const clearSpy = jest.spyOn(global, 'clearInterval');
-    const videoEl = { srcObject: {}, videoWidth: 100, videoHeight: 100 };
-    const engine = createEngine();
-    const res = await engine.dispatch('stopProcessing', { videoEl });
-    expect(clearSpy).toHaveBeenCalledWith(12345);
-    expect(settings.processingTimerId).toBeNull();
-    expect(settings.isProcessing).toBe(false);
-    clearSpy.mockRestore();
-    jest.useRealTimers();
+  jest.useFakeTimers();
+  // Start processing to create a scheduler timer
+  const videoEl = { srcObject: null, videoWidth: 100, videoHeight: 100, readyState: 4, getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(100 * 100 * 4) }) }) };
+  media.startCamera.mockImplementation(async (video) => { video.srcObject = {}; return {}; });
+  const engine = createEngine();
+  await engine.dispatch('startProcessing', { videoEl, canvasEl: { width: 100, height: 100, getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(100 * 100 * 4) }) }) } });
+  // Now stop processing and ensure scheduler timer cleared and state updated
+  const clearSpy = jest.spyOn(global, 'clearTimeout');
+  const res = await engine.dispatch('stopProcessing', { videoEl });
+  expect(clearSpy).toHaveBeenCalled();
+  expect(settings.processingTimerId).toBeNull();
+  expect(settings.isProcessing).toBe(false);
+  clearSpy.mockRestore();
+  jest.useRealTimers();
   });
 
   test('audioPlayNotes delegates to playAudio with notes payload', async () => {
@@ -189,5 +193,31 @@ describe('engine camera and benchmark handlers', () => {
     expect(settings.gridType).toBe('g2');
     await engine.dispatch('cycleGrid');
     expect(settings.gridType).toBe('g3');
+  });
+
+  test('cycleFramerate toggles autoFPS and cycles updateInterval', async () => {
+    const engine = createEngine();
+    // Start with known state
+    settings.autoFPS = false;
+    settings.updateInterval = 1000 / 20; // 20 fps
+
+    // First dispatch -> should move to 30 fps
+    await engine.dispatch('cycleFramerate');
+    expect(settings.autoFPS).toBe(false);
+    expect(Math.round(1000 / settings.updateInterval)).toBe(30);
+
+    // Second dispatch -> should move to 60 fps
+    await engine.dispatch('cycleFramerate');
+    expect(settings.autoFPS).toBe(false);
+    expect(Math.round(1000 / settings.updateInterval)).toBe(60);
+
+    // Third dispatch -> should set autoFPS true (since 60 is last option)
+    await engine.dispatch('cycleFramerate');
+    expect(settings.autoFPS).toBe(true);
+
+    // Fourth dispatch -> should turn autoFPS off and set to 20 fps default
+    await engine.dispatch('cycleFramerate');
+    expect(settings.autoFPS).toBe(false);
+    expect(Math.round(1000 / settings.updateInterval)).toBe(20);
   });
 });

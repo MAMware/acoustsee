@@ -1,12 +1,13 @@
 import { structuredLog } from '../utils/logging.js';
-import { dispatchEvent } from '../core/dispatcher.js';
 import { settings } from '../core/state.js';
 
 jest.mock('../utils/logging.js', () => ({
   structuredLog: jest.fn(),
 }));
-jest.mock('../core/dispatcher.js', () => ({
-  dispatchEvent: jest.fn(),
+jest.mock('../core/context.js', () => ({
+  // We'll provide a mock for getDispatchEvent and configure its returned
+  // inner dispatch function immediately after requiring the mocked module.
+  getDispatchEvent: jest.fn(),
 }));
 jest.mock('../core/state.js', () => ({
   settings: {
@@ -32,7 +33,13 @@ jest.mock('../video/grids/hex-tonnetz.js', () => ({
 const { mapFrameToHexTonnetz } = require('../video/grids/hex-tonnetz.js');
 settings.availableGrids = [{ id: 'hex-tonnetz', mapFunction: mapFrameToHexTonnetz }];
 
-// Now require the frame-processor module so it sees the mocked settings
+// Now configure the core/context mocked module to return a stable inner mock
+// so assertions can check that the code under test invoked it.
+const context = require('../core/context.js');
+const frameDispatchMock = jest.fn();
+context.getDispatchEvent.mockImplementation(() => frameDispatchMock);
+
+// Require the frame-processor module after wiring the context mock
 const { mapFrameToNotes, processFrameWithState, cleanupFrameProcessor } = require('../video/frame-processor.js');
 
 describe('frame-processor', () => {
@@ -50,7 +57,7 @@ describe('frame-processor', () => {
       avgIntensity: 0
     });
     expect(structuredLog).toHaveBeenCalledWith('ERROR', 'Invalid dimensions for frame processing', { width: 0, height: 0 });
-    expect(dispatchEvent).toHaveBeenCalledWith('logError', { message: 'Invalid dimensions for frame processing: 0x0' });
+  expect(frameDispatchMock).toHaveBeenCalledWith('logError', { message: 'Invalid dimensions for frame processing: 0x0' });
   });
 
   test('mapFrameToNotes handles invalid frameData', async () => {
@@ -121,6 +128,8 @@ describe('frame-processor', () => {
     const result = await cleanupFrameProcessor();
     expect(result).toEqual({ prevFrameDataLeft: null, prevFrameDataRight: null });
     expect(structuredLog).toHaveBeenCalledWith('ERROR', 'cleanupFrameProcessor error', expect.any(Object));
-    expect(dispatchEvent).toHaveBeenCalledWith('logError', expect.any(Object));
+    // The module uses getDispatchEvent() to obtain the dispatch function. Ensure
+    // the inner dispatch mock was invoked with logError.
+    expect(frameDispatchMock).toHaveBeenCalledWith('logError', expect.any(Object));
   });
 });

@@ -1,7 +1,7 @@
 import { settings } from '../core/state.js';
 import { structuredLog } from '../utils/logging.js';
 import { getText } from '../utils/utils.js';
-import { dispatchEvent } from '../core/dispatcher.js';
+import { getDispatchEvent } from '../core/context.js';
 import { getDOM } from '../core/context.js';
 
 export async function setupVideoCapture(DOM) {
@@ -9,7 +9,7 @@ export async function setupVideoCapture(DOM) {
     if (!DOM.videoFeed || !DOM.frameCanvas) {
       const msg = 'Missing videoFeed or frameCanvas in setupVideoCapture';
       structuredLog('ERROR', msg);
-      dispatchEvent('logError', { message: msg });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: msg }); } catch (e) {}
       return false;
     }
 
@@ -23,7 +23,7 @@ export async function setupVideoCapture(DOM) {
     return true;
   } catch (err) {
     structuredLog('ERROR', 'setupVideoCapture error', { message: err.message });
-    dispatchEvent('logError', { message: `Video capture setup error: ${err.message}` });
+  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Video capture setup error: ${err.message}` }); } catch (e) {}
     return false;
   }
 }

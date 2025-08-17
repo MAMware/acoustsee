@@ -60,7 +60,7 @@ export function setupInputMapper(DOM, engine) {
       ev.preventDefault();
       const state = engine.getState ? engine.getState() : {};
       if (!state.isSettingsMode) {
-        engine.dispatch('toggleAutoFps');
+  engine.dispatch('cycleFramerate');
       } else {
         engine.dispatch('saveSettings');
       }

@@ -1,4 +1,4 @@
-import { dispatchEvent } from '../core/dispatcher.js';
+import { getDispatchEvent } from '../core/context.js';
 
 export async function showDebugPanel() {
   let debugPanel = document.getElementById('debugPanel');

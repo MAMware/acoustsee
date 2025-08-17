@@ -58,10 +58,17 @@ export function setupUIRenderer(DOM, engine) {
       if (!DOM.button4) return;
       const enabled = !!state.autoFPS;
       const span = DOM.button4.querySelector('.button-text') || DOM.button4;
-      const key = enabled ? 'button4.normal.auto.on.text' : 'button4.normal.auto.off.text';
-      const text = await getText(key).catch(() => (enabled ? 'Auto FPS' : 'Fixed FPS'));
-      if (span) span.textContent = text;
-      DOM.button4.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+      if (enabled) {
+        const text = await getText('button4.normal.auto.on.text').catch(() => 'Auto');
+        if (span) span.textContent = text;
+        DOM.button4.setAttribute('aria-pressed', 'true');
+      } else {
+        // show numeric FPS derived from updateInterval
+        const fps = Math.round(1000 / (Number(state.updateInterval) || 1000 / 20));
+        const text = await getText('button4.normal.fps.text', { fps }).catch(() => `${fps} FPS`);
+        if (span) span.textContent = text;
+        DOM.button4.setAttribute('aria-pressed', 'false');
+      }
     } catch (e) {
       console.warn('updateAutoFpsButton failed', e);
     }

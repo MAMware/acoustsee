@@ -5,7 +5,7 @@ import { getText, speakText, setLanguage, translatePage, announceMessage } from 
 import { trackFeatureUse } from '../core/ingest.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './media-controller.js';
 import { startMic, stopMic } from './microphone-controller.js';
-import { computeAutoIntervalBenchmark } from '../utils/performance.js';
+import { computeAutoIntervalBenchmark, getPreferredIntervalMs } from '../utils/performance.js';
 import { setAutoFpsBenchmark } from './state.js';
 import { processFrameWithState } from '../video/frame-processor.js';
 import { playAudio } from '../audio/audio-processor.js';
@@ -41,6 +41,71 @@ export function createEngine() {
   function onBenchmarkRequired(fn) {
     benchmarkListeners.add(fn);
     return () => benchmarkListeners.delete(fn);
+  }
+
+  // --- Scheduler internals (single-run lock + one-pending-frame) ---
+  // These live in the engine closure and are manipulated by start/stopProcessing
+  let _processingLock = false;
+  let _pending = false;
+  let _lastRunTs = 0;
+  let _schedulerTimerId = null;
+  let _videoElForScheduler = null;
+  let _canvasElForScheduler = null;
+
+  async function _runScheduled() {
+    try {
+      // If not processing anymore, bail out
+      if (!state.isProcessing) {
+        _schedulerTimerId = null;
+        return;
+      }
+
+      // If a frame is already running, mark pending and return
+      if (_processingLock) {
+        _pending = true;
+        return;
+      }
+
+      _processingLock = true;
+      _pending = false;
+
+      const now = Date.now();
+      // determine preferred interval (ms) - respects autoFPS and persisted benchmarks
+      let targetMs = 0;
+      try { targetMs = await getPreferredIntervalMs(); } catch (e) { targetMs = Math.max(8, Math.round(1000 / Math.max(1, Number(state.updateInterval) || 15))); }
+
+      // Enforce minimum spacing since last run
+      const since = Math.max(0, now - (_lastRunTs || 0));
+      if (since < targetMs) {
+        // schedule for remaining time
+        const delay = Math.max(1, Math.round(targetMs - since));
+        _processingLock = false;
+        _schedulerTimerId = setTimeout(_runScheduled, delay);
+        state.processingTimerId = _schedulerTimerId;
+        return;
+      }
+
+      _lastRunTs = Date.now();
+      // dispatch frame processing (fire-and-forget)
+      try { dispatch('processFrame', { videoEl: _videoElForScheduler, canvasEl: _canvasElForScheduler }); } catch (e) { structuredLog('WARN', 'scheduler dispatch processFrame failed', { error: e?.message }); }
+
+      _processingLock = false;
+
+      // If a pending frame was requested while we were running, schedule next immediately
+      if (_pending) {
+        _pending = false;
+        _schedulerTimerId = setTimeout(_runScheduled, 0);
+      } else {
+        // otherwise schedule next respecting targetMs
+        _schedulerTimerId = setTimeout(_runScheduled, targetMs);
+      }
+      state.processingTimerId = _schedulerTimerId;
+    } catch (e) {
+      structuredLog('WARN', 'scheduler run failed', { error: e?.message || String(e) });
+      _processingLock = false;
+      _schedulerTimerId = setTimeout(_runScheduled, Math.max(8, Math.round(1000 / Math.max(1, Number(state.updateInterval) || 15))));
+      state.processingTimerId = _schedulerTimerId;
+    }
   }
 
   async function dispatch(commandName, payload = {}) {
@@ -188,17 +253,24 @@ export function createEngine() {
       // Start camera if not active
       await mediaStartCamera(videoEl, { facingMode: 'environment' });
       if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
-      // compute interval from fps stored in updateInterval (fps value)
-      const fps = Number(s.updateInterval) || 15;
-      const intervalMs = Math.max(8, Math.round(1000 / Math.max(1, fps)));
-      // schedule processFrame at intervalMs; store timer id on state
-      const timerId = setInterval(() => {
-        // fire-and-forget: dispatch processFrame with DOM refs
-        try { dispatch('processFrame', { videoEl, canvasEl }); } catch (e) { structuredLog('WARN', 'engine.processInterval callback failed', { error: e?.message }); }
-      }, intervalMs);
-      s.processingTimerId = timerId;
+      // initialize scheduler loop (single-run lock + one-pending-frame)
+      // keep some scheduler state in closure so stopProcessing can cancel it
+      if (!this || typeof this === 'undefined') {
+        // noop - ensure closure exists
+      }
+      // store DOM refs for scheduler
+      _videoElForScheduler = videoEl;
+      _canvasElForScheduler = canvasEl;
       s.isProcessing = true;
-      return { timerId, intervalMs };
+      // kick off the scheduler immediately (it will respect target interval)
+      try {
+        if (_schedulerTimerId != null) try { clearTimeout(_schedulerTimerId); } catch (e) {}
+        _schedulerTimerId = setTimeout(_runScheduled, 0);
+      } catch (e) {
+        structuredLog('WARN', 'startProcessing scheduler start failed', { error: e?.message });
+      }
+      s.processingTimerId = _schedulerTimerId;
+      return { timerId: _schedulerTimerId };
     } catch (e) {
       structuredLog('ERROR', 'engine.startProcessing failed', { error: e?.message || String(e) });
       throw e;
@@ -209,13 +281,23 @@ export function createEngine() {
   registerCommandHandler('stopProcessing', async ({ state: s, payload }) => {
     try {
       const { videoEl } = payload || {};
-      if (s.processingTimerId != null) {
-        try { clearInterval(s.processingTimerId); } catch (e) { /* ignore */ }
-        s.processingTimerId = null;
-      }
+      // clear scheduler timer if present
+      try {
+        if (_schedulerTimerId != null) {
+          clearTimeout(_schedulerTimerId);
+          _schedulerTimerId = null;
+        }
+      } catch (e) { /* ignore */ }
+      // reset scheduler state
+      _processingLock = false;
+      _pending = false;
+      s.processingTimerId = null;
       s.isProcessing = false;
       try { mediaStopCamera(videoEl); } catch (e) { /* ignore */ }
       s.stream = null;
+      // clear DOM refs
+      _videoElForScheduler = null;
+      _canvasElForScheduler = null;
       return { stopped: true };
     } catch (e) {
       structuredLog('WARN', 'engine.stopProcessing failed', { error: e?.message || String(e) });
@@ -348,6 +430,47 @@ export function createEngine() {
       return { grid: s.gridType };
     } catch (e) {
       structuredLog('ERROR', 'cycleGrid error', { message: e?.message || String(e) });
+      return { ok: false };
+    }
+  });
+
+  /**
+   * cycleFramerate
+   * ----------------
+   * Headless command to cycle the application's framerate settings.
+   * Behavior (migrated from UI):
+   * - If `state.autoFPS` is true, turn it off and set `updateInterval` to 1000/20 (20 FPS).
+   * - Otherwise, cycle through fps options [20, 30, 60]. When reaching 60, enable `autoFPS`.
+   * - Notify listeners (UI) by dispatching an `updateUI` event.
+   *
+   * Inputs: none (operates directly on `state`) 
+   * Outputs: returns an object with the new `autoFPS` and `updateInterval` values.
+   * Error modes: logs and returns { ok: false } on unexpected failures.
+   */
+  // Cycle framerate / toggle autoFPS: move UI logic into engine so it is headless.
+  // Logic mirrors web/ui/ui-settings.js Button 4 (normal mode) behavior.
+  registerCommandHandler('cycleFramerate', async ({ state: s, dispatch: engineDispatch }) => {
+    try {
+      if (s.autoFPS) {
+        s.autoFPS = false;
+        s.updateInterval = 1000 / 20;
+      } else {
+        const fpsOptions = [20, 30, 60];
+  const currentFps = Math.round(1000 / s.updateInterval);
+  const idx = fpsOptions.indexOf(currentFps);
+        s.autoFPS = idx === fpsOptions.length - 1;
+        if (!s.autoFPS) {
+          // if idx is -1 (not found), default to first option
+          const nextIdx = (idx === -1) ? 0 : (idx + 1);
+          s.updateInterval = 1000 / fpsOptions[nextIdx];
+        }
+      }
+      // notify any UI listeners of the change
+      try { await dispatch('updateUI', { settingsMode: s.isSettingsMode, streamActive: !!s.stream, micActive: !!s.micStream }); } catch (e) {}
+      // Return fps metadata
+      return { autoFPS: s.autoFPS, updateInterval: s.updateInterval };
+    } catch (e) {
+      structuredLog('WARN', 'cycleFramerate failed', { error: e?.message || String(e) });
       return { ok: false };
     }
   });
