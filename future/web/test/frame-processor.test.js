@@ -1,4 +1,3 @@
-import { mapFrameToNotes, processFrameWithState, cleanupFrameProcessor } from '../video/frame-processor.js';
 import { structuredLog } from '../utils/logging.js';
 import { dispatchEvent } from '../core/dispatcher.js';
 import { settings } from '../core/state.js';
@@ -11,19 +10,30 @@ jest.mock('../core/dispatcher.js', () => ({
 }));
 jest.mock('../core/state.js', () => ({
   settings: {
+    // availableGrids will be populated after we mock the grid map function below
     availableGrids: [{ id: 'hex-tonnetz' }],
     gridType: 'hex-tonnetz',
     dayNightMode: 'day',
     resetStateOnError: true
   }
 }));
-jest.mock('../synthesis-grids/hex-tonnetz.js', () => ({
-  mapFrameToHexTonnetz: jest.fn(() => ({
-    notes: [{ pitch: 440, intensity: 0.05, harmonics: [], pan: -1 }],
-    newFrameData: new Uint8ClampedArray(1000),
+// Provide a lightweight mapFunction via the grid object to avoid importing the full
+// implementation during tests. mapFunction returns predictable notes and a newFrameData.
+jest.mock('../video/grids/hex-tonnetz.js', () => ({
+  mapFrameToHexTonnetz: jest.fn((frameData, width, height, prev, pan) => ({
+    notes: [{ pitch: 440, intensity: 50, harmonics: [], pan }],
+    newFrameData: new Uint8ClampedArray(frameData.length),
     avgIntensity: 50
   }))
 }));
+
+// After mocking the grid module, update settings.availableGrids to include the
+// actual mapFunction reference so frame-processor's settings.availableGrids finds it.
+const { mapFrameToHexTonnetz } = require('../video/grids/hex-tonnetz.js');
+settings.availableGrids = [{ id: 'hex-tonnetz', mapFunction: mapFrameToHexTonnetz }];
+
+// Now require the frame-processor module so it sees the mocked settings
+const { mapFrameToNotes, processFrameWithState, cleanupFrameProcessor } = require('../video/frame-processor.js');
 
 describe('frame-processor', () => {
   beforeEach(() => {
@@ -69,6 +79,13 @@ describe('frame-processor', () => {
 
   test('mapFrameToNotes processes valid data', async () => {
     const frameData = new Uint8ClampedArray(100 * 100 * 4);
+    // Fill with sample RGB data to produce variance
+    for (let i = 0; i < frameData.length; i += 4) {
+      frameData[i] = 100; // R
+      frameData[i+1] = 50; // G
+      frameData[i+2] = 25; // B
+      frameData[i+3] = 255; // A
+    }
     const result = await mapFrameToNotes(frameData, 100, 100, null, null);
     expect(result.notes).toHaveLength(2); // One from each side
     expect(result.avgIntensity).toBe(50); // (50 + 50) / 2
@@ -78,6 +95,12 @@ describe('frame-processor', () => {
 
   test('processFrameWithState updates module state', async () => {
     const frameData = new Uint8ClampedArray(100 * 100 * 4);
+    for (let i = 0; i < frameData.length; i += 4) {
+      frameData[i] = 100;
+      frameData[i+1] = 50;
+      frameData[i+2] = 25;
+      frameData[i+3] = 255;
+    }
     const result = await processFrameWithState(frameData, 100, 100);
     expect(result.notes).toHaveLength(2);
     expect(result.avgIntensity).toBe(50);

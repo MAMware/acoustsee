@@ -1,6 +1,10 @@
 // File: web/main.js
 import { setupUIController } from './ui/ui-controller.js';
 import { createEventDispatcher } from './core/dispatcher.js';
+import { createEngine } from './core/engine.js';
+import { setupInputMapper } from './ui/ui-input-mapper.js';
+import { setupUIRenderer } from './ui/ui-renderer.js';
+import { setupUIEffectsHandler } from './ui/ui-effects-handler.js';
 import { settings, setAutoFpsBenchmark } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM } from './core/context.js';
@@ -134,15 +138,17 @@ async function init() {
         }
       } catch (textErr) {
         setupErrors.push({ baseKey, message: textErr.message });
-        // Continue with best-effort: set fallback
+        // Continue with best-effort: attempt localized fallbacks, then raw key
         if (setAria) {
-          el.setAttribute('aria-label', baseKey);
-          announceMessage(baseKey);
+          const fallbackAria = await getTextCached(`${baseKey}.aria`, {}).catch(() => baseKey);
+          el.setAttribute('aria-label', fallbackAria);
+          announceMessage(fallbackAria);
         }
         if (shouldSetText) {
-          el.textContent = baseKey;
-          announceMessage(baseKey);
-          speakText(baseKey);
+          const fallbackText = await getTextCached(`${baseKey}.text`, {}).catch(() => baseKey);
+          el.textContent = fallbackText;
+          announceMessage(fallbackText);
+          speakText(fallbackText);
         }
       }
     }
@@ -152,6 +158,26 @@ async function init() {
 
     const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
+
+    // --- Headless engine: instantiate and wire a thin UI input mapper ---
+    const engine = createEngine();
+    try {
+      setupInputMapper(DOM, engine);
+  // UI renderer subscribes to engine state and updates DOM presentation
+  try { setupUIRenderer(DOM, engine); } catch (e) { structuredLog('WARN', 'setupUIRenderer failed', { error: e?.message || String(e) }); }
+  try { setupUIEffectsHandler(engine, DOM); } catch (e) { structuredLog('WARN', 'setupUIEffectsHandler failed', { error: e?.message || String(e) }); }
+    } catch (e) {
+      structuredLog('WARN', 'setupInputMapper failed', { error: e?.message || String(e) });
+    }
+
+    // Bridge engine state changes to the existing dispatcher so legacy UI continues to work
+    engine.onStateChange((newState) => {
+      try {
+        if (typeof dispatchEvent === 'function') dispatchEvent('updateUI', { state: newState });
+      } catch (e) {
+        structuredLog('WARN', 'engine -> dispatchEvent updateUI failed', { error: e?.message || String(e) });
+      }
+    });
 
     // --- Audio manager and gated startup (user gesture required) ---
     // Create a shared AudioManager and expose it on the DOM for other modules.
@@ -164,36 +190,59 @@ async function init() {
     if (DOM.powerOn) {
       DOM.powerOn.addEventListener('click', async (ev) => {
         ev.preventDefault();
+        // Disable while attempting to initialize to avoid duplicate gestures
+        DOM.powerOn.disabled = true;
+        const origLabel = DOM.powerOn.textContent;
         try {
-          // Visual transition: hide splash, show main container
+          // Show a localized "initializing" label if available
+          try {
+            const initLabel = await getTextCached('powerOn.initializing', {});
+            if (initLabel) DOM.powerOn.textContent = initLabel;
+          } catch (e) { /* best-effort */ }
+
+          // Attempt to unlock audio within the user gesture
+          const unlocked = await audioManager.unlockAudio(ev);
+          if (!unlocked) {
+            // Keep splash visible; inform user and allow retry
+            const msg = await getTextCached('audio.unavailable', {}).catch(() => 'Audio unavailable. Tap to try again.');
+            announceMessage(msg);
+            try { trackFeatureUse('power-on', { success: false }); } catch (e) {}
+            DOM.powerOn.disabled = false;
+            DOM.powerOn.textContent = origLabel;
+            return;
+          }
+
+          // Initialize audio graph and processor now that we have user gesture
+          try {
+            await audioManager.initialize();
+            try { await initializeAudio(audioManager.context); } catch (e) { /* non-fatal */ }
+            await audioManager.resume();
+          } catch (inner) {
+            addSessionError({ message: 'audio-init-failed', error: inner?.message || String(inner) });
+            structuredLog('ERROR', 'Audio initialization failed after unlock', { error: inner?.message || String(inner) });
+            const failMsg = await getTextCached('audio.initFailed', {}).catch(() => 'Audio initialization failed. You may need to tap again.');
+            announceMessage(failMsg);
+            DOM.powerOn.disabled = false;
+            DOM.powerOn.textContent = origLabel;
+            return;
+          }
+
+          // All good — reveal main UI
           if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
           if (DOM.mainContainer) DOM.mainContainer.style.display = '';
-
-          // Attempt to unlock audio in the context of the user gesture.
-          const unlocked = await audioManager.unlockAudio(ev);
-          if (unlocked) {
-            try {
-              await audioManager.initialize();
-              // Ensure audio-processor initializes with the manager's context
-              try { await initializeAudio(audioManager.context); } catch(e){}
-              await audioManager.resume();
-            } catch (inner) {
-              addSessionError({ message: 'audio-init-failed', error: inner?.message || String(inner) });
-              structuredLog('ERROR', 'Audio initialization failed after unlock', { error: inner?.message || String(inner) });
-              announceMessage('Audio initialization failed. You may need to tap again.');
-            }
-            structuredLog('INFO', 'Startup: audio unlocked and initialized');
-            try { trackFeatureUse('power-on', { success: true }); } catch(e){}
-          } else {
-            announceMessage('Audio unavailable. Tap to try again.');
-            try { trackFeatureUse('power-on', { success: false }); } catch(e){}
-          }
-          // Mark button pressed state for accessibility
           DOM.powerOn.setAttribute('aria-pressed', 'true');
+
+          const onMsg = await getTextCached('audioOn').catch(() => null);
+          if (onMsg) speakText(onMsg);
+          try { dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false }); } catch (e) {}
+          try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
         } catch (err) {
           addSessionError({ message: 'power-on-failed', error: err?.message || String(err) });
           structuredLog('ERROR', 'Power on handler failed', { error: err?.message || String(err) });
-          announceMessage('Startup failed. Check console for details.');
+          const startupFailMsg = await getTextCached('startup.failed', {}).catch(() => 'Startup failed. Check console for details.');
+          announceMessage(startupFailMsg);
+          DOM.powerOn.disabled = false;
+          DOM.powerOn.textContent = origLabel;
         }
       }, { once: false });
     }
@@ -387,65 +436,13 @@ async function init() {
     return langId;
   }
 
-  // Update the language button's visible label and aria using translations
-  async function updateLanguageButton() {
-    try {
-      if (!DOM.button3) return;
-      const langId = settings.language || (settings.availableLanguages[0] && settings.availableLanguages[0].id) || 'en-US';
-      const languageName = languageNameFor(langId);
-      const text = await getText('button3.normal.text', { languageName });
-      const aria = await getText('button3.normal.aria', { languageName });
-      const span = DOM.button3.querySelector('.button-text') || DOM.button3;
-      if (span) span.textContent = text;
-      DOM.button3.setAttribute('aria-label', aria || text);
-    } catch (e) {
-      structuredLog('WARN', 'updateLanguageButton failed', { error: e?.message || String(e) });
-    }
-  }
+  // Language rendering and cycling have been migrated into the headless
+  // engine (`core/engine.js`) and the UI renderer/mapper
+  // (`ui/ui-input-mapper.js` and `ui/ui-renderer.js`).
 
-  // Cycle to the next available language, preload translations, apply them, and announce
-  async function cycleLanguage() {
-    try {
-      const langs = (settings.availableLanguages || []).map(l => l.id);
-      if (!langs || langs.length === 0) return;
-      const current = settings.language || langs[0];
-      const idx = Math.max(0, langs.indexOf(current));
-      const next = langs[(idx + 1) % langs.length];
-  // setLanguage persists the selection and preloads translations
-  await setLanguage(next);
-  // Re-run translation pass using shared helper
-  translatePage(document);
-  await updateLanguageButton();
-      // Announce change via TTS and visible announcement
-      const languageName = languageNameFor(next);
-      try {
-        const announce = await getText('button3.tts.languageSelect', { state: languageName });
-        announceMessage(announce);
-        speakText(announce);
-      } catch (e) {
-        // fallback minimal announce
-        announceMessage(`Language set to ${languageName}`);
-        speakText(`Language set to ${languageName}`);
-      }
-  try { trackFeatureUse('language-switch', { language: next }); } catch (e) {}
-  // Notify dispatcher/other modules
-  try { if (typeof dispatchEvent === 'function') dispatchEvent('languageChanged', { language: next }); } catch (e) {}
-    } catch (e) {
-      structuredLog('ERROR', 'cycleLanguage failed', { error: e?.message || String(e) });
-    }
-  }
-
-  // Attach handler to DOM.button3 (language button)
-  try {
-    if (DOM.button3) {
-      DOM.button3.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        await cycleLanguage();
-      });
-    }
-  } catch (e) {
-    structuredLog('WARN', 'Failed to attach language switch handler', { error: e?.message || String(e) });
-  }
+  // Legacy inline DOM handler for language has been migrated to the headless
+  // engine + UI mapper. The renderer will update labels automatically.
+  // (See web/ui/ui-input-mapper.js and web/ui/ui-renderer.js)
 
     // Console overrides moved here to break circular dependency
     function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
@@ -501,67 +498,9 @@ async function init() {
       timeframeMs: ERROR_TIMEFRAME_MS
     });
     
-    // --- Camera toggle helper bound to overlay button (#button1) ---
-    (function setupCameraToggle() {
-      const btn = DOM.button1;
-      const video = DOM.videoFeed;
-
-      if (!btn || !video) return;
-
-      async function startCamera() {
-        try {
-          await mediaStartCamera(video, { facingMode: 'environment' });
-          btn.setAttribute('aria-pressed', 'true');
-          const stopLabel = btn.querySelector('.button-text');
-          if (stopLabel) stopLabel.textContent = await getText('button1.normal.stop.text');
-          DOM._startCameraFrameCapture && DOM._startCameraFrameCapture();
-          // start auto-FPS benchmark (same behavior as before)
-          (async () => {
-            try {
-              if (settings.autoFPS && !DOM._autoFpsBenchRun) {
-                DOM._autoFpsBenchRun = true;
-                const intervalMs = await computeAutoInterval();
-                if (intervalMs && Number.isFinite(intervalMs)) {
-                  const fps = Math.max(8, Math.min(30, Math.round(1000 / intervalMs)));
-                  settings.updateInterval = fps; // store FPS as the updateInterval
-                  structuredLog('INFO', 'auto-fps-benchmark-complete', { intervalMs, fps });
-                  try { if (typeof dispatchEvent === 'function') dispatchEvent('updateUI', { autoFpsBenchmark: settings.autoFpsBenchmark }); } catch(e){}
-                }
-              }
-            } catch (e) {
-              addSessionError({ message: 'auto-fps-benchmark-failed', error: e?.message || String(e) });
-            }
-          })();
-        } catch (e) {
-          structuredLog('ERROR', 'Failed to start camera', { error: e?.message || String(e) });
-        }
-      }
-
-      async function stopCamera() {
-        try {
-          mediaStopCamera(video);
-          btn.setAttribute('aria-pressed', 'false');
-          const startLabel = btn.querySelector('.button-text');
-          if (startLabel) {
-            getText('button1.normal.start.text').then(text => { startLabel.textContent = text; }).catch(() => {});
-          }
-          DOM._stopCameraFrameCapture && DOM._stopCameraFrameCapture();
-        } catch (e) {
-          addSessionError({ message: 'stop-camera-failed', error: e?.message || String(e) });
-          structuredLog('WARN', 'Failed to fully stop camera', { error: e?.message || String(e) });
-        }
-      }
-
-      btn.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        const pressed = btn.getAttribute('aria-pressed') === 'true';
-        if (pressed) {
-          await stopCamera();
-        } else {
-          await startCamera();
-        }
-      });
-    })();
+  // Camera control and Auto-FPS behavior migrated to headless engine + UI mapper.
+  // Use `engine.dispatch('startCamera'|'stopCamera'|'toggleCamera', { videoEl: DOM.videoFeed })`
+  // and `engine.dispatch('toggleAutoFps')`. The renderer updates button labels.
   } catch (err) {
     // --- EMERGENCY INGEST BEACON ---
     emergencyTrack('init-failure', {
@@ -580,13 +519,15 @@ async function init() {
     } // Add more categories as needed
     structuredLog('ERROR', 'init error', { message: specificMessage, data: errorData, stack: err.stack });
     originalConsole.error('init error:', err.message);
-    try {
+      try {
       const errorText = await getText('init.tts.error');
       speakText(errorText);
-      announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
+      const initFail = await getTextCached('init.failed', { specificMessage }).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
+      announceMessage(initFail);
     } catch (ttsErr) {
       originalConsole.error('TTS error:', ttsErr.message);
-      announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
+      const initFail = await getTextCached('init.failed', { specificMessage }).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
+      announceMessage(initFail);
     }
   }
 }

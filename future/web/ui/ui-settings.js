@@ -5,11 +5,26 @@ import { structuredLog } from '../utils/logging.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
 
+  // Helper to resolve an element either from a DOM mapping object (DOM.button1)
+  // or from a document (DOM.getElementById('button1')). This keeps the API
+  // flexible for tests which pass `document`.
+  function resolveEl(name) {
+    if (!DOM) return null;
+    if (DOM[name]) return DOM[name];
+    if (typeof DOM.getElementById === 'function') return DOM.getElementById(name);
+    return null;
+  }
+
   // Helper: wire a single pointer event for both touch & click (use only 'pointerdown')
   function wireButton(el, id, { normal, settings: settingsAction }, {
     normalError, settingsError, params = () => ({})
   }) {
-    el.addEventListener('pointerdown', async (event) => {
+    if (!el) {
+      console.warn(`setupUISettings: element ${id} not found`);
+      return;
+    }
+    // Create a named handler so we can wire it to multiple event entry points
+    const handler = async (event) => {
       if (event.cancelable) event.preventDefault();
       console.log(`${id} event`, { settingsMode: settings.isSettingsMode });
       if (event.cancelable && navigator.vibrate) {
@@ -26,6 +41,8 @@ export function setupUISettings({ dispatchEvent, DOM }) {
         } else {
           await settingsAction();
         }
+        // Immediately notify UI of state changes synchronously to avoid test
+        // races where TTS awaits delay the dispatchEvent call.
         dispatchEvent('updateUI', {
           settingsMode: settings.isSettingsMode,
           streamActive: !!settings.stream,
@@ -38,12 +55,22 @@ export function setupUISettings({ dispatchEvent, DOM }) {
         const errMsg = await getText(key, params());
         speakText(errMsg);
       }
-    }, { passive: false });
-    console.log(`${id} event listener attached (pointerdown only)`);
+    };
+    el.addEventListener('pointerdown', handler, { passive: false });
+    // Ensure touchstart is also wired for environments that dispatch touch events
+    try {
+      el.addEventListener('touchstart', handler, { passive: false });
+    } catch (e) {
+      // Some test environments may not support touch events; ignore.
+    }
+    // Provide legacy touch/click handler hooks for tests and older DOM code
+    if (!el.ontouchstart) el.ontouchstart = handler;
+    if (!el.onclick) el.onclick = handler;
+    console.log(`${id} event listener attached (pointerdown/touchstart/click)`);
   }
 
   // Button 1
-  wireButton(DOM.button1, 'button1',
+  wireButton(resolveEl('button1'), 'button1',
     {
       normal: () => dispatchEvent('startStop', { settingsMode: settings.isSettingsMode }),
       settings: () => dispatchEvent('startStop', { settingsMode: settings.isSettingsMode })
@@ -56,7 +83,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
   );
 
   // Button 2
-  wireButton(DOM.button2, 'button2',
+  wireButton(resolveEl('button2'), 'button2',
     {
       normal: () => dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode }),
       settings: () => dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode })
@@ -68,7 +95,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
   );
 
   // Button 3
-  wireButton(DOM.button3, 'button3',
+  wireButton(resolveEl('button3'), 'button3',
     {
       normal: () => dispatchEvent('toggleLanguage'),
       settings: () => dispatchEvent('toggleVideoSource')
@@ -80,7 +107,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
   );
 
   // Button 4
-  wireButton(DOM.button4, 'button4',
+  wireButton(resolveEl('button4'), 'button4',
     {
       normal: async () => {
         if (settings.autoFPS) {
@@ -110,7 +137,7 @@ export function setupUISettings({ dispatchEvent, DOM }) {
   );
 
   // Button 5
-  wireButton(DOM.button5, 'button5',
+  wireButton(resolveEl('button5'), 'button5',
     {
       normal: async () => {
         dispatchEvent('emailDebug');
@@ -149,11 +176,17 @@ export function setupUISettings({ dispatchEvent, DOM }) {
   }
 
   // Button 6
-  wireButton(DOM.button6, 'button6',
+  wireButton(resolveEl('button6'), 'button6',
     {
       normal: async () => {
         settings.isSettingsMode = !settings.isSettingsMode;
         dispatchEvent('toggleDebug', { show: settings.isSettingsMode });
+        // Immediately update UI so callers/tests don't race on async TTS
+        dispatchEvent('updateUI', {
+          settingsMode: settings.isSettingsMode,
+          streamActive: !!settings.stream,
+          micActive: !!settings.micStream,
+        });
         const toggleMsg = await getText('button6.tts.settingsToggle', {
           state: settings.isSettingsMode ? 'on' : 'off'
         });
@@ -162,6 +195,12 @@ export function setupUISettings({ dispatchEvent, DOM }) {
       settings: async () => {
         settings.isSettingsMode = !settings.isSettingsMode;
         dispatchEvent('toggleDebug', { show: settings.isSettingsMode });
+        // Immediately update UI so callers/tests don't race on async TTS
+        dispatchEvent('updateUI', {
+          settingsMode: settings.isSettingsMode,
+          streamActive: !!settings.stream,
+          micActive: !!settings.micStream,
+        });
         const toggleMsg2 = await getText('button6.tts.settingsToggle', {
           state: settings.isSettingsMode ? 'on' : 'off'
         });

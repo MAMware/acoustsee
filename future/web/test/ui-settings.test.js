@@ -2,8 +2,14 @@
 import { setupUISettings } from '../ui/ui-settings.js';
 import { settings } from '../core/state.js';
 
-jest.mock('../state.js', () => ({
+jest.mock('../core/state.js', () => ({
   settings: { isSettingsMode: false, stream: null, micStream: null },
+}));
+
+jest.mock('../utils/utils.js', () => ({
+  getText: jest.fn(async () => 'ok'),
+  speakText: jest.fn(),
+  hapticCount: jest.fn()
 }));
 
 describe('ui-settings', () => {

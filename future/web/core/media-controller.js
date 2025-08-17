@@ -1,7 +1,7 @@
 // File: web/core/media-controller.js
 import { trackFeatureUse } from '../core/ingest.js';
 import { addSessionError } from '../utils/performance.js';
-import { announceMessage } from '../utils/utils.js';
+import { announceMessage, getText } from '../utils/utils.js';
 
 let _cameraStream = null;
 
@@ -16,7 +16,12 @@ export async function startCamera(videoEl, constraints = { facingMode: 'environm
     return stream;
   } catch (err) {
     addSessionError({ message: 'start-camera-failed', error: err?.message || String(err) });
-    announceMessage('Unable to access camera.');
+    try {
+      const msg = await getText('camera.unable');
+      announceMessage(msg);
+    } catch (e) {
+      announceMessage('Unable to access camera.');
+    }
     throw err;
   }
 }

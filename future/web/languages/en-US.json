@@ -5,7 +5,8 @@
     "failed": {
       "text": "Audio Failed - Retry",
       "aria": "Retry audio initialization"
-    }
+    },
+    "initializing": "Initializing..."
   },
   "videoFeed": {
     "aria": "Video Feed"
@@ -140,5 +141,22 @@
       },
       "settingsError": "Settings toggle error"
     }
+  },
+  "audio": {
+    "unavailable": "Audio unavailable. Tap to try again.",
+    "initFailed": "Audio initialization failed. You may need to tap again."
+  },
+  "audioOn": "Audio enabled",
+  "startup": {
+    "failed": "Startup failed. Check console for details."
+  },
+  "camera": {
+    "unable": "Unable to access camera."
+  },
+  "language": {
+    "set": "Language set to {languageName}."
+  },
+  "init": {
+    "failed": "Initialization failed: {specificMessage}. Check console for details."
   }
 }

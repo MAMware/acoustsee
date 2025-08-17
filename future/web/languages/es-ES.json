@@ -125,4 +125,25 @@
       "settingsError": "Error al alternar configuración"
     }
   }
+  ,
+  "powerOn": {
+    "initializing": "Inicializando..."
+  },
+  "audio": {
+    "unavailable": "Audio no disponible. Toque para reintentar.",
+    "initFailed": "La inicialización de audio falló. Puede que necesite tocar de nuevo."
+  },
+  "audioOn": "Audio activado",
+  "camera": {
+    "unable": "No se puede acceder a la cámara."
+  },
+  "startup": {
+    "failed": "Error de inicio. Consulte la consola para más detalles."
+  },
+  "language": {
+    "set": "Idioma establecido en {languageName}."
+  },
+  "init": {
+    "failed": "Inicialización fallida: {specificMessage}. Consulte la consola para más detalles."
+  }
 }
