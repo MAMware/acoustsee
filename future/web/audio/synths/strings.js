@@ -36,9 +36,9 @@ export function playStrings(notes = [], ctx = {}) {
       : (typeof note.midi === 'number' ? midiToFreq(note.midi) : 440 + (idx * 20));
 
     const duration = Math.max(0.05, (typeof note.duration === 'number' ? note.duration : 1.0));
-    const amp = Math.min(1, Math.max(0, (typeof note.amplitude === 'number' ? note.amplitude : 0.25)));
-    const decay = typeof note.decay === 'number' ? note.decay : 0.98; // feedback gain multiplier
-    const panVal = typeof note.pan === 'number' ? note.pan : 0;
+  const amp = Math.min(1, Math.max(0, (typeof note.amplitude === 'number' ? note.amplitude : 0.25)));
+  const decay = typeof note.decay === 'number' ? note.decay : 0.98; // feedback gain multiplier
+  const panVal = note.position ? note.position.x : (typeof note.pan === 'number' ? note.pan : 0);
 
     // Karplus-Strong uses a delay time equal to the fundamental period
     const delayTime = Math.max(0.002, 1 / frequency);

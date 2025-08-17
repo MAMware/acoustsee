@@ -28,14 +28,14 @@ export function playFmSynthesis(notes, ctx = {}) {
     pitch: n.pitch ?? n.freq ?? n.frequency ?? 0,
     intensity: n.intensity ?? n.amplitude ?? n.amp ?? 0,
     harmonics: n.harmonics || n.overtones || [],
-    pan: typeof n.pan === 'number' ? n.pan : 0,
+    pan: n.position ? n.position.x : (typeof n.pan === 'number' ? n.pan : 0),
     modFreq: n.modFreq
   })).sort((a, b) => b.intensity - a.intensity);
 
   let modIndex = 0;
 
   for (let i = 0; i < allNotes.length; i++) {
-    const { pitch, intensity, harmonics = [], pan = 0, modFreq } = allNotes[i];
+  const { pitch, intensity, harmonics = [], pan = 0, modFreq } = allNotes[i];
     if (!pitch || intensity <= 0) continue;
 
     const oscData = getOscillator();

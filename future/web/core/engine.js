@@ -8,8 +8,7 @@ import { startMic, stopMic } from './microphone-controller.js';
 import { computeAutoIntervalBenchmark, getPreferredIntervalMs } from '../utils/performance.js';
 import { setAutoFpsBenchmark } from './state.js';
 import { processFrameWithState } from '../video/frame-processor.js';
-import { playAudio } from '../audio/audio-processor.js';
-import { resizeOscillatorPool } from '../audio/audio-processor.js';
+import { playCues, playAudio, resizeOscillatorPool } from '../audio/audio-processor.js';
 
 export function createEngine() {
   const state = settings; // legacy shared settings object for incremental migration
@@ -317,9 +316,9 @@ export function createEngine() {
       const ctx = canvasEl.getContext('2d');
       try { ctx.drawImage(videoEl, 0, 0, w, h); } catch (e) { return null; }
       const img = ctx.getImageData(0, 0, w, h);
-      const result = await processFrameWithState(img.data, w, h);
-      // Dispatch audioPlayNotes intent for other modules to consume
-      try { dispatch('audioPlayNotes', { result }); } catch (e) { /* best-effort */ }
+  const result = await processFrameWithState(img.data, w, h);
+  // Dispatch audioPlayCues intent for other modules to consume
+  try { dispatch('audioPlayCues', { cues: result.cues }); } catch (e) { /* best-effort */ }
       return result;
     } catch (e) {
       structuredLog('WARN', 'engine.processFrame failed', { error: e?.message || String(e) });
@@ -328,6 +327,19 @@ export function createEngine() {
   });
 
   // Play notes: delegate to audio module
+  registerCommandHandler('audioPlayCues', async ({ state: s, payload }) => {
+    try {
+      const cues = payload ? payload.cues : [];
+      if (!Array.isArray(cues) || cues.length === 0) return { played: false };
+      try { await playCues(cues); } catch (e) { structuredLog('WARN', 'audioPlayCues playCues failed', { error: e?.message }); }
+      return { played: true, count: cues.length };
+    } catch (e) {
+      structuredLog('WARN', 'audioPlayCues handler failed', { error: e?.message || String(e) });
+      return { played: false };
+    }
+  });
+
+  // Backward-compatibility: keep audioPlayNotes for modules that still use it.
   registerCommandHandler('audioPlayNotes', async ({ state: s, payload }) => {
     try {
       const notes = payload && payload.result && payload.result.notes ? payload.result.notes : (payload && payload.notes) || [];

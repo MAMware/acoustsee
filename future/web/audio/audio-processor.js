@@ -1,6 +1,7 @@
 import { settings } from "../core/state.js";
 import { getDispatchEvent } from "../core/context.js";
 import { structuredLog } from "../utils/logging.js";  // Add for detailed logging.
+import { soundProfileManifest } from './sound-profiles.js';
 
 // New helper to resize oscillator pool based on grid maxNotes, capped at 100
 export function resizeOscillatorPool(newMax) {
@@ -101,7 +102,7 @@ export async function initializeAudio(context) {
   }
 }
 
-export async function playAudio(notes) {
+export async function playNotes(notes) {
   // Ensure AudioContext is running, with configurable resume attempts
   const maxAttempts = settings.audioResumeAttempts || 2;
   const resumeDelay = settings.audioResumeDelayMs || 100;
@@ -143,7 +144,7 @@ export async function playAudio(notes) {
     // --- REFACTOR: Replace dynamic import with a simple, synchronous find ---
     const engine = settings.availableEngines.find((e) => e.id === settings.synthesisEngine);
     if (!engine || typeof engine.playFunction !== 'function') {
-      structuredLog('ERROR', `playAudio: Engine or playFunction not found`, { synthesisEngine: settings.synthesisEngine });
+      structuredLog('ERROR', `playNotes: Engine or playFunction not found`, { synthesisEngine: settings.synthesisEngine });
     try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Engine not found: ${settings.synthesisEngine}` }); } catch (e) {}
       return;
     }
@@ -156,8 +157,8 @@ export async function playAudio(notes) {
       modulators
     };
 
-    playFunction(notes, contextObj);
-    structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
+  playFunction(notes, contextObj);
+  structuredLog('INFO', 'playNotes: Played notes', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
 
   } catch (err) {
     structuredLog('ERROR', 'playAudio error', { message: err.message });
@@ -213,6 +214,44 @@ export async function cleanupAudio() {
   try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Cleanup audio error: ${err.message}` }); } catch (e) {}
   }
 }
+
+/**
+ * Orchestrator: process an array of AcousticCue objects and play matching sounds.
+ * @param {Array<Object>} cues
+ */
+export async function playCues(cues = []) {
+  if (!audioContext || !isAudioInitialized) {
+    structuredLog('WARN', 'playCues: Audio not initialized.');
+    return;
+  }
+
+  for (const cue of cues) {
+    const profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
+    if (!profile || typeof profile.playFunction !== 'function') {
+      structuredLog('WARN', 'playCues: No valid sound profile found for objectType', { objectType: cue.objectType });
+      continue;
+    }
+
+    const note = {
+      ...profile.params,
+      pitch: (profile.params.basePitch || 440) * (1 + (cue.position?.y || 0) * 0.5),
+      intensity: cue.intensity,
+      position: cue.position
+    };
+
+    try {
+      profile.playFunction([note], { audioContext, getOscillator, oscillatorPool, modulators });
+    } catch (err) {
+      structuredLog('ERROR', 'playCues: Error executing play function', { 
+        synthId: profile.playFunction.name, 
+        error: err.message 
+      });
+    }
+  }
+}
+
+// Backward compatibility export
+export { playNotes as playAudio };
 
 export async function stopAudio() {
   await cleanupAudio();

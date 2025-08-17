@@ -21,17 +21,16 @@ jest.mock('../core/state.js', () => ({
 // Provide a lightweight mapFunction via the grid object to avoid importing the full
 // implementation during tests. mapFunction returns predictable notes and a newFrameData.
 jest.mock('../video/grids/hex-tonnetz.js', () => ({
-  mapFrameToHexTonnetz: jest.fn((frameData, width, height, prev, pan) => ({
-    notes: [{ pitch: 440, intensity: 50, harmonics: [], pan }],
-    newFrameData: new Uint8ClampedArray(frameData.length),
-    avgIntensity: 50
+  mapFrameToCues: jest.fn((frameData, width, height, prev) => ({
+    cues: [{ objectType: 'default_motion', intensity: 0.2, position: { x: 0, y: 0, z: 0 } }],
+    // prior implementation returned newFrameData/avgIntensity; new API returns cues only
   }))
 }));
 
 // After mocking the grid module, update settings.availableGrids to include the
 // actual mapFunction reference so frame-processor's settings.availableGrids finds it.
-const { mapFrameToHexTonnetz } = require('../video/grids/hex-tonnetz.js');
-settings.availableGrids = [{ id: 'hex-tonnetz', mapFunction: mapFrameToHexTonnetz }];
+const { mapFrameToCues } = require('../video/grids/hex-tonnetz.js');
+settings.availableGrids = [{ id: 'hex-tonnetz', mapFunction: mapFrameToCues }];
 
 // Now configure the core/context mocked module to return a stable inner mock
 // so assertions can check that the code under test invoked it.
@@ -40,7 +39,7 @@ const frameDispatchMock = jest.fn();
 context.getDispatchEvent.mockImplementation(() => frameDispatchMock);
 
 // Require the frame-processor module after wiring the context mock
-const { mapFrameToNotes, processFrameWithState, cleanupFrameProcessor } = require('../video/frame-processor.js');
+const { processFrameToCues, processFrameWithState, cleanupFrameProcessor } = require('../video/frame-processor.js');
 
 describe('frame-processor', () => {
   beforeEach(() => {
@@ -49,42 +48,39 @@ describe('frame-processor', () => {
   });
 
   test('mapFrameToNotes handles invalid dimensions', async () => {
-    const result = await mapFrameToNotes(new Uint8ClampedArray(1000), 0, 0, null, null);
+    const result = await processFrameToCues(new Uint8ClampedArray(1000), 0, 0, null, null);
     expect(result).toEqual({
-      notes: [],
+      cues: [],
       prevFrameDataLeft: null,
-      prevFrameDataRight: null,
-      avgIntensity: 0
+      prevFrameDataRight: null
     });
     expect(structuredLog).toHaveBeenCalledWith('ERROR', 'Invalid dimensions for frame processing', { width: 0, height: 0 });
   expect(frameDispatchMock).toHaveBeenCalledWith('logError', { message: 'Invalid dimensions for frame processing: 0x0' });
   });
 
-  test('mapFrameToNotes handles invalid frameData', async () => {
-    const result = await mapFrameToNotes(null, 100, 100, null, null);
+  test('processFrameToCues handles invalid frameData', async () => {
+    const result = await processFrameToCues(null, 100, 100, null, null);
     expect(result).toEqual({
-      notes: [],
+      cues: [],
       prevFrameDataLeft: null,
-      prevFrameDataRight: null,
-      avgIntensity: 0
+      prevFrameDataRight: null
     });
     expect(structuredLog).toHaveBeenCalledWith('ERROR', 'Invalid frameData for processing', { frameDataLength: 0 });
   });
 
-  test('mapFrameToNotes preserves state when resetStateOnError is false', async () => {
+  test('processFrameToCues preserves state when resetStateOnError is false', async () => {
     settings.resetStateOnError = false;
     const prevLeft = new Uint8ClampedArray(1000);
     const prevRight = new Uint8ClampedArray(1000);
-    const result = await mapFrameToNotes(null, 100, 100, prevLeft, prevRight);
+    const result = await processFrameToCues(null, 100, 100, prevLeft, prevRight);
     expect(result).toEqual({
-      notes: [],
+      cues: [],
       prevFrameDataLeft: prevLeft,
-      prevFrameDataRight: prevRight,
-      avgIntensity: 0
+      prevFrameDataRight: prevRight
     });
   });
 
-  test('mapFrameToNotes processes valid data', async () => {
+  test('processFrameToCues processes valid data', async () => {
     const frameData = new Uint8ClampedArray(100 * 100 * 4);
     // Fill with sample RGB data to produce variance
     for (let i = 0; i < frameData.length; i += 4) {
@@ -93,11 +89,10 @@ describe('frame-processor', () => {
       frameData[i+2] = 25; // B
       frameData[i+3] = 255; // A
     }
-    const result = await mapFrameToNotes(frameData, 100, 100, null, null);
-    expect(result.notes).toHaveLength(2); // One from each side
-    expect(result.avgIntensity).toBe(50); // (50 + 50) / 2
-    expect(result.prevFrameDataLeft).toBeInstanceOf(Uint8ClampedArray);
-    expect(result.prevFrameDataRight).toBeInstanceOf(Uint8ClampedArray);
+  const result = await processFrameToCues(frameData, 100, 100, null, null);
+  expect(result.cues).toHaveLength(2); // One from each side
+  expect(result.prevFrameDataLeft).toBeInstanceOf(Uint8ClampedArray);
+  expect(result.prevFrameDataRight).toBeInstanceOf(Uint8ClampedArray);
   });
 
   test('processFrameWithState updates module state', async () => {
@@ -108,11 +103,10 @@ describe('frame-processor', () => {
       frameData[i+2] = 25;
       frameData[i+3] = 255;
     }
-    const result = await processFrameWithState(frameData, 100, 100);
-    expect(result.notes).toHaveLength(2);
-    expect(result.avgIntensity).toBe(50);
-    expect(result.prevFrameDataLeft).toBeInstanceOf(Uint8ClampedArray);
-    expect(result.prevFrameDataRight).toBeInstanceOf(Uint8ClampedArray);
+  const result = await processFrameWithState(frameData, 100, 100);
+  expect(result.cues).toHaveLength(2);
+  expect(result.prevFrameDataLeft).toBeInstanceOf(Uint8ClampedArray);
+  expect(result.prevFrameDataRight).toBeInstanceOf(Uint8ClampedArray);
   });
 
   test('cleanupFrameProcessor resets module state', async () => {

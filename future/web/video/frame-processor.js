@@ -6,7 +6,7 @@ import { structuredLog } from "../utils/logging.js";
 let prevFrameDataLeft = null;
 let prevFrameDataRight = null;
 
-export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRight) {
+export async function processFrameToCues(frameData, width, height, prevLeft, prevRight) {
   try {
     // Guard against invalid dimensions
     if (!width || !height || width <= 0 || height <= 0) {
@@ -15,9 +15,9 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
   try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Invalid dimensions for frame processing: ${width}x${height}` }); } catch (e) {}
       structuredLog('WARN', 'Frame error; state reset', { reset: settings.resetStateOnError, errorType });
       if (settings.resetStateOnError) {
-        return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
+        return { cues: [], prevFrameDataLeft: null, prevFrameDataRight: null };
       }
-      return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+      return { cues: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
     }
 
     // Validate frameData
@@ -25,23 +25,23 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
       const errorType = 'invalidFrameDataTransient';
       structuredLog('ERROR', 'Invalid frameData for processing', { frameDataLength: frameData?.length || 0 });
   try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Invalid frameData: length ${frameData?.length || 0}` }); } catch (e) {}
-      // Transient error: preserve previous state to avoid audio interruption
-      structuredLog('WARN', 'Frame error; transient, preserving state', { reset: false, errorType });
-      return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+  // Transient error: preserve previous state to avoid audio interruption
+  structuredLog('WARN', 'Frame error; transient, preserving state', { reset: false, errorType });
+  return { cues: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
     }
     // New: Initial frame prev data check
     if (!prevLeft || !prevRight) {
-      structuredLog('INFO', 'mapFrameToNotes: Initial frame, no prev data', { width, height });
+      structuredLog('INFO', 'processFrameToCues: Initial frame, no prev data', { width, height });
     }
 
     // --- REFACTOR: Replace dynamic import with a simple, synchronous find ---
     const grid = settings.availableGrids.find((g) => g.id === settings.gridType);
     if (!grid || typeof grid.mapFunction !== 'function') {
-      console.error(`Grid or mapFunction not found for gridType: ${settings.gridType}`);
+  console.error(`Grid or mapFunction not found for gridType: ${settings.gridType}`);
   try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Grid not found: ${settings.gridType}` }); } catch (e) {}
-      return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+  return { cues: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
     }
-    const mapFunction = grid.mapFunction; // Directly access the function, no 'await' needed.
+  const mapFunction = grid.mapFunction; // Directly access the function, no 'await' needed.
 
     // Determine split buffers and copy full RGBA pixels
     const halfWidth = Math.floor(width / 2);
@@ -62,28 +62,27 @@ export async function mapFrameToNotes(frameData, width, height, prevLeft, prevRi
       }
     }
 
-    const leftResult = mapFunction(leftFrameData, halfWidth, height, prevLeft, -1);
-    const rightResult = mapFunction(rightFrameData, halfWidth, height, prevRight, 1);
-    const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
-
-    // Compute average intensity across both frames
-    const avgIntensity = ((leftResult.avgIntensity || 0) + (rightResult.avgIntensity || 0)) / 2;
+    const leftResult = mapFunction(leftFrameData, halfWidth, height, prevLeft);
+    const rightResult = mapFunction(rightFrameData, halfWidth, height, prevRight);
+    const allCues = [...(leftResult.cues || []), ...(rightResult.cues || [])];
 
     return {
-      notes: allNotes,
-      prevFrameDataLeft: leftResult.newFrameData,
-      prevFrameDataRight: rightResult.newFrameData,
-      avgIntensity
+      cues: allCues,
+      // The mapFunction no longer returns newFrameData, so we must manage it here.
+      // For now, we will simply use the current frame data as the "previous" for the next tick.
+      // A more advanced implementation might return the raw motion data.
+      prevFrameDataLeft: leftFrameData,
+      prevFrameDataRight: rightFrameData,
     };
   } catch (err) {
     const errorType = 'exception';
-    console.error("mapFrameToNotes error:", err.message);
+    console.error("processFrameToCues error:", err.message);
   try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Frame mapping error: ${err.message}` }); } catch (e) {}
     structuredLog('WARN', 'Frame error; state reset', { reset: settings.resetStateOnError, errorType });
     if (settings.resetStateOnError) {
-      return { notes: [], prevFrameDataLeft: null, prevFrameDataRight: null, avgIntensity: 0 };
+      return { cues: [], prevFrameDataLeft: null, prevFrameDataRight: null };
     }
-    return { notes: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight, avgIntensity: 0 };
+    return { cues: [], prevFrameDataLeft: prevLeft, prevFrameDataRight: prevRight };
   }
 }
 
@@ -100,17 +99,16 @@ export async function processFrameWithState(frameData, width, height) {
   if (!hasVariance) {
     structuredLog('WARN', 'processFrame: No variance in frame data; preserving previous state', { sampleAvg: sampleSum / 250 });
     // Transient glitch: preserve previous frame data
-    return { notes: [], prevFrameDataLeft, prevFrameDataRight, avgIntensity: 0 };
+    return { cues: [], prevFrameDataLeft, prevFrameDataRight };
   }
-
-  const result = await mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight);
+  const result = await processFrameToCues(frameData, width, height, prevFrameDataLeft, prevFrameDataRight);
   prevFrameDataLeft = result.prevFrameDataLeft;
   prevFrameDataRight = result.prevFrameDataRight;
-  return result;
+  return result; // This now returns an object like { cues: [...] }
 }
 
-// Expose mapFrameToNotes as processFrame for backward compatibility
-export { mapFrameToNotes as processFrame };
+// Expose processFrameToCues as processFrame for backward compatibility
+export { processFrameToCues as processFrame };
 
 /** Cleanup function for frame processor */
 export async function cleanupFrameProcessor() {

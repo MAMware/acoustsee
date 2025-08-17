@@ -27,7 +27,8 @@ export function playSineWave(notes, ctx = {}) {
   });
   const allNotes = notes.slice().sort((a, b) => b.intensity - a.intensity);
   for (let i = 0; i < allNotes.length; i++) {
-    const { pitch, intensity, harmonics = [], pan = 0 } = allNotes[i];
+    const { pitch, intensity, harmonics = [], position } = allNotes[i];
+    const pan = position ? position.x : 0;
     const oscData = getOscillator();
     if (!oscData) continue;
     oscData.osc.type = "sine";
