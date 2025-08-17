@@ -7,6 +7,9 @@ import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCamer
 import { startMic, stopMic } from './microphone-controller.js';
 import { computeAutoIntervalBenchmark } from '../utils/performance.js';
 import { setAutoFpsBenchmark } from './state.js';
+import { processFrameWithState } from '../video/frame-processor.js';
+import { playAudio } from '../audio/audio-processor.js';
+import { resizeOscillatorPool } from '../audio/audio-processor.js';
 
 export function createEngine() {
   const state = settings; // legacy shared settings object for incremental migration
@@ -82,8 +85,9 @@ export function createEngine() {
       const current = s.language || langs[0];
       const idx = Math.max(0, langs.indexOf(current));
       const next = langs[(idx + 1) % langs.length];
-      // Persist selection and preload translations
-      await setLanguage(next);
+  // Persist selection and preload translations
+  await setLanguage(next);
+  s.language = next;
       // Re-run translation pass for the document
       try { await translatePage(document); } catch (e) { /* best-effort */ }
       // Announce change
@@ -174,6 +178,177 @@ export function createEngine() {
     } catch (e) {
       structuredLog('WARN', 'toggleMicrophone failed', { error: e?.message || String(e) });
       throw e;
+    }
+  });
+
+  // Start processing: start camera, set interval to call processFrame, set isProcessing flag
+  registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
+    try {
+      const { videoEl, canvasEl } = payload || {};
+      // Start camera if not active
+      await mediaStartCamera(videoEl, { facingMode: 'environment' });
+      if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
+      // compute interval from fps stored in updateInterval (fps value)
+      const fps = Number(s.updateInterval) || 15;
+      const intervalMs = Math.max(8, Math.round(1000 / Math.max(1, fps)));
+      // schedule processFrame at intervalMs; store timer id on state
+      const timerId = setInterval(() => {
+        // fire-and-forget: dispatch processFrame with DOM refs
+        try { dispatch('processFrame', { videoEl, canvasEl }); } catch (e) { structuredLog('WARN', 'engine.processInterval callback failed', { error: e?.message }); }
+      }, intervalMs);
+      s.processingTimerId = timerId;
+      s.isProcessing = true;
+      return { timerId, intervalMs };
+    } catch (e) {
+      structuredLog('ERROR', 'engine.startProcessing failed', { error: e?.message || String(e) });
+      throw e;
+    }
+  });
+
+  // Stop processing: stop camera, clear timer, reset flags
+  registerCommandHandler('stopProcessing', async ({ state: s, payload }) => {
+    try {
+      const { videoEl } = payload || {};
+      if (s.processingTimerId != null) {
+        try { clearInterval(s.processingTimerId); } catch (e) { /* ignore */ }
+        s.processingTimerId = null;
+      }
+      s.isProcessing = false;
+      try { mediaStopCamera(videoEl); } catch (e) { /* ignore */ }
+      s.stream = null;
+      return { stopped: true };
+    } catch (e) {
+      structuredLog('WARN', 'engine.stopProcessing failed', { error: e?.message || String(e) });
+      throw e;
+    }
+  });
+
+  // Actual frame processing handler: draw video -> read pixels -> call frame-processor
+  registerCommandHandler('processFrame', async ({ state: s, payload }) => {
+    try {
+      const { videoEl, canvasEl } = payload || {};
+      if (!videoEl || !canvasEl) return null;
+      if (videoEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null;
+      const w = videoEl.videoWidth || canvasEl.width || 0;
+      const h = videoEl.videoHeight || canvasEl.height || 0;
+      if (w === 0 || h === 0) return null;
+      const ctx = canvasEl.getContext('2d');
+      try { ctx.drawImage(videoEl, 0, 0, w, h); } catch (e) { return null; }
+      const img = ctx.getImageData(0, 0, w, h);
+      const result = await processFrameWithState(img.data, w, h);
+      // Dispatch audioPlayNotes intent for other modules to consume
+      try { dispatch('audioPlayNotes', { result }); } catch (e) { /* best-effort */ }
+      return result;
+    } catch (e) {
+      structuredLog('WARN', 'engine.processFrame failed', { error: e?.message || String(e) });
+      return null;
+    }
+  });
+
+  // Play notes: delegate to audio module
+  registerCommandHandler('audioPlayNotes', async ({ state: s, payload }) => {
+    try {
+      const notes = payload && payload.result && payload.result.notes ? payload.result.notes : (payload && payload.notes) || [];
+      if (!Array.isArray(notes) || notes.length === 0) return { played: false };
+      try { await playAudio(notes); } catch (e) { structuredLog('WARN', 'audioPlayNotes playAudio failed', { error: e?.message }); }
+      return { played: true, count: notes.length };
+    } catch (e) {
+      structuredLog('WARN', 'audioPlayNotes handler failed', { error: e?.message || String(e) });
+      return { played: false };
+    }
+  });
+
+  // Save settings: persist selected user settings to localStorage and speak feedback
+  registerCommandHandler('saveSettings', async ({ state: s }) => {
+    try {
+      const settingsToSave = {
+        gridType: s.gridType,
+        synthesisEngine: s.synthesisEngine,
+        language: s.language,
+        autoFPS: s.autoFPS,
+        updateInterval: s.updateInterval,
+        dayNightMode: s.dayNightMode,
+        ttsEnabled: s.ttsEnabled,
+        resetStateOnError: s.resetStateOnError,
+        audioResumeAttempts: s.audioResumeAttempts,
+        audioResumeDelayMs: s.audioResumeDelayMs,
+        maxNotes: s.maxNotes
+      };
+      localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
+      const msg = await getText('button4.tts.saveSettings').catch(() => null);
+      if (msg) speakText(msg);
+      return { saved: true };
+    } catch (err) {
+      structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
+      const errorMsg = await getText('button4.tts.saveError').catch(() => null);
+      if (errorMsg) speakText(errorMsg);
+      return { saved: false };
+    }
+  });
+
+  // Load settings: read from localStorage, validate, apply to state and resize audio pool
+  registerCommandHandler('loadSettings', async ({ state: s, dispatch: engineDispatch }) => {
+    try {
+      const savedSettings = localStorage.getItem('acoustsee-settings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        const expected = {
+          gridType: 'string',
+          synthesisEngine: 'string',
+          language: 'string',
+          autoFPS: 'boolean',
+          updateInterval: 'number',
+          dayNightMode: 'string',
+          ttsEnabled: 'boolean',
+          resetStateOnError: 'boolean',
+          audioResumeAttempts: 'number',
+          audioResumeDelayMs: 'number',
+          maxNotes: 'number'
+        };
+        for (const key in expected) {
+          if (Object.hasOwn(parsed, key) && typeof parsed[key] === expected[key]) {
+            s[key] = parsed[key];
+          }
+        }
+        const msg = await getText('button5.tts.loadSettings.loaded').catch(() => null);
+        if (msg) speakText(msg);
+        try { resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed after loadSettings', { err: e?.message || String(e) }); }
+      } else {
+        const msg = await getText('button5.tts.loadSettings.none').catch(() => null);
+        if (msg) speakText(msg);
+      }
+    } catch (err) {
+      structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
+      const errorMsg = await getText('button5.tts.loadError').catch(() => null);
+      if (errorMsg) speakText(errorMsg);
+    } finally {
+      // notify UI via engine.dispatch of the updated state
+      try { await dispatch('updateUI', { settingsMode: s.isSettingsMode, streamActive: !!s.stream, micActive: !!s.micStream }); } catch (e) {}
+      return { loaded: true };
+    }
+  });
+
+  // Cycle Grid: pick next available grid and resize audio pool if grid specifies maxNotes
+  registerCommandHandler('cycleGrid', async ({ state: s }) => {
+    try {
+      const { availableGrids } = s;
+      if (!availableGrids || availableGrids.length === 0) {
+        structuredLog('WARN', 'cycleGrid: No available grids to toggle.');
+        return { ok: false };
+      }
+      const idx = Math.max(0, (availableGrids.findIndex(g => g.id === s.gridType)));
+      const next = availableGrids[(idx + 1) % availableGrids.length];
+      s.gridType = next.id;
+      if (next.maxNotes) {
+        try { resizeOscillatorPool(next.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed on cycleGrid', { err: e?.message || String(e) }); }
+      }
+      const msg = await getText('button1.tts.gridSelect', { state: s.gridType }).catch(() => null);
+      if (msg) speakText(msg);
+      try { await dispatch('updateUI', { settingsMode: s.isSettingsMode, streamActive: !!s.stream, micActive: !!s.micStream }); } catch (e) {}
+      return { grid: s.gridType };
+    } catch (e) {
+      structuredLog('ERROR', 'cycleGrid error', { message: e?.message || String(e) });
+      return { ok: false };
     }
   });
 

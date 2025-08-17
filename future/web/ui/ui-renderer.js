@@ -26,14 +26,27 @@ export function setupUIRenderer(DOM, engine) {
     }
   }
 
+  async function updateGridButton(state) {
+    try {
+      if (!DOM.button1) return; // grid may be shown on button1 in settings mode
+      const grid = state.gridType || (state.availableGrids && state.availableGrids[0] && state.availableGrids[0].id) || 'default';
+      const span = DOM.button1.querySelector('.button-text') || DOM.button1;
+      const text = await getText('button1.normal.gridText', { grid }).catch(() => `Grid: ${grid}`);
+      if (span) span.textContent = text;
+      DOM.button1.setAttribute('data-grid', grid);
+    } catch (e) {
+      console.warn('updateGridButton failed', e);
+    }
+  }
+
   async function updateCameraButton(state) {
     try {
       if (!DOM.button1) return;
-      const active = !!state.stream;
-      DOM.button1.setAttribute('aria-pressed', active ? 'true' : 'false');
-      const span = DOM.button1.querySelector('.button-text') || DOM.button1;
-      const key = active ? 'button1.normal.stop.text' : 'button1.normal.start.text';
-      const text = await getText(key).catch(() => (active ? 'Stop' : 'Start'));
+  const isProcessing = !!state.isProcessing;
+  DOM.button1.setAttribute('aria-pressed', isProcessing ? 'true' : 'false');
+  const span = DOM.button1.querySelector('.button-text') || DOM.button1;
+  const key = isProcessing ? 'button1.normal.stop.text' : 'button1.normal.start.text';
+  const text = await getText(key).catch(() => (isProcessing ? 'Stop' : 'Start'));
       if (span) span.textContent = text;
     } catch (e) {
       console.warn('updateCameraButton failed', e);
@@ -73,6 +86,7 @@ export function setupUIRenderer(DOM, engine) {
     // Render only the parts we own
   updateLanguageButton(state).catch(() => {});
   updateCameraButton(state).catch(() => {});
+  updateGridButton(state).catch(() => {});
   updateAutoFpsButton(state).catch(() => {});
   updateMicButton(state).catch(() => {});
   });

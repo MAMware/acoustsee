@@ -332,89 +332,14 @@ async function init() {
   DOM._stopCameraFrameCapture = stopLoop;
     })();
     
-    /**
-     * Lightweight processFrame wrapper - keep DOM/canvas guards here and
-     * delegate the heavy frame-mapping logic to `video/frame-processor.js`.
-     * This keeps main.js focused on orchestration while the frame-processor
-     * owns pixel-level analysis (Single Responsibility Principle).
-     */
-    async function processFrame() {
-      const video = DOM.videoFeed;
-      const canvas = DOM.frameCanvas;
-      if (!video || !canvas) return null;
-      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null;
-      const w = video.videoWidth || canvas.width;
-      const h = video.videoHeight || canvas.height;
-      if (w === 0 || h === 0) return null;
-      const ctx = canvas.getContext('2d');
-      try { ctx.drawImage(video, 0, 0, w, h); } catch (e) { return null; }
-      const img = ctx.getImageData(0, 0, w, h);
-      return processFrameWithState(img.data, w, h);
-    }
-
-    // Adaptive scheduler: combined rate-limit + single-run lock + one pending
-    let _processingFrame = false;
-    let _pendingFrame = false;
-    let _lastFrameTs = 0;
-
-    const DEFAULT_TARGET_FPS = 15;
-
-    async function computeAutoInterval() {
-      return computeAutoIntervalBenchmark(DOM.videoFeed, DOM.frameCanvas, processFrameWithState, DEFAULT_TARGET_FPS);
-    }
-
-    // Expose the frame processor so update-interval helper can call it when
-    // running a DOM benchmark. This is a pragmatic bridge; the helper prefers
-    // a direct function param but can fall back to this.
-    settings._frameProcessor = processFrameWithState;
-
-    async function getTargetIntervalMs() {
-      const cfg = settings || {};
-      if (cfg.autoFPS) return getPreferredIntervalMs();
-      const targetFPS = Number(cfg.updateInterval) || DEFAULT_TARGET_FPS;
-      return 1000 / targetFPS;
-    }
-
-    async function scheduleProcessFrame() {
-      const now = Date.now();
-      const MIN_INTERVAL_MS = await getTargetIntervalMs();
-
-      if (_processingFrame) {
-        _pendingFrame = true;
-        return;
-      }
-
-      if (now - _lastFrameTs < MIN_INTERVAL_MS) {
-        _pendingFrame = true;
-        return;
-      }
-
-      _processingFrame = true;
-      _lastFrameTs = now;
-
-      try {
-        const result = await processFrame();
-        try {
-          if (typeof dispatchEvent === 'function') dispatchEvent('processFrame', { payload: result || {} });
-        } catch (e) {
-          addSessionError({ message: 'dispatch-after-schedule-failed', error: e?.message || String(e) });
-        }
-      } catch (err) {
-        addSessionError({ message: 'scheduleProcessFrame-failed', error: err?.message || String(err) });
-      } finally {
-        _processingFrame = false;
-        if (_pendingFrame) {
-          _pendingFrame = false;
-          setTimeout(() => { try { scheduleProcessFrame(); } catch (e) { /* ignore */ } }, 0);
-        }
-      }
-    }
-
-    // Expose both for compatibility and the preferred scheduler
-    DOM.processFrame = processFrame;
-    window.processFrame = processFrame;
-  DOM.scheduleProcessFrame = scheduleProcessFrame;
-  window.scheduleProcessFrame = scheduleProcessFrame;
+  // Note: frame processing and scheduling has been migrated into the
+  // headless engine (core/engine.js) as `startProcessing` / `stopProcessing`
+  // and the `processFrame` command. This keeps orchestration inside the
+  // engine; main.js no longer owns scheduling logic. The frame-processor
+  // implementation continues to live in `video/frame-processor.js`.
+  // For backward compatibility, keep a reference to the low-level frame
+  // processor implementation on settings if other helpers need it.
+  settings._frameProcessor = processFrameWithState;
 
   // translatePage moved to utils.utils and reused here
 

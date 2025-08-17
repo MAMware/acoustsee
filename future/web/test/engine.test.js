@@ -10,6 +10,23 @@ jest.mock('../core/microphone-controller.js', () => ({
   stopMic: jest.fn()
 }));
 
+jest.mock('../audio/audio-processor.js', () => ({
+  playAudio: jest.fn()
+}));
+
+jest.mock('../utils/utils.js', () => ({
+  getText: jest.fn(async (key) => key),
+  speakText: jest.fn(),
+  setLanguage: jest.fn(),
+  translatePage: jest.fn(),
+  announceMessage: jest.fn()
+}));
+
+jest.mock('../audio/audio-processor.js', () => ({
+  playAudio: jest.fn(),
+  resizeOscillatorPool: jest.fn()
+}));
+
 jest.mock('../core/state.js', () => {
   const settings = { autoFPS: true, updateInterval: 15, autoFpsBenchmark: {}, micStream: null };
   return {
@@ -94,5 +111,83 @@ describe('engine camera and benchmark handlers', () => {
     const stopRes = await engine.dispatch('toggleMicrophone');
     expect(mic.stopMic).toHaveBeenCalled();
     expect(settings.micStream).toBeNull();
+  });
+
+  test('startProcessing sets interval and marks processing state', async () => {
+    jest.useFakeTimers();
+    const videoEl = { srcObject: null, videoWidth: 100, videoHeight: 100, readyState: 4, getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(100 * 100 * 4) }) }) };
+    media.isCameraActive.mockReturnValue(false);
+    media.startCamera.mockImplementation(async (video) => { video.srcObject = {}; return {}; });
+
+    const engine = createEngine();
+    const res = await engine.dispatch('startProcessing', { videoEl, canvasEl: { width: 100, height: 100, getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(100 * 100 * 4) }) }) } });
+
+    expect(media.startCamera).toHaveBeenCalled();
+    // Timer ID should be stored on settings
+    expect(settings.processingTimerId).toBeDefined();
+    expect(settings.isProcessing).toBe(true);
+    jest.useRealTimers();
+  });
+
+  test('stopProcessing clears interval and unsets processing state', async () => {
+    jest.useFakeTimers();
+    // Simulate an existing timer
+    settings.processingTimerId = 12345;
+    const clearSpy = jest.spyOn(global, 'clearInterval');
+    const videoEl = { srcObject: {}, videoWidth: 100, videoHeight: 100 };
+    const engine = createEngine();
+    const res = await engine.dispatch('stopProcessing', { videoEl });
+    expect(clearSpy).toHaveBeenCalledWith(12345);
+    expect(settings.processingTimerId).toBeNull();
+    expect(settings.isProcessing).toBe(false);
+    clearSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  test('audioPlayNotes delegates to playAudio with notes payload', async () => {
+    const audio = require('../audio/audio-processor.js');
+    const engine = createEngine();
+    const notes = [{ pitch: 440, intensity: 0.5 }];
+    await engine.dispatch('audioPlayNotes', { notes });
+    expect(audio.playAudio).toHaveBeenCalledWith(notes);
+  });
+
+  test('cycleLanguage updates settings.language', async () => {
+    const utils = require('../utils/utils.js');
+    settings.availableLanguages = [{ id: 'en-US' }, { id: 'es-ES' }];
+    settings.language = 'en-US';
+    const engine = createEngine();
+    await engine.dispatch('cycleLanguage');
+    expect(settings.language).toBe('es-ES');
+    expect(utils.setLanguage).toHaveBeenCalled();
+  });
+
+  test('saveSettings writes to localStorage and speaks confirmation', async () => {
+    const engine = createEngine();
+    // spy on localStorage
+    const storageSpy = jest.spyOn(window.localStorage.__proto__, 'setItem');
+    await engine.dispatch('saveSettings');
+    expect(storageSpy).toHaveBeenCalledWith('acoustsee-settings', expect.any(String));
+    storageSpy.mockRestore();
+  });
+
+  test('loadSettings reads from localStorage and applies values', async () => {
+    const engine = createEngine();
+    const sample = JSON.stringify({ gridType: 'hex-tonnetz', maxNotes: 32, language: 'es-ES' });
+    jest.spyOn(window.localStorage.__proto__, 'getItem').mockReturnValue(sample);
+    await engine.dispatch('loadSettings');
+    expect(settings.gridType).toBe('hex-tonnetz');
+    expect(settings.maxNotes).toBe(32);
+    window.localStorage.getItem.mockRestore();
+  });
+
+  test('cycleGrid rotates settings.gridType', async () => {
+    settings.availableGrids = [{ id: 'g1' }, { id: 'g2' }, { id: 'g3', maxNotes: 20 }];
+    settings.gridType = 'g1';
+    const engine = createEngine();
+    await engine.dispatch('cycleGrid');
+    expect(settings.gridType).toBe('g2');
+    await engine.dispatch('cycleGrid');
+    expect(settings.gridType).toBe('g3');
   });
 });
