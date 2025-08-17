@@ -105,10 +105,17 @@ export async function cleanupFrameProcessor() {
 }
 
 // --- Test-only export for setting internal state ---
-if (process.env.NODE_ENV === 'test') {
+// Guard against browser environments where `process` and `module` are undefined.
+if (typeof process !== 'undefined' && process && process.env && process.env.NODE_ENV === 'test') {
   // Provide a CommonJS export so tests using require(...) can access it.
   // eslint-disable-next-line no-undef
-  module.exports.__setPrevFrameDataForTest = (data) => {
-    prevFrameData = data;
-  };
+  try {
+    if (typeof module !== 'undefined' && module && module.exports) {
+      module.exports.__setPrevFrameDataForTest = (data) => {
+        prevFrameData = data;
+      };
+    }
+  } catch (e) {
+    // ignore environments where `module`/`module.exports` cannot be assigned
+  }
 }
