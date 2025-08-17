@@ -127,11 +127,11 @@ export async function cleanupFrameProcessor() {
 }
 
 // --- Test-only export for setting internal state ---
-if (process.env.NODE_ENV === 'test') {
+//if (process.env.NODE_ENV === 'test') {
   // Provide a CommonJS export so tests using require(...) can access it.
   // eslint-disable-next-line no-undef
-  module.exports.__setPrevFrameDataForTest = (left, right) => {
-    prevFrameDataLeft = left;
-    prevFrameDataRight = right;
-  };
-}
+ // module.exports.__setPrevFrameDataForTest = (left, right) => {
+   // prevFrameDataLeft = left;
+   // prevFrameDataRight = right;
+  //};
+//}
