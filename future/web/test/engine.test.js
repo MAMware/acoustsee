@@ -11,7 +11,8 @@ jest.mock('../core/microphone-controller.js', () => ({
 }));
 
 jest.mock('../audio/audio-processor.js', () => ({
-  playAudio: jest.fn()
+  playCues: jest.fn(),
+  resizeOscillatorPool: jest.fn()
 }));
 
 jest.mock('../utils/utils.js', () => ({
@@ -148,9 +149,7 @@ describe('engine camera and benchmark handlers', () => {
   jest.useRealTimers();
   });
 
-  test('audioPlayNotes delegates to playAudio with notes payload', async () => {
-    // Legacy audioPlayNotes test removed: engine now uses audioPlayCues/cues.
-  });
+  // Legacy audioPlayNotes test removed: engine now uses audioPlayCues/cues.
 
   test('cycleLanguage updates settings.language', async () => {
     const utils = require('../utils/utils.js');

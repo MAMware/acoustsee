@@ -8,7 +8,7 @@ import { startMic, stopMic } from './microphone-controller.js';
 import { computeAutoIntervalBenchmark, getPreferredIntervalMs } from '../utils/performance.js';
 import { setAutoFpsBenchmark } from './state.js';
 import { processFrameWithState } from '../video/frame-processor.js';
-import { playCues, playAudio, resizeOscillatorPool } from '../audio/audio-processor.js';
+import { playCues, resizeOscillatorPool } from '../audio/audio-processor.js';
 
 export function createEngine() {
   const state = settings; // legacy shared settings object for incremental migration
