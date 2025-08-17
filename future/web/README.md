@@ -248,3 +248,68 @@ We collect a small amount of anonymous usage data to help prioritize features an
 **Love.**
 *Union.*
 **Respect.**
+ 
+---
+
+## Dispatch wiring (context-based)
+
+Overview
+
+This project uses a small context helper to wire a single dispatch function across legacy modules.
+
+Key functions
+
+- `setDispatchEvent(fn)` — register the global dispatch function (call once at app startup).
+- `getDispatchEvent()` — returns the currently-registered dispatch function; modules call this at runtime to obtain the dispatcher.
+
+When to call
+
+- Create the engine (headless core) early in `main.js` and call `setDispatchEvent(engine.dispatch)` so legacy modules that call `getDispatchEvent()` will receive the engine's dispatch. Example (in `future/web/main.js`):
+
+```js
+import { setDispatchEvent } from './core/context.js';
+import { createEngine } from './core/engine.js';
+
+const engine = createEngine();
+setDispatchEvent(engine.dispatch);
+```
+
+How modules should use it
+
+- Do NOT import the old `dispatcher.js` module. Instead, obtain the dispatch function at the call site and invoke it directly. Keep calls synchronous where the caller expects immediate effects.
+
+Example:
+
+```js
+import { getDispatchEvent } from './core/context.js';
+
+function someErrorHandler(err) {
+        try {
+                const dispatch = getDispatchEvent();
+                if (typeof dispatch === 'function') dispatch('logError', { message: err.message });
+        } catch (e) {
+                // best-effort: don't crash if context isn't wired
+        }
+}
+```
+
+Testing notes
+
+- Unit tests should mock `getDispatchEvent` from `core/context.js` and, if necessary, configure the inner returned function so assertions can observe calls. Example in Jest:
+
+```js
+jest.mock('../core/context.js', () => ({
+        getDispatchEvent: jest.fn(),
+        getDOM: jest.fn()
+}));
+const context = require('../core/context.js');
+const dispatchMock = jest.fn();
+context.getDispatchEvent.mockImplementation(() => dispatchMock);
+
+// then assert dispatchMock was called
+```
+
+Why this pattern
+
+- Keeps the engine headless and avoids a global imperative dispatcher module.
+- Allows a single source-of-truth dispatch function (the engine) while keeping legacy modules decoupled.
