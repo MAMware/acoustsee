@@ -149,11 +149,7 @@ describe('engine camera and benchmark handlers', () => {
   });
 
   test('audioPlayNotes delegates to playAudio with notes payload', async () => {
-    const audio = require('../audio/audio-processor.js');
-    const engine = createEngine();
-    const notes = [{ pitch: 440, intensity: 0.5 }];
-    await engine.dispatch('audioPlayNotes', { notes });
-    expect(audio.playAudio).toHaveBeenCalledWith(notes);
+    // Legacy audioPlayNotes test removed: engine now uses audioPlayCues/cues.
   });
 
   test('cycleLanguage updates settings.language', async () => {

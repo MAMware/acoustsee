@@ -24,18 +24,21 @@ export function playFmSynthesis(notes, ctx = {}) {
   });
 
   // Normalize notes: accept pitch / freq / frequency and intensity / amplitude
+  // Note: spatial information is provided via `position: { x, y, z }`. Use
+  // position.x as the azimuth value for panning. We normalize into a local
+  // variable named `azimuth` to make intent clear.
   const allNotes = (notes || []).slice().map(n => ({
     pitch: n.pitch ?? n.freq ?? n.frequency ?? 0,
     intensity: n.intensity ?? n.amplitude ?? n.amp ?? 0,
     harmonics: n.harmonics || n.overtones || [],
-    pan: n.position ? n.position.x : (typeof n.pan === 'number' ? n.pan : 0),
+    azimuth: n.position ? n.position.x : (typeof n.pan === 'number' ? n.pan : 0),
     modFreq: n.modFreq
   })).sort((a, b) => b.intensity - a.intensity);
 
   let modIndex = 0;
 
   for (let i = 0; i < allNotes.length; i++) {
-  const { pitch, intensity, harmonics = [], pan = 0, modFreq } = allNotes[i];
+  const { pitch, intensity, harmonics = [], azimuth = 0, modFreq } = allNotes[i];
     if (!pitch || intensity <= 0) continue;
 
     const oscData = getOscillator();
@@ -52,7 +55,7 @@ export function playFmSynthesis(notes, ctx = {}) {
       oscData.gain.gain.setTargetAtTime(Math.min(1, intensity), now, 0.015);
     }
     if (oscData.panner && typeof oscData.panner.pan.setTargetAtTime === 'function') {
-      oscData.panner.pan.setTargetAtTime(pan, now, 0.015);
+      oscData.panner.pan.setTargetAtTime(azimuth, now, 0.015);
     }
     oscData.active = true;
 
@@ -125,7 +128,7 @@ export function playFmSynthesis(notes, ctx = {}) {
         harmonicOsc.gain.gain.setTargetAtTime(Math.min(1, intensity * 0.5), now, 0.015);
       }
       if (harmonicOsc.panner && typeof harmonicOsc.panner.pan.setTargetAtTime === 'function') {
-        harmonicOsc.panner.pan.setTargetAtTime(pan, now, 0.015);
+        harmonicOsc.panner.pan.setTargetAtTime(azimuth, now, 0.015);
       }
       harmonicOsc.active = true;
     }

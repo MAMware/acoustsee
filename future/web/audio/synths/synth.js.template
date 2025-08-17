@@ -28,6 +28,8 @@ export function playPluginTemplate(notes = [], ctx = {}) {
 
   // Very small example: for each note, obtain an oscillator from the shared pool,
   // set frequency and a simple gain envelope, then mark it inactive after duration.
+  // Notes should include an optional `position: { x, y, z }` property; use
+  // `position.x` for stereo panning instead of a raw `pan` property.
   notes.forEach((note, i) => {
   try {
   const oscObj = getOscillator();
@@ -44,7 +46,7 @@ export function playPluginTemplate(notes = [], ctx = {}) {
       try { gain.gain.cancelScheduledValues(now); gain.gain.setValueAtTime(0, now); } catch (e) {}
       try { gain.gain.linearRampToValueAtTime(amp, now + 0.01); } catch (e) {}
       try { gain.gain.linearRampToValueAtTime(0, now + duration); } catch (e) {}
-      try { panner.pan.setValueAtTime(note.pan || 0, now); } catch (e) {}
+  try { panner.pan.setValueAtTime((note.position && note.position.x) || (note.pan || 0), now); } catch (e) {}
 
       // Schedule a cleanup to mark oscillator available again after the note finishes
       setTimeout(() => {

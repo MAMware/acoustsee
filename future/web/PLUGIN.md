@@ -17,9 +17,9 @@ Example (minimal):
 }
 */
 
-Engine contract (synths)
+-Engine contract (synths)
 - Export a play function with signature: `export function playXxx(notes, ctx = {})`.
-- `notes` is an array of note objects: { pitch: number, intensity: number, harmonics?: number[], pan?: number }
+- `notes` is an array of note objects: each item SHOULD include `{ pitch: number, intensity: number, harmonics?: number[], position?: { x, y, z } }` where `position.x` is used for azimuth/panning.
 - `ctx` will contain at least:
   - `audioContext` (AudioContext)
   - `getOscillator()` function
@@ -27,9 +27,10 @@ Engine contract (synths)
 - Engines MUST NOT create their own AudioContext or global oscillator pools.
 
 Grid contract (video grids)
-- Export a map function: `export function mapFrameToX(frameData, ctx = {})`.
-- `frameData` is a simple object with pixel/image data to analyze.
-- `ctx` can contain canvas, width/height, and any runtime config.
+ - Export a map function: `export function mapFrameToX(frameData, ctx = {})`.
+ - The map function should return an object shaped like `{ cues: [ { objectType, intensity, position } ] }` where `position` is normalized to [-1..1] and `objectType` is a string describing the detected object type.
+ - `frameData` is a simple object with pixel/image data to analyze.
+ - `ctx` can contain canvas, width/height, and any runtime config.
 
 Indexing
 - Run `node future/scripts/file-indexer.js` to regenerate `available-synths.js` and `available-grids.js`.

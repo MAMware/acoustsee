@@ -339,18 +339,8 @@ export function createEngine() {
     }
   });
 
-  // Backward-compatibility: keep audioPlayNotes for modules that still use it.
-  registerCommandHandler('audioPlayNotes', async ({ state: s, payload }) => {
-    try {
-      const notes = payload && payload.result && payload.result.notes ? payload.result.notes : (payload && payload.notes) || [];
-      if (!Array.isArray(notes) || notes.length === 0) return { played: false };
-      try { await playAudio(notes); } catch (e) { structuredLog('WARN', 'audioPlayNotes playAudio failed', { error: e?.message }); }
-      return { played: true, count: notes.length };
-    } catch (e) {
-      structuredLog('WARN', 'audioPlayNotes handler failed', { error: e?.message || String(e) });
-      return { played: false };
-    }
-  });
+  // NOTE: Legacy 'audioPlayNotes' handler removed. The engine now only speaks
+  // in terms of AcousticCues and `audioPlayCues`.
 
   // Save settings: persist selected user settings to localStorage and speak feedback
   registerCommandHandler('saveSettings', async ({ state: s }) => {

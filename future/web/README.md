@@ -48,18 +48,20 @@ Launch the app in a web browser to translate live camera input into a dynamic st
 ```
 
 web/
-├── audio/                    # Audio synthesis/processing (notes-to-sound, HRTF, mic)
+├── audio/                    # Audio synthesis/processing (cues-to-sound, HRTF, mic)
 │   ├── audio-controls.js     # PowerOn/AudioContext init
 │   ├── audio-manager.js      # AudioContext management
 │   ├── audio-processor.js    # Core audio (oscillators, playAudio, cleanup; integrates HRTF/ML depth)
+│   ├── sound-profiles.js     # Manifest mapping objectType -> synth profiles
 │   ├── hrtf-processor.js     # HRTF logic (PannerNode, positional filtering)
 │   └── synths/               # Synth methods (extend with HRTF)
 │       ├── sine-wave.js
 │       ├── fm-synthesis.js
 │       └── available-engines.json
-├── video/                    # Video capture/mapping (camera-to-notes/positions; includes ML depth)
+├── video/                    # Video capture/mapping (camera-to-cues/positions; includes ML depth)
 │   ├── video-capture.js      # Stream setup/cleanup
-│   ├── frame-processor.js    # Frame analysis (emits notes/positions; calls ML if enabled)
+│   ├── frame-processor.js    # Frame analysis (emits cues/positions; calls ML if enabled)
+│   ├── motion-detector.js    # Shared motion detection utility (produces moving regions)
 │   ├── ml-depth-processor.js # New: Monocular depth estimation 
 │   └── grids/                # Visual mappings 
 │       ├── hex-tonnetz.js
@@ -131,12 +133,12 @@ This project supports pluggable synth and grid modules. Guidelines for plugin au
 */
 ```
 
-- Synth engines: export a play function with the signature `export function play(notes, ctx = {})`.
-    - `notes` is an array of note objects (engine-specific).
-    - `ctx` is an audio runtime object provided by the app. Engines should read audio resources from `ctx` and must NOT create their own `AudioContext` or global oscillator pools.
-    - Minimum fields to expect on `ctx`: `audioContext`, `getOscillator`, `oscillatorPool`, and `modulators`.
+-- Synth engines: export a play function with the signature `export function play(notes, ctx = {})`.
+        - `notes` is an array of engine-specific note objects. Each note SHOULD include a `position: { x, y, z }` property for spatialization. Synths should read `position.x` for azimuth/panning and may use `position.y` to influence pitch or timbre.
+        - `ctx` is an audio runtime object provided by the app. Engines should read audio resources from `ctx` and must NOT create their own `AudioContext` or global oscillator pools.
+        - Minimum fields to expect on `ctx`: `audioContext`, `getOscillator`, `oscillatorPool`, and `modulators`.
 
-- Grids: export a mapping function that converts frame data into engine inputs. Use the same `ctx` pattern when audio resources are needed.
+-- Grids: export a mapping function that converts frame data into generic `AcousticCue` objects. The grid map function should return an object like `{ cues: [ { objectType, intensity, position } ] }` where `position` is normalized to the range [-1..1] for x and y. Use the same `ctx` pattern when audio resources are needed.
 
 - Lifecycle: the shared `AudioManager` owns the `AudioContext` and user-gesture unlock/resume. The app exposes it via `DOM.audioManager`. Bind to it using `bindAudioManager()` from `audio-processor` or reference `DOM.audioManager` directly in early initialization code.
 

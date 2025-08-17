@@ -60,10 +60,11 @@ export function playSawtoothPad(notes = [], ctx = {}) {
     // --- Standard note parameters ---
   const freq = note.pitch;
   const amp = note.intensity * 0.5; // Pads are usually a bit quieter
-  const pan = note.position ? note.position.x : (note.pan || 0);
+  // Spatialization: prefer note.position.x (normalized -1..1) for azimuth/panning.
+  const azimuth = note.position ? note.position.x : (note.pan || 0);
 
     osc.frequency.setTargetAtTime(freq, now, 0.01);
-  panner.pan.setTargetAtTime(pan, now, 0.01);
+  panner.pan.setTargetAtTime(azimuth, now, 0.01);
 
     // --- Envelope (Attack -> Sustain -> Release) ---
     gain.gain.cancelScheduledValues(now);

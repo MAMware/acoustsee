@@ -44,6 +44,7 @@ graph TD
     Q --> R[Split Frame: Left/Right]
     R --> S[mapFrameToTonnetz]
     S -->|Left Frame| T[Detect Motion, Map to Notes]
+     - Takes parameters from `frameData` as grayscale pixel data among width and height. `prevFrameData` is used for motion detection. The function now produces `AcousticCue` objects that include a `position` field (normalized coordinates) instead of a separate `panValue` parameter.
     S -->|Right Frame| U[Detect Motion, Map to Notes]
     T --> V[Update Oscillators]
     U --> V
@@ -85,8 +86,8 @@ graph TD
     B --> C[Calculate grid width]
     C --> D[Calculate grid height]
     D --> E[Create newFrameData array]
-    E --> F{Previous frame data exists?}
-    
+       S -->|Left Frame| T[Detect Motion, Map to AcousticCues]
+       S -->|Right Frame| U[Detect Motion, Map to AcousticCues]
     F -->|Yes| G[Initialize movingRegions array]
     G --> H[Start loop over height]
     H --> I[Start loop over width]

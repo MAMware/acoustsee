@@ -19,7 +19,7 @@ jest.mock('../core/state.js', () => ({
   }
 }));
 // Provide a lightweight mapFunction via the grid object to avoid importing the full
-// implementation during tests. mapFunction returns predictable notes and a newFrameData.
+// implementation during tests. mapFunction returns predictable cues and a newFrameData.
 jest.mock('../video/grids/hex-tonnetz.js', () => ({
   mapFrameToCues: jest.fn((frameData, width, height, prev) => ({
     cues: [{ objectType: 'default_motion', intensity: 0.2, position: { x: 0, y: 0, z: 0 } }],
@@ -47,7 +47,7 @@ describe('frame-processor', () => {
     settings.resetStateOnError = true;
   });
 
-  test('mapFrameToNotes handles invalid dimensions', async () => {
+  test('processFrameToCues handles invalid dimensions', async () => {
     const result = await processFrameToCues(new Uint8ClampedArray(1000), 0, 0, null, null);
     expect(result).toEqual({
       cues: [],

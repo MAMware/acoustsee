@@ -102,69 +102,6 @@ export async function initializeAudio(context) {
   }
 }
 
-export async function playNotes(notes) {
-  // Ensure AudioContext is running, with configurable resume attempts
-  const maxAttempts = settings.audioResumeAttempts || 2;
-  const resumeDelay = settings.audioResumeDelayMs || 100;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    if (!audioContext) {
-      structuredLog('WARN', 'playAudio: No AudioContext available');
-      return;
-    }
-    if (audioContext.state === 'running') {
-      if (!isAudioInitialized) {
-        structuredLog('WARN', 'playAudio: Audio not initialized', { isAudioInitialized });
-        return;
-      }
-      break; // ready to play
-    }
-    if (audioContext.state === 'suspended') {
-      try {
-        await audioContext.resume();
-        structuredLog('INFO', 'playAudio: Resumed suspended AudioContext');
-        break;
-      } catch (err) {
-        structuredLog('ERROR', 'playAudio: Failed to resume AudioContext', { message: err.message });
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Audio resume failed: ${err.message}` }); } catch (e) {}
-        if (attempt < maxAttempts) {
-          await new Promise(r => setTimeout(r, resumeDelay));
-          continue;
-        }
-        // Final failure fallback
-        structuredLog('ERROR', 'playAudio: Unable to resume AudioContext after retries');
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('audioError', { message: 'Audio unavailable—tap to retry' }); } catch (e) {}
-        return;
-      }
-    }
-    // Unexpected state (closed/interrupted)
-    structuredLog('WARN', 'playAudio: Invalid AudioContext state', { state: audioContext.state });
-    return;
-  }
-  try {
-    // --- REFACTOR: Replace dynamic import with a simple, synchronous find ---
-    const engine = settings.availableEngines.find((e) => e.id === settings.synthesisEngine);
-    if (!engine || typeof engine.playFunction !== 'function') {
-      structuredLog('ERROR', `playNotes: Engine or playFunction not found`, { synthesisEngine: settings.synthesisEngine });
-    try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Engine not found: ${settings.synthesisEngine}` }); } catch (e) {}
-      return;
-    }
-   
-    const playFunction = engine.playFunction; // Directly access the function
-    const contextObj = {
-      audioContext,
-      getOscillator,
-      oscillatorPool,
-      modulators
-    };
-
-  playFunction(notes, contextObj);
-  structuredLog('INFO', 'playNotes: Played notes', { engine: engine.id, noteCount: notes.length, poolSize: oscillatorPool.length });
-
-  } catch (err) {
-    structuredLog('ERROR', 'playAudio error', { message: err.message });
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Play audio error: ${err.message}` }); } catch (e) {}
-  }
-}
 
 export async function cleanupAudio() {
   if (!isAudioInitialized && !audioContext) return;
@@ -250,8 +187,9 @@ export async function playCues(cues = []) {
   }
 }
 
-// Backward compatibility export
-export { playNotes as playAudio };
+// Note: The legacy playNotes / playAudio functions were removed in favor of
+// the cue-based `playCues` orchestrator. If you need to support legacy
+// callers, re-introduce a compatibility wrapper here.
 
 export async function stopAudio() {
   await cleanupAudio();

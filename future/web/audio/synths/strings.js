@@ -10,7 +10,8 @@
 
 // Karplus–Strong plucked-string plugin (starter)
 // - Exports: playKarplusStrongGuitar(notes, ctx = {})
-// - Notes array: items may contain { frequency, midi, duration, amplitude, decay, pan }
+// - Notes array: items may contain { frequency, midi, duration, amplitude, decay, position }
+//   where `position` is { x, y, z } and `position.x` is used for stereo panning.
 // - Uses ctx.audioContext (required). Does NOT create or close AudioContext.
 // - Lightweight: creates short noise excitation and a feedback delay with damping filter.
 
