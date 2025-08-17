@@ -33,7 +33,9 @@ The software is designed to run in most modern mobile and desktop web browsers. 
 
 ### Hypothetical Use Case
 
-Launch the app in a web browser to translate live camera input into a dynamic stereo soundscape. For example, a swinging object might map to a softer sound as it moves away and a louder, richer sound as it approaches. A distant car could render as a low hum, while objects to the left/right are localized with HRTF/panning. The goal is to enable perception of surroundings through an auditory interface, improving independence and situational awareness.
+Launch the app in a web browser to translate live camera input into a continuous, prioritized soundscape using the full camera frame. For example, a swinging object might map to a softer sound as it moves away and a louder, richer sound as it approaches. A distant car could render as a low hum, while objects across the field of view are spatialized using HRTF/panning. The goal is to enable perception of surroundings through an auditory interface, improving independence and situational awareness.
+
+This project follows the "Acoustic Horizon" concept: the system analyzes motion and depth cues across the entire frame, ranks events by priority (depth, intensity, urgency), and sequences audio output accordingly. 
 
 ### [Current Status](#status) 
 

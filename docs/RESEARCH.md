@@ -745,6 +745,8 @@ There is **no camera motion** between $I_L$ and $I_R$. Both halves are from the 
 * There’s no *triangulation* baseline $B$.
 * Any difference between $I_L$ and $I_R$ would be **due to scene content variation**, not geometry.
 
+> Note: In the AcoustSee project we do not rely on naively splitting a single image into left/right halves to infer depth or disparity. Instead, the runtime performs full-frame analysis (motion and monocular depth estimation) and maps cues across the continuous image into prioritized acoustic events (the "Acoustic Horizon" approach). Splitting a single frame is therefore not used as a substitute for multi-view disparity.
+
 #### Mathematical contradiction:
 
 Suppose we try to use disparity formula:

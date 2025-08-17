@@ -48,35 +48,31 @@ describe('frame-processor', () => {
   });
 
   test('processFrameToCues handles invalid dimensions', async () => {
-    const result = await processFrameToCues(new Uint8ClampedArray(1000), 0, 0, null, null);
+    const result = await processFrameToCues(new Uint8ClampedArray(1000), 0, 0, null);
     expect(result).toEqual({
       cues: [],
-      prevFrameDataLeft: null,
-      prevFrameDataRight: null
+      prevFrameData: null
     });
     expect(structuredLog).toHaveBeenCalledWith('ERROR', 'Invalid dimensions for frame processing', { width: 0, height: 0 });
   expect(frameDispatchMock).toHaveBeenCalledWith('logError', { message: 'Invalid dimensions for frame processing: 0x0' });
   });
 
   test('processFrameToCues handles invalid frameData', async () => {
-    const result = await processFrameToCues(null, 100, 100, null, null);
+    const result = await processFrameToCues(null, 100, 100, null);
     expect(result).toEqual({
       cues: [],
-      prevFrameDataLeft: null,
-      prevFrameDataRight: null
+      prevFrameData: null
     });
     expect(structuredLog).toHaveBeenCalledWith('ERROR', 'Invalid frameData for processing', { frameDataLength: 0 });
   });
 
   test('processFrameToCues preserves state when resetStateOnError is false', async () => {
     settings.resetStateOnError = false;
-    const prevLeft = new Uint8ClampedArray(1000);
-    const prevRight = new Uint8ClampedArray(1000);
-    const result = await processFrameToCues(null, 100, 100, prevLeft, prevRight);
+    const prev = new Uint8ClampedArray(1000);
+    const result = await processFrameToCues(null, 100, 100, prev);
     expect(result).toEqual({
       cues: [],
-      prevFrameDataLeft: prevLeft,
-      prevFrameDataRight: prevRight
+      prevFrameData: prev
     });
   });
 
@@ -89,10 +85,9 @@ describe('frame-processor', () => {
       frameData[i+2] = 25; // B
       frameData[i+3] = 255; // A
     }
-  const result = await processFrameToCues(frameData, 100, 100, null, null);
-  expect(result.cues).toHaveLength(2); // One from each side
-  expect(result.prevFrameDataLeft).toBeInstanceOf(Uint8ClampedArray);
-  expect(result.prevFrameDataRight).toBeInstanceOf(Uint8ClampedArray);
+  const result = await processFrameToCues(frameData, 100, 100, null);
+  expect(result.cues).toHaveLength(1);
+  expect(result.prevFrameData).toBeInstanceOf(Uint8ClampedArray);
   });
 
   test('processFrameWithState updates module state', async () => {
@@ -104,14 +99,13 @@ describe('frame-processor', () => {
       frameData[i+3] = 255;
     }
   const result = await processFrameWithState(frameData, 100, 100);
-  expect(result.cues).toHaveLength(2);
-  expect(result.prevFrameDataLeft).toBeInstanceOf(Uint8ClampedArray);
-  expect(result.prevFrameDataRight).toBeInstanceOf(Uint8ClampedArray);
+  expect(result.cues).toHaveLength(1);
+  expect(result.prevFrameData).toBeInstanceOf(Uint8ClampedArray);
   });
 
   test('cleanupFrameProcessor resets module state', async () => {
-    const result = await cleanupFrameProcessor();
-    expect(result).toEqual({ prevFrameDataLeft: null, prevFrameDataRight: null });
+  const result = await cleanupFrameProcessor();
+  expect(result).toEqual({ prevFrameData: null });
     expect(structuredLog).toHaveBeenCalledWith('INFO', 'cleanupFrameProcessor: Resetting frame processor state');
   });
 
@@ -119,8 +113,8 @@ describe('frame-processor', () => {
     structuredLog.mockImplementationOnce(() => {
       throw new Error('Test error');
     });
-    const result = await cleanupFrameProcessor();
-    expect(result).toEqual({ prevFrameDataLeft: null, prevFrameDataRight: null });
+  const result = await cleanupFrameProcessor();
+  expect(result).toEqual({ prevFrameData: null });
     expect(structuredLog).toHaveBeenCalledWith('ERROR', 'cleanupFrameProcessor error', expect.any(Object));
     // The module uses getDispatchEvent() to obtain the dispatch function. Ensure
     // the inner dispatch mock was invoked with logError.
