@@ -11,6 +11,23 @@ body {
   background-color: #f0f0f0;
 }
 
+/* --- UI Mode Placeholders --- */
+body.debug-mode {
+  display: flex;
+  flex-direction: row;
+}
+body.debug-mode #mainContainer {
+  flex-grow: 1;
+}
+/* Styles for the debug panel will go in debug-ui.js or here */
+
+body.accessible-mode #mainContainer {
+  /* The whole screen is the main container */
+  width: 100%;
+  height: 100%;
+}
+
+
 .splash-screen {
   position: fixed;
   top: 0;
@@ -34,42 +51,19 @@ body {
   cursor: pointer;
 }
 
-.instructions-button {
-  font-size: 5vw;
-  padding: 2vw 4vw;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 1vw;
-  cursor: pointer;
-}
-
 .main-container {
   width: 100%;
   height: 100%;
-  display: grid;
-  grid-template-columns: repeat(2, 50%);
-  grid-template-rows: repeat(3, 33.33%);
-  gap: 1vw;
-  padding: 1vw;
+  position: relative;
   box-sizing: border-box;
 }
 
-.grid-button {
-  font-size: 3vw;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 1vw;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-}
-
 .video-container {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -93,7 +87,6 @@ body {
   font-size: 3vw;
 }
 
-/* Visually-hidden helper for screen readers */
 .sr-only {
   position: absolute !important;
   height: 1px; width: 1px;
@@ -105,8 +98,7 @@ body {
   margin: -1px;
 }
 
-/* Overlay toggle sits above the video */
-.video-wrapper .overlay-toggle {
+.overlay-toggle {
   position: absolute;
   bottom: 5%;
   left: 50%;
