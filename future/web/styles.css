@@ -19,14 +19,11 @@ body.debug-mode {
 body.debug-mode #mainContainer {
   flex-grow: 1;
 }
-/* Styles for the debug panel will go in debug-ui.js or here */
 
 body.accessible-mode #mainContainer {
-  /* The whole screen is the main container */
   width: 100%;
   height: 100%;
 }
-
 
 .splash-screen {
   position: fixed;
@@ -41,15 +38,23 @@ body.accessible-mode #mainContainer {
   z-index: 30;
 }
 
+/* --- NEW STYLES FOR THE POWER ON BUTTON --- */
 .power-on-button {
-  font-size: 5vw;
-  padding: 2vw 4vw;
+  font-size: clamp(24px, 5vw, 48px); /* Responsive font size */
+  padding: 0.5em 1em;
   background-color: #4CAF50;
   color: white;
   border: none;
-  border-radius: 1vw;
+  border-radius: 12px;
   cursor: pointer;
+  min-width: 200px;
+  text-align: center;
 }
+.power-on-button:disabled {
+  background-color: #555;
+  cursor: wait;
+}
+/* --- END NEW STYLES --- */
 
 .main-container {
   width: 100%;
