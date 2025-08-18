@@ -2,6 +2,7 @@
 // Minimal headless engine: owns state and exposes a dispatch API for commands.
 import { settings } from './state.js';
 import { structuredLog } from '../utils/logging.js';
+import { getAllIdbLogs } from '../utils/idb-logger.js';
 import { getText, speakText, setLanguage, translatePage, announceMessage } from '../utils/utils.js';
 import { trackFeatureUse } from '../core/ingest.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './media-controller.js';
@@ -139,6 +140,30 @@ export function createEngine() {
       if (msg && typeof speakText === 'function') speakText(msg);
     } catch (e) {
       structuredLog('WARN', 'announceSettingsMode failed', { error: e?.message });
+    }
+  });
+
+  registerCommandHandler('gatherAndSendUserReport', async ({ state }) => {
+    try {
+      const appState = JSON.stringify(state);
+      const logs = JSON.stringify(await getAllIdbLogs());
+      
+      const reportPayload = {
+        type: 'user-report',
+        app_state: appState,
+        logs: logs,
+      };
+      
+      trackFeatureUse('user-report', reportPayload); 
+      
+      // Give the user feedback
+      const msg = await getText('report.sending').catch(() => 'Thank you. Sending report.');
+      speakText(msg);
+
+    } catch (err) {
+      structuredLog('ERROR', 'Failed to send user report', { error: err.message });
+      const msg = await getText('report.error').catch(() => 'Sorry, the report could not be sent.');
+      speakText(msg);
     }
   });
 

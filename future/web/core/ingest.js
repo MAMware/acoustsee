@@ -19,29 +19,34 @@ export async function trackFeatureUse(event, payload = {}) {
   }
 
   try {
-    const device = (() => {
-      try { return deviceSummary(); } catch (e) { return { error: 'device-summary-failed' }; }
-    })();
-
-    // Build a D1-friendly payload. The Cloudflare Worker will expect at least
-    // `level` and `message` (mapped from `event` and `payload.message`). Any
-    // remaining properties will be sent along and stringified there.
-    const { message, source, stack, ...rest } = payload || {};
-    const logPayload = {
-      level: event, // e.g. 'globalError', 'INFO', 'WARN', 'ERROR'
-      message: message || event,
-      source: source ?? null,
-      stack: stack ?? null,
-      ...rest,
-      device,
-      timestamp_client: Date.now()
-    };
+    // --- NEW LOGIC ---
+    let finalPayload;
+    if (event === 'user-report') {
+      // For user reports, the payload is already perfectly formatted.
+      finalPayload = payload;
+    } else {
+      // For automatic errors, we build the payload as before.
+      const device = (() => {
+        try { return deviceSummary(); } catch (e) { return { error: 'device-summary-failed' }; }
+      })();
+      const { message, source, stack, ...rest } = payload || {};
+      finalPayload = {
+        level: event,
+        message: message || event,
+        source: source ?? null,
+        stack: stack ?? null,
+        ...rest,
+        device,
+        timestamp_client: Date.now()
+      };
+    }
+    // --- END NEW LOGIC ---
 
     await fetch(INGEST_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
-      body: JSON.stringify(logPayload)
+      body: JSON.stringify(finalPayload) // Send the correct payload
     });
   } catch (err) {
     console.error('Ingest send failed:', err);
