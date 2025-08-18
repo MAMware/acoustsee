@@ -170,52 +170,54 @@ async function init() {
       DOM.powerOn.addEventListener('click', async (ev) => {
         ev.preventDefault();
         DOM.powerOn.disabled = true;
-        const origLabel = DOM.powerOn.textContent;
+        const origLabel = DOM.powerOn.querySelector('.power-label')?.textContent || DOM.powerOn.textContent || 'Power On';
+       
         try {
-          try {
-            const initLabel = await getTextCached('powerOn.initializing', {});
-            if (initLabel) DOM.powerOn.textContent = initLabel;
-          } catch (e) { /* best-effort */ }
-          
+          // 1. Show "Initializing..." feedback immediately
+          const initLabel = await getText('powerOn.initializing', {}).catch(() => 'Initializing...');
+          if (DOM.powerOn.querySelector('.power-label')) {
+            DOM.powerOn.querySelector('.power-label').textContent = initLabel;
+          } else {
+            DOM.powerOn.textContent = initLabel;
+          }
+         
+          // 2. Attempt to unlock and initialize audio within the user gesture
           const unlocked = await audioManager.unlockAudio(ev);
           if (!unlocked) {
-            const msg = await getTextCached('audio.unavailable', {}).catch(() => 'Audio unavailable. Tap to try again.');
-            announceMessage(msg);
-            try { trackFeatureUse('power-on', { success: false }); } catch (e) {}
-            DOM.powerOn.disabled = false;
-            DOM.powerOn.textContent = origLabel;
-            return;
+            // This is a hard failure to unlock the context.
+            throw new Error('AudioContext could not be unlocked.');
           }
 
-          try {
-            await audioManager.initialize();
-            try { await initializeAudio(audioManager.context); } catch (e) { /* non-fatal */ }
-            await audioManager.resume();
-          } catch (inner) {
-            addSessionError({ message: 'audio-init-failed', error: inner?.message || String(inner) });
-            structuredLog('ERROR', 'Audio initialization failed after unlock', { error: inner?.message || String(inner) });
-            const failMsg = await getTextCached('audio.initFailed', {}).catch(() => 'Audio initialization failed. You may need to tap again.');
-            announceMessage(failMsg);
-            DOM.powerOn.disabled = false;
-            DOM.powerOn.textContent = origLabel;
-            return;
-          }
-
+          // 3. Once unlocked, initialize the rest of the audio graph.
+          await audioManager.initialize();
+          await initializeAudio(audioManager.context);
+         
+          // 4. Success! Transition to the main UI.
           if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
-          if (DOM.mainContainer) DOM.mainContainer.style.display = 'block'; // Use block, not grid
+          if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';
           DOM.powerOn.setAttribute('aria-pressed', 'true');
 
-          const onMsg = await getTextCached('audioOn').catch(() => null);
-          if (onMsg) speakText(onMsg);
-          try { if (engine && typeof engine.dispatch === 'function') engine.dispatch('updateUI', { settingsMode: false, streamActive: false, micActive: false }); } catch (e) {}
+          const onMsg = await getText('audioOn').catch(() => 'Audio enabled');
+          speakText(onMsg);
           try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
+
         } catch (err) {
+          // 5. --- New critical feedback logic ---
           addSessionError({ message: 'power-on-failed', error: err?.message || String(err) });
           structuredLog('ERROR', 'Power on handler failed', { error: err?.message || String(err) });
-          const startupFailMsg = await getTextCached('startup.failed', {}).catch(() => 'Startup failed. Check console for details.');
-          announceMessage(startupFailMsg);
+         
+          // Inform the user what happened and allow them to retry.
+          const failMsg = await getText('audio.unavailable').catch(() => 'Audio unavailable. Tap to try again.');
+          announceMessage(failMsg);
+          speakText(failMsg);
+
+          // Reset the button to its original state so the user can click again.
+          if (DOM.powerOn.querySelector('.power-label')) {
+            DOM.powerOn.querySelector('.power-label').textContent = origLabel;
+          } else {
+            DOM.powerOn.textContent = origLabel;
+          }
           DOM.powerOn.disabled = false;
-          DOM.powerOn.textContent = origLabel;
         }
       }, { once: false });
     }
