@@ -10,7 +10,7 @@ import { startMic, stopMic } from './microphone-controller.js';
 import { computeAutoIntervalBenchmark, getPreferredIntervalMs } from '../utils/performance.js';
 import { setAutoFpsBenchmark } from './state.js';
 import { processFrameWithState } from '../video/frame-processor.js';
-import { playCues, resizeOscillatorPool } from '../audio/audio-processor.js';
+import { playCues, resizeOscillatorPool, connectMicrophone, disconnectMicrophone, isAudioReady } from '../audio/audio-processor.js';
 
 export function createEngine() {
   const state = settings; // legacy shared settings object for incremental migration
@@ -390,19 +390,41 @@ export function createEngine() {
     return { state: s };
   });
 
-  // Toggle microphone: start/stop mic stream and persist in state.micStream
+  // Toggle microphone: start/stop mic stream, route audio via audio-processor, and persist in state.micStream
   registerCommandHandler('toggleMicrophone', async ({ state: s }) => {
     try {
       if (s.micStream) {
+        // --- Disconnect audio first, then stop the stream ---
+        try { disconnectMicrophone(); } catch (e) { /* best-effort */ }
         stopMic(s.micStream);
         s.micStream = null;
+        const msg = await getText('mic.off').catch(() => 'Microphone off.');
+        speakText(msg);
         return { micActive: false };
+      } else {
+        // --- Start the stream first, then connect the audio ---
+        const stream = await startMic({ audio: true });
+        s.micStream = stream;
+        // Only attempt to route audio if the audio subsystem is initialized
+        if (isAudioReady()) {
+          try { connectMicrophone(stream); } catch (e) { structuredLog('WARN', 'connectMicrophone failed', { error: e?.message || String(e) }); }
+        } else {
+          structuredLog('INFO', 'Audio not ready, mic stream acquired but not connected.');
+        }
+        const msg = await getText('mic.on').catch(() => 'Microphone on.');
+        speakText(msg);
+        return { micActive: true };
       }
-      const stream = await startMic({ audio: true });
-      s.micStream = stream;
-      return { micActive: true };
     } catch (e) {
       structuredLog('WARN', 'toggleMicrophone failed', { error: e?.message || String(e) });
+      // Ensure state is clean on failure
+      if (s.micStream) {
+        try { disconnectMicrophone(); } catch (er) { /* ignore */ }
+        try { stopMic(s.micStream); } catch (er) { /* ignore */ }
+        s.micStream = null;
+      }
+      const msg = await getText('mic.error').catch(() => 'Microphone unavailable.');
+      speakText(msg);
       throw e;
     }
   });

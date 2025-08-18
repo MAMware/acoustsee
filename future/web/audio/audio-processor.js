@@ -1,283 +1,233 @@
-import { settings } from "../core/state.js";
-import { getDispatchEvent } from "../core/context.js";
-import { structuredLog } from "../utils/logging.js";  // Add for detailed logging.
-import { soundProfileManifest } from './sound-profiles.js';
+// File: web/audio/audio-processor.js
 
-// New helper to resize oscillator pool based on grid maxNotes, capped at 100
-export function resizeOscillatorPool(newMax) {
-  const cap = Math.min(newMax, 100);
-  const current = oscillatorPool.length;
-  if (cap > current) {
-    for (let i = current; i < cap; i++) {
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const panner = audioContext.createStereoPanner();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(0, audioContext.currentTime);
-      gain.gain.setValueAtTime(0, audioContext.currentTime);
-      panner.pan.setValueAtTime(0, audioContext.currentTime);
-      osc.connect(gain).connect(panner).connect(audioContext.destination);
-      osc.start();
-      oscillatorPool.push({ osc, gain, panner, active: false });
-    }
-    structuredLog('INFO', 'resizeOscillatorPool: Expanded osc pool', { from: current, to: cap });
-  } else if (cap < current) {
-    for (let i = current - 1; i >= cap; i--) {
-      const { osc, gain, panner } = oscillatorPool[i];
-      osc.stop();
-      osc.disconnect();
-      gain.disconnect();
-      panner.disconnect();
-      oscillatorPool.pop();
-    }
-    structuredLog('INFO', 'resizeOscillatorPool: Shrunk osc pool', { from: current, to: cap });
-  }
-}
+import { settings } from '../core/state.js';
+import { structuredLog } from '../utils/logging.js';
 
-let audioContext = null;
-let isAudioInitialized = false;
-let oscillators = [];
-let oscillatorPool = [];
-let modulators = [];
-let micSource = null;
+let audioManager = null;
+const oscillatorPool = [];
+const activeOscillators = new Map();
+let masterGain = null;
+// --- State for Microphone Pass-through ---
+let micSourceNode = null;
 let micGainNode = null;
-// Reference to a bound AudioManager (if any). When present we should delegate
-// lifecycle operations (like closing the context) to the manager so we don't
-// race to close an AudioContext owned elsewhere.
-let audioManagerRef = null;
+let micPassThroughEnabled = false;
+// Queue a mic stream if it's acquired before the audio subsystem is ready
+let queuedMicStream = null;
 
-export function setAudioContext(newContext) {
-  audioContext = newContext;
-  isAudioInitialized = false;
-}
-
-// Bind a shared AudioManager instance so this module can react to unlock/resume events.
-export function bindAudioManager(audioManager) {
-  if (!audioManager) return;
-  try {
-  // Keep a reference so cleanupAudio can delegate closing to the manager
-  audioManagerRef = audioManager;
-    // If audioManager already has a context, use it
-    if (audioManager.context) setAudioContext(audioManager.context);
-    // When the manager emits 'unlocked' or 'resumed', attempt initialization
-    audioManager.on && audioManager.on('unlocked', async () => {
-      try { await initializeAudio(audioManager.context); } catch(e) { /* handled below */ }
-    });
-    audioManager.on && audioManager.on('resumed', async () => {
-      try { await initializeAudio(audioManager.context); } catch(e) { /* handled below */ }
-    });
-  } catch (e) {
-    structuredLog('WARN', 'bindAudioManager failed', { message: e?.message || String(e) });
-  }
+export function bindAudioManager(manager) {
+  audioManager = manager;
 }
 
 export async function initializeAudio(context) {
-  if (isAudioInitialized || !context) {
-    structuredLog('WARN', 'initializeAudio: Already initialized or no context');
-    return false;
+  if (!context) {
+    structuredLog('ERROR', 'initializeAudio: AudioContext not provided.');
+    return;
   }
-  try {
-    audioContext = context;
-    if (audioContext.state === "suspended") {
-      structuredLog('INFO', 'initializeAudio: Resuming AudioContext');
-      await audioContext.resume();
-      structuredLog('INFO', 'initializeAudio: AudioContext resumed');
+  masterGain = context.createGain();
+  masterGain.gain.value = 2.0; // Boosted volume
+  masterGain.connect(context.destination);
+  // create mic gain node ready for pass-through routing
+  micGainNode = context.createGain();
+  micGainNode.gain.value = 1.0;
+  resizeOscillatorPool(settings.maxNotes);
+
+  // If a mic stream was queued before audio initialization, connect it now
+  if (queuedMicStream) {
+    try {
+      structuredLog('INFO', 'Connecting previously queued microphone stream.');
+      connectMicrophone(queuedMicStream);
+      queuedMicStream = null;
+    } catch (e) {
+      structuredLog('WARN', 'Failed to connect queued mic stream', { error: e?.message || String(e) });
     }
-    if (audioContext.state !== "running") {
-      throw new Error(`AudioContext not running, state: ${audioContext.state}`);
-    }
-    // --- THIS IS THE CORRECTED LOGIC ---
-    // Initialize the oscillator pool based on the global, decoupled setting.
-    resizeOscillatorPool(settings.maxNotes);
-    oscillators = oscillatorPool; // Ensure the legacy 'oscillators' array is also updated.
-    isAudioInitialized = true;
-    structuredLog('INFO', `initializeAudio: Audio initialized with a pool size of ${settings.maxNotes}.`);
-    return true;
-  } catch (error) {
-    structuredLog('ERROR', 'initializeAudio error', { message: error.message });
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Audio init error: ${error.message}` }); } catch (e) {}
-    isAudioInitialized = false;
-    audioContext = null;
-    return false;
   }
 }
 
+// --- Microphone Pass-through Feature ---
+export function connectMicrophone(stream) {
+  const context = audioManager?.context;
+  if (!stream) return;
 
-export async function cleanupAudio() {
-  if (!isAudioInitialized && !audioContext) return;
-  try {
-    // Stop and disconnect oscillators and nodes regardless of who owns the context
-    oscillatorPool.forEach(({ osc, gain, panner }) => {
-      try { osc.stop(); } catch(e) {}
-      try { osc.disconnect(); } catch(e) {}
-      try { gain.disconnect(); } catch(e) {}
-      try { panner.disconnect(); } catch(e) {}
-    });
-    oscillatorPool = [];
-    if (micSource && micGainNode) {
-      try { micSource.disconnect(); } catch(e) {}
-      try { micGainNode.disconnect(); } catch(e) {}
-      micSource = null;
-      micGainNode = null;
-    }
-    oscillators = [];
-    // cleanup modulators
-    modulators.forEach(({ osc, gain }) => {
-      try { osc.stop(); } catch(e) {}
-      try { osc.disconnect(); } catch(e) {}
-      try { gain.disconnect(); } catch(e) {}
-    });
-    modulators = [];
-
-    // Delegate closing of the AudioContext to the bound AudioManager when present.
-    if (audioManagerRef && typeof audioManagerRef.close === 'function') {
-      structuredLog('INFO', 'cleanupAudio: Delegating AudioContext close to AudioManager');
-      try {
-        await audioManagerRef.close();
-      } catch (e) {
-        structuredLog('WARN', 'cleanupAudio: audioManager.close failed', { message: e?.message || String(e) });
-      }
-      audioContext = null;
-    } else if (audioContext) {
-      // No manager bound — fall back to closing the context here
-      await audioContext.close();
-      audioContext = null;
-    }
-
-    isAudioInitialized = false;
-    structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up and context closed');
-  } catch (err) {
-    structuredLog('ERROR', 'cleanupAudio error', { message: err.message });
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Cleanup audio error: ${err.message}` }); } catch (e) {}
-  }
-}
-
-/**
- * Orchestrator: process an array of AcousticCue objects and play matching sounds.
- * @param {Array<Object>} cues
- */
-export async function playCues(cues = []) {
-  if (!audioContext || !isAudioInitialized) {
-    structuredLog('WARN', 'playCues: Audio not initialized.');
+  // If audio context isn't ready yet, queue the stream for later
+  if (!context) {
+    queuedMicStream = stream;
+    structuredLog('INFO', 'connectMicrophone: Audio context not ready, queued mic stream.');
     return;
   }
 
-  for (const cue of cues) {
-    const profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
-    if (!profile || typeof profile.playFunction !== 'function') {
-      structuredLog('WARN', 'playCues: No valid sound profile found for objectType', { objectType: cue.objectType });
-      continue;
-    }
-
-    const note = {
-      ...profile.params,
-      pitch: (profile.params.basePitch || 440) * (1 + (cue.position?.y || 0) * 0.5),
-      intensity: cue.intensity,
-      position: cue.position
-    };
-
-    try {
-      profile.playFunction([note], { audioContext, getOscillator, oscillatorPool, modulators });
-    } catch (err) {
-      structuredLog('ERROR', 'playCues: Error executing play function', { 
-        synthId: profile.playFunction.name, 
-        error: err.message 
-      });
-    }
+  if (micSourceNode) {
+    structuredLog('WARN', 'connectMicrophone: mic already connected');
+    return;
   }
-}
 
-// Note: The legacy playNotes / playAudio functions were removed in favor of
-// the cue-based `playCues` orchestrator. If you need to support legacy
-// callers, re-introduce a compatibility wrapper here.
-
-export async function stopAudio() {
-  await cleanupAudio();
-}
-
-export function initializeMicAudio(micStream) {
-  if (!audioContext || !isAudioInitialized) {
-    structuredLog('WARN', 'initializeMicAudio: Audio context not initialized');
-    dispatchEvent('logError', { message: 'Audio context not initialized for microphone' });
-    return null;
-  }
   try {
-    if (micSource && micGainNode) {
-      micSource.disconnect();
-      micGainNode.disconnect();
-      micSource = null;
-      micGainNode = null;
-    }
-    if (micStream) {
-      micSource = audioContext.createMediaStreamSource(micStream);
-      micGainNode = audioContext.createGain();
-      micGainNode.gain.setValueAtTime(0.7, audioContext.currentTime);
-      micSource.connect(micGainNode).connect(audioContext.destination);
-      structuredLog('INFO', 'initializeMicAudio: Microphone stream connected', { gain: 0.7 });
-      return micSource;
-    }
-    structuredLog('INFO', 'initializeMicAudio: Microphone stream disconnected');
-    return null;
-  } catch (error) {
-    structuredLog('ERROR', 'initializeMicAudio error', { message: error.message });
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Microphone init error: ${error.message}` }); } catch (e) {}
-    return null;
-  }
-}
-
-/**
- * Get an oscillator from the pool, reusing inactive or recycling the oldest if the pool exceeds the cap.
- */
-export function getOscillator() {
-  const cap = 100; // Define a cap for the oscillator pool
-  let oscObj = oscillatorPool.find(o => !o.active);
-
-  if (!oscObj && audioContext) {
-    if (oscillatorPool.length >= cap) {
-      // Pool exhausted: recycle oldest inactive or oldest overall
-      oscObj = oscillatorPool.find(o => !o.active) || oscillatorPool[0];
-      if (oscObj) {
-        oscObj.osc.frequency.setValueAtTime(0, audioContext.currentTime);
-        oscObj.gain.gain.setValueAtTime(0, audioContext.currentTime);
-        oscObj.panner.pan.setValueAtTime(0, audioContext.currentTime);
-        oscObj.active = true;
-        structuredLog('WARN', 'getOscillator: Pool exhausted, recycled oscillator', { poolSize: oscillatorPool.length });
-        return oscObj;
-      } else {
-        structuredLog('ERROR', 'getOscillator: Pool exhausted, no oscillator available', { poolSize: oscillatorPool.length });
-        return null;
-      }
+    micSourceNode = context.createMediaStreamSource(stream);
+    // Route the mic audio through the mic gain node; actual routing to main output
+    // is controlled by micPassThroughEnabled.
+    if (!micGainNode) micGainNode = context.createGain();
+    micSourceNode.connect(micGainNode);
+    if (micPassThroughEnabled && masterGain) {
+      micGainNode.connect(masterGain);
+      structuredLog('INFO', 'Microphone audio connected to main output.');
     } else {
-      // Create a new oscillator if under the cap
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const panner = audioContext.createStereoPanner();
-      osc.type = "sine";
-      osc.connect(gain).connect(panner).connect(audioContext.destination);
-      osc.start();
-      oscObj = { osc, gain, panner, active: true };
-      oscillatorPool.push(oscObj);
-      structuredLog('INFO', 'getOscillator: Created new oscillator', { poolSize: oscillatorPool.length });
-      return oscObj;
+      structuredLog('INFO', 'Microphone stream connected but pass-through is disabled.');
     }
-  }
-
-  if (oscObj) {
-    oscObj.active = true;
-    structuredLog('INFO', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
-    return oscObj;
-  } else {
-    structuredLog('WARN', 'getOscillator: No available oscillator found');
-    return null;
+  } catch (err) {
+    structuredLog('ERROR', 'Failed to connect microphone stream to audio context', { error: err.message });
   }
 }
 
-/**
- * Release an oscillator back to the pool, marking it as inactive.
- */
-export function releaseOscillator(oscObj) {
-  if (oscObj) {
-    oscObj.active = false;
-    structuredLog('INFO', 'releaseOscillator: Oscillator released back to pool', { poolSize: oscillatorPool.length });
+export function disconnectMicrophone() {
+  if (micSourceNode) {
+    try {
+      // disconnect source from mic gain
+      micSourceNode.disconnect(micGainNode);
+    } catch (e) {
+      try { micSourceNode.disconnect(); } catch(_) {}
+    }
+    micSourceNode = null;
+    // also disconnect mic gain from master if it was connected
+    if (micGainNode && micPassThroughEnabled && masterGain) {
+      try { micGainNode.disconnect(masterGain); } catch (e) { /* ignore */ }
+    }
+    structuredLog('INFO', 'Microphone audio disconnected.');
   }
+  // clear any queued stream
+  queuedMicStream = null;
+}
+// --- End Microphone Feature ---
+
+// Toggle mic pass-through on/off. When enabled, the mic gain node is connected to master output.
+export function setMicPassThrough(enabled) {
+  const context = audioManager?.context;
+  micPassThroughEnabled = !!enabled;
+  if (!context || !micGainNode) return;
+
+  if (micPassThroughEnabled) {
+    try {
+      micGainNode.connect(masterGain);
+      structuredLog('INFO', 'Microphone pass-through enabled.');
+      // If a source is already present, ensure it's routed
+      if (micSourceNode) micSourceNode.connect(micGainNode);
+    } catch (e) {
+      structuredLog('ERROR', 'Failed to enable mic pass-through', { error: e.message });
+    }
+  } else {
+    try {
+      micGainNode.disconnect(masterGain);
+      structuredLog('INFO', 'Microphone pass-through disabled.');
+    } catch (e) { /* ignore */ }
+  }
+}
+
+// Adjust mic level (0.0 - 1.0)
+export function setMicLevel(level) {
+  const context = audioManager?.context;
+  if (!context || !micGainNode) return;
+  const v = Math.max(0, Math.min(1, Number(level) || 0));
+  micGainNode.gain.value = v;
+  structuredLog('DEBUG', 'Mic level set', { level: v });
+}
+
+// Returns true when the audio subsystem is initialized and ready to route mic audio
+export function isAudioReady() {
+  return !!(audioManager?.context && masterGain);
+}
+
+export function resizeOscillatorPool(size) {
+  const context = audioManager?.context;
+  if (!context) return;
+  
+  while (oscillatorPool.length < size) {
+    const osc = context.createOscillator();
+    oscillatorPool.push(osc);
+  }
+  while (oscillatorPool.length > size) {
+    oscillatorPool.pop();
+  }
+  structuredLog('DEBUG', 'Resized oscillator pool', { size: oscillatorPool.length });
+}
+
+function getOscillator() {
+  const context = audioManager?.context;
+  if (!context) return null;
+
+  if (oscillatorPool.length > 0) {
+    const osc = oscillatorPool.pop();
+    // --- LOG LEVEL CHANGED TO DEBUG ---
+    structuredLog('DEBUG', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
+    return osc;
+  }
+  
+  // Fallback if pool is empty
+  structuredLog('WARN', 'getOscillator: Pool empty, creating new oscillator.');
+  return context.createOscillator();
+}
+
+function releaseOscillator(oscillator) {
+  // Re-create the oscillator to reset its state before putting it back in the pool
+  const context = audioManager?.context;
+  if (context) {
+    const newOsc = context.createOscillator();
+    oscillatorPool.push(newOsc);
+    // --- LOG LEVEL CHANGED TO DEBUG ---
+    structuredLog('DEBUG', 'releaseOscillator: Returned oscillator to pool', { poolSize: oscillatorPool.length });
+  }
+}
+
+export async function playCues(cues) {
+  const context = audioManager?.context;
+  if (!context || context.state !== 'running') return;
+  
+  const now = context.currentTime;
+  const cuesToPlay = cues.slice(0, settings.maxNotes);
+  
+  // Clear oscillators that are no longer needed
+  const activeIds = new Set(cuesToPlay.map(c => c.id));
+  for (const [id, activeOsc] of activeOscillators.entries()) {
+    if (!activeIds.has(id)) {
+      clearTimeout(activeOsc.timeoutId);
+      activeOsc.osc.stop();
+      activeOsc.osc.disconnect();
+      releaseOscillator(activeOsc.osc);
+      activeOscillators.delete(id);
+    }
+  }
+
+  cuesToPlay.forEach(cue => {
+    if (activeOscillators.has(cue.id)) return;
+
+    const osc = getOscillator();
+    if (!osc) return;
+
+    const panner = new PannerNode(context, {
+      panningModel: 'equalpower',
+      positionX: cue.pan,
+      positionY: 0,
+      positionZ: 1 - Math.abs(cue.pan)
+    });
+
+    osc.frequency.setValueAtTime(cue.pitch, now);
+    osc.type = 'sine';
+    
+    const gainNode = context.createGain();
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(cue.intensity * 0.5, now + 0.05);
+    gainNode.gain.linearRampToValueAtTime(0, now + 0.2);
+
+    osc.connect(gainNode).connect(panner).connect(masterGain);
+
+    osc.start(now);
+    
+    const timeoutId = setTimeout(() => {
+      try {
+        osc.stop();
+        osc.disconnect();
+        releaseOscillator(osc);
+        activeOscillators.delete(cue.id);
+      } catch(e) { /* Already stopped */ }
+    }, 250);
+
+    activeOscillators.set(cue.id, { osc, panner, timeoutId });
+  });
 }

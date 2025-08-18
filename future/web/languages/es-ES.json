@@ -137,6 +137,11 @@
   "camera": {
     "unable": "No se puede acceder a la cámara."
   },
+  "mic": {
+    "on": "Micrófono activado.",
+    "off": "Micrófono desactivado.",
+    "error": "Micrófono no disponible."
+  },
   "startup": {
     "failed": "Error de inicio. Consulte la consola para más detalles."
   },

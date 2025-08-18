@@ -27,6 +27,30 @@ The content at this repository builds a web app that aims to transform visual en
 - Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
 - Test version in development [RUN](https://mamware.github.io/acoustsee/future/web)
 
+### Accessible UI (gesture controls)
+
+This build includes an accessible, gesture-driven UI designed for touch-first and keyboard-free operation. Use these gestures on the main app area (the primary video overlay / main container).
+
+- Single tap: toggle live processing (start / stop video & audio processing). The app will give voice feedback when starting and stopping.
+- Double tap: announce a short status summary (live/idle, current grid, current synth).
+- Triple tap: trigger the diagnostic "Send Report" feature (collects logs and state and submits via the ingest pipeline).
+- Long press (hold ~1 second): enter or exit Settings Mode. When entering, the voice prompts the first category.
+
+While in Settings Mode:
+
+- Swipe left / right: cycle through setting categories (order: grid, synth, language, maxNotes, motionThreshold).
+- Swipe up / down: change the value for the currently-selected category. For example, swiping up on "Grid" moves to the next grid; swiping up/down on "Motion Sensitivity" increases/decreases the threshold.
+- Long press again: exit Settings Mode. Exiting will auto-save the current settings and announce the exit.
+
+Notes and tips:
+
+- Perform tests without `?debug=true` to exercise the full accessible flow.
+- Use headphones for reliable audio feedback during testing.
+- Ensure TTS (text-to-speech) is available in the browser and that the site has permission to play audio.
+- Language changes (Settings -> Language) will attempt an in-page translation pass after selection.
+- Motion Sensitivity steps: 20, 40, 60, 80, 100, 120 (clamped). The UI announces sensitivity as High/Medium/Low.
+
+
 ### System requirements
 
 The software is designed to run in most modern mobile and desktop web browsers. Video processing runs locally in the browser; audio is produced in real time and routed to stereo output (headphones recommended).

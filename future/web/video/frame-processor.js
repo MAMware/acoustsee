@@ -1,121 +1,140 @@
-import { settings } from "../core/state.js";
-import { getDispatchEvent } from "../core/context.js";
-import { structuredLog } from "../utils/logging.js";
+// File: web/video/frame-processor.js
 
-// Module-level state for stateful wrapper
-let prevFrameData = null;
 
-export async function processFrameToCues(frameData, width, height, prevData) {
-  try {
-    // Guard against invalid dimensions
-    if (!width || !height || width <= 0 || height <= 0) {
-      const errorType = 'invalidDimensions';
-      structuredLog('ERROR', 'Invalid dimensions for frame processing', { width, height });
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Invalid dimensions for frame processing: ${width}x${height}` }); } catch (e) {}
-      structuredLog('WARN', 'Frame error; state reset', { reset: settings.resetStateOnError, errorType });
-      if (settings.resetStateOnError) {
-        return { cues: [], prevFrameData: null };
-      }
-      return { cues: [], prevFrameData: prevData };
-    }
+import { settings } from '../core/state.js';
+import { structuredLog } from '../utils/logging.js';
+import { getGrid } from '../core/grid-manager.js';
 
-    // Validate frameData
-    if (!frameData || !(frameData instanceof Uint8ClampedArray) || frameData.length < width * height * 4) {
-      const errorType = 'invalidFrameDataTransient';
-      structuredLog('ERROR', 'Invalid frameData for processing', { frameDataLength: frameData?.length || 0 });
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Invalid frameData: length ${frameData?.length || 0}` }); } catch (e) {}
-  // Transient error: preserve previous state to avoid audio interruption
-  structuredLog('WARN', 'Frame error; transient, preserving state', { reset: false, errorType });
-  return { cues: [], prevFrameData: prevData };
-    }
-    // New: Initial frame prev data check
-    if (!prevData) {
-      structuredLog('INFO', 'processFrameToCues: Initial frame, no prev data', { width, height });
-    }
+let lastFrameData = null;
+let regionCounter = 0; // To assign unique IDs to regions
 
-    // --- REFACTOR: Replace dynamic import with a simple, synchronous find ---
-    const grid = settings.availableGrids.find((g) => g.id === settings.gridType);
-    if (!grid || typeof grid.mapFunction !== 'function') {
-  console.error(`Grid or mapFunction not found for gridType: ${settings.gridType}`);
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Grid not found: ${settings.gridType}` }); } catch (e) {}
-  return { cues: [], prevFrameData: prevData };
-    }
-  const mapFunction = grid.mapFunction; // Directly access the function, no 'await' needed.
-
-    // Mapping functions operate on the complete frame buffer (no left/right split).
-    // This aligns with the Acoustic Horizon model: motion and depth cues are
-    // computed across the continuous image and translated into prioritized acoustic
-    // cues for the audio pipeline.
-    const result = mapFunction(frameData, width, height, prevData);
-    const allCues = result?.cues || [];
-
-    return {
-      cues: allCues,
-      // Return the full frame data as the previous frame for next tick
-      prevFrameData: frameData,
-    };
-  } catch (err) {
-    const errorType = 'exception';
-    console.error("processFrameToCues error:", err.message);
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d("logError", { message: `Frame mapping error: ${err.message}` }); } catch (e) {}
-    structuredLog('WARN', 'Frame error; state reset', { reset: settings.resetStateOnError, errorType });
-    if (settings.resetStateOnError) {
-      return { cues: [], prevFrameData: null };
-    }
-    return { cues: [], prevFrameData: prevData };
-  }
-}
-
-// Stateful wrapper for dispatcher integration
 export async function processFrameWithState(frameData, width, height) {
-  // New: Validate frameData variance
-  let hasVariance = false;
-  let sampleSum = 0;
-  for (let i = 0; i < Math.min(1000, frameData.length); i += 4) {
-    const intensity = (frameData[i] + frameData[i+1] + frameData[i+2]) / 3;
-    sampleSum += intensity;
-    if (intensity > 0) hasVariance = true;
+  if (!lastFrameData) {
+    lastFrameData = new Uint8ClampedArray(frameData);
+    return { cues: [], movingRegions: [] };
   }
-  if (!hasVariance) {
-    structuredLog('WARN', 'processFrame: No variance in frame data; preserving previous state', { sampleAvg: sampleSum / 250 });
-    // Transient glitch: preserve previous frame data
-    return { cues: [], prevFrameData };
+
+  const motionData = new Uint8ClampedArray(width * height);
+  const movingRegions = [];
+  const visited = new Array(width * height).fill(false);
+  const { motionThreshold } = settings;
+
+  const MIN_REGION_SIZE = 10; 
+  const SIZE_BONUS_FACTOR = 1.5; 
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x);
+      const pixelIndex = i * 4;
+      if (visited[i]) continue;
+
+      // Simple grayscale 
+      const currentGray = (frameData[pixelIndex] + frameData[pixelIndex + 1] + frameData[pixelIndex + 2]) / 3;
+      const lastGray = (lastFrameData[pixelIndex] + lastFrameData[pixelIndex + 1] + lastFrameData[pixelIndex + 2]) / 3;
+      const diff = Math.abs(currentGray - lastGray);
+
+      if (diff > motionThreshold / 2) { 
+        const region = floodFill(x, y, width, height, frameData, lastFrameData, visited);
+
+        if (region.size > MIN_REGION_SIZE) {
+       
+          const sizeBonus = 1.0 + (Math.log(region.size) * SIZE_BONUS_FACTOR);
+          
+          const effectiveIntensity = region.avgIntensity * sizeBonus;
+
+          if (effectiveIntensity > motionThreshold) {
+            movingRegions.push({
+              id: region.id,
+              x: region.avgX / region.size,
+              y: region.avgY / region.size,
+              intensity: Math.min(1.0, (region.avgIntensity / 255.0) * 2.0), // Normalize intensity
+              size: region.size,
+            });
+          }
+        }
+      }
+    }
   }
-  const result = await processFrameToCues(frameData, width, height, prevFrameData);
-  // Update the single state variable
-  prevFrameData = result.prevFrameData;
-  return result; // This now returns an object like { cues: [...] }
+
+  lastFrameData.set(frameData);
+  const cues = mapRegionsToCues(movingRegions, width, height);
+
+  return { cues, movingRegions };
 }
 
-// Expose processFrameToCues as processFrame for backward compatibility
-export { processFrameToCues as processFrame };
+function floodFill(startX, startY, width, height, frameData, lastFrameData, visited) {
+  const stack = [[startX, startY]];
+  const region = {
+    id: regionCounter++, // Assign a unique, incrementing ID
+    size: 0,
+    avgX: 0,
+    avgY: 0,
+    totalIntensity: 0,
+    avgIntensity: 0,
+  };
+  const motionThreshold = settings.motionThreshold;
 
-/** Cleanup function for frame processor */
-export async function cleanupFrameProcessor() {
-  try {
-    structuredLog('INFO', 'cleanupFrameProcessor: Resetting frame processor state');
-  prevFrameData = null;
-  return { prevFrameData: null };
-  } catch (err) {
-    structuredLog('ERROR', 'cleanupFrameProcessor error', { message: err.message });
-  try { const _d = getDispatchEvent(); if (typeof _d === 'function') _d('logError', { message: `Frame processor cleanup error: ${err.message}` }); } catch (e) {}
-  prevFrameData = null;
-  return { prevFrameData: null };
+  while (stack.length > 0) {
+    const [x, y] = stack.pop();
+    const i = y * width + x;
+    const pixelIndex = i * 4;
+
+    if (x < 0 || x >= width || y < 0 || y >= height || visited[i]) {
+      continue;
+    }
+
+    const currentGray = (frameData[pixelIndex] + frameData[pixelIndex + 1] + frameData[pixelIndex + 2]) / 3;
+    const lastGray = (lastFrameData[pixelIndex] + lastFrameData[pixelIndex + 1] + lastFrameData[pixelIndex + 2]) / 3;
+    const diff = Math.abs(currentGray - lastGray);
+
+    if (diff > motionThreshold / 2) {
+      visited[i] = true;
+      region.size++;
+      region.avgX += x;
+      region.avgY += y;
+      region.totalIntensity += diff;
+
+      // Add neighbors to the stack
+      stack.push([x + 1, y]);
+      stack.push([x - 1, y]);
+      stack.push([x, y + 1]);
+      stack.push([x, y - 1]);
+    }
   }
+  
+  if (region.size > 0) {
+    region.avgIntensity = region.totalIntensity / region.size;
+  }
+
+  // Reset counter if it gets too large to prevent overflow issues
+  if (regionCounter > 1000000) {
+      regionCounter = 0;
+  }
+
+  return region;
 }
 
-// --- Test-only export for setting internal state ---
-// Guard against browser environments where `process` and `module` are undefined.
-if (typeof process !== 'undefined' && process && process.env && process.env.NODE_ENV === 'test') {
-  // Provide a CommonJS export so tests using require(...) can access it.
-  // eslint-disable-next-line no-undef
-  try {
-    if (typeof module !== 'undefined' && module && module.exports) {
-      module.exports.__setPrevFrameDataForTest = (data) => {
-        prevFrameData = data;
+function mapRegionsToCues(regions, width, height) {
+  const grid = getGrid();
+  if (!grid) {
+    structuredLog('ERROR', 'mapRegionsToCues: Grid not found.');
+    return [];
+  }
+
+  return regions.map(region => {
+    const normalizedX = region.x / width;
+    const normalizedY = region.y / height;
+    const note = grid.getNote(normalizedX, normalizedY);
+    
+    if (note) {
+      return {
+        id: region.id,
+        type: 'default_motion',
+        pitch: note.pitch,
+        pan: (normalizedX * 2) - 1, // Pan from -1 (left) to 1 (right)
+        intensity: region.intensity,
       };
     }
-  } catch (e) {
-    // ignore environments where `module`/`module.exports` cannot be assigned
-  }
+    return null;
+  }).filter(Boolean); // Filter out null notes
 }
