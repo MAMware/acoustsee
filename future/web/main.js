@@ -112,10 +112,6 @@ async function init() {
       initializeAccessibleUI(engine, DOM);
       structuredLog('INFO', 'Initialized in Accessible UI mode.');
     }
-
-    // --- GLOBAL SETUPS (UI-independent) ---
-    // Audio controls setup is global, as the splash screen is always present.
-    setupAudioControls({ dispatchEvent: engine.dispatch, DOM });
  
     // Console overrides
     function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
