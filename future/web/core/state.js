@@ -26,6 +26,10 @@ export let settings = {
   synthesisEngine: null,
   language: null,
   isSettingsMode: false,
+  settings: {
+  categories: ['grid', 'synth', 'language', 'maxNotes', 'motionThreshold'], // Add other settings IDs here
+    currentCategoryIndex: 0,
+  },
   micStream: null,
   audioResumeAttempts: 2,
   audioResumeDelayMs: 100,

@@ -156,6 +156,35 @@
   "language": {
     "set": "Language set to {languageName}."
   },
+  "settings": {
+    "category": {
+      "motionThreshold": "Motion Sensitivity"
+    },
+    "value": {
+      "sensitivity": "Sensitivity: {{level}}",
+      "notes": "{{count}} notes"
+    },
+    "sensitivity": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    }
+  },
+  "processing": {
+    "stopped": "Stopping",
+    "started": "Starting"
+  },
+  "status": {
+    "live": "Live",
+    "idle": "Idle",
+    "full": "Status is {{status}}. Grid is {{grid}}. Sound is {{synth}}."
+  },
+  "settings.enter": "Settings mode. Swipe left or right to choose a category. Long-press to exit.",
+  "settings.exit": "Exiting settings and saving.",
+  "report": {
+    "sending": "Thank you. Sending diagnostic report.",
+    "error": "Sorry, the report could not be sent."
+  },
   "init": {
     "failed": "Initialization failed: {specificMessage}. Check console for details."
   }

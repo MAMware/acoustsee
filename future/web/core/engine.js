@@ -143,6 +143,148 @@ export function createEngine() {
     }
   });
 
+  // --- NEW: COMMANDS FOR ACCESSIBLE UI ---
+
+  registerCommandHandler('toggleProcessing', async ({ state: s, payload }) => {
+    if (s.isProcessing) {
+      await dispatch('stopProcessing', payload);
+      const msg = await getText('processing.stopped').catch(() => 'Stopped');
+      speakText(msg);
+    } else {
+      await dispatch('startProcessing', payload);
+      const msg = await getText('processing.started').catch(() => 'Started');
+      speakText(msg);
+    }
+  });
+
+  registerCommandHandler('announceStatus', async ({ state: s }) => {
+    try {
+      const statusKey = s.isProcessing ? 'status.live' : 'status.idle';
+      const gridName = s.availableGrids.find(g => g.id === s.gridType)?.name || s.gridType;
+      const synthName = s.availableEngines.find(e => e.id === s.synthesisEngine)?.name || s.synthesisEngine;
+      
+      const msg = await getText('status.full', {
+        status: await getText(statusKey),
+        grid: gridName,
+        synth: synthName
+      });
+      speakText(msg);
+    } catch (e) {
+      structuredLog('ERROR', 'announceStatus failed', { error: e.message });
+      speakText("Could not announce status.");
+    }
+  });
+
+  registerCommandHandler('enterSettingsMode', async ({ state: s }) => {
+    if (s.isProcessing) {
+      await dispatch('stopProcessing'); // Stop processing to avoid distraction
+    }
+    s.isSettingsMode = true;
+    s.settings.currentCategoryIndex = 0; // Start at the first category
+    const msg = await getText('settings.enter').catch(() => 'Settings mode. Swipe left or right to choose a category.');
+    speakText(msg);
+    await dispatch('announceCurrentSettingCategory');
+  });
+
+  registerCommandHandler('exitSettingsMode', async ({ state: s }) => {
+    s.isSettingsMode = false;
+    await dispatch('saveSettings'); // Auto-save on exit
+    const msg = await getText('settings.exit').catch(() => 'Exiting settings.');
+    speakText(msg);
+  });
+  
+  registerCommandHandler('cycleSettingCategory', async ({ state: s, payload }) => {
+    if (!s.isSettingsMode) return;
+    const direction = payload.direction || 1; // 1 for right, -1 for left
+    const numCategories = s.settings.categories.length;
+    s.settings.currentCategoryIndex = (s.settings.currentCategoryIndex + direction + numCategories) % numCategories;
+    await dispatch('announceCurrentSettingCategory');
+  });
+  
+  registerCommandHandler('changeCurrentSettingValue', async ({ state: s, payload }) => {
+    if (!s.isSettingsMode) return;
+    const direction = payload.direction || 1; // 1 for up/right, -1 for down/left
+    const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
+    
+    // Logic to change the value based on the category
+    switch (categoryId) {
+      case 'grid':
+        const grids = s.availableGrids.map(g => g.id);
+        const currentGridIndex = grids.indexOf(s.gridType);
+        const nextGridIndex = (currentGridIndex + direction + grids.length) % grids.length;
+        s.gridType = grids[nextGridIndex];
+        break;
+      case 'synth':
+        const synths = s.availableEngines.map(e => e.id);
+        const currentSynthIndex = synths.indexOf(s.synthesisEngine);
+        const nextSynthIndex = (currentSynthIndex + direction + synths.length) % synths.length;
+        s.synthesisEngine = synths[nextSynthIndex];
+        break;
+      case 'language': // <-- NEW CASE
+        const langs = s.availableLanguages.map(l => l.id);
+        const currentLangIndex = langs.indexOf(s.language);
+        const nextLangIndex = (currentLangIndex + direction + langs.length) % langs.length;
+        const newLang = langs[nextLangIndex];
+        await setLanguage(newLang); // This also saves it
+        s.language = newLang;
+        try { await translatePage(document); } catch (e) { /* best-effort */ }
+        break;
+      case 'maxNotes':
+        const current = Number(s.maxNotes) || 0;
+        // step sizes: +1 or -1
+        const next = Math.max(1, current + (direction > 0 ? 1 : -1));
+        s.maxNotes = next;
+        try { resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
+        break;
+      case 'motionThreshold': // Adjust in steps of 20, clamp 20..120
+        let newThreshold = (Number(s.motionThreshold) || 20) + (direction * 20);
+        newThreshold = Math.max(20, Math.min(120, newThreshold));
+        s.motionThreshold = newThreshold;
+        break;
+    }
+    await dispatch('announceCurrentSettingValue');
+  });
+
+  registerCommandHandler('announceCurrentSettingCategory', async ({ state: s }) => {
+    if (!s.isSettingsMode) return;
+    const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
+    const categoryName = await getText(`settings.category.${categoryId}`).catch(() => categoryId);
+    speakText(categoryName);
+  });
+  
+  registerCommandHandler('announceCurrentSettingValue', async ({ state: s }) => {
+    if (!s.isSettingsMode) return;
+    const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
+    let valueText = '';
+    try {
+      switch (categoryId) {
+        case 'grid':
+          valueText = s.availableGrids.find(g => g.id === s.gridType)?.name || s.gridType;
+          break;
+        case 'synth':
+          valueText = s.availableEngines.find(e => e.id === s.synthesisEngine)?.name || s.synthesisEngine;
+          break;
+        case 'language':
+          valueText = s.availableLanguages.find(l => l.id === s.language)?.name || s.language;
+          break;
+        case 'maxNotes':
+          valueText = await getText('settings.value.notes', { count: s.maxNotes });
+          break;
+        case 'motionThreshold':
+          let sensitivity = 'Medium';
+          if ((Number(s.motionThreshold) || 0) <= 40) sensitivity = 'High';
+          if ((Number(s.motionThreshold) || 0) >= 80) sensitivity = 'Low';
+          valueText = await getText('settings.value.sensitivity', {
+            level: await getText(`settings.sensitivity.${sensitivity.toLowerCase()}`)
+          });
+          break;
+      }
+      speakText(valueText);
+    } catch (err) {
+      structuredLog('ERROR', 'Failed to announce setting value', { error: err.message });
+    }
+  });
+
   registerCommandHandler('gatherAndSendUserReport', async ({ state }) => {
     try {
       const appState = JSON.stringify(state);
