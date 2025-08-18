@@ -10,6 +10,44 @@ import { deviceSummary } from '../utils/performance.js';
 
 const INGEST_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev';
 
+export async function trackFeatureUse(event, payload = {}) {
+  try {
+    if (!settings?.ingestEnabled) return;
+  } catch (e) {
+    // If settings can't be read, don't block the app; no telemetry sent.
+    return;
+  }
+
+  try {
+    const device = (() => {
+      try { return deviceSummary(); } catch (e) { return { error: 'device-summary-failed' }; }
+    })();
+
+    // Build a D1-friendly payload. The Cloudflare Worker will expect at least
+    // `level` and `message` (mapped from `event` and `payload.message`). Any
+    // remaining properties will be sent along and stringified there.
+    const { message, source, stack, ...rest } = payload || {};
+    const logPayload = {
+      level: event, // e.g. 'globalError', 'INFO', 'WARN', 'ERROR'
+      message: message || event,
+      source: source ?? null,
+      stack: stack ?? null,
+      ...rest,
+      device,
+      timestamp_client: Date.now()
+    };
+
+    await fetch(INGEST_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify(logPayload)
+    });
+  } catch (err) {
+    console.error('Ingest send failed:', err);
+  }
+}
+
 /**
  * Best-effort emergency beacon. Uses sendBeacon when available.
  */
@@ -65,30 +103,4 @@ export function pingIngest() {
   }
 }
 
-export async function trackFeatureUse(event, payload = {}) {
-  try {
-    if (!settings?.ingestEnabled) return;
-  } catch (e) {
-    // If settings can't be read, don't block the app; no telemetry sent.
-    return;
-  }
 
-  try {
-    const device = (() => {
-      try { return deviceSummary(); } catch (e) { return { error: 'device-summary-failed' }; }
-    })();
-
-  await fetch('https://acoustsee-analytics.mamware.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      keepalive: true,
-      body: JSON.stringify({
-        event,
-        payload: Object.assign({}, payload, { device }),
-        timestamp: Date.now()
-      })
-    });
-  } catch (err) {
-    console.error('Ingest send failed:', err);
-  }
-}
