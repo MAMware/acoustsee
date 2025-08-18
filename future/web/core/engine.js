@@ -1,3 +1,4 @@
+// File: web/core/engine.js
 // Minimal headless engine: owns state and exposes a dispatch API for commands.
 import { settings } from './state.js';
 import { structuredLog } from '../utils/logging.js';
@@ -149,19 +150,15 @@ export function createEngine() {
       const current = s.language || langs[0];
       const idx = Math.max(0, langs.indexOf(current));
       const next = langs[(idx + 1) % langs.length];
-  // Persist selection and preload translations
-  await setLanguage(next);
-  s.language = next;
-      // Re-run translation pass for the document
+      await setLanguage(next);
+      s.language = next;
       try { await translatePage(document); } catch (e) { /* best-effort */ }
-      // Announce change
-      const languageName = next; // renderer may compute nicer display name
+      const languageName = next;
       try {
         const announce = await getText('button3.tts.languageSelect', { state: languageName });
         announceMessage(announce);
         if (typeof speakText === 'function') speakText(announce);
       } catch (e) {
-        // fallback
         const fallback = await getText('language.set', { languageName }).catch(() => `Language set to ${languageName}`);
         announceMessage(fallback);
         if (typeof speakText === 'function') speakText(fallback);
@@ -177,11 +174,9 @@ export function createEngine() {
     try {
       const { videoEl, canvasEl } = payload || {};
       await mediaStartCamera(videoEl, { facingMode: 'environment' });
-      // Notify that stream is active in settings
-  if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
-  // Start frame capture if UI exposed functions on DOM
-  try { if (videoEl && videoEl._startCameraFrameCapture) videoEl._startCameraFrameCapture(); } catch (e) {}
-  return { started: true };
+      if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
+      try { if (videoEl && videoEl._startCameraFrameCapture) videoEl._startCameraFrameCapture(); } catch (e) {}
+      return { started: true };
     } catch (e) {
       structuredLog('ERROR', 'engine.startCamera failed', { error: e?.message || String(e) });
       throw e;
@@ -195,8 +190,8 @@ export function createEngine() {
       if (videoEl) {
         try { if (videoEl._stopCameraFrameCapture) videoEl._stopCameraFrameCapture(); } catch (e) {}
       }
-  s.stream = null;
-  return { started: false };
+      s.stream = null;
+      return { started: false };
     } catch (e) {
       structuredLog('WARN', 'engine.stopCamera failed', { error: e?.message || String(e) });
       throw e;
@@ -249,19 +244,11 @@ export function createEngine() {
   registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
     try {
       const { videoEl, canvasEl } = payload || {};
-      // Start camera if not active
       await mediaStartCamera(videoEl, { facingMode: 'environment' });
       if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
-      // initialize scheduler loop (single-run lock + one-pending-frame)
-      // keep some scheduler state in closure so stopProcessing can cancel it
-      if (!this || typeof this === 'undefined') {
-        // noop - ensure closure exists
-      }
-      // store DOM refs for scheduler
       _videoElForScheduler = videoEl;
       _canvasElForScheduler = canvasEl;
       s.isProcessing = true;
-      // kick off the scheduler immediately (it will respect target interval)
       try {
         if (_schedulerTimerId != null) try { clearTimeout(_schedulerTimerId); } catch (e) {}
         _schedulerTimerId = setTimeout(_runScheduled, 0);
@@ -280,21 +267,18 @@ export function createEngine() {
   registerCommandHandler('stopProcessing', async ({ state: s, payload }) => {
     try {
       const { videoEl } = payload || {};
-      // clear scheduler timer if present
       try {
         if (_schedulerTimerId != null) {
           clearTimeout(_schedulerTimerId);
           _schedulerTimerId = null;
         }
       } catch (e) { /* ignore */ }
-      // reset scheduler state
       _processingLock = false;
       _pending = false;
       s.processingTimerId = null;
       s.isProcessing = false;
       try { mediaStopCamera(videoEl); } catch (e) { /* ignore */ }
       s.stream = null;
-      // clear DOM refs
       _videoElForScheduler = null;
       _canvasElForScheduler = null;
       return { stopped: true };
@@ -316,9 +300,8 @@ export function createEngine() {
       const ctx = canvasEl.getContext('2d');
       try { ctx.drawImage(videoEl, 0, 0, w, h); } catch (e) { return null; }
       const img = ctx.getImageData(0, 0, w, h);
-  const result = await processFrameWithState(img.data, w, h);
-  // Dispatch audioPlayCues intent for other modules to consume
-  try { dispatch('audioPlayCues', { cues: result.cues }); } catch (e) { /* best-effort */ }
+      const result = await processFrameWithState(img.data, w, h);
+      try { dispatch('audioPlayCues', { cues: result.cues }); } catch (e) { /* best-effort */ }
       return result;
     } catch (e) {
       structuredLog('WARN', 'engine.processFrame failed', { error: e?.message || String(e) });
@@ -338,9 +321,6 @@ export function createEngine() {
       return { played: false };
     }
   });
-
-  // NOTE: Legacy 'audioPlayNotes' handler removed. The engine now only speaks
-  // in terms of AcousticCues and `audioPlayCues`.
 
   // Save settings: persist selected user settings to localStorage and speak feedback
   registerCommandHandler('saveSettings', async ({ state: s }) => {
@@ -406,7 +386,6 @@ export function createEngine() {
       const errorMsg = await getText('button5.tts.loadError').catch(() => null);
       if (errorMsg) speakText(errorMsg);
     } finally {
-      // notify UI via engine.dispatch of the updated state
       try { await dispatch('updateUI', { settingsMode: s.isSettingsMode, streamActive: !!s.stream, micActive: !!s.micStream }); } catch (e) {}
       return { loaded: true };
     }
@@ -436,21 +415,6 @@ export function createEngine() {
     }
   });
 
-  /**
-   * cycleFramerate
-   * ----------------
-   * Headless command to cycle the application's framerate settings.
-   * Behavior (migrated from UI):
-   * - If `state.autoFPS` is true, turn it off and set `updateInterval` to 1000/20 (20 FPS).
-   * - Otherwise, cycle through fps options [20, 30, 60]. When reaching 60, enable `autoFPS`.
-   * - Notify listeners (UI) by dispatching an `updateUI` event.
-   *
-   * Inputs: none (operates directly on `state`) 
-   * Outputs: returns an object with the new `autoFPS` and `updateInterval` values.
-   * Error modes: logs and returns { ok: false } on unexpected failures.
-   */
-  // Cycle framerate / toggle autoFPS: move UI logic into engine so it is headless.
-  // Logic mirrors web/ui/ui-settings.js Button 4 (normal mode) behavior.
   registerCommandHandler('cycleFramerate', async ({ state: s, dispatch: engineDispatch }) => {
     try {
       if (s.autoFPS) {
@@ -458,18 +422,15 @@ export function createEngine() {
         s.updateInterval = 1000 / 20;
       } else {
         const fpsOptions = [20, 30, 60];
-  const currentFps = Math.round(1000 / s.updateInterval);
-  const idx = fpsOptions.indexOf(currentFps);
+        const currentFps = Math.round(1000 / s.updateInterval);
+        const idx = fpsOptions.indexOf(currentFps);
         s.autoFPS = idx === fpsOptions.length - 1;
         if (!s.autoFPS) {
-          // if idx is -1 (not found), default to first option
           const nextIdx = (idx === -1) ? 0 : (idx + 1);
           s.updateInterval = 1000 / fpsOptions[nextIdx];
         }
       }
-      // notify any UI listeners of the change
       try { await dispatch('updateUI', { settingsMode: s.isSettingsMode, streamActive: !!s.stream, micActive: !!s.micStream }); } catch (e) {}
-      // Return fps metadata
       return { autoFPS: s.autoFPS, updateInterval: s.updateInterval };
     } catch (e) {
       structuredLog('WARN', 'cycleFramerate failed', { error: e?.message || String(e) });
@@ -477,7 +438,6 @@ export function createEngine() {
     }
   });
 
-  // Called after camera start completes. If autoFPS is enabled, notify listeners
   registerCommandHandler('cameraDidStart', async ({ state: s, payload }) => {
     try {
       if (s.autoFPS) {
@@ -490,16 +450,13 @@ export function createEngine() {
     }
   });
 
-  // Accept the computed interval (ms) and persist as updateInterval (FPS) and benchmark metadata
   registerCommandHandler('setFrameInterval', async ({ state: s, payload }) => {
     try {
       const { intervalMs, sampleCount = 1 } = payload || {};
       if (!intervalMs || !Number.isFinite(intervalMs)) return { ok: false };
       const fps = Math.max(8, Math.min(30, Math.round(1000 / intervalMs)));
       s.updateInterval = fps;
-      // Persist benchmark results in state helper if available
       try { setAutoFpsBenchmark({ intervalMs, sampleCount, safetyFactor: s.autoFpsBenchmark?.safetyFactor || 0.7 }); } catch (e) {}
-      // Let subscribers know
       return { fps, intervalMs };
     } catch (e) {
       structuredLog('WARN', 'setFrameInterval failed', { error: e?.message || String(e) });
@@ -507,11 +464,51 @@ export function createEngine() {
     }
   });
 
+  // --- NEW: DIRECT SETTER HANDLERS FOR DEBUG UI ---
+  registerCommandHandler('setGridType', async ({ state: s, payload }) => {
+    const newGridId = payload.gridType;
+    if (s.availableGrids.find(g => g.id === newGridId)) {
+      s.gridType = newGridId;
+      structuredLog('INFO', 'DebugUI: Grid type set', { gridType: newGridId });
+    }
+  });
+
+  registerCommandHandler('setSynthEngine', async ({ state: s, payload }) => {
+    const newEngineId = payload.synthEngine;
+    if (s.availableEngines.find(e => e.id === newEngineId)) {
+      s.synthesisEngine = newEngineId;
+      structuredLog('INFO', 'DebugUI: Synth engine set', { synthEngine: newEngineId });
+    }
+  });
+
+  registerCommandHandler('setMaxNotes', async ({ state: s, payload }) => {
+    const maxNotes = parseInt(payload.maxNotes, 10);
+    if (!isNaN(maxNotes) && maxNotes >= 1 && maxNotes <= 100) {
+      s.maxNotes = maxNotes;
+      resizeOscillatorPool(s.maxNotes);
+      structuredLog('INFO', 'DebugUI: Max notes set', { maxNotes });
+    }
+  });
+
+  registerCommandHandler('setMotionThreshold', async ({ state: s, payload }) => {
+    const threshold = parseInt(payload.motionThreshold, 10);
+    if (!isNaN(threshold) && threshold >= 1 && threshold <= 255) {
+      s.motionThreshold = threshold;
+      structuredLog('INFO', 'DebugUI: Motion threshold set', { threshold });
+    }
+  });
+
+  registerCommandHandler('setAutoFPS', async ({ state: s, payload }) => {
+    const enabled = !!payload.enabled;
+    s.autoFPS = enabled;
+    structuredLog('INFO', 'DebugUI: Auto FPS set', { enabled });
+  });
+
   return {
     dispatch,
     registerCommandHandler,
     onStateChange,
-  getState,
-  onBenchmarkRequired,
+    getState,
+    onBenchmarkRequired,
   };
 }
