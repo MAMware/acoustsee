@@ -1,14 +1,15 @@
 // File: web/main.js
 import { createEngine } from './core/engine.js';
-import { settings, setAutoFpsBenchmark } from './core/state.js';
+import { settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM, setDispatchEvent } from './core/context.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
+import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
 import { initializeAudio } from './audio/audio-processor.js';
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
 import { processFrameWithState } from './video/frame-processor.js';
-import { getPreferredIntervalMs, addSessionError, startHealthChecker } from './utils/performance.js';
+import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { initializeDebugUI } from './ui/debug-ui.js';
 import { initializeAccessibleUI } from './ui/accessible-ui.js';
 
@@ -16,8 +17,8 @@ import { initializeAccessibleUI } from './ui/accessible-ui.js';
 const HEALTH_CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
 const ERROR_THRESHOLD = 5; // Alert if more than 5 errors
 const ERROR_TIMEFRAME_MS = 2 * 60 * 1000; // Look at last 2 minutes
-// Translation cache for static keys
 const translationCache = {};
+
 // Cached getText wrapper
 async function getTextCached(key, params = {}) {
   const cacheKey = JSON.stringify({ key, params });
@@ -35,14 +36,11 @@ const DOM = {
   splashScreen: document.getElementById('splashScreen'),
   mainContainer: document.getElementById('mainContainer'),
   debugPanel: document.getElementById('debugPanel'),
-  // Add root for new UI panels
-  uiPanelRoot: document.getElementById('ui-panel-root'),
+    uiPanelRoot: document.getElementById('ui-panel-root'),
 };
 
-// Initialize shared DOM context for modules that need it
 setDOM(DOM);
 
-// Custom Error class to attach metadata
 class CustomError extends Error {
   constructor(message, data = {}) {
     super(message);
