@@ -1,6 +1,6 @@
 // File: web/ui/debug-ui.js
 // The Developer & Tester UI ("Debug View")
-// UPDATED: Improved internal scrolling and layout for the panel.
+// CORRECTED: Includes the full implementation of the helper functions.
 
 import { setOutputCallback } from '../utils/core-logger.js';
 import { settings } from '../core/state.js';
@@ -26,7 +26,6 @@ export function initializeDebugUI(engine, DOM) {
     </div>
   `;
 
-  // --- UPDATED STYLES ---
   const styles = `
     #acoustsee-debug-panel {
       width: 400px;
@@ -43,9 +42,9 @@ export function initializeDebugUI(engine, DOM) {
     .debug-section {
       padding: 10px;
       border-bottom: 1px solid #34495e;
-      display: flex; /* Use flexbox for the section itself */
-      flex-direction: column; /* Stack h2 and content vertically */
-      overflow: hidden; /* Prevent content from breaking out */
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     .debug-section h2 {
       margin: 0 0 10px 0;
@@ -53,35 +52,32 @@ export function initializeDebugUI(engine, DOM) {
       color: #3498db;
       border-bottom: 1px solid #3498db;
       padding-bottom: 5px;
-      flex-shrink: 0; /* Prevent the title from shrinking */
+      flex-shrink: 0;
     }
-    /* --- STATE INSPECTOR --- */
     .state-section {
-      flex-shrink: 0; /* Don't let this section shrink */
-      max-height: 25%; /* Give it a max height */
+      flex-shrink: 0;
+      max-height: 25%;
     }
     #debug-state-view {
       background: #222;
       padding: 5px;
       white-space: pre-wrap;
       word-break: break-all;
-      overflow-y: auto; /* Allow this specific element to scroll */
+      overflow-y: auto;
     }
-    /* --- CONTROLS --- */
     .controls-section {
-      flex-shrink: 0; /* Don't let this section shrink either */
+      flex-shrink: 0;
     }
     #debug-controls {
-      overflow-y: auto; /* This is the key fix for the missing button */
-      padding-right: 5px; /* Add some space for the scrollbar */
+      overflow-y: auto;
+      padding-right: 5px;
     }
-    /* --- LOGS --- */
     .logs-section {
-      flex-grow: 1; /* CRITICAL: This makes the logs section take all remaining space */
+      flex-grow: 1;
     }
     #debug-log-view {
       flex-grow: 1;
-      overflow-y: scroll; /* Use scroll to always show the bar */
+      overflow-y: scroll;
       background: #222;
       padding: 5px;
     }
@@ -92,8 +88,6 @@ export function initializeDebugUI(engine, DOM) {
     }
     #debug-log-view .log-warn { color: #f39c12; }
     #debug-log-view .log-error { color: #e74c3c; font-weight: bold; }
-
-    /* --- General Control Styles --- */
     .control-group { margin-bottom: 10px; }
     .control-group label { display: block; margin-bottom: 4px; }
     .control-group select, .control-group input, .control-group button {
@@ -113,21 +107,21 @@ export function initializeDebugUI(engine, DOM) {
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
 
-  // 2. --- POPULATE CONTROLS (No changes here, this code remains the same) ---
+  // 2. --- POPULATE CONTROLS ---
   const controlsContainer = panel.querySelector('#debug-controls');
   const gridSelect = createSelect('Grid Type', settings.availableGrids.map(g => g.id));
   const synthSelect = createSelect('Synth Engine', settings.availableEngines.map(e => e.id));
   const maxNotesSlider = createSlider('Max Notes', 1, 100, 1);
   const motionSlider = createSlider('Motion Threshold', 1, 255, 5);
   const autoFpsCheckbox = createCheckbox('Auto FPS');
-  const startStopBtn = createButton('Start/Stop Processing'); // This is the button that was hidden
+  const startStopBtn = createButton('Start/Stop Processing');
   const saveBtn = createButton('Save Settings');
   const loadBtn = createButton('Load Settings');
   controlsContainer.append(
     gridSelect, synthSelect, maxNotesSlider, motionSlider, autoFpsCheckbox, startStopBtn, saveBtn, loadBtn
   );
   
-  // 3. --- WIRE UP INPUTS (No changes here) ---
+  // 3. --- WIRE UP INPUTS ---
   gridSelect.querySelector('select').addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
   synthSelect.querySelector('select').addEventListener('change', (e) => engine.dispatch('setSynthEngine', { synthEngine: e.target.value }));
   maxNotesSlider.querySelector('input').addEventListener('input', (e) => {
@@ -150,7 +144,7 @@ export function initializeDebugUI(engine, DOM) {
   saveBtn.querySelector('button').addEventListener('click', () => engine.dispatch('saveSettings'));
   loadBtn.querySelector('button').addEventListener('click', () => engine.dispatch('loadSettings'));
 
-  // 4. --- WIRE UP OUTPUTS (No changes here) ---
+  // 4. --- WIRE UP OUTPUTS ---
   const stateView = panel.querySelector('#debug-state-view');
   const logView = panel.querySelector('#debug-log-view');
   engine.onStateChange(state => {
@@ -173,9 +167,64 @@ export function initializeDebugUI(engine, DOM) {
   });
 }
 
-// --- Helper functions for creating controls (No changes here) ---
-function createControlGroup(label) { /* ... unchanged ... */ }
-function createSelect(label, options) { /* ... unchanged ... */ }
-function createSlider(label, min, max, step) { /* ... unchanged ... */ }
-function createCheckbox(label) { /* ... unchanged ... */ }
-function createButton(label) { /* ... unchanged ... */ }
+// --- FULLY IMPLEMENTED HELPER FUNCTIONS ---
+function createControlGroup(label) {
+  const group = document.createElement('div');
+  group.className = 'control-group';
+  if (label) {
+    const labelEl = document.createElement('label');
+    labelEl.textContent = label;
+    group.appendChild(labelEl);
+  }
+  return group;
+}
+
+function createSelect(label, options) {
+  const group = createControlGroup(label);
+  const select = document.createElement('select');
+  options.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt;
+    option.textContent = opt;
+    select.appendChild(option);
+  });
+  group.appendChild(select);
+  return group;
+}
+
+function createSlider(label, min, max, step) {
+  const group = createControlGroup(label);
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = min;
+  input.max = max;
+  input.step = step;
+  const valueSpan = document.createElement('span');
+  valueSpan.style.marginLeft = '10px';
+  group.appendChild(input);
+  group.appendChild(valueSpan);
+  return group;
+}
+
+function createCheckbox(label) {
+  const group = createControlGroup('');
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.id = `debug-checkbox-${label.replace(/\s+/g, '-')}`;
+  const labelEl = document.createElement('label');
+  labelEl.textContent = label;
+  labelEl.setAttribute('for', input.id);
+  labelEl.style.display = 'inline-block';
+  labelEl.style.marginLeft = '5px';
+  group.appendChild(input);
+  group.appendChild(labelEl);
+  return group;
+}
+
+function createButton(label) {
+  const group = createControlGroup('');
+  const button = document.createElement('button');
+  button.textContent = label;
+  group.appendChild(button);
+  return group;
+}
