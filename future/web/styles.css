@@ -1,3 +1,5 @@
+/* File: web/styles.css */
+
 body {
   font-family: Arial, sans-serif;
   margin: 0;
@@ -11,13 +13,28 @@ body {
   background-color: #f0f0f0;
 }
 
-/* --- UI Mode Placeholders --- */
+/* --- UI Mode Styles --- */
 body.debug-mode {
   display: flex;
   flex-direction: row;
+  /* NEW: Prevent the body from wrapping if screen gets too small */
+  flex-wrap: nowrap;
 }
+
+/* --- UPDATED DEBUG MODE LAYOUT --- */
 body.debug-mode #mainContainer {
-  flex-grow: 1;
+  /* Let this container grow and shrink */
+  flex: 1 1 auto; 
+  /* Prevent it from getting too small */
+  min-width: 300px;
+  /* Ensure it has its own layout context */
+  position: relative; 
+}
+
+/* NEW: Style for the root panel that holds the debug UI */
+body.debug-mode #ui-panel-root {
+  /* Don't grow, don't shrink, stay at its defined width */
+  flex: 0 0 auto; 
 }
 
 body.accessible-mode #mainContainer {
@@ -38,7 +55,6 @@ body.accessible-mode #mainContainer {
   z-index: 30;
 }
 
-/* --- NEW STYLES FOR THE POWER ON BUTTON --- */
 .power-on-button {
   font-size: clamp(24px, 5vw, 48px); /* Responsive font size */
   padding: 0.5em 1em;
@@ -54,7 +70,6 @@ body.accessible-mode #mainContainer {
   background-color: #555;
   cursor: wait;
 }
-/* --- END NEW STYLES --- */
 
 .main-container {
   width: 100%;
