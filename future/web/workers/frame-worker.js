@@ -1,55 +1,108 @@
-// Worker: simple motion detector that compares current frame to previous frame
-// and returns a list of moving pixel points. The worker keeps prevFrameData
-// internally to avoid round-tripping that state across messages.
+// File: web/workers/frame-worker.js
+// This is the new, intelligent version of the worker.
 
-let prevFrameData = null;
+// NOTE: We cannot use import/export syntax here directly in this simple worker.
+// We'll define everything it needs within this one file.
 
-self.onmessage = function (ev) {
-  const msg = ev.data || {};
-  if (msg.type === 'process') {
-    const { frameBuffer, width, height, motionThreshold = 20, maxRegions = 128 } = msg;
-    try {
-      if (!frameBuffer || !width || !height) {
+let lastFrameData = null;
+let regionCounter = 0;
+
+// --- Helper functions (same as in our final frame-processor) ---
+
+function getGrayAt(frameArr, idx, width, height) {
+    const base = idx * 4;
+    if (base + 2 >= frameArr.length) return 0;
+    return (frameArr[base] + frameArr[base + 1] + frameArr[base + 2]) / 3;
+}
+
+function floodFill(startX, startY, width, height, frameData, lastFrameData, visited, motionThreshold) {
+    const threshold = motionThreshold / 2;
+    const regionId = ++regionCounter;
+    const maxStackSize = width * height;
+    const stackX = new Int32Array(maxStackSize);
+    const stackY = new Int32Array(maxStackSize);
+    let sp = 0;
+    stackX[sp] = startX;
+    stackY[sp] = startY;
+    sp++;
+    let size = 0;
+    let totalIntensityDiff = 0;
+    let sumX = 0;
+    let sumY = 0;
+    while (sp > 0) {
+        sp--;
+        const x = stackX[sp];
+        const y = stackY[sp];
+        if (x < 0 || x >= width || y < 0 || y >= height) continue;
+        const idx = y * width + x;
+        if (visited[idx]) continue;
+        visited[idx] = 1;
+        const currentGray = getGrayAt(frameData, idx, width, height);
+        const lastGray = getGrayAt(lastFrameData, idx, width, height);
+        const diff = Math.abs(currentGray - lastGray);
+        if (diff > threshold) {
+            size++;
+            totalIntensityDiff += diff;
+            sumX += x;
+            sumY += y;
+            if (sp < maxStackSize - 4) {
+                stackX[sp] = x + 1; stackY[sp] = y; sp++;
+                stackX[sp] = x - 1; stackY[sp] = y; sp++;
+                stackX[sp] = x; stackY[sp] = y + 1; sp++;
+                stackX[sp] = x; stackY[sp] = y - 1; sp++;
+            }
+        }
+    }
+    const avgIntensity = size > 0 ? (totalIntensityDiff / size) : 0;
+    const maxRegionCounter = Math.max(1024, width * height);
+    if (regionCounter > maxRegionCounter) regionCounter = 0;
+    return { id: regionId, size, avgIntensity, avgX: sumX, avgY: sumY };
+}
+
+
+// --- Main Worker Logic ---
+
+self.onmessage = (e) => {
+    const { frameBuffer, width, height, settings } = e.data || {};
+    const frameData = new Uint8ClampedArray(frameBuffer);
+
+    if (!lastFrameData) {
+        lastFrameData = new Uint8ClampedArray(frameData);
+        // On the first frame, just store it and send back an empty result envelope.
         self.postMessage({ type: 'result', result: { movingRegions: [] } });
         return;
-      }
-
-      const frame = new Uint8ClampedArray(frameBuffer);
-      if (!prevFrameData || prevFrameData.length !== frame.length) prevFrameData = new Uint8ClampedArray(frame.length);
-
-      const movingRegions = [];
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const idx = (y * width + x) * 4;
-          const r = frame[idx];
-          const g = frame[idx + 1];
-          const b = frame[idx + 2];
-          const intensity = (r + g + b) / 3;
-
-          const pr = prevFrameData[idx] || 0;
-          const pg = prevFrameData[idx + 1] || 0;
-          const pb = prevFrameData[idx + 2] || 0;
-          const prevIntensity = (pr + pg + pb) / 3;
-
-          const delta = Math.abs(intensity - prevIntensity);
-          if (delta > motionThreshold) {
-            movingRegions.push({ pixelX: x, pixelY: y, intensity, delta });
-          }
-        }
-      }
-
-      // Keep only the largest deltas
-      movingRegions.sort((a, b) => b.delta - a.delta);
-      const sliced = movingRegions.slice(0, maxRegions);
-
-      // Update prev data
-      prevFrameData.set(frame);
-
-      self.postMessage({ type: 'result', result: { movingRegions: sliced } });
-    } catch (e) {
-      self.postMessage({ type: 'result', result: { movingRegions: [] } });
     }
-  } else if (msg.type === 'reset') {
-    prevFrameData = null;
-  }
+
+    const movingRegions = [];
+    const visited = new Uint8Array(width * height);
+    // Defensive: use passed-in motionThreshold or a sensible default
+    const motionThreshold = (settings && typeof settings.motionThreshold === 'number') ? settings.motionThreshold : 60;
+    const MIN_REGION_SIZE = 10;
+    const SIZE_BONUS_FACTOR = 1.5;
+
+    for (let i = 0; i < width * height; i++) {
+        if (!visited[i]) {
+            const x = i % width;
+            const y = Math.floor(i / width);
+            const region = floodFill(x, y, width, height, frameData, lastFrameData, visited, motionThreshold);
+            if (region.size > MIN_REGION_SIZE) {
+                const sizeBonus = 1.0 + (Math.log(region.size) * SIZE_BONUS_FACTOR);
+                const effectiveIntensity = region.avgIntensity * sizeBonus;
+                if (effectiveIntensity > motionThreshold) {
+                    movingRegions.push({
+                        id: region.id,
+                        x: region.avgX / region.size,
+                        y: region.avgY / region.size,
+                        intensity: Math.min(1.0, (region.avgIntensity / 255.0) * 2.0),
+                        size: region.size,
+                    });
+                }
+            }
+        }
+    }
+
+    lastFrameData = frameData;
+    
+    // Send the results back to the main thread in the envelope the main thread expects
+    self.postMessage({ type: 'result', result: { movingRegions } });
 };

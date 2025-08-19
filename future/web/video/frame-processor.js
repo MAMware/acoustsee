@@ -55,17 +55,30 @@ function processFrameViaWorker(frameBuffer, width, height) {
               // Transfer the underlying ArrayBuffer and then recreate a new
               // externalFrameBuffer for future reuse to avoid using a detached buffer.
               const ab = frameBuffer.buffer;
-              w.postMessage({ type: 'process', frameBuffer: ab, width, height, motionThreshold: settings.motionThreshold, transferred: true }, [ab]);
+              w.postMessage({
+                type: 'process',
+                frameBuffer: ab,
+                width,
+                height,
+                settings: { motionThreshold: settings.motionThreshold },
+                transferred: true
+              }, [ab]);
               // Recreate a replacement external buffer for subsequent frames
               if (externalFrameBuffer && externalFrameBuffer.length === frameBuffer.length) {
                 externalFrameBuffer = new Uint8ClampedArray(externalFrameBuffer.length);
               }
             } else {
-              w.postMessage({ type: 'process', frameBuffer, width, height, motionThreshold: settings.motionThreshold }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
+              w.postMessage({
+                type: 'process',
+                frameBuffer,
+                width,
+                height,
+                settings: { motionThreshold: settings.motionThreshold }
+              }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
             }
       } catch (e) {
         // If transfer fails, post without transfer
-            w.postMessage({ type: 'process', frameBuffer, width, height, motionThreshold: settings.motionThreshold });
+            w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: settings.motionThreshold } });
       }
     } catch (e) {
       resolve({ movingRegions: [] });
