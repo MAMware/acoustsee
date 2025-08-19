@@ -14,7 +14,7 @@ export async function processFrameWithState(frameData, width, height) {
     return { cues: [], movingRegions: [] };
   }
 
-  const motionData = new Uint8ClampedArray(width * height);
+
   const movingRegions = [];
   const visited = new Array(width * height).fill(false);
   const { motionThreshold } = settings;
