@@ -1,4 +1,4 @@
-/* File: web/styles.css */
+/* File: web/styles.css (Now with responsive portrait mode support) */
 
 body {
   font-family: Arial, sans-serif;
@@ -13,11 +13,16 @@ body {
   background-color: #f0f0f0;
 }
 
-/* --- UI Mode Styles --- */
+/* --- Default Accessible Mode Styles --- */
+body.accessible-mode #mainContainer {
+  width: 100%;
+  height: 100%;
+}
+
+/* --- DEBUG MODE: Default Landscape Layout --- */
 body.debug-mode {
   display: flex;
-  flex-direction: row;
-  /* NEW: Prevent the body from wrapping if screen gets too small */
+  flex-direction: row; /* Side-by-side */
   flex-wrap: nowrap;
 }
 
@@ -71,11 +76,13 @@ body.accessible-mode #mainContainer {
   cursor: wait;
 }
 
+/* --- Main Container & Video (Unchanged) --- */
 .main-container {
   width: 100%;
   height: 100%;
   position: relative;
   box-sizing: border-box;
+  background-color: #000; /* Add a black background for letterboxing */
 }
 
 .video-container {
@@ -85,28 +92,19 @@ body.accessible-mode #mainContainer {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
-
 .video-container video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* Use 'contain' instead of 'cover' to prevent cropping */
+  object-fit: contain;
   z-index: 1;
 }
 
-.video-container .button-text {
-  position: absolute;
-  bottom: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 0.5vw 1vw;
-  border-radius: 0.5vw;
-  color: white;
-  font-size: 3vw;
-}
-
+/* --- Other styles (Unchanged) --- */
 .sr-only {
   position: absolute !important;
   height: 1px; width: 1px;
