@@ -97,26 +97,61 @@ export async function computeAutoIntervalBenchmark(video, canvas, processFrameWi
     const ready = await waitForReady(1000);
     if (!ready) return 1000 / DEFAULT_TARGET_FPS;
 
-    const ctx = canvas.getContext('2d');
-    const N = 4;
+    // Request a context optimized for repeated readbacks. We intentionally
+    // do not fallback to a non-willReadFrequently context because Phase 1
+    // targets speed / battery improvements only.
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    // Configurable test scale and sample count (small values => much less CPU/battery)
+    const scale = (settings && typeof settings.autoFpsDownscale === 'number') ? settings.autoFpsDownscale : 0.25;
+    const samples = (settings && typeof settings.autoFpsSamples === 'number') ? Math.max(1, Math.min(4, settings.autoFpsSamples)) : 2;
+
+    const testW = Math.max(64, Math.floor(canvas.width * scale));
+    const testH = Math.max(48, Math.floor(canvas.height * scale));
+
+    const N = samples;
     let totalMs = 0;
     let measuredCount = 0;
 
+    // Allow the page to settle for two frames
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
+    const useRvf = typeof video.requestVideoFrameCallback === 'function';
+
+    // Reuse image data variable to avoid allocations inside the hot loop
+    let img = null;
+
     for (let i = 0; i < N; i++) {
-      try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { break; }
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      try {
+        // Draw downscaled to reduce pixel work
+        ctx.drawImage(video, 0, 0, testW, testH);
+      } catch (e) {
+        break;
+      }
+
+      try {
+        img = ctx.getImageData(0, 0, testW, testH);
+      } catch (e) {
+        break;
+      }
+
       const t0 = performance.now();
       try {
-        await processFrameWithState(img.data, canvas.width, canvas.height);
+        // If processor supports smaller resolution, prefer that to save CPU/battery
+        await processFrameWithState(img.data, testW, testH);
       } catch (e) {
         break;
       }
       const t1 = performance.now();
       totalMs += (t1 - t0);
       measuredCount += 1;
-      await new Promise(r => requestAnimationFrame(r));
+
+      if (useRvf) {
+        // Align to the next actual video frame (more power efficient than busy rAF)
+        await new Promise(r => video.requestVideoFrameCallback(() => r()));
+      } else {
+        await new Promise(r => requestAnimationFrame(r));
+      }
     }
 
     if (!measuredCount) return 1000 / DEFAULT_TARGET_FPS;
@@ -126,7 +161,8 @@ export async function computeAutoIntervalBenchmark(video, canvas, processFrameWi
     const targetFps = Math.max(8, Math.min(Math.floor(1000 / effectiveMs), 30));
 
     try {
-      setAutoFpsBenchmark({ intervalMs: Math.round(1000 / targetFps), sampleCount: measuredCount, safetyFactor });
+      // Persist benchmark metadata including downscale factor and samples used
+      setAutoFpsBenchmark({ intervalMs: Math.round(1000 / targetFps), sampleCount: measuredCount, safetyFactor, downscaleFactor: scale });
     } catch (e) {
       // non-fatal
     }
