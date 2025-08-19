@@ -15,6 +15,13 @@ export let settings = {
   audioTimerId: null,
   updateInterval: computeDefaultUpdateInterval(20),
   autoFPS: true,
+  // Phase 2: performance tuning flags (can be adjusted at runtime by UI or tests)
+  autoFpsDownscale: 0.25, // fraction of full canvas to use for benchmark (0.25 = 25%)
+  autoFpsSamples: 2, // number of benchmark samples to take (1..4)
+  enableFrameWorker: true, // opt-in flag to use OffscreenCanvas + Worker for frame processing
+  // When true, transfer ArrayBuffer ownership to the worker to avoid copies
+  // (main thread must recreate/allocate a new buffer afterwards).
+  workerTransferEnabled: false,
   // Stores the most recent auto-FPS benchmark results (measured interval in ms and metadata)
   autoFpsBenchmark: {
     lastIntervalMs: null,
@@ -160,6 +167,37 @@ export function setAutoFpsBenchmark({ intervalMs, sampleCount = 0, safetyFactor 
   settings.autoFpsBenchmark.sampleCount = sampleCount;
   settings.autoFpsBenchmark.safetyFactor = safetyFactor;
   if (settings.debugLogging) structuredLog('INFO', 'setAutoFpsBenchmark', { settings: settings.autoFpsBenchmark });
+}
+
+/**
+ * Set a frame processor function used by runtime benchmarks.
+ * The function should have signature (frameData, w, h) => Promise|void.
+ */
+export function setFrameProcessor(proc) {
+  settings._frameProcessor = proc;
+  if (settings.debugLogging) structuredLog('INFO', 'setFrameProcessor', { hasProcessor: !!proc });
+}
+
+/**
+ * Allocate or replace a reusable frame buffer that other modules (benchmark,
+ * processor) may use to avoid per-frame allocations. Returns the buffer.
+ */
+export function allocateFrameBuffer(width, height) {
+  try {
+    const buf = new Uint8ClampedArray(Math.max(0, width) * Math.max(0, height) * 4);
+    settings._frameBuffer = buf;
+    if (settings.debugLogging) structuredLog('INFO', 'allocateFrameBuffer', { width, height });
+    return buf;
+  } catch (e) {
+    structuredLog('ERROR', 'allocateFrameBuffer failed', e);
+    return null;
+  }
+}
+
+export function setFrameBuffer(buf) {
+  settings._frameBuffer = buf;
+  if (settings.debugLogging) structuredLog('INFO', 'setFrameBuffer', { provided: !!buf });
+  return buf;
 }
 
 export function setAudioInterval(timerId) {

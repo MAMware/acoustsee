@@ -135,10 +135,24 @@ export async function computeAutoIntervalBenchmark(video, canvas, processFrameWi
         break;
       }
 
+      // If an external preallocated buffer exists, copy into it and pass that
+      // to the processor to avoid creating additional per-iteration arrays.
+      const expectedLen = testW * testH * 4;
+      let frameBufferToUse = img.data;
+      try {
+        if (settings && settings._frameBuffer && settings._frameBuffer.length === expectedLen) {
+          settings._frameBuffer.set(img.data);
+          frameBufferToUse = settings._frameBuffer;
+        }
+      } catch (e) {
+        // ignore and fall back to img.data
+        frameBufferToUse = img.data;
+      }
+
       const t0 = performance.now();
       try {
-        // If processor supports smaller resolution, prefer that to save CPU/battery
-        await processFrameWithState(img.data, testW, testH);
+        // If processor supports smaller resolution or buffer reuse, prefer that to save CPU/battery
+        await processFrameWithState(frameBufferToUse, testW, testH);
       } catch (e) {
         break;
       }

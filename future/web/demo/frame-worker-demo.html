@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Frame Worker Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; }
+    video, canvas { border: 1px solid #ccc; max-width: 100%; }
+    #controls { margin-top: 12px; }
+    button { margin-right: 8px; }
+    #log { margin-top: 12px; white-space: pre-wrap; background:#f7f7f7; padding:8px; height:200px; overflow:auto; border:1px solid #eee }
+  </style>
+</head>
+<body>
+  <h1>Frame Worker Demo</h1>
+  <p>This demo toggles the frame worker and ArrayBuffer transfer mode. Use a modern browser (Chrome/Edge/Firefox).</p>
+
+  <div>
+    <video id="video" autoplay playsinline muted width="320" height="240"></video>
+    <canvas id="canvas" width="320" height="240" style="display:none"></canvas>
+  </div>
+
+  <div id="controls">
+    <button id="startCam">Start Camera</button>
+    <button id="stopCam" disabled>Stop Camera</button>
+    <button id="allocBuf">Allocate Buffer</button>
+    <button id="toggleWorker">Toggle Worker</button>
+    <button id="toggleTransfer">Toggle Transfer</button>
+    <button id="startProc">Start Processing</button>
+    <button id="stopProc" disabled>Stop Processing</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script type="module" src="./frame-worker-demo.js"></script>
+</body>
+</html>
