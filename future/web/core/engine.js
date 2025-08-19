@@ -520,64 +520,52 @@ export function createEngine() {
         language: s.language,
         autoFPS: s.autoFPS,
         updateInterval: s.updateInterval,
-        dayNightMode: s.dayNightMode,
-        ttsEnabled: s.ttsEnabled,
-        resetStateOnError: s.resetStateOnError,
-        audioResumeAttempts: s.audioResumeAttempts,
-        audioResumeDelayMs: s.audioResumeDelayMs,
-        maxNotes: s.maxNotes
+        maxNotes: s.maxNotes,
+        motionThreshold: s.motionThreshold
       };
       localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
-      const msg = await getText('button4.tts.saveSettings').catch(() => null);
-      if (msg) speakText(msg);
+     
+      const msg = await getText('settings.saved').catch(() => 'Settings saved successfully.');
+      speakText(msg);
+      structuredLog('INFO', 'Settings saved to localStorage', settingsToSave);
       return { saved: true };
     } catch (err) {
-      structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
-      const errorMsg = await getText('button4.tts.saveError').catch(() => null);
-      if (errorMsg) speakText(errorMsg);
+      structuredLog('ERROR', 'saveSettings error', { message: err.message });
+      const errorMsg = await getText('settings.save_error').catch(() => 'Error saving settings.');
+      speakText(errorMsg);
       return { saved: false };
     }
   });
 
-  // Load settings: read from localStorage, validate, apply to state and resize audio pool
-  registerCommandHandler('loadSettings', async ({ state: s, dispatch: engineDispatch }) => {
+  // Load settings: read from localStorage, apply safely, and provide feedback
+  registerCommandHandler('loadSettings', async ({ state: s }) => {
     try {
-      const savedSettings = localStorage.getItem('acoustsee-settings');
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        const expected = {
-          gridType: 'string',
-          synthesisEngine: 'string',
-          language: 'string',
-          autoFPS: 'boolean',
-          updateInterval: 'number',
-          dayNightMode: 'string',
-          ttsEnabled: 'boolean',
-          resetStateOnError: 'boolean',
-          audioResumeAttempts: 'number',
-          audioResumeDelayMs: 'number',
-          maxNotes: 'number'
-        };
-        for (const key in expected) {
-          if (Object.hasOwn(parsed, key) && typeof parsed[key] === expected[key]) {
-            s[key] = parsed[key];
-          }
-        }
-        const msg = await getText('button5.tts.loadSettings.loaded').catch(() => null);
-        if (msg) speakText(msg);
-        try { resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed after loadSettings', { err: e?.message || String(e) }); }
+      const savedSettingsJSON = localStorage.getItem('acoustsee-settings');
+      if (savedSettingsJSON) {
+        const parsed = JSON.parse(savedSettingsJSON);
+       
+        // Carefully apply loaded settings to the current state
+        Object.assign(s, parsed);
+
+        // Post-load actions
+        await setLanguage(s.language);
+        await translatePage(document);
+        resizeOscillatorPool(s.maxNotes);
+       
+        const msg = await getText('settings.loaded').catch(() => 'Settings loaded successfully.');
+        speakText(msg);
+        structuredLog('INFO', 'Settings loaded from localStorage', parsed);
       } else {
-        const msg = await getText('button5.tts.loadSettings.none').catch(() => null);
-        if (msg) speakText(msg);
+        const msg = await getText('settings.load_none').catch(() => 'No saved settings found.');
+        speakText(msg);
+        structuredLog('INFO', 'No saved settings found in localStorage.');
       }
     } catch (err) {
-      structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
-      const errorMsg = await getText('button5.tts.loadError').catch(() => null);
-      if (errorMsg) speakText(errorMsg);
-    } finally {
-      try { await dispatch('updateUI', { settingsMode: s.isSettingsMode, streamActive: !!s.stream, micActive: !!s.micStream }); } catch (e) {}
-      return { loaded: true };
+      structuredLog('ERROR', 'Load settings error', { message: err.message });
+      const errorMsg = await getText('settings.load_error').catch(() => 'Error loading settings.');
+      speakText(errorMsg);
     }
+    // No return value needed, state is mutated directly
   });
 
   // Cycle Grid: pick next available grid and resize audio pool if grid specifies maxNotes

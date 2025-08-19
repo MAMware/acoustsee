@@ -169,6 +169,12 @@
       "medium": "Medium",
       "low": "Low"
     }
+  ,
+  "saved": "Settings saved successfully.",
+  "loaded": "Settings loaded successfully.",
+  "save_error": "Error saving settings.",
+  "load_none": "No saved settings found.",
+  "load_error": "Error loading settings."
   },
   "processing": {
     "stopped": "Stopping",

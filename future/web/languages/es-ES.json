@@ -151,4 +151,12 @@
   "init": {
     "failed": "Inicialización fallida: {specificMessage}. Consulte la consola para más detalles."
   }
+  ,
+  "settings": {
+    "saved": "Configuración guardada correctamente.",
+    "loaded": "Configuración cargada correctamente.",
+    "save_error": "Error al guardar la configuración.",
+    "load_none": "No se encontraron configuraciones guardadas.",
+    "load_error": "Error al cargar la configuración."
+  }
 }
