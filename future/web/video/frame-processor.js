@@ -48,8 +48,10 @@ function processFrameViaWorker(frameBuffer, width, height) {
     try {
       const w = startFrameWorker();
       if (!w) return resolve({ movingRegions: [] });
-      _workerPendingResolve = (res) => resolve(res);
-      // Transfer the buffer if possible
+  _workerPendingResolve = (res) => resolve(res);
+  // Tiny debug: confirm the motionThreshold being sent to the worker
+  try { console.debug('processFrameViaWorker -> motionThreshold', settings.motionThreshold); } catch (e) { /* ignore in environments without console.debug */ }
+  // Transfer the buffer if possible
       try {
             if (settings.workerTransferEnabled && frameBuffer && frameBuffer.buffer) {
               // Transfer the underlying ArrayBuffer and then recreate a new
