@@ -50,6 +50,11 @@ export function shutdownFrameWorker() {
   stopFrameWorker();
 }
 
+export function enableWorkerTransfer(enable) {
+  settings.workerTransferEnabled = !!enable;
+  structuredLog('INFO', `Worker buffer transfer set to: ${settings.workerTransferEnabled}`);
+}
+
 // Process a frame by delegating to the worker. Returns a Promise that resolves
 // to an object shaped like { movingRegions: [...] }.
 function processFrameViaWorker(frameBuffer, width, height) {

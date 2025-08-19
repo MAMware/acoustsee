@@ -19,7 +19,7 @@ body.accessible-mode #mainContainer {
   height: 100%;
 }
 
-/* --- DEBUG MODE: Default Landscape Layout --- */
+/* --- DEBUG MODE: Default Landscape Layout (Side-by-side) --- */
 body.debug-mode {
   display: flex;
   flex-direction: row; /* Side-by-side */
@@ -102,6 +102,33 @@ body.accessible-mode #mainContainer {
   /* Use 'contain' instead of 'cover' to prevent cropping */
   object-fit: contain;
   z-index: 1;
+}
+
+/* --- NEW & IMPROVED RESPONSIVE: Portrait Mode Layout (Panel on top) --- */
+@media (orientation: portrait) {
+  body.debug-mode {
+    flex-direction: column-reverse; /* <-- This puts the panel on top! */
+  }
+
+  body.debug-mode #mainContainer {
+    /* Video preview takes up the bottom 30% of the screen */
+    flex: 0 0 30%; 
+    width: 100%;
+  }
+
+  body.debug-mode #ui-panel-root {
+    /* Debug panel takes up the top 70% */
+    flex: 1 1 70%;
+    width: 100%;
+    display: flex;
+  }
+  
+  #acoustsee-debug-panel {
+    width: 100% !important;
+    height: 100% !important;
+    border-left: none !important;
+    border-top: 2px solid #34495e;
+  }
 }
 
 /* --- Other styles (Unchanged) --- */

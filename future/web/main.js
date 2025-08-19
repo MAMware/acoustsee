@@ -9,6 +9,7 @@ import { initializeAudio } from './audio/audio-processor.js';
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
 import { processFrameWithState } from './video/frame-processor.js';
+import { enableFrameWorker } from './video/frame-processor.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { initializeDebugUI } from './ui/debug-ui.js';
 import { initializeAccessibleUI } from './ui/accessible-ui.js';
@@ -111,6 +112,12 @@ async function init() {
       document.body.classList.add('accessible-mode');
       initializeAccessibleUI(engine, DOM);
       structuredLog('INFO', 'Initialized in Accessible UI mode.');
+    }
+    // --- Start frame worker if configured to run by default ---
+    try {
+      if (settings.enableFrameWorker) enableFrameWorker(true);
+    } catch (e) {
+      structuredLog('WARN', 'enableFrameWorker failed', { error: e?.message || String(e) });
     }
  
     // Console overrides
