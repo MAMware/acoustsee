@@ -3,6 +3,8 @@
 // Asynchronous, transaction-based for non-blocking ops in high-throughput scenarios.
 // Fallback if IndexedDB not supported (e.g., logs to console only).
 
+import { output } from './core-logger.js';
+
 const DB_NAME = 'AcoustSeeLogsDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'logs';
@@ -12,7 +14,31 @@ let dbPromise = null;
 // Check IndexedDB support (feature-detect safely so Node imports don't throw).
 const isIndexedDBSupported = (typeof window !== 'undefined') && ('indexedDB' in window);
 
-import { output } from './core-logger.js';
+// Safe stringify that:
+//  - drops functions,
+//  - converts Error to plain objects,
+//  - marks circular refs with "[Circular]"
+function safeStringify(obj) {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, function (_k, v) {
+    if (typeof v === 'function') return undefined;
+    if (v instanceof Error) return { message: v.message, stack: v.stack };
+    if (typeof v === 'object' && v !== null) {
+      if (seen.has(v)) return '[Circular]';
+      seen.add(v);
+    }
+    return v;
+  });
+}
+
+// Sanitize into a plain cloneable object suitable for IndexedDB (and network)
+function sanitizeForIdb(obj) {
+  try {
+    return JSON.parse(safeStringify(obj));
+  } catch (e) {
+    return { _unserializable: true, repr: String(obj) };
+  }
+}
 // Open (or create) DB asynchronously with retry on transient errors.
 function openDB(retries = 3) {
   if (!isIndexedDBSupported) {
@@ -55,14 +81,15 @@ async function getDB() {
 export async function addIdbLog(logEntry) {
   const db = await getDB();
   if (!db) {
-    // Directly call native console.warn to avoid recursive logging
-    console.warn(`[IDB FALLBACK] DB unavailable; logging to console: ${JSON.stringify(logEntry)}`);
+  // Directly call native console.warn to avoid recursive logging; use safe stringify
+  console.warn(`[IDB FALLBACK] DB unavailable; logging to console: ${safeStringify(logEntry)}`);
     return;  
   }
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const addRequest = store.add(logEntry);
+  const sanitized = sanitizeForIdb(logEntry);
+  const addRequest = store.add(sanitized);
 
     addRequest.onsuccess = () => {
       // Cap size: If over max, delete oldest (cursor for efficiency).
