@@ -3,7 +3,7 @@
 
 import { settings } from '../core/state.js';
 import { structuredLog } from '../utils/logging.js';
-import { getGrid } from '../core/grid-manager.js';
+import { getCurrentGrid } from '../core/grid-manager.js';
 
 let lastFrameData = null;
 let regionCounter = 0; // To assign unique IDs to regions
@@ -115,9 +115,9 @@ function floodFill(startX, startY, width, height, frameData, lastFrameData, visi
 }
 
 function mapRegionsToCues(regions, width, height) {
-  const grid = getGrid();
+  const grid = getCurrentGrid();
   if (!grid) {
-    structuredLog('ERROR', 'mapRegionsToCues: Grid not found.');
+    structuredLog('ERROR', 'mapRegionsToCues: Could not get current grid from manager.');
     return [];
   }
 
