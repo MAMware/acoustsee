@@ -71,8 +71,8 @@ function floodFill(startX, startY, width, height, frameData, lastFrameData, visi
     }
   }
 
-  const avgIntensity = size > 0 ? (totalIntensityDiff / size) : 0;
-  if (regionCounter > 1_000_000) regionCounter = 0;
+const maxRegionCounter = Math.max(1024, width * height);
+  if (regionCounter > maxRegionCounter) regionCounter = 0;
 
   return { id: regionId, size, avgIntensity, avgX: sumX, avgY: sumY };
 }
