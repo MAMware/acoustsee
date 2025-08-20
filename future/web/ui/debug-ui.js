@@ -121,6 +121,84 @@ export function initializeDebugUI(engine, DOM) {
     } catch (e) {}
   })();
 
+  // Responsive layout: landscape => panel right and video left; portrait => bottom sheet
+  (function responsivePanelLayout() {
+    const candidates = ['#video-container','#video-preview','.video-preview','#preview','video','#frameCanvas','canvas'];
+
+    function findVideoElement() {
+      for (const sel of candidates) {
+        try {
+          const el = document.querySelector(sel);
+          if (el && document.body.contains(el)) return el;
+        } catch (e) { /* ignore selector errors */ }
+      }
+      const vid = document.querySelector('video, canvas');
+      if (vid && document.body.contains(vid)) return vid;
+      return null;
+    }
+
+    function applyLandscape(el, panelEl) {
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const preferred = panelEl.getBoundingClientRect().width || 400;
+      const calcWidth = Math.min(preferred, Math.max(280, Math.round(vw * 0.36)));
+      panelEl.style.position = 'fixed';
+      panelEl.style.right = '0';
+      panelEl.style.left = 'auto';
+      panelEl.style.top = '0';
+      panelEl.style.bottom = 'auto';
+      panelEl.style.width = calcWidth + 'px';
+      panelEl.style.height = '100vh';
+      panelEl.style.borderLeft = '2px solid #34495e';
+      panelEl.style.borderTop = '';
+      if (el) {
+        const container = el.parentElement || el;
+        container.style.boxSizing = 'border-box';
+        container.style.marginRight = (calcWidth + 12) + 'px';
+        container.style.marginBottom = '';
+      }
+    }
+
+    function applyPortrait(el, panelEl) {
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const sheetHeight = Math.max(220, Math.round(vh * 0.42));
+      panelEl.style.position = 'fixed';
+      panelEl.style.left = '8px';
+      panelEl.style.right = '8px';
+      panelEl.style.top = 'auto';
+      panelEl.style.bottom = '8px';
+      panelEl.style.width = `calc(100% - 16px)`;
+      panelEl.style.height = sheetHeight + 'px';
+      panelEl.style.borderLeft = 'none';
+      panelEl.style.borderTop = '2px solid #34495e';
+      panelEl.style.borderRadius = '8px';
+      if (el) {
+        const container = el.parentElement || el;
+        container.style.boxSizing = 'border-box';
+        container.style.marginBottom = (sheetHeight + 12) + 'px';
+        container.style.marginRight = '';
+      }
+    }
+
+    function applyResponsiveLayout() {
+      try {
+        const panelEl = document.getElementById('acoustsee-debug-panel');
+        if (!panelEl) return;
+        const el = findVideoElement();
+        const isLandscape = window.innerWidth > window.innerHeight;
+        if (isLandscape) {
+          applyLandscape(el, panelEl);
+        } else {
+          applyPortrait(el, panelEl);
+        }
+      } catch (e) { /* fail silently */ }
+    }
+
+    applyResponsiveLayout();
+    window.addEventListener('resize', applyResponsiveLayout, { passive: true });
+    window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
+    setTimeout(applyResponsiveLayout, 600);
+  })();
+
   // Poll for engine context and set the small inline context badge (don't overwrite state inspector)
   (function waitForContextBadge() {
     const ctxBadge = document.getElementById('audio-context-badge');
@@ -343,6 +421,17 @@ export function initializeDebugUI(engine, DOM) {
       margin-top: 5px;
     }
     .control-group button:hover { background: #3498db; }
+    /* compact actions container: two columns to save horizontal space */
+    .debug-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 8px;
+      align-items: start;
+      margin-top: 8px;
+    }
+    @media (max-width: 420px) {
+      .debug-actions-grid { grid-template-columns: 1fr; }
+    }
   `;
 
   const styleSheet = document.createElement("style");
@@ -357,7 +446,9 @@ export function initializeDebugUI(engine, DOM) {
     actionsContainer = document.createElement('div');
     actionsContainer.id = 'debug-controls-actions';
     actionsContainer.style.marginTop = '10px';
-    controlsGrid.parentNode.insertBefore(actionsContainer, controlsGrid.nextSibling);
+  // use a compact grid layout for action buttons
+  actionsContainer.className = 'debug-actions-grid';
+  controlsGrid.parentNode.insertBefore(actionsContainer, controlsGrid.nextSibling);
   }
 
   // populate selects from settings
@@ -387,9 +478,10 @@ export function initializeDebugUI(engine, DOM) {
   const resumeAudioBtn = createButton('Resume Audio');
   const logAudioDiagsBtn = createButton('Log Audio Diags');
   const deviceDiagsBtn = createButton('Run Device Diags');
+  const audioTestBtn = createButton('Audio Output Test');
   const saveBtn = createButton('Save Settings');
   const loadBtn = createButton('Load Settings');
-  actionsContainer.append(startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, deviceDiagsBtn, saveBtn, loadBtn);
+  actionsContainer.append(startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, deviceDiagsBtn, audioTestBtn, saveBtn, loadBtn);
 
   // --- 3. WIRE UP INPUTS (Now adapted to the new DOM) ---
   gridTypeEl.addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
@@ -535,6 +627,29 @@ export function initializeDebugUI(engine, DOM) {
       debugLog('DEBUG', `Device Diags Full: ${JSON.stringify(report)}`);
     } catch (e) {
       debugLog('ERROR', `Failed to stringify device diags: ${e?.message || String(e)}`);
+    }
+  });
+  // Audio output test: confirm with user then resume audio and play a short test note
+  audioTestBtn.querySelector('button').addEventListener('click', async () => {
+    try {
+      const ok = window.confirm('Play a short test tone now? Please lower your volume or wear headphones. Continue?');
+      if (!ok) { debugLog('INFO', 'Audio test cancelled by user'); return; }
+      debugLog('INFO', 'Audio test: user confirmed, attempting to resume audio');
+      try {
+        const res = await engine.dispatch('resumeAudio');
+        debugLog(res?.ok ? 'INFO' : 'WARN', `resumeAudio result: ${JSON.stringify(res)}`);
+      } catch (e) {
+        debugLog('WARN', `resumeAudio dispatch threw: ${e?.message || String(e)}`);
+      }
+      // play a short test note (engine handler will call audio module)
+      try {
+        const playRes = await engine.dispatch('playTestNote', { pitch: 880 });
+        debugLog('INFO', `playTestNote dispatched: ${JSON.stringify(playRes)}`);
+      } catch (e) {
+        debugLog('ERROR', `playTestNote failed: ${e?.message || String(e)}`);
+      }
+    } catch (e) {
+      debugLog('ERROR', `Audio test failed: ${e?.message || String(e)}`);
     }
   });
   saveBtn.querySelector('button').addEventListener('click', () => engine.dispatch('saveSettings'));
