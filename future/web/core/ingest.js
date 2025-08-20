@@ -10,11 +10,25 @@ import { deviceSummary } from '../utils/performance.js';
 
 const INGEST_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev';
 
-export async function trackFeatureUse(event, payload = {}) {
+// Detect obvious local/test environments to avoid noisy network calls during
+// developer runs and headless tests. This is intentionally conservative.
+const IS_LOCALHOST = (typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname))
+  || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test');
+
+function shouldSendIngest() {
   try {
-    if (!settings?.ingestEnabled) return;
+    if (!settings?.ingestEnabled) return false;
   } catch (e) {
-    // If settings can't be read, don't block the app; no telemetry sent.
+    return false;
+  }
+  if (IS_LOCALHOST) return false;
+  return true;
+}
+
+export async function trackFeatureUse(event, payload = {}) {
+  // Fast-path: do not attempt network calls in local/test environments.
+  if (!shouldSendIngest()) {
+    try { if (settings?.debugLogging) console.debug('ingest: suppressed trackFeatureUse for', event); } catch (e) {}
     return;
   }
 
@@ -58,6 +72,10 @@ export async function trackFeatureUse(event, payload = {}) {
  */
 export function emergencyTrack(eventName, errorPayload = {}) {
   try {
+    if (!shouldSendIngest()) {
+      try { if (settings?.debugLogging) console.debug('ingest: suppressed emergencyTrack for', eventName); } catch (e) {}
+      return;
+    }
     const payload = {
       event: eventName,
       payload: errorPayload,
@@ -85,6 +103,10 @@ export function emergencyTrack(eventName, errorPayload = {}) {
  */
 export function pingIngest() {
   try {
+    if (!shouldSendIngest()) {
+      console.log('pingIngest: suppressed in local/test environment');
+      return;
+    }
     const endpoint = INGEST_ENDPOINT;
     const testPayload = {
       event: 'ingest-ping',

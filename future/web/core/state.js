@@ -50,6 +50,10 @@ export let settings = {
   maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value
 };
 
+// Detect local/test environments where telemetry should be disabled by default.
+const IS_LOCALHOST = (typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname))
+  || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test');
+
 /**
  * Validates settings object against a simple JSON schema without external dependencies.
  * @param {Object} settingsObj - The settings object to validate.
@@ -134,6 +138,10 @@ function initializeDefaults() {
     const t = localStorage.getItem('ingestEnabled');
     if (t === '0') settings.ingestEnabled = false;
     else if (t === '1') settings.ingestEnabled = true;
+    else if (IS_LOCALHOST) {
+      // Default to disabled on localhost/test to avoid accidental network calls.
+      settings.ingestEnabled = false;
+    }
   } catch (e) {
     // ignore localStorage access errors
   }
