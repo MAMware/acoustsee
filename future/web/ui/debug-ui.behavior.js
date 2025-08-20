@@ -126,31 +126,9 @@ export function initializeDebugUIBehavior({ panel, DOM, settings, engine } = {})
   })();
 
   // Load debug UI stylesheet (extracted to keep JS small and separate concerns)
-  (function ensureDebugCss() {
-    try {
-      if (document.getElementById('acoustsee-debug-ui-css')) return;
-      const candidates = [
-        './ui/debug-ui.css',
-        'ui/debug-ui.css',
-        '/ui/debug-ui.css',
-        '/future/web/ui/debug-ui.css',
-        'future/web/ui/debug-ui.css'
-      ];
-      for (const href of candidates) {
-        const link = document.createElement('link');
-        link.id = 'acoustsee-debug-ui-css';
-        link.rel = 'stylesheet';
-        link.href = href;
-        // when a candidate fails to load, remove it so the next can try
-        link.onerror = () => { try { if (link.parentNode) link.parentNode.removeChild(link); } catch (e) {} };
-        document.head.appendChild(link);
-      }
-      // force a layout recalculation shortly after insertion so sizes adjust
-      setTimeout(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, 250);
-    } catch (e) {
-      // silent
-    }
-  })();
+  // Styles are consolidated into `future/web/styles.css` under the `body.debug-mode` namespace.
+  // The app should include that stylesheet; no dynamic loader necessary here.
+  // If a consumer needs to load the CSS dynamically, they can add a link tag with id 'acoustsee-debug-ui-css'.
 
   // show version badge (meta tag -> global constant -> fallback)
   (function setVersionBadge() {
