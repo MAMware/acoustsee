@@ -107,7 +107,7 @@ body.accessible-mode #mainContainer {
 /* --- NEW & IMPROVED RESPONSIVE: Portrait Mode Layout (Panel on top) --- */
 @media (orientation: portrait) {
   body.debug-mode {
-    flex-direction: column-reverse; /* <-- This puts the panel on top! */
+    flex-direction: column; /* <-- column-reverse This puts the panel on top! */
   }
 
   body.debug-mode #mainContainer {

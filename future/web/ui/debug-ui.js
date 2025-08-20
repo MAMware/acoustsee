@@ -68,7 +68,20 @@ export function initializeDebugUI(engine, DOM) {
     enableWorkerTransfer(e.target.checked);
   });
 
-  startStopBtn.querySelector('button').addEventListener('click', () => { /* ... unchanged ... */ });
+  startStopBtn.querySelector('button').addEventListener('click', async () => {
+    try {
+      await engine.dispatch('toggleProcessing', { videoEl: DOM.videoFeed, canvasEl: DOM.frameCanvas });
+    } catch (e) {
+      // fallback: check state and call start/stop explicitly
+      console.warn('toggleProcessing failed, falling back to start/stop', e);
+      const isProcessing = engine.getState ? engine.getState().isProcessing : false;
+      if (isProcessing) {
+        await engine.dispatch('stopProcessing', { videoEl: DOM.videoFeed });
+      } else {
+        await engine.dispatch('startProcessing', { videoEl: DOM.videoFeed, canvasEl: DOM.frameCanvas });
+      }
+    }
+  });
   saveBtn.querySelector('button').addEventListener('click', () => engine.dispatch('saveSettings'));
   loadBtn.querySelector('button').addEventListener('click', () => engine.dispatch('loadSettings'));
 
@@ -83,13 +96,74 @@ export function initializeDebugUI(engine, DOM) {
     transferCheckbox.querySelector('input').checked = !!state.workerTransferEnabled;
     startStopBtn.querySelector('button').textContent = state.isProcessing ? 'Stop Processing' : 'Start Processing';
   });
-
-  setOutputCallback((level, text) => { /* ... unchanged ... */ });
+  setOutputCallback((level, text) => {
+    // Append simple log entries to the log view
+    const entry = document.createElement('div');
+    entry.className = `dbg-log dbg-${level.toLowerCase()}`;
+    entry.textContent = `[${level}] ${text}`;
+    logView.appendChild(entry);
+    // keep the latest visible
+    logView.scrollTop = logView.scrollHeight;
+  });
 }
 
 // --- Helper functions (These should all be present and correct) ---
-function createControlGroup(label) { /* ... */ }
-function createSelect(label, options) { /* ... */ }
-function createSlider(label, min, max, step) { /* ... */ }
-function createCheckbox(label) { /* ... */ }
-function createButton(label) { /* ... */ }
+function createControlGroup(label) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'dbg-control-group';
+  if (label) {
+    const lab = document.createElement('label');
+    lab.className = 'dbg-label';
+    lab.textContent = label;
+    wrapper.appendChild(lab);
+  }
+  return wrapper;
+}
+
+function createSelect(label, options = []) {
+  const group = createControlGroup(label);
+  const select = document.createElement('select');
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o;
+    opt.textContent = o;
+    select.appendChild(opt);
+  });
+  group.appendChild(select);
+  return group;
+}
+
+function createSlider(label, min = 0, max = 100, step = 1) {
+  const group = createControlGroup(label);
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = min;
+  input.max = max;
+  input.step = step;
+  input.value = min;
+  const value = document.createElement('span');
+  value.className = 'dbg-slider-value';
+  value.textContent = input.value;
+  group.appendChild(input);
+  group.appendChild(value);
+  return group;
+}
+
+function createCheckbox(label) {
+  const group = createControlGroup(label);
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  group.appendChild(input);
+  return group;
+}
+
+function createButton(label) {
+  const group = createControlGroup();
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = label;
+  group.appendChild(btn);
+  return group;
+}
+
+// (start/stop handler lives inside initializeDebugUI to keep scope correct)
