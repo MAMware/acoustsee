@@ -8,6 +8,62 @@ import { getAudioDiagnostics } from '../audio/audio-processor.js';
 export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
   panel.id = 'acoustsee-debug-panel';
+  const logPauseBtn = panel.querySelector('#log-pause-btn');
+  const autoscrollCheckbox = panel.querySelector('#autoscroll-checkbox');
+  const logClearBtn = panel.querySelector('#log-clear-btn');
+  const logExportBtn = panel.querySelector('#log-export-btn');
+
+  // logging controls/state
+  let logsPaused = false;
+  const MAX_LOG_ENTRIES = 1000; // capped circular buffer
+  const logBuffer = [];
+
+  function formatTimestamp(d = new Date()) {
+    return d.toISOString().replace('T', ' ').replace('Z', '');
+  }
+
+  function logMessage(level, text) {
+    const lvl = String(level || 'INFO').toUpperCase();
+    const entry = { t: Date.now(), level: lvl, text: typeof text === 'string' ? text : JSON.stringify(text) };
+    // maintain capped buffer
+    logBuffer.push(entry);
+    if (logBuffer.length > MAX_LOG_ENTRIES) logBuffer.shift();
+
+    if (logsPaused) return;
+
+    const row = document.createElement('div');
+    row.className = 'log-entry';
+
+    const ts = document.createElement('span'); ts.className = 'log-timestamp'; ts.textContent = formatTimestamp(new Date(entry.t));
+    const badge = document.createElement('span'); badge.className = `log-badge ${entry.level.toLowerCase()}`; badge.textContent = entry.level;
+    const txt = document.createElement('span'); txt.className = 'log-text'; txt.textContent = entry.text;
+
+    row.appendChild(ts); row.appendChild(badge); row.appendChild(txt);
+    logView.appendChild(row);
+
+    // keep a reasonable DOM size: remove old nodes if buffer trimmed
+    while (logView.children.length > MAX_LOG_ENTRIES) logView.removeChild(logView.firstChild);
+
+    if (autoscrollCheckbox && autoscrollCheckbox.checked) {
+      logView.scrollTop = logView.scrollHeight;
+    }
+  }
+
+  logPauseBtn.addEventListener('click', () => {
+    logsPaused = !logsPaused;
+    logPauseBtn.textContent = logsPaused ? 'Resume' : 'Pause';
+  });
+  logClearBtn.addEventListener('click', () => {
+    logBuffer.length = 0; while (logView.firstChild) logView.removeChild(logView.firstChild);
+  });
+  logExportBtn.addEventListener('click', () => {
+    try {
+      const blob = new Blob([JSON.stringify(logBuffer, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `acoustsee-logs-${new Date().toISOString()}.json`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { console.error('Failed to export logs', e); }
+  });
   DOM.uiPanelRoot.appendChild(panel);
 
   panel.innerHTML = `
@@ -21,6 +77,14 @@ export function initializeDebugUI(engine, DOM) {
     </div>
     <div class="debug-section logs-section">
       <h2>Live Logs</h2>
+      <div class="log-controls">
+        <button id="log-pause-btn" type="button">Pause</button>
+        <label style="margin-left:8px; font-size:12px;">
+          <input id="autoscroll-checkbox" type="checkbox" checked style="vertical-align:middle; margin-right:6px;"> Autoscroll
+        </label>
+        <button id="log-clear-btn" type="button" style="margin-left:8px;">Clear</button>
+        <button id="log-export-btn" type="button" style="margin-left:4px;">Export</button>
+      </div>
       <div id="debug-log-view"></div>
     </div>
   `;
@@ -96,6 +160,30 @@ export function initializeDebugUI(engine, DOM) {
       background: #222;
       padding: 5px;
     }
+    .log-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .log-controls button {
+      background: #3b4b5a;
+      color: #ecf0f1;
+      border: 1px solid #556;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .log-controls button:hover { background: #4a5b6b; }
+    .log-timestamp { color: #95a5a6; margin-right: 6px; font-size: 11px; }
+    .log-badge { background: #444; padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-weight: 600; font-size: 11px; }
+    .log-badge.error { background: #7f2b2b; color: #fff; }
+    .log-badge.warn { background: #8a6600; color: #fff; }
+    .log-badge.info { background: #2d6a9f; color: #fff; }
+    .log-badge.debug { background: #5a5566; color: #fff; }
+    .log-badge.verbose { background: #444; color: #fff; }
+    .log-text { color: #ddd; white-space: pre-wrap; }
     .log-entry { /* Renamed for clarity */
       border-bottom: 1px dotted #444;
       padding-bottom: 3px;
@@ -222,8 +310,8 @@ export function initializeDebugUI(engine, DOM) {
   resumeAudioBtn.querySelector('button').addEventListener('click', async () => {
     try {
       const res = await engine.dispatch('resumeAudio');
-      const msg = res?.ok ? `Audio resumed: ${res.state}` : `Resume failed: ${res?.error || 'unknown'}`;
-      const entry = document.createElement('div'); entry.className = 'log-entry'; entry.textContent = msg; logView.appendChild(entry); logView.scrollTop = logView.scrollHeight;
+  const msg = res?.ok ? `Audio resumed: ${res.state}` : `Resume failed: ${res?.error || 'unknown'}`;
+  logMessage('INFO', msg);
       // update badge immediately
       try { const diags = getAudioDiagnostics(); const badge = document.getElementById('audio-state-badge'); if (badge) { badge.textContent = diags.audioContextState; badge.style.background = diags.audioContextState === 'running' ? '#2ecc71' : '#e74c3c'; }} catch(e){}
     } catch (e) { console.error('resumeAudio dispatch failed', e); }
@@ -232,11 +320,7 @@ export function initializeDebugUI(engine, DOM) {
     try {
       const diags = getAudioDiagnostics();
       console.log('Audio diagnostics:', diags);
-      const diagEntry = document.createElement('div');
-      diagEntry.className = 'log-entry';
-      diagEntry.textContent = `Audio diags: ${JSON.stringify(diags)}`;
-      logView.appendChild(diagEntry);
-      logView.scrollTop = logView.scrollHeight;
+  logMessage('INFO', `Audio diags: ${JSON.stringify(diags)}`);
     } catch (e) { console.error('Failed to get audio diags', e); }
   });
   saveBtn.querySelector('button').addEventListener('click', () => engine.dispatch('saveSettings'));
@@ -279,11 +363,7 @@ export function initializeDebugUI(engine, DOM) {
     // respect verbosity
     if (lvlIndex > currentIndex) return;
 
-    const logEntry = document.createElement('div');
-    logEntry.className = `log-entry log-${lvl.toLowerCase()}`;
-    logEntry.textContent = `[${lvl}] ${text}`;
-    logView.appendChild(logEntry);
-    logView.scrollTop = logView.scrollHeight;
+  logMessage(lvl, text);
   });
 }
 
