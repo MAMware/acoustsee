@@ -4,45 +4,7 @@ import { settings } from '../core/state.js';
 import { setOutputCallback } from '../utils/core-logger.js';
 import { enableFrameWorker, enableWorkerTransfer } from '../video/frame-processor.js';
 import { getAudioDiagnostics } from '../audio/audio-processor.js';
-
-// Module-level logging API and state so callers outside initializeDebugUI can log safely.
-let moduleLogView = null;
-let moduleLogsPaused = false;
-const MAX_LOG_ENTRIES = 1000; // capped circular buffer
-const moduleLogBuffer = [];
-
-function formatTimestamp(d = new Date()) {
-  return d.toISOString().replace('T', ' ').replace('Z', '');
-}
-
-function createLogRow(entry) {
-  const row = document.createElement('div');
-  row.className = 'log-entry';
-  const ts = document.createElement('span'); ts.className = 'log-timestamp'; ts.textContent = formatTimestamp(new Date(entry.t));
-  const badge = document.createElement('span'); badge.className = `log-badge ${entry.level.toLowerCase()}`; badge.textContent = entry.level;
-  const txt = document.createElement('span'); txt.className = 'log-text'; txt.textContent = entry.text;
-  row.appendChild(ts); row.appendChild(badge); row.appendChild(txt);
-  return row;
-}
-
-export function debugLog(level, text) {
-  const lvl = String(level || 'INFO').toUpperCase();
-  const entry = { t: Date.now(), level: lvl, text: typeof text === 'string' ? text : JSON.stringify(text) };
-  moduleLogBuffer.push(entry);
-  if (moduleLogBuffer.length > MAX_LOG_ENTRIES) moduleLogBuffer.shift();
-
-  if (moduleLogsPaused) return;
-  if (!moduleLogView) return; // will be flushed once UI mounts
-
-  const row = createLogRow(entry);
-  moduleLogView.appendChild(row);
-  while (moduleLogView.children.length > MAX_LOG_ENTRIES) moduleLogView.removeChild(moduleLogView.firstChild);
-  const autoscroll = document.getElementById('autoscroll-checkbox')?.checked ?? true;
-  if (autoscroll) moduleLogView.scrollTop = moduleLogView.scrollHeight;
-}
-
-// compatibility shim for non-module callers
-if (typeof window !== 'undefined' && !window.acoustseeDebugLog) window.acoustseeDebugLog = debugLog;
+import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from './debug-log.js';
 
 export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
@@ -295,7 +257,7 @@ export function initializeDebugUI(engine, DOM) {
     try {
       const res = await engine.dispatch('resumeAudio');
   const msg = res?.ok ? `Audio resumed: ${res.state}` : `Resume failed: ${res?.error || 'unknown'}`;
-  logMessage('INFO', msg);
+  debugLog('INFO', msg);
       // update badge immediately
       try { const diags = getAudioDiagnostics(); const badge = document.getElementById('audio-state-badge'); if (badge) { badge.textContent = diags.audioContextState; badge.style.background = diags.audioContextState === 'running' ? '#2ecc71' : '#e74c3c'; }} catch(e){}
     } catch (e) { console.error('resumeAudio dispatch failed', e); }
@@ -304,7 +266,7 @@ export function initializeDebugUI(engine, DOM) {
     try {
       const diags = getAudioDiagnostics();
       console.log('Audio diagnostics:', diags);
-  logMessage('INFO', `Audio diags: ${JSON.stringify(diags)}`);
+  debugLog('INFO', `Audio diags: ${JSON.stringify(diags)}`);
     } catch (e) { console.error('Failed to get audio diags', e); }
   });
   saveBtn.querySelector('button').addEventListener('click', () => engine.dispatch('saveSettings'));
@@ -313,7 +275,7 @@ export function initializeDebugUI(engine, DOM) {
   // --- 4. WIRE UP OUTPUTS (Now complete) ---
   const stateView = panel.querySelector('#debug-state-view');
   const logView = panel.querySelector('#debug-log-view');
-  moduleLogView = logView;
+  setLogView(logView, { maxEntries: 1000 });
 
   // now that logView exists, wire up the log controls we added earlier
   const logPauseBtn = panel.querySelector('#log-pause-btn');
@@ -321,31 +283,25 @@ export function initializeDebugUI(engine, DOM) {
   const logClearBtn = panel.querySelector('#log-clear-btn');
   const logExportBtn = panel.querySelector('#log-export-btn');
 
-  let logsPaused = false; // local toggle mirrored to moduleLogsPaused when used
-
   logPauseBtn.addEventListener('click', () => {
-    logsPaused = !logsPaused;
-    moduleLogsPaused = logsPaused;
-    logPauseBtn.textContent = logsPaused ? 'Resume' : 'Pause';
+    const isPaused = logPauseBtn.textContent === 'Pause';
+    setPaused(!isPaused);
+    logPauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
   });
   logClearBtn.addEventListener('click', () => {
-    moduleLogBuffer.length = 0; while (logView.firstChild) logView.removeChild(logView.firstChild);
+    clearLogs();
   });
   logExportBtn.addEventListener('click', () => {
     try {
-      const blob = new Blob([JSON.stringify(moduleLogBuffer, null, 2)], { type: 'application/json' });
+      const data = exportLogs();
+      const blob = new Blob([data], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = `acoustsee-logs-${new Date().toISOString()}.json`; a.click();
       URL.revokeObjectURL(url);
     } catch (e) { console.error('Failed to export logs', e); }
   });
 
-  // flush buffered module logs that arrived before UI mount
-  if (moduleLogBuffer.length) {
-    moduleLogBuffer.forEach(entry => moduleLogView.appendChild(createLogRow(entry)));
-    while (moduleLogView.children.length > MAX_LOG_ENTRIES) moduleLogView.removeChild(moduleLogView.firstChild);
-    if (autoscrollCheckbox && autoscrollCheckbox.checked) moduleLogView.scrollTop = moduleLogView.scrollHeight;
-  }
+  // no-op: setLogView flushed buffered logs
 
   engine.onStateChange(state => {
     // ... (all the other state syncs are unchanged)

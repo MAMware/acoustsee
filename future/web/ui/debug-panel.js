@@ -1,4 +1,5 @@
 import { getDispatchEvent } from '../core/context.js';
+import { debugLog, setLogView, clearLogs } from './debug-log.js';
 
 function savePanelState(panel) {
   try {
@@ -213,52 +214,21 @@ export async function showDebugPanel(options = {}) {
       }
     } catch (e) {}
 
-    collapseBtn.addEventListener('click', () => {
+  collapseBtn.addEventListener('click', () => {
       const isHidden = logsContainer.style.display === 'none';
       logsContainer.style.display = isHidden ? 'block' : 'none';
       collapseBtn.textContent = isHidden ? 'Hide Logs' : 'Show Logs';
       try { const raw = localStorage.getItem('acoustsee.debugPanel'); const saved = raw ? JSON.parse(raw) : {}; saved.collapsed = !isHidden; localStorage.setItem('acoustsee.debugPanel', JSON.stringify(saved)); } catch (e) {}
     });
-    clearBtn.addEventListener('click', () => { logsContainer.innerHTML = ''; try { const raw = localStorage.getItem('acoustsee.debugPanel'); const saved = raw ? JSON.parse(raw) : {}; saved.clearedAt = Date.now(); localStorage.setItem('acoustsee.debugPanel', JSON.stringify(saved)); } catch(e){} });
+  clearBtn.addEventListener('click', () => { try { clearLogs(); } catch(e){} try { const raw = localStorage.getItem('acoustsee.debugPanel'); const saved = raw ? JSON.parse(raw) : {}; saved.clearedAt = Date.now(); localStorage.setItem('acoustsee.debugPanel', JSON.stringify(saved)); } catch(e){} });
 
-    // render logs
+    // push inspected logs into the centralized logging core
     logs.forEach(log => {
-      try { window.acoustseeDebugLog?.(log.level || 'INFO', `${log.message}${log.data ? ' ' + JSON.stringify(log.data) : ''}`); } catch (e) {}
-      const logElement = document.createElement('div');
-      logElement.className = `log-entry log-${(log.level || 'INFO').toLowerCase()}`;
-      logElement.style.marginBottom = '10px';
-      logElement.style.paddingBottom = '6px';
-      logElement.style.borderBottom = '1px dotted rgba(255,255,255,0.04)';
-      logElement.style.fontSize = '13px';
-
-      const headerLine = document.createElement('div');
-      headerLine.style.display = 'flex';
-      headerLine.style.alignItems = 'center';
-      headerLine.style.gap = '8px';
-      const level = document.createElement('strong');
-      level.textContent = `[${log.level || 'INFO'}]`;
-      level.style.width = '72px';
-      level.style.flex = '0 0 72px';
-      const msg = document.createElement('span');
-      msg.textContent = log.message || '';
-      headerLine.appendChild(level);
-      headerLine.appendChild(msg);
-
-      const pre = document.createElement('pre');
-      pre.style.whiteSpace = 'pre-wrap';
-      pre.style.margin = '8px 0 0 0';
-      pre.style.fontSize = '12px';
-      pre.style.background = 'rgba(255,255,255,0.02)';
-      pre.style.padding = '8px';
-      pre.style.borderRadius = '4px';
-      pre.textContent = JSON.stringify(log.data, null, 2);
-
-      logElement.appendChild(headerLine);
-      if (pre.textContent && pre.textContent !== 'undefined' && pre.textContent !== '{}') {
-        logElement.appendChild(pre);
-      }
-      logsContainer.appendChild(logElement);
+      try { debugLog(log.level || 'INFO', `${log.message || ''}${log.data ? ' ' + JSON.stringify(log.data) : ''}`); } catch (e) {}
     });
+
+    // bind the logs container to the centralized log view so future logs render here
+    try { setLogView(logsContainer, { maxEntries: 2000 }); } catch (e) { /* ignore */ }
 
     // ensure panel visible
     debugPanel.style.display = 'block';
