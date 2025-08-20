@@ -16,7 +16,10 @@ export function initializeDebugUI(engine, DOM) {
 
   panel.innerHTML = `
     <div class="debug-section state-section">
-  <h2>State Inspector <span id="audio-state-badge" style="margin-left:8px;padding:2px 6px;border-radius:8px;font-size:10px;vertical-align:middle;">?</span></h2>
+  <h2>State Inspector
+    <span id="audio-version-badge" style="margin-left:8px;padding:2px 6px;border-radius:8px;font-size:10px;vertical-align:middle;">?</span>
+    <span id="audio-context-badge" style="margin-left:8px;padding:2px 6px;border-radius:8px;font-size:10px;vertical-align:middle;color:#c46;">No context</span>
+  </h2>
       <pre id="debug-state-view">Loading state...</pre>
     </div>
     <div class="debug-section controls-section">
@@ -108,27 +111,24 @@ export function initializeDebugUI(engine, DOM) {
     try {
       const meta = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
       const ver = meta || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || null;
-      if (ver) {
-        const badge = document.getElementById('audio-state-badge');
-        if (badge) {
-          badge.textContent = ver;
-          badge.style.background = '#111';
-          badge.style.color = '#9ad';
-          badge.style.border = '1px solid rgba(255,255,255,0.04)';
-        }
+      const badge = document.getElementById('audio-version-badge');
+      if (badge) {
+        badge.textContent = ver || 'unknown';
+        badge.style.background = '#111';
+        badge.style.color = '#9ad';
+        badge.style.border = '1px solid rgba(255,255,255,0.04)';
       }
     } catch (e) {}
   })();
 
-  // Poll for engine context and show a friendly loading message until it's available.
-  (function waitForContext() {
-    const stateView = document.getElementById('debug-state-view');
-    if (!stateView) return;
-    const displayLoading = () => {
-      stateView.textContent = 'Loading context...';
-      stateView.style.color = '';
+  // Poll for engine context and set the small inline context badge (don't overwrite state inspector)
+  (function waitForContextBadge() {
+    const ctxBadge = document.getElementById('audio-context-badge');
+    if (!ctxBadge) return;
+    const setBadge = (txt, color) => {
+      ctxBadge.textContent = txt;
+      ctxBadge.style.color = color || '';
     };
-    displayLoading();
 
     const getContext = () => {
       try {
@@ -140,6 +140,9 @@ export function initializeDebugUI(engine, DOM) {
       return null;
     };
 
+    // initial
+    setBadge('Loading...', '#9ad');
+
     const start = Date.now();
     const timeoutMs = 7000;
     const iv = setInterval(() => {
@@ -147,21 +150,59 @@ export function initializeDebugUI(engine, DOM) {
       if (ctx) {
         clearInterval(iv);
         try {
-          const summary = typeof ctx === 'object' ? JSON.stringify({ id: ctx.id, state: ctx.state || ctx.status || 'ready' }) : String(ctx);
-          stateView.textContent = `Context: ${summary}`;
-          stateView.style.color = '';
+          const stateText = typeof ctx === 'object' ? (ctx.state || ctx.status || 'ready') : String(ctx);
+          setBadge(String(stateText), '#2ecc71');
         } catch (e) {
-          stateView.textContent = 'Context available';
-          stateView.style.color = '';
+          setBadge('Context', '#2ecc71');
         }
         return;
       }
       if (Date.now() - start > timeoutMs) {
         clearInterval(iv);
-        stateView.textContent = 'No context (not initialized)';
-        stateView.style.color = '#c46';
+        setBadge('No context (not initialized)', '#c46');
       }
-    }, 200);
+    }, 250);
+  })();
+
+  // Try to locate the video preview element and ensure it is above the debug panel.
+  (function ensureVideoOnTop() {
+    try {
+      const tried = new Set();
+      const candidates = [
+        () => DOM?.videoFeed,
+        () => document.getElementById('video-preview'),
+        () => document.getElementById('preview'),
+        () => document.querySelector('.video-preview'),
+        () => document.querySelector('video#preview'),
+        () => document.querySelector('#videoFeed'),
+        () => document.querySelector('video'),
+        () => document.querySelector('#frameCanvas'),
+        () => document.querySelector('canvas')
+      ];
+
+      for (const getter of candidates) {
+        let el;
+        try { el = getter(); } catch (e) { el = null; }
+        if (!el || tried.has(el)) continue;
+        tried.add(el);
+        // ensure element is in document and visible
+        if (!document.body.contains(el)) continue;
+        const style = window.getComputedStyle(el);
+        // ignore if invisible
+        if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity || '1') === 0) continue;
+        // parse current z-index
+        const z = parseInt(style.zIndex, 10);
+        if (isNaN(z) || z <= 5) {
+          // elevate element safely
+          if (!el.style.position) el.style.position = style.position === 'static' ? 'relative' : style.position || 'relative';
+          el.style.zIndex = '50';
+        }
+        // done with first visible candidate
+        return;
+      }
+    } catch (e) {
+      // don't block UI on errors
+    }
   })();
 
   const styles = `
@@ -180,7 +221,7 @@ export function initializeDebugUI(engine, DOM) {
       overflow: hidden;
       border-left: 2px solid #34495e;
       box-sizing: border-box;
-      z-index: 1000;
+      z-index: 5;
     }
     .debug-section {
       padding: 10px;
@@ -345,9 +386,10 @@ export function initializeDebugUI(engine, DOM) {
   const emitTestNoteBtn = createButton('Emit Test Note');
   const resumeAudioBtn = createButton('Resume Audio');
   const logAudioDiagsBtn = createButton('Log Audio Diags');
+  const deviceDiagsBtn = createButton('Run Device Diags');
   const saveBtn = createButton('Save Settings');
   const loadBtn = createButton('Load Settings');
-  actionsContainer.append(startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, saveBtn, loadBtn);
+  actionsContainer.append(startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, deviceDiagsBtn, saveBtn, loadBtn);
 
   // --- 3. WIRE UP INPUTS (Now adapted to the new DOM) ---
   gridTypeEl.addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
@@ -410,6 +452,90 @@ export function initializeDebugUI(engine, DOM) {
       console.log('Audio diagnostics:', diags);
   debugLog('INFO', `Audio diags: ${JSON.stringify(diags)}`);
     } catch (e) { console.error('Failed to get audio diags', e); }
+  });
+
+  // Run combined device diagnostics: enumerate devices, test resumeAudio, and request mic permission
+  deviceDiagsBtn.querySelector('button').addEventListener('click', async () => {
+    const ts = new Date().toISOString();
+    debugLog('INFO', `Device Diags: starting at ${ts}`);
+    const report = { timestamp: ts, enumerateDevices: null, resumeAudio: null, micRequest: null, permissionState: null };
+
+    // enumerateDevices (best-effort)
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        report.enumerateDevices = devices.map(d => ({ kind: d.kind, label: d.label || '(hidden)', deviceId: d.deviceId }));
+        debugLog('DEBUG', `Enumerated ${report.enumerateDevices.length} devices`);
+        debugLog('DEBUG', `Devices: ${JSON.stringify(report.enumerateDevices)}`);
+      } catch (e) {
+        report.enumerateDevices = { error: e?.message || String(e) };
+        debugLog('WARN', `enumerateDevices failed: ${report.enumerateDevices.error}`);
+      }
+    } else {
+      report.enumerateDevices = { error: 'enumerateDevices not available' };
+      debugLog('WARN', 'navigator.mediaDevices.enumerateDevices not available');
+    }
+
+    // Permission status for microphone (if supported)
+    try {
+      if (navigator.permissions && typeof navigator.permissions.query === 'function') {
+        try {
+          const p = await navigator.permissions.query({ name: 'microphone' });
+          report.permissionState = p.state || null;
+          debugLog('DEBUG', `Microphone permission state: ${report.permissionState}`);
+        } catch (e) {
+          // Some browsers may not support querying 'microphone'
+          report.permissionState = { error: e?.message || String(e) };
+        }
+      }
+    } catch (e) { /* best-effort */ }
+
+    // Test resumeAudio via engine command
+    try {
+      const res = await engine.dispatch('resumeAudio');
+      report.resumeAudio = res || { ok: false, error: 'no-response' };
+      debugLog(res?.ok ? 'INFO' : 'WARN', `resumeAudio result: ${JSON.stringify(report.resumeAudio)}`);
+    } catch (e) {
+      report.resumeAudio = { ok: false, error: e?.message || String(e) };
+      debugLog('ERROR', `resumeAudio dispatch failed: ${report.resumeAudio.error}`);
+    }
+
+    // Request mic permission and short-lived stream to test device acquisition
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        try {
+          const tracks = stream.getAudioTracks ? stream.getAudioTracks().map(t => ({ label: t.label || '(hidden)', kind: t.kind })) : [];
+          report.micRequest = { success: true, trackCount: tracks.length, tracks };
+          debugLog('INFO', `getUserMedia succeeded, tracks: ${tracks.length}`);
+          debugLog('DEBUG', `Mic tracks: ${JSON.stringify(tracks)}`);
+        } finally {
+          // stop tracks to avoid leaving mic open
+          try { stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+        }
+      } catch (e) {
+        report.micRequest = { success: false, error: e?.message || String(e) };
+        debugLog('WARN', `getUserMedia (mic) failed: ${report.micRequest.error}`);
+      }
+    } else {
+      report.micRequest = { error: 'getUserMedia not available' };
+      debugLog('WARN', 'navigator.mediaDevices.getUserMedia not available');
+    }
+
+    // Final summary log
+    try {
+      const summary = {
+        timestamp: report.timestamp,
+        devices: Array.isArray(report.enumerateDevices) ? report.enumerateDevices.length : report.enumerateDevices,
+        permissionState: report.permissionState,
+        resumeOk: !!(report.resumeAudio && report.resumeAudio.ok),
+        micSuccess: !!(report.micRequest && report.micRequest.success)
+      };
+      debugLog('INFO', `Device Diags Summary: ${JSON.stringify(summary)}`);
+      debugLog('DEBUG', `Device Diags Full: ${JSON.stringify(report)}`);
+    } catch (e) {
+      debugLog('ERROR', `Failed to stringify device diags: ${e?.message || String(e)}`);
+    }
   });
   saveBtn.querySelector('button').addEventListener('click', () => engine.dispatch('saveSettings'));
   loadBtn.querySelector('button').addEventListener('click', () => engine.dispatch('loadSettings'));

@@ -303,9 +303,11 @@ export function createEngine() {
   // Handler to resume audio context from UI
   registerCommandHandler('resumeAudio', async ({ state: s }) => {
     try {
+      structuredLog('INFO', 'resumeAudio: request received');
       const res = await (async function() {
         try { return await (await import('../audio/audio-processor.js')).resumeAudioContext(); } catch(e) { return { ok: false, error: e?.message || String(e) }; }
       })();
+      structuredLog(res.ok ? 'INFO' : 'WARN', 'resumeAudio: result', { ok: !!res.ok, state: res.state, error: res.error });
       if (!res.ok) structuredLog('WARN', 'resumeAudio failed', { error: res.error });
       return res;
     } catch (e) {

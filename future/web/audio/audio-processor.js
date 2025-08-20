@@ -23,6 +23,23 @@ export async function initializeAudio(context) {
     structuredLog('ERROR', 'initializeAudio: AudioContext not provided.');
     return;
   }
+  try {
+    structuredLog('DEBUG', 'initializeAudio: starting', { state: context.state });
+    // Attempt to collect available media device info for diagnostics
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        // Map to a compact shape to avoid serializing heavy objects
+        const devInfo = devices.map(d => ({ kind: d.kind, label: d.label || '(hidden)', deviceId: d.deviceId }));
+        structuredLog('DEBUG', 'initializeAudio: enumerateDevices result', { devices: devInfo });
+      } catch (e) {
+        structuredLog('WARN', 'initializeAudio: enumerateDevices failed', { error: e?.message || String(e) });
+      }
+    }
+  } catch (e) {
+    // Non-fatal diagnostic failure
+    structuredLog('WARN', 'initializeAudio: diagnostic probe failed', { error: e?.message || String(e) });
+  }
   masterGain = context.createGain();
   masterGain.gain.value = 2.0; // Boosted volume
   masterGain.connect(context.destination);
@@ -35,6 +52,10 @@ export async function initializeAudio(context) {
   if (queuedMicStream) {
     try {
       structuredLog('INFO', 'Connecting previously queued microphone stream.');
+      try {
+        const tracks = queuedMicStream.getAudioTracks ? queuedMicStream.getAudioTracks().map(t => t.label || '(hidden)') : [];
+        structuredLog('DEBUG', 'initializeAudio: queuedMicStream info', { trackCount: tracks.length, trackLabels: tracks });
+      } catch (e) { /* best-effort */ }
       connectMicrophone(queuedMicStream);
       queuedMicStream = null;
     } catch (e) {
