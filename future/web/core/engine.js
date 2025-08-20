@@ -116,7 +116,10 @@ export function createEngine() {
       return { ok: false, error: `no handler: ${commandName}` };
     }
     try {
-      structuredLog('DEBUG', `Engine dispatch ${commandName}`, { payload });
+      // Only log noisy commands like processFrame if verbose debug logging is enabled.
+      if (commandName !== 'processFrame') {
+        structuredLog('DEBUG', `Engine dispatch ${commandName}`, { payload });
+      }
       const result = await handler({ state, payload, dispatch });
       // notify after handler runs in case it mutated shared state
       notifyListeners();
@@ -282,6 +285,32 @@ export function createEngine() {
       speakText(valueText);
     } catch (err) {
       structuredLog('ERROR', 'Failed to announce setting value', { error: err.message });
+    }
+  });
+
+  // Helper to play a short test cue for debugging audio
+  registerCommandHandler('playTestNote', async ({ state: s, payload }) => {
+    try {
+      const cues = [{ id: 'test-note', pitch: payload?.pitch || 440, pan: 0, intensity: 1.0 }];
+      await dispatch('audioPlayCues', { cues });
+      return { ok: true };
+    } catch (e) {
+      structuredLog('WARN', 'playTestNote failed', { error: e?.message });
+      return { ok: false, error: e?.message };
+    }
+  });
+
+  // Handler to resume audio context from UI
+  registerCommandHandler('resumeAudio', async ({ state: s }) => {
+    try {
+      const res = await (async function() {
+        try { return await (await import('../audio/audio-processor.js')).resumeAudioContext(); } catch(e) { return { ok: false, error: e?.message || String(e) }; }
+      })();
+      if (!res.ok) structuredLog('WARN', 'resumeAudio failed', { error: res.error });
+      return res;
+    } catch (e) {
+      structuredLog('ERROR', 'resumeAudio handler failed', { error: e?.message || String(e) });
+      return { ok: false, error: e?.message || String(e) };
     }
   });
 

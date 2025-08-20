@@ -231,3 +231,37 @@ export async function playCues(cues) {
     activeOscillators.set(cue.id, { osc, panner, timeoutId });
   });
 }
+
+/**
+ * Returns lightweight diagnostics about the audio subsystem for debugging.
+ */
+export function getAudioDiagnostics() {
+  const context = audioManager?.context;
+  return {
+    audioContextState: context?.state || 'no-context',
+    oscillatorPoolSize: oscillatorPool.length,
+    activeOscillatorCount: activeOscillators.size,
+    masterGainPresent: !!masterGain,
+    micPassThroughEnabled: !!micPassThroughEnabled
+  };
+}
+
+/**
+ * Attempt to resume the underlying AudioContext if it's suspended.
+ * Returns an object { ok: boolean, state: string, error?: string }
+ */
+export async function resumeAudioContext() {
+  const context = audioManager?.context;
+  if (!context) {
+    return { ok: false, state: 'no-context', error: 'No AudioContext available' };
+  }
+  try {
+    if (context.state === 'suspended') {
+      await context.resume();
+    }
+    return { ok: true, state: context.state };
+  } catch (e) {
+    structuredLog('ERROR', 'resumeAudioContext failed', { error: e?.message || String(e) });
+    return { ok: false, state: context.state || 'unknown', error: e?.message || String(e) };
+  }
+}

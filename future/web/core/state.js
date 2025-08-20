@@ -29,6 +29,8 @@ export let settings = {
     sampleCount: 0,
     safetyFactor: 0.7
   },
+  // Whether the engine should emit processFrame DEBUG logs (controlled by UI)
+  includeProcessFrameLogs: false,
   gridType: null,
   synthesisEngine: null,
   language: null,

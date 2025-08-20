@@ -3,6 +3,7 @@
 import { settings } from '../core/state.js';
 import { setOutputCallback } from '../utils/core-logger.js';
 import { enableFrameWorker, enableWorkerTransfer } from '../video/frame-processor.js';
+import { getAudioDiagnostics } from '../audio/audio-processor.js';
 
 export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
@@ -11,7 +12,7 @@ export function initializeDebugUI(engine, DOM) {
 
   panel.innerHTML = `
     <div class="debug-section state-section">
-      <h2>State Inspector</h2>
+  <h2>State Inspector <span id="audio-state-badge" style="margin-left:8px;padding:2px 6px;border-radius:8px;font-size:10px;vertical-align:middle;">?</span></h2>
       <pre id="debug-state-view">Loading state...</pre>
     </div>
     <div class="debug-section controls-section">
@@ -24,7 +25,6 @@ export function initializeDebugUI(engine, DOM) {
     </div>
   `;
 
-  // ... (The CSS styles for the debug panel) ...
   const styles = `
     #acoustsee-debug-panel {
       width: 400px;
@@ -138,17 +138,24 @@ export function initializeDebugUI(engine, DOM) {
   const maxNotesSlider = createSlider('Max Notes', 1, 100, 1);
   const motionSlider = createSlider('Motion Threshold', 1, 255, 5);
   const autoFpsCheckbox = createCheckbox('Auto FPS');
-  const workerCheckbox = createCheckbox('Enable Frame Worker'); // This was missing from the append() call
-  const transferCheckbox = createCheckbox('Enable Buffer Transfer'); // This was also missing
+  const workerCheckbox = createCheckbox('Enable Frame Worker');
+  const transferCheckbox = createCheckbox('Enable Buffer Transfer');
+
+  const verbositySelect = createSelect('Log Verbosity', ['ERROR','WARN','INFO','DEBUG','VERBOSE']);
+  const includeProcessFrameCheckbox = createCheckbox('Include processFrame logs');
 
   const startStopBtn = createButton('Start/Stop Processing');
+  const emitTestNoteBtn = createButton('Emit Test Note');
+  const resumeAudioBtn = createButton('Resume Audio');
+  const logAudioDiagsBtn = createButton('Log Audio Diags');
   const saveBtn = createButton('Save Settings');
   const loadBtn = createButton('Load Settings');
 
   controlsContainer.append(
-    gridSelect, synthSelect, maxNotesSlider, motionSlider, 
-    autoFpsCheckbox, workerCheckbox, transferCheckbox, // They are now correctly added here
-    startStopBtn, saveBtn, loadBtn
+    gridSelect, synthSelect, maxNotesSlider, motionSlider,
+    autoFpsCheckbox, workerCheckbox, transferCheckbox,
+    verbositySelect, includeProcessFrameCheckbox,
+  startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, saveBtn, loadBtn
   );
   
   // --- 3. WIRE UP INPUTS (Now complete) ---
@@ -167,6 +174,15 @@ export function initializeDebugUI(engine, DOM) {
     enableWorkerTransfer(e.target.checked);
   });
 
+  // verbosity state
+  let currentVerbosity = 'INFO';
+  let includeProcessFrameLogs = !!settings.includeProcessFrameLogs;
+
+  verbositySelect.querySelector('select').value = currentVerbosity;
+  verbositySelect.querySelector('select').addEventListener('change', (e) => { currentVerbosity = e.target.value; });
+  includeProcessFrameCheckbox.querySelector('input').checked = includeProcessFrameLogs;
+  includeProcessFrameCheckbox.querySelector('input').addEventListener('change', (e) => { includeProcessFrameLogs = e.target.checked; settings.includeProcessFrameLogs = e.target.checked; });
+
   startStopBtn.querySelector('button').addEventListener('click', async () => {
     try {
       await engine.dispatch('toggleProcessing', { videoEl: DOM.videoFeed, canvasEl: DOM.frameCanvas });
@@ -181,6 +197,33 @@ export function initializeDebugUI(engine, DOM) {
       }
     }
   });
+  emitTestNoteBtn.querySelector('button').addEventListener('click', async () => {
+    try {
+      await engine.dispatch('playTestNote', { pitch: 440 });
+    } catch (err) {
+      console.error('playTestNote failed', err);
+    }
+  });
+  resumeAudioBtn.querySelector('button').addEventListener('click', async () => {
+    try {
+      const res = await engine.dispatch('resumeAudio');
+      const msg = res?.ok ? `Audio resumed: ${res.state}` : `Resume failed: ${res?.error || 'unknown'}`;
+      const entry = document.createElement('div'); entry.className = 'log-entry'; entry.textContent = msg; logView.appendChild(entry); logView.scrollTop = logView.scrollHeight;
+      // update badge immediately
+      try { const diags = getAudioDiagnostics(); const badge = document.getElementById('audio-state-badge'); if (badge) { badge.textContent = diags.audioContextState; badge.style.background = diags.audioContextState === 'running' ? '#2ecc71' : '#e74c3c'; }} catch(e){}
+    } catch (e) { console.error('resumeAudio dispatch failed', e); }
+  });
+  logAudioDiagsBtn.querySelector('button').addEventListener('click', () => {
+    try {
+      const diags = getAudioDiagnostics();
+      console.log('Audio diagnostics:', diags);
+      const diagEntry = document.createElement('div');
+      diagEntry.className = 'log-entry';
+      diagEntry.textContent = `Audio diags: ${JSON.stringify(diags)}`;
+      logView.appendChild(diagEntry);
+      logView.scrollTop = logView.scrollHeight;
+    } catch (e) { console.error('Failed to get audio diags', e); }
+  });
   saveBtn.querySelector('button').addEventListener('click', () => engine.dispatch('saveSettings'));
   loadBtn.querySelector('button').addEventListener('click', () => engine.dispatch('loadSettings'));
 
@@ -194,14 +237,37 @@ export function initializeDebugUI(engine, DOM) {
     workerCheckbox.querySelector('input').checked = !!state.enableFrameWorker;
     transferCheckbox.querySelector('input').checked = !!state.workerTransferEnabled;
     startStopBtn.querySelector('button').textContent = state.isProcessing ? 'Stop Processing' : 'Start Processing';
+    // Update state inspector with audio diagnostics and badge
+    try {
+      const diags = getAudioDiagnostics();
+      stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
+      const badge = document.getElementById('audio-state-badge');
+      if (badge) {
+        const s = diags.audioContextState || 'no-context';
+        badge.textContent = s;
+        badge.style.background = s === 'running' ? '#2ecc71' : '#e74c3c';
+        badge.style.color = '#061019';
+      }
+    } catch (e) {
+      stateView.textContent = JSON.stringify(state, null, 2);
+    }
   });
   setOutputCallback((level, text) => {
-    // Append simple log entries to the log view
-    const entry = document.createElement('div');
-    entry.className = `dbg-log dbg-${level.toLowerCase()}`;
-    entry.textContent = `[${level}] ${text}`;
-    logView.appendChild(entry);
-    // keep the latest visible
+    const severity = ['ERROR','WARN','INFO','DEBUG','VERBOSE'];
+    const lvl = String(level || '').toUpperCase();
+    const lvlIndex = severity.indexOf(lvl) === -1 ? severity.indexOf('INFO') : severity.indexOf(lvl);
+    const currentIndex = severity.indexOf(currentVerbosity);
+
+    // filter out hot-path messages unless explicitly allowed
+    if (typeof text === 'string' && text.includes('processFrame') && !includeProcessFrameLogs) return;
+
+    // respect verbosity
+    if (lvlIndex > currentIndex) return;
+
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry log-${lvl.toLowerCase()}`;
+    logEntry.textContent = `[${lvl}] ${text}`;
+    logView.appendChild(logEntry);
     logView.scrollTop = logView.scrollHeight;
   });
 }
@@ -209,10 +275,9 @@ export function initializeDebugUI(engine, DOM) {
 // --- Helper functions (These should all be present and correct) ---
 function createControlGroup(label) {
   const wrapper = document.createElement('div');
-  wrapper.className = 'dbg-control-group';
+  wrapper.className = 'control-group';
   if (label) {
     const lab = document.createElement('label');
-    lab.className = 'dbg-label';
     lab.textContent = label;
     wrapper.appendChild(lab);
   }
@@ -241,7 +306,7 @@ function createSlider(label, min = 0, max = 100, step = 1) {
   input.step = step;
   input.value = min;
   const value = document.createElement('span');
-  value.className = 'dbg-slider-value';
+  value.className = 'slider-value';
   value.textContent = input.value;
   group.appendChild(input);
   group.appendChild(value);
