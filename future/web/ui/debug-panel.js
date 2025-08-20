@@ -14,7 +14,63 @@ function savePanelState(panel) {
   } catch (e) { /* ignore storage errors */ }
 }
 
-export async function showDebugPanel() {
+export async function showDebugPanel(options = {}) {
+  const { waitForSplash = true, forceOnMobile = false } = options;
+
+  // register a one-time pointerdown to record that a user gesture occurred
+  if (!window.__acoustseeUserGesture) {
+    document.addEventListener('pointerdown', () => { window.__acoustseeUserGesture = true; }, { once: true, passive: true });
+  }
+
+  // If a splash screen exists, wait until it is hidden/removed before opening the debug panel.
+  if (waitForSplash) {
+    const splash = document.getElementById('splash') || document.querySelector('.splash-screen');
+    if (splash) {
+      await new Promise((resolve) => {
+        const checkHidden = () => {
+          if (!document.body.contains(splash)) return true;
+          const style = window.getComputedStyle(splash);
+          if (style && (style.display === 'none' || style.visibility === 'hidden' || splash.classList.contains('hidden'))) return true;
+          return false;
+        };
+        if (checkHidden()) return resolve();
+        const mo = new MutationObserver(() => {
+          if (checkHidden()) { mo.disconnect(); resolve(); }
+        });
+        try { mo.observe(splash, { attributes: true, attributeFilter: ['style', 'class'], childList: false }); } catch (e) {}
+        setTimeout(() => { try { mo.disconnect(); } catch{}; resolve(); }, 5000);
+      });
+    }
+  }
+
+  // On touch devices, avoid auto-opening the panel before a user gesture unless forced.
+  const isTouch = typeof navigator !== 'undefined' && ((navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window);
+  if (isTouch && !forceOnMobile && !window.__acoustseeUserGesture) {
+    if (!document.getElementById('acoustsee-debug-opener')) {
+      const opener = document.createElement('button');
+      opener.id = 'acoustsee-debug-opener';
+      opener.textContent = 'Debug';
+      opener.style.position = 'fixed';
+      opener.style.right = '8px';
+      opener.style.bottom = '8px';
+      opener.style.zIndex = '150';
+      opener.style.background = 'rgba(0,0,0,0.6)';
+      opener.style.color = '#fff';
+      opener.style.border = '1px solid rgba(255,255,255,0.08)';
+      opener.style.padding = '6px 10px';
+      opener.style.borderRadius = '6px';
+      opener.style.fontSize = '13px';
+      opener.style.backdropFilter = 'blur(4px)';
+      opener.style.cursor = 'pointer';
+      opener.addEventListener('click', () => {
+        opener.remove();
+        showDebugPanel({ waitForSplash: false, forceOnMobile: true }).catch(() => {});
+      });
+      document.body.appendChild(opener);
+    }
+    return;
+  }
+
   let debugPanel = document.getElementById('debugPanel');
   if (!debugPanel) {
     debugPanel = document.createElement('div');
@@ -34,7 +90,8 @@ export async function showDebugPanel() {
     debugPanel.style.color = '#eee';
     debugPanel.style.border = '2px solid #444';
     debugPanel.style.padding = '12px';
-    debugPanel.style.zIndex = '9999';
+    // keep panel above normal content but below splash/video to avoid hiding them
+    debugPanel.style.zIndex = '100';
     debugPanel.style.boxShadow = '0 2px 12px rgba(0,0,0,0.5)';
     debugPanel.style.borderRadius = '6px';
     document.body.appendChild(debugPanel);
