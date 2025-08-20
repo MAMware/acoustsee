@@ -9,6 +9,8 @@ import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from './debug-
 export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
   panel.id = 'acoustsee-debug-panel';
+  // keep debug panel visually present but avoid covering video/splash
+  panel.style.zIndex = '5';
   // Note: controls are created below; query them after mounting the innerHTML.
   DOM.uiPanelRoot.appendChild(panel);
 
@@ -19,21 +21,148 @@ export function initializeDebugUI(engine, DOM) {
     </div>
     <div class="debug-section controls-section">
       <h2>Controls</h2>
-      <div id="debug-controls"></div>
+
+      <!-- two-column controls grid -->
+      <div class="controls-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; align-items:start;">
+
+        <!-- LEFT COLUMN -->
+        <div class="controls-col-left" style="display:flex; flex-direction:column; gap:8px;">
+          <div class="control-row">
+            <label style="display:flex; flex-direction:column; font-size:13px;">Grid Type
+              <select id="grid-type-select" style="margin-top:6px;">
+                <!-- options populated by JS -->
+              </select>
+            </label>
+          </div>
+
+          <div class="control-row">
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+              Max Notes
+              <input id="max-notes-slider" type="range" min="1" max="128" value="16" style="flex:1;">
+              <span id="max-notes-value" style="width:36px; text-align:right;">16</span>
+            </label>
+          </div>
+
+          <div class="control-row" style="display:flex; gap:12px; align-items:center;">
+            <label style="display:flex; align-items:center; gap:6px;"><input id="auto-fps-checkbox" type="checkbox"> Auto FPS</label>
+            <label style="display:flex; align-items:center; gap:6px;"><input id="enable-frame-worker-checkbox" type="checkbox"> Enable Frame Worker</label>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="controls-col-right" style="display:flex; flex-direction:column; gap:8px;">
+          <div class="control-row">
+            <label style="display:flex; flex-direction:column; font-size:13px;">Synth Engine
+              <select id="synth-engine-select" style="margin-top:6px;">
+                <!-- options populated by JS -->
+              </select>
+            </label>
+          </div>
+
+          <div class="control-row">
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+              Motion Threshold
+              <input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20" style="flex:1;">
+              <span id="motion-threshold-value" style="width:48px; text-align:right;">0.20</span>
+            </label>
+          </div>
+
+          <div class="control-row" style="display:flex; gap:12px; align-items:center;">
+            <label style="display:flex; align-items:center; gap:6px;"><input id="enable-frame-buffer-checkbox" type="checkbox"> Enable Frame Buffer Transfer</label>
+            <label style="display:flex; align-items:center; gap:6px;"><input id="include-process-logs-checkbox" type="checkbox"> Include Process Frame Logs</label>
+          </div>
+        </div>
+
+      </div>
     </div>
     <div class="debug-section logs-section">
       <h2>Live Logs</h2>
-      <div class="log-controls">
+      <div class="log-controls" style="display:flex; align-items:center; gap:8px;">
         <button id="log-pause-btn" type="button">Pause</button>
         <label style="margin-left:8px; font-size:12px;">
           <input id="autoscroll-checkbox" type="checkbox" checked style="vertical-align:middle; margin-right:6px;"> Autoscroll
         </label>
         <button id="log-clear-btn" type="button" style="margin-left:8px;">Clear</button>
         <button id="log-export-btn" type="button" style="margin-left:4px;">Export</button>
+
+        <!-- push verbosity control to the right of export -->
+        <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+          <label style="font-size:12px; display:flex; align-items:center; gap:6px;">
+            Verbosity
+            <select id="log-verbosity-select" style="margin-left:6px;">
+              <option value="ERROR">ERROR</option>
+              <option value="WARN">WARN</option>
+              <option value="INFO" selected>INFO</option>
+              <option value="DEBUG">DEBUG</option>
+              <option value="VERBOSE">VERBOSE</option>
+            </select>
+          </label>
+        </div>
       </div>
       <div id="debug-log-view"></div>
     </div>
   `;
+
+  // show version badge (meta tag -> global constant -> fallback)
+  (function setVersionBadge() {
+    try {
+      const meta = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
+      const ver = meta || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || null;
+      if (ver) {
+        const badge = document.getElementById('audio-state-badge');
+        if (badge) {
+          badge.textContent = ver;
+          badge.style.background = '#111';
+          badge.style.color = '#9ad';
+          badge.style.border = '1px solid rgba(255,255,255,0.04)';
+        }
+      }
+    } catch (e) {}
+  })();
+
+  // Poll for engine context and show a friendly loading message until it's available.
+  (function waitForContext() {
+    const stateView = document.getElementById('debug-state-view');
+    if (!stateView) return;
+    const displayLoading = () => {
+      stateView.textContent = 'Loading context...';
+      stateView.style.color = '';
+    };
+    displayLoading();
+
+    const getContext = () => {
+      try {
+        if (engine == null) return null;
+        if (engine.context) return engine.context;
+        if (typeof engine.getContext === 'function') return engine.getContext();
+        if (typeof engine.get === 'function') return engine.get('context');
+      } catch (e) { /* ignore */ }
+      return null;
+    };
+
+    const start = Date.now();
+    const timeoutMs = 7000;
+    const iv = setInterval(() => {
+      const ctx = getContext();
+      if (ctx) {
+        clearInterval(iv);
+        try {
+          const summary = typeof ctx === 'object' ? JSON.stringify({ id: ctx.id, state: ctx.state || ctx.status || 'ready' }) : String(ctx);
+          stateView.textContent = `Context: ${summary}`;
+          stateView.style.color = '';
+        } catch (e) {
+          stateView.textContent = 'Context available';
+          stateView.style.color = '';
+        }
+        return;
+      }
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(iv);
+        stateView.textContent = 'No context (not initialized)';
+        stateView.style.color = '#c46';
+      }
+    }, 200);
+  })();
 
   const styles = `
     #acoustsee-debug-panel {
@@ -179,46 +308,59 @@ export function initializeDebugUI(engine, DOM) {
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
 
-  // --- 2. POPULATE CONTROLS (This section is now fully correct) ---
-  const controlsContainer = panel.querySelector('#debug-controls');
-  
-  const gridSelect = createSelect('Grid Type', settings.availableGrids.map(g => g.id));
-  const synthSelect = createSelect('Synth Engine', settings.availableEngines.map(e => e.id));
-  const maxNotesSlider = createSlider('Max Notes', 1, 100, 1);
-  const motionSlider = createSlider('Motion Threshold', 1, 255, 5);
-  const autoFpsCheckbox = createCheckbox('Auto FPS');
-  const workerCheckbox = createCheckbox('Enable Frame Worker');
-  const transferCheckbox = createCheckbox('Enable Buffer Transfer');
+  // --- 2. POPULATE CONTROLS (populate the two-column grid and action buttons) ---
+  const controlsGrid = panel.querySelector('.controls-grid');
+  // create an actions container (for start/stop, test note, resume, etc.) after the grid
+  let actionsContainer = panel.querySelector('#debug-controls-actions');
+  if (!actionsContainer) {
+    actionsContainer = document.createElement('div');
+    actionsContainer.id = 'debug-controls-actions';
+    actionsContainer.style.marginTop = '10px';
+    controlsGrid.parentNode.insertBefore(actionsContainer, controlsGrid.nextSibling);
+  }
 
-  const verbositySelect = createSelect('Log Verbosity', ['ERROR','WARN','INFO','DEBUG','VERBOSE']);
-  const includeProcessFrameCheckbox = createCheckbox('Include processFrame logs');
+  // populate selects from settings
+  const gridTypeEl = panel.querySelector('#grid-type-select');
+  settings.availableGrids.forEach(g => {
+    const opt = document.createElement('option'); opt.value = g.id; opt.textContent = g.id; gridTypeEl.appendChild(opt);
+  });
 
+  const synthEngineEl = panel.querySelector('#synth-engine-select');
+  settings.availableEngines.forEach(e => {
+    const opt = document.createElement('option'); opt.value = e.id; opt.textContent = e.id; synthEngineEl.appendChild(opt);
+  });
+
+  const maxNotesEl = panel.querySelector('#max-notes-slider');
+  const maxNotesValueEl = panel.querySelector('#max-notes-value');
+  const motionEl = panel.querySelector('#motion-threshold-slider');
+  const motionValueEl = panel.querySelector('#motion-threshold-value');
+  const autoFpsEl = panel.querySelector('#auto-fps-checkbox');
+  const workerEl = panel.querySelector('#enable-frame-worker-checkbox');
+  const transferEl = panel.querySelector('#enable-frame-buffer-checkbox');
+  const includeProcessEl = panel.querySelector('#include-process-logs-checkbox');
+  const verbosityEl = panel.querySelector('#log-verbosity-select');
+
+  // create action buttons and append to actionsContainer
   const startStopBtn = createButton('Start/Stop Processing');
   const emitTestNoteBtn = createButton('Emit Test Note');
   const resumeAudioBtn = createButton('Resume Audio');
   const logAudioDiagsBtn = createButton('Log Audio Diags');
   const saveBtn = createButton('Save Settings');
   const loadBtn = createButton('Load Settings');
+  actionsContainer.append(startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, saveBtn, loadBtn);
 
-  controlsContainer.append(
-    gridSelect, synthSelect, maxNotesSlider, motionSlider,
-    autoFpsCheckbox, workerCheckbox, transferCheckbox,
-    verbositySelect, includeProcessFrameCheckbox,
-  startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, saveBtn, loadBtn
-  );
-  
-  // --- 3. WIRE UP INPUTS (Now complete) ---
-  gridSelect.querySelector('select').addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
-  synthSelect.querySelector('select').addEventListener('change', (e) => engine.dispatch('setSynthEngine', { synthEngine: e.target.value }));
-  maxNotesSlider.querySelector('input').addEventListener('input', (e) => { engine.dispatch('setMaxNotes', { maxNotes: e.target.value }); maxNotesSlider.querySelector('span').textContent = e.target.value; });
-  motionSlider.querySelector('input').addEventListener('input', (e) => { engine.dispatch('setMotionThreshold', { motionThreshold: e.target.value }); motionSlider.querySelector('span').textContent = e.target.value; });
-  autoFpsCheckbox.querySelector('input').addEventListener('change', (e) => engine.dispatch('setAutoFPS', { enabled: e.target.checked }));
+  // --- 3. WIRE UP INPUTS (Now adapted to the new DOM) ---
+  gridTypeEl.addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
+  synthEngineEl.addEventListener('change', (e) => engine.dispatch('setSynthEngine', { synthEngine: e.target.value }));
+  maxNotesEl.addEventListener('input', (e) => { engine.dispatch('setMaxNotes', { maxNotes: e.target.value }); maxNotesValueEl.textContent = e.target.value; });
+  motionEl.addEventListener('input', (e) => { engine.dispatch('setMotionThreshold', { motionThreshold: e.target.value }); motionValueEl.textContent = e.target.value; });
+  autoFpsEl.addEventListener('change', (e) => engine.dispatch('setAutoFPS', { enabled: e.target.checked }));
 
-  workerCheckbox.querySelector('input').addEventListener('change', (e) => {
+  workerEl.addEventListener('change', (e) => {
     settings.enableFrameWorker = e.target.checked;
     enableFrameWorker(e.target.checked);
   });
-  transferCheckbox.querySelector('input').addEventListener('change', (e) => {
+  transferEl.addEventListener('change', (e) => {
     settings.workerTransferEnabled = e.target.checked;
     enableWorkerTransfer(e.target.checked);
   });
@@ -227,10 +369,10 @@ export function initializeDebugUI(engine, DOM) {
   let currentVerbosity = 'INFO';
   let includeProcessFrameLogs = !!settings.includeProcessFrameLogs;
 
-  verbositySelect.querySelector('select').value = currentVerbosity;
-  verbositySelect.querySelector('select').addEventListener('change', (e) => { currentVerbosity = e.target.value; });
-  includeProcessFrameCheckbox.querySelector('input').checked = includeProcessFrameLogs;
-  includeProcessFrameCheckbox.querySelector('input').addEventListener('change', (e) => { includeProcessFrameLogs = e.target.checked; settings.includeProcessFrameLogs = e.target.checked; });
+  verbosityEl.value = currentVerbosity;
+  verbosityEl.addEventListener('change', (e) => { currentVerbosity = e.target.value; });
+  includeProcessEl.checked = includeProcessFrameLogs;
+  includeProcessEl.addEventListener('change', (e) => { includeProcessFrameLogs = e.target.checked; settings.includeProcessFrameLogs = e.target.checked; });
 
   startStopBtn.querySelector('button').addEventListener('click', async () => {
     try {
