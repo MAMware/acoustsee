@@ -7,6 +7,7 @@ import { getAudioDiagnostics } from '../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from './debug-log.js';
 import { createControlGroup, createSelect, createSlider, createCheckbox } from './debug-ui.controls.js';
 import { createAndWireActions } from './debug-ui.actions.js';
+import initializeDebugUIBehavior from './debug-ui.behavior.js';
 
 export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
@@ -15,6 +16,9 @@ export function initializeDebugUI(engine, DOM) {
   panel.style.zIndex = '5';
   // Note: controls are created below; query them after mounting the innerHTML.
   DOM.uiPanelRoot.appendChild(panel);
+
+  // initialize behavior (responsive layout, video z-index, stylesheet loader)
+  try { initializeDebugUIBehavior({ panel, DOM, settings, engine }); } catch (e) { /* non-fatal */ }
 
   panel.innerHTML = `
     <div class="debug-section state-section">
@@ -109,20 +113,7 @@ export function initializeDebugUI(engine, DOM) {
   `;
 
   // show version badge (meta tag -> global constant -> fallback)
-  (function setVersionBadge() {
-    try {
-      const meta = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
-      const ver = meta || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || null;
-      const badge = document.getElementById('audio-version-badge');
-      if (badge) {
-        badge.textContent = ver || 'unknown';
-        badge.style.background = '#111';
-        badge.style.color = '#9ad';
-        badge.style.border = '1px solid rgba(255,255,255,0.04)';
-      }
-    } catch (e) {}
-  })();
-
+ 
   // Responsive layout: landscape => panel right and video left; portrait => bottom sheet
   (function responsivePanelLayout() {
     const candidates = ['#video-container','#video-preview','.video-preview','#preview','video','#frameCanvas','canvas'];
@@ -203,49 +194,7 @@ export function initializeDebugUI(engine, DOM) {
     window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
     setTimeout(applyResponsiveLayout, 600);
   })();
-
-  // Poll for engine context and set the small inline context badge (don't overwrite state inspector)
-  (function waitForContextBadge() {
-    const ctxBadge = document.getElementById('audio-context-badge');
-    if (!ctxBadge) return;
-    const setBadge = (txt, color) => {
-      ctxBadge.textContent = txt;
-      ctxBadge.style.color = color || '';
-    };
-
-    const getContext = () => {
-      try {
-        if (engine == null) return null;
-        if (engine.context) return engine.context;
-        if (typeof engine.getContext === 'function') return engine.getContext();
-        if (typeof engine.get === 'function') return engine.get('context');
-      } catch (e) { /* ignore */ }
-      return null;
-    };
-
-    // initial
-    setBadge('Loading...', '#9ad');
-
-    const start = Date.now();
-    const timeoutMs = 7000;
-    const iv = setInterval(() => {
-      const ctx = getContext();
-      if (ctx) {
-        clearInterval(iv);
-        try {
-          const stateText = typeof ctx === 'object' ? (ctx.state || ctx.status || 'ready') : String(ctx);
-          setBadge(String(stateText), '#2ecc71');
-        } catch (e) {
-          setBadge('Context', '#2ecc71');
-        }
-        return;
-      }
-      if (Date.now() - start > timeoutMs) {
-        clearInterval(iv);
-        setBadge('No context (not initialized)', '#c46');
-      }
-    }, 250);
-  })();
+  
 
   // Try to locate the video preview element and ensure it is above the debug panel.
   (function ensureVideoOnTop() {
