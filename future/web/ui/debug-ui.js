@@ -131,12 +131,15 @@ export function initializeDebugUI(engine, DOM) {
       for (const sel of candidates) {
         try {
           const el = document.querySelector(sel);
-          if (el && document.body.contains(el)) return el;
+          if (!el || !document.body.contains(el)) continue;
+          // skip any element that is inside the debug panel itself
+          if (el.closest && el.closest('#acoustsee-debug-panel')) continue;
+          return el;
         } catch (e) { /* ignore selector errors */ }
       }
-      const vid = document.querySelector('video, canvas');
-      if (vid && document.body.contains(vid)) return vid;
-      return null;
+      // fallback: any visible video or canvas not inside the debug panel
+      const vid = Array.from(document.querySelectorAll('video, canvas')).find(v => v && document.body.contains(v) && !(v.closest && v.closest('#acoustsee-debug-panel')));
+      return vid || null;
     }
 
     function applyLandscape(el, panelEl) {
@@ -267,6 +270,8 @@ export function initializeDebugUI(engine, DOM) {
         tried.add(el);
         // ensure element is in document and visible
         if (!document.body.contains(el)) continue;
+        // skip elements that were inserted into the debug panel itself
+        if (el.closest && el.closest('#acoustsee-debug-panel')) continue;
         const style = window.getComputedStyle(el);
         // ignore if invisible
         if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity || '1') === 0) continue;
@@ -287,12 +292,24 @@ export function initializeDebugUI(engine, DOM) {
 
   // Load debug UI stylesheet (extracted to keep JS small and separate concerns)
   (function ensureDebugCss() {
-    if (!document.getElementById('acoustsee-debug-ui-css')) {
-      const link = document.createElement('link');
-      link.id = 'acoustsee-debug-ui-css';
-      link.rel = 'stylesheet';
-      link.href = '/future/web/ui/debug-ui.css';
-      document.head.appendChild(link);
+    try {
+      if (document.getElementById('acoustsee-debug-ui-css')) return;
+      const candidates = [
+      'ui/debug-ui.css'
+      ];
+      for (const href of candidates) {
+        const link = document.createElement('link');
+        link.id = 'acoustsee-debug-ui-css';
+        link.rel = 'stylesheet';
+        link.href = href;
+        // when a candidate fails to load, remove it so the next can try
+        link.onerror = () => { try { if (link.parentNode) link.parentNode.removeChild(link); } catch (e) {} };
+        document.head.appendChild(link);
+      }
+      // force a layout recalculation shortly after insertion so sizes adjust
+      setTimeout(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, 250);
+    } catch (e) {
+      // silent
     }
   })();
 
