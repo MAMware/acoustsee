@@ -5,7 +5,8 @@ import { setOutputCallback } from '../utils/core-logger.js';
 import { enableFrameWorker, enableWorkerTransfer } from '../video/frame-processor.js';
 import { getAudioDiagnostics } from '../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from './debug-log.js';
-import { createControlGroup, createSelect, createSlider, createCheckbox, createButton } from './debug-ui.controls.js';
+import { createControlGroup, createSelect, createSlider, createCheckbox } from './debug-ui.controls.js';
+import { createAndWireActions } from './debug-ui.actions.js';
 
 export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
@@ -329,16 +330,8 @@ export function initializeDebugUI(engine, DOM) {
   const includeProcessEl = panel.querySelector('#include-process-logs-checkbox');
   const verbosityEl = panel.querySelector('#log-verbosity-select');
 
-  // create action buttons and append to actionsContainer
-  const startStopBtn = createButton('Start/Stop Processing');
-  const emitTestNoteBtn = createButton('Emit Test Note');
-  const resumeAudioBtn = createButton('Resume Audio');
-  const logAudioDiagsBtn = createButton('Log Audio Diags');
-  const deviceDiagsBtn = createButton('Run Device Diags');
-  const audioTestBtn = createButton('Audio Output Test');
-  const saveBtn = createButton('Save Settings');
-  const loadBtn = createButton('Load Settings');
-  actionsContainer.append(startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, deviceDiagsBtn, audioTestBtn, saveBtn, loadBtn);
+  // create and wire action buttons (moved to debug-ui.actions.js)
+  createAndWireActions(actionsContainer, { engine, DOM, getAudioDiagnostics, debugLog, settings });
 
   // --- 3. WIRE UP INPUTS (Now adapted to the new DOM) ---
   gridTypeEl.addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
