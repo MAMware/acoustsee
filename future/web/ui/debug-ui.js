@@ -24,8 +24,107 @@ export function initializeDebugUI(engine, DOM) {
     </div>
   `;
 
-  // ... (The CSS styles inside this file can remain the same as before) ...
-  const styles = `...`; // No change to the styles defined within this file.
+  // ... (The CSS styles for the debug panel) ...
+  const styles = `
+    #acoustsee-debug-panel {
+      width: 400px;
+      height: 100vh;
+      background-color: #2c3e50;
+      color: #ecf0f1;
+      font-family: monospace;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-left: 2px solid #34495e;
+      box-sizing: border-box;
+    }
+    .debug-section {
+      padding: 10px;
+      border-bottom: 1px solid #34495e;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .debug-section h2 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #3498db;
+      border-bottom: 1px solid #3498db;
+      padding-bottom: 5px;
+      flex-shrink: 0;
+    }
+    .state-section {
+      flex-shrink: 0;
+      max-height: 25%;
+    }
+    #debug-state-view {
+      background: #222;
+      padding: 5px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      overflow-y: auto;
+    }
+    .controls-section {
+      flex-shrink: 0;
+    }
+    #debug-controls {
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+    .logs-section {
+      flex-grow: 1;
+    }
+    #debug-log-view {
+      flex-grow: 1;
+      overflow-y: scroll;
+      background: #222;
+      padding: 5px;
+    }
+    .log-entry { /* Renamed for clarity */
+      border-bottom: 1px dotted #444;
+      padding-bottom: 3px;
+      margin-bottom: 3px;
+    }
+    .log-warn { color: #f39c12; }
+    .log-error { color: #e74c3c; font-weight: bold; }
+
+    /* --- RESTORED CONTROL STYLES --- */
+    .control-group {
+      margin-bottom: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .control-group label {
+      flex-basis: 120px; /* Give labels a fixed width */
+      padding-right: 10px;
+    }
+    .control-group select, .control-group input, .control-group button {
+      flex-grow: 1;
+      background: #34495e;
+      color: #ecf0f1;
+      border: 1px solid #7f8c8d;
+      border-radius: 3px;
+      padding: 4px;
+      box-sizing: border-box;
+    }
+    .control-group input[type="checkbox"] {
+      flex-grow: 0;
+      margin-right: 10px;
+    }
+    .control-group .slider-value { /* Renamed for clarity */
+      margin-left: 10px;
+      flex-basis: 30px;
+    }
+    .control-group button {
+      cursor: pointer;
+      background: #2980b9;
+      flex-basis: 100%;
+      margin-top: 5px;
+    }
+    .control-group button:hover { background: #3498db; }
+  `;
 
   const styleSheet = document.createElement("style");
   styleSheet.innerText = styles;
