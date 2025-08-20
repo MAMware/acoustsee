@@ -5,65 +5,49 @@ import { setOutputCallback } from '../utils/core-logger.js';
 import { enableFrameWorker, enableWorkerTransfer } from '../video/frame-processor.js';
 import { getAudioDiagnostics } from '../audio/audio-processor.js';
 
+// Module-level logging API and state so callers outside initializeDebugUI can log safely.
+let moduleLogView = null;
+let moduleLogsPaused = false;
+const MAX_LOG_ENTRIES = 1000; // capped circular buffer
+const moduleLogBuffer = [];
+
+function formatTimestamp(d = new Date()) {
+  return d.toISOString().replace('T', ' ').replace('Z', '');
+}
+
+function createLogRow(entry) {
+  const row = document.createElement('div');
+  row.className = 'log-entry';
+  const ts = document.createElement('span'); ts.className = 'log-timestamp'; ts.textContent = formatTimestamp(new Date(entry.t));
+  const badge = document.createElement('span'); badge.className = `log-badge ${entry.level.toLowerCase()}`; badge.textContent = entry.level;
+  const txt = document.createElement('span'); txt.className = 'log-text'; txt.textContent = entry.text;
+  row.appendChild(ts); row.appendChild(badge); row.appendChild(txt);
+  return row;
+}
+
+export function debugLog(level, text) {
+  const lvl = String(level || 'INFO').toUpperCase();
+  const entry = { t: Date.now(), level: lvl, text: typeof text === 'string' ? text : JSON.stringify(text) };
+  moduleLogBuffer.push(entry);
+  if (moduleLogBuffer.length > MAX_LOG_ENTRIES) moduleLogBuffer.shift();
+
+  if (moduleLogsPaused) return;
+  if (!moduleLogView) return; // will be flushed once UI mounts
+
+  const row = createLogRow(entry);
+  moduleLogView.appendChild(row);
+  while (moduleLogView.children.length > MAX_LOG_ENTRIES) moduleLogView.removeChild(moduleLogView.firstChild);
+  const autoscroll = document.getElementById('autoscroll-checkbox')?.checked ?? true;
+  if (autoscroll) moduleLogView.scrollTop = moduleLogView.scrollHeight;
+}
+
+// compatibility shim for non-module callers
+if (typeof window !== 'undefined' && !window.acoustseeDebugLog) window.acoustseeDebugLog = debugLog;
+
 export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
   panel.id = 'acoustsee-debug-panel';
-  const logPauseBtn = panel.querySelector('#log-pause-btn');
-  const autoscrollCheckbox = panel.querySelector('#autoscroll-checkbox');
-  const logClearBtn = panel.querySelector('#log-clear-btn');
-  const logExportBtn = panel.querySelector('#log-export-btn');
-
-  // logging controls/state
-  let logsPaused = false;
-  const MAX_LOG_ENTRIES = 1000; // capped circular buffer
-  const logBuffer = [];
-
-  function formatTimestamp(d = new Date()) {
-    return d.toISOString().replace('T', ' ').replace('Z', '');
-  }
-
-  function logMessage(level, text) {
-    const lvl = String(level || 'INFO').toUpperCase();
-    const entry = { t: Date.now(), level: lvl, text: typeof text === 'string' ? text : JSON.stringify(text) };
-    // maintain capped buffer
-    logBuffer.push(entry);
-    if (logBuffer.length > MAX_LOG_ENTRIES) logBuffer.shift();
-
-    if (logsPaused) return;
-
-    const row = document.createElement('div');
-    row.className = 'log-entry';
-
-    const ts = document.createElement('span'); ts.className = 'log-timestamp'; ts.textContent = formatTimestamp(new Date(entry.t));
-    const badge = document.createElement('span'); badge.className = `log-badge ${entry.level.toLowerCase()}`; badge.textContent = entry.level;
-    const txt = document.createElement('span'); txt.className = 'log-text'; txt.textContent = entry.text;
-
-    row.appendChild(ts); row.appendChild(badge); row.appendChild(txt);
-    logView.appendChild(row);
-
-    // keep a reasonable DOM size: remove old nodes if buffer trimmed
-    while (logView.children.length > MAX_LOG_ENTRIES) logView.removeChild(logView.firstChild);
-
-    if (autoscrollCheckbox && autoscrollCheckbox.checked) {
-      logView.scrollTop = logView.scrollHeight;
-    }
-  }
-
-  logPauseBtn.addEventListener('click', () => {
-    logsPaused = !logsPaused;
-    logPauseBtn.textContent = logsPaused ? 'Resume' : 'Pause';
-  });
-  logClearBtn.addEventListener('click', () => {
-    logBuffer.length = 0; while (logView.firstChild) logView.removeChild(logView.firstChild);
-  });
-  logExportBtn.addEventListener('click', () => {
-    try {
-      const blob = new Blob([JSON.stringify(logBuffer, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `acoustsee-logs-${new Date().toISOString()}.json`; a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) { console.error('Failed to export logs', e); }
-  });
+  // Note: controls are created below; query them after mounting the innerHTML.
   DOM.uiPanelRoot.appendChild(panel);
 
   panel.innerHTML = `
@@ -329,6 +313,39 @@ export function initializeDebugUI(engine, DOM) {
   // --- 4. WIRE UP OUTPUTS (Now complete) ---
   const stateView = panel.querySelector('#debug-state-view');
   const logView = panel.querySelector('#debug-log-view');
+  moduleLogView = logView;
+
+  // now that logView exists, wire up the log controls we added earlier
+  const logPauseBtn = panel.querySelector('#log-pause-btn');
+  const autoscrollCheckbox = panel.querySelector('#autoscroll-checkbox');
+  const logClearBtn = panel.querySelector('#log-clear-btn');
+  const logExportBtn = panel.querySelector('#log-export-btn');
+
+  let logsPaused = false; // local toggle mirrored to moduleLogsPaused when used
+
+  logPauseBtn.addEventListener('click', () => {
+    logsPaused = !logsPaused;
+    moduleLogsPaused = logsPaused;
+    logPauseBtn.textContent = logsPaused ? 'Resume' : 'Pause';
+  });
+  logClearBtn.addEventListener('click', () => {
+    moduleLogBuffer.length = 0; while (logView.firstChild) logView.removeChild(logView.firstChild);
+  });
+  logExportBtn.addEventListener('click', () => {
+    try {
+      const blob = new Blob([JSON.stringify(moduleLogBuffer, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `acoustsee-logs-${new Date().toISOString()}.json`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { console.error('Failed to export logs', e); }
+  });
+
+  // flush buffered module logs that arrived before UI mount
+  if (moduleLogBuffer.length) {
+    moduleLogBuffer.forEach(entry => moduleLogView.appendChild(createLogRow(entry)));
+    while (moduleLogView.children.length > MAX_LOG_ENTRIES) moduleLogView.removeChild(moduleLogView.firstChild);
+    if (autoscrollCheckbox && autoscrollCheckbox.checked) moduleLogView.scrollTop = moduleLogView.scrollHeight;
+  }
 
   engine.onStateChange(state => {
     // ... (all the other state syncs are unchanged)
@@ -363,7 +380,8 @@ export function initializeDebugUI(engine, DOM) {
     // respect verbosity
     if (lvlIndex > currentIndex) return;
 
-  logMessage(lvl, text);
+  // route to module-level debug API
+  debugLog(lvl, text);
   });
 }
 
