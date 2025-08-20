@@ -27,6 +27,9 @@ export function initializeDebugUI(engine, DOM) {
 
   const styles = `
     #acoustsee-debug-panel {
+      position: fixed; /* ensure predictable placement and avoid overlaying other UI */
+      right: 0;
+      top: 0;
       width: 400px;
       height: 100vh;
       background-color: #2c3e50;
@@ -38,13 +41,16 @@ export function initializeDebugUI(engine, DOM) {
       overflow: hidden;
       border-left: 2px solid #34495e;
       box-sizing: border-box;
+      z-index: 1000;
     }
     .debug-section {
       padding: 10px;
       border-bottom: 1px solid #34495e;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      
+      overflow: visible;
+      min-height: 0;
     }
     .debug-section h2 {
       margin: 0 0 10px 0;
@@ -57,6 +63,7 @@ export function initializeDebugUI(engine, DOM) {
     .state-section {
       flex-shrink: 0;
       max-height: 25%;
+      min-height: 0;
     }
     #debug-state-view {
       background: #222;
@@ -64,20 +71,28 @@ export function initializeDebugUI(engine, DOM) {
       white-space: pre-wrap;
       word-break: break-all;
       overflow-y: auto;
+      max-height: 100%;
     }
     .controls-section {
       flex-shrink: 0;
+      max-height: 40%;
+      min-height: 0;
     }
     #debug-controls {
       overflow-y: auto;
       padding-right: 5px;
+      max-height: 100%;
     }
     .logs-section {
       flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0; 
     }
     #debug-log-view {
-      flex-grow: 1;
-      overflow-y: scroll;
+      flex: 1 1 auto;
+      min-height: 0;    
+      overflow-y: auto; 
       background: #222;
       padding: 5px;
     }
