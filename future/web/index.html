@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="AcoustSee: Audio-Visual Synthesis Interface">
+  <meta name="log-endpoint" content="https://acoustsee-analytics.mamware.workers.dev/">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>AcoustSee</title>
@@ -11,8 +12,8 @@
 </head>
 <body>
   <div id="splashScreen" class="splash-screen">
-    <button id="powerOn" class="power-on-button" role="button" data-i18n-aria="powerOn.aria" aria-pressed="false">
-      <span class="power-label" data-i18n="powerOn.text"></span>
+    <button id="powerOn" class="power-on-button" role="button" data-i18n-aria="powerOn.aria" aria-pressed="false" aria-label="Power">
+      <span class="power-label" data-i18n="powerOn.text">Power</span>
       <span class="sr-only" data-i18n="powerOn.sr">Power on</span>
     </button>
   </div>
@@ -20,8 +21,9 @@
   <div id="mainContainer" class="main-container" style="display: none;">
     <div class="video-wrapper video-container">
       <video id="videoFeed" muted playsinline data-i18n-aria="videoFeed.aria"></video>
-      <button id="button1" class="overlay-toggle" role="button" data-i18n-aria="button1.normal.start.aria" aria-pressed="false">
+      <button id="button1" class="overlay-toggle" role="button" data-i18n-aria="button1.normal.start.aria" aria-pressed="false" aria-label="Start/Stop">
         <span class="button-text" data-i18n="button1.normal.start.text">Start</span>
+        <span class="sr-only" data-i18n="button1.normal.start.sr">Start</span>
       </button>
     </div>
   </div>
@@ -30,7 +32,17 @@
 
   <canvas id="frameCanvas" style="display: none;" aria-hidden="true" data-i18n-aria="frameCanvas.aria"></canvas>
   <div id="debugPanel" style="display: none;" role="log" aria-live="polite" data-i18n-aria="debugPanel.aria"></div>
+  <!-- Visible, small troubleshooting/status widget updated by the module loader on errors -->
+  <div id="debugStatus" style="display:none;padding:0.5rem;background:rgba(255,255,255,0.9);position:fixed;bottom:1rem;right:1rem;border:1px solid #ccc;font-size:0.9rem;z-index:9999;max-width:320px;box-shadow:0 2px 6px rgba(0,0,0,0.15)">
+    <strong id="debugStatusText">Status</strong>
+  </div>
   <div id="announcements" aria-live="polite" role="status" aria-atomic="true" class="sr-only"></div>
-  <script type="module" src="./main.js"></script>
+  <noscript>
+    <div style="padding:1rem;background:#fee;border:1px solid #fbb">
+      This application requires JavaScript. Please enable JavaScript in your browser.
+    </div>
+  </noscript>
+
+  <script type="module" src="./boot.js"></script>
 </body>
 </html>
