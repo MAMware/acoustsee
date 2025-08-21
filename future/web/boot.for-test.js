@@ -31,14 +31,21 @@ const debugStatus = (msg) => {
   }
 };
 
-// Try to load an optional logger module (non-fatal)
-import('./utils/logging.js').then(mod => {
-  if (mod && (mod.default || mod)) {
-    setLogger(mod.default || mod);
-  }
-}).catch(() => {
-  // ignore if logging module doesn't exist
-});
+// Use the core reporting wrapper as the default logger adapter (synchronous)
+import * as reporting from './core/reporting.js';
+try {
+  const reportingAdapter = {
+    log(level, payload) {
+      try { reporting.reportInfo(payload && payload.message ? payload.message : String(payload || level), payload || {}); } catch (e) {}
+    },
+    logError(err) {
+      try { reporting.reportError(err); } catch (e) {}
+    }
+  };
+  setLogger(reportingAdapter);
+} catch (e) {
+  // best-effort: if import fails, continue without a local logger
+}
 
 const getLogEndpoint = () =>
   document.querySelector('meta[name="log-endpoint"]')?.content || window.LOG_ENDPOINT || null;

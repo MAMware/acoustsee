@@ -17,3 +17,12 @@ export function stopMic(stream) {
     // best-effort
   }
 }
+
+// Helper for setting mic stream into shared state without creating a circular
+// dependency on core/state.js. Tests patch this function to assert behavior.
+export function setMicStream(stream, setFn) {
+  // If a setter function is provided, call it (used by tests to simulate state storage)
+  if (typeof setFn === 'function') return setFn(stream);
+  // Otherwise, return the stream so callers can assign it to shared state.
+  return stream;
+}

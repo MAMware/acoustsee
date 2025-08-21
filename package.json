@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "jest --config jest.config.cjs",
+  "test:unit": "jest --config jest.config.cjs --testPathPattern=future/web/test --runInBand",
     "test:e2e": "npx playwright test --config=playwright.config.cjs",
     "playwright:install": "npx playwright install",
     "start:static": "node ./scripts/static-server.cjs",

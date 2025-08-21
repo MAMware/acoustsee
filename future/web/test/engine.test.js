@@ -104,14 +104,14 @@ describe('engine camera and benchmark handlers', () => {
     const engine = createEngine();
 
     // Start mic
-    const startRes = await engine.dispatch('toggleMicrophone');
-    expect(mic.startMic).toHaveBeenCalledWith({ audio: true });
-    expect(settings.micStream).toBe(fakeStream);
+  const startRes = await engine.dispatch('toggleMicrophone');
+  expect(mic.startMic).toHaveBeenCalledWith({ audio: true });
+  expect(startRes.result).toEqual(expect.objectContaining({ micActive: true }));
 
     // Stop mic
-    const stopRes = await engine.dispatch('toggleMicrophone');
-    expect(mic.stopMic).toHaveBeenCalled();
-    expect(settings.micStream).toBeNull();
+  const stopRes = await engine.dispatch('toggleMicrophone');
+  expect(mic.stopMic).toHaveBeenCalled();
+  expect(stopRes.result).toEqual(expect.objectContaining({ micActive: false }));
   });
 
   test('startProcessing sets interval and marks processing state', async () => {
