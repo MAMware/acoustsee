@@ -58,7 +58,7 @@ function validateDOM() {
   }
 }
 
-async function init() {
+export async function init() {
   const originalConsole = {
     log: console.log,
     warn: console.warn,
@@ -263,19 +263,8 @@ async function init() {
   }
 }
 
-window.onerror = function (message, source, lineno, colno, error) {
-  const errorPayload = { message, source, lineno, colno, stack: error ? error.stack : 'N/A' };
-  structuredLog('ERROR', 'Uncaught global error', errorPayload);
-  trackFeatureUse('globalError', errorPayload);
-  addSessionError(errorPayload);
-  if (settings?.debugLogging ?? true) {
-    console.error(message);
-    return false;
-  }
-  return true;
-};
-
-init();
+// NOTE: init() is exported. Bootloader will import and call init() so startup errors
+// are caught and reported by the centralized boot error handlers.
 
 window.addEventListener('pagehide', () => {
   trackFeatureUse('session-end', { duration: Math.round(performance.now() / 1000) });

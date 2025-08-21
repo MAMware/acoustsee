@@ -196,4 +196,4 @@ if (location.protocol === 'file:') {
 }
 
 // Export for tests or plumbing
-export { debugStatus, setLogger, checkPlatform };
+

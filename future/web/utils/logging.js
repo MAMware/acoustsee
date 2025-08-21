@@ -89,3 +89,29 @@ export async function structuredLog(level, message, data = {}, persist = true, s
     inStructuredLog = false;
   }
 }
+
+// Default adapter export for runtime consumers (boot.js expects a .log(level, payload) API)
+const defaultAdapter = {
+  async log(level, payload = {}) {
+    try {
+      // If payload is a string, map to message; if object, extract message
+      const message = typeof payload === 'string' ? payload : (payload && payload.message) || String(payload || '');
+      const data = (payload && payload.data) || (typeof payload === 'object' ? payload : {});
+      await structuredLog(level, message, data, true, true);
+    } catch (err) {
+      // Best-effort: avoid throwing from logger
+      try { console.warn('logging.defaultAdapter.log failed', err); } catch (e) {}
+    }
+  },
+  async logError(err) {
+    try {
+      const message = err && err.message ? err.message : String(err || 'Error');
+      const data = { stack: err && err.stack };
+      await structuredLog('ERROR', message, data, true, false);
+    } catch (e) {
+      try { console.warn('logging.defaultAdapter.logError failed', e); } catch (er) {}
+    }
+  }
+};
+
+export default defaultAdapter;
