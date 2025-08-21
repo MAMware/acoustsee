@@ -2,6 +2,7 @@
 // Minimal headless engine: owns state and exposes a dispatch API for commands.
 import { settings } from './state.js';
 import { structuredLog } from '../utils/logging.js';
+import logger from '../utils/logging.js';
 import { getAllIdbLogs } from '../utils/idb-logger.js';
 import { getText, speakText, setLanguage, translatePage, announceMessage } from '../utils/utils.js';
 import { trackFeatureUse } from '../core/ingest.js';
@@ -20,7 +21,10 @@ export function createEngine() {
 
   function notifyListeners() {
     for (const fn of Array.from(listeners)) {
-      try { fn(state); } catch (e) { structuredLog('WARN', 'engine listener error', { error: e?.message }); }
+      try { fn(state); } catch (e) { 
+        structuredLog('WARN', 'engine listener error', { error: e?.message });
+        try { logger.logError && logger.logError(e); } catch (er) {}
+      }
     }
   }
 
@@ -102,7 +106,8 @@ export function createEngine() {
       }
       state.processingTimerId = _schedulerTimerId;
     } catch (e) {
-      structuredLog('WARN', 'scheduler run failed', { error: e?.message || String(e) });
+  structuredLog('WARN', 'scheduler run failed', { error: e?.message || String(e) });
+  try { logger.logError && logger.logError(e); } catch (er) {}
       _processingLock = false;
       _schedulerTimerId = setTimeout(_runScheduled, Math.max(8, Math.round(1000 / Math.max(1, Number(state.updateInterval) || 15))));
       state.processingTimerId = _schedulerTimerId;
@@ -125,7 +130,8 @@ export function createEngine() {
       notifyListeners();
       return { ok: true, result };
     } catch (err) {
-      structuredLog('ERROR', `Engine handler ${commandName} failed`, { message: err?.message || String(err) });
+  structuredLog('ERROR', `Engine handler ${commandName} failed`, { message: err?.message || String(err) });
+  try { logger.logError && logger.logError(err); } catch (er) {}
       return { ok: false, error: err?.message || String(err) };
     }
   }
@@ -478,7 +484,8 @@ export function createEngine() {
       s.processingTimerId = _schedulerTimerId;
       return { timerId: _schedulerTimerId };
     } catch (e) {
-      structuredLog('ERROR', 'engine.startProcessing failed', { error: e?.message || String(e) });
+  structuredLog('ERROR', 'engine.startProcessing failed', { error: e?.message || String(e) });
+  try { logger.logError && logger.logError(e); } catch (er) {}
       throw e;
     }
   });
@@ -524,7 +531,8 @@ export function createEngine() {
       try { dispatch('audioPlayCues', { cues: result.cues }); } catch (e) { /* best-effort */ }
       return result;
     } catch (e) {
-      structuredLog('WARN', 'engine.processFrame failed', { error: e?.message || String(e) });
+  structuredLog('WARN', 'engine.processFrame failed', { error: e?.message || String(e) });
+  try { logger.logError && logger.logError(e); } catch (er) {}
       return null;
     }
   });

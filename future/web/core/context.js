@@ -7,7 +7,9 @@ export function setDOM(dom) {
 
 export function getDOM() {
   if (!domElements) {
-    console.error("domElements not initialized");
+    try { console.error("domElements not initialized"); } catch (e) {}
+    // Try to report to optional logger if available
+  try { import('../utils/logging.js').then(l => { (l.default || l).logError && (l.default || l).logError(new Error('domElements not initialized')); }).catch(() => {}); } catch (e) {}
     throw new Error("domElements not initialized");
   }
   return domElements;
@@ -19,7 +21,8 @@ export function setDispatchEvent(dispatcher) {
 
 export function getDispatchEvent() {
   if (!dispatchEvent) {
-    console.error("dispatchEvent not initialized");
+    try { console.error("dispatchEvent not initialized"); } catch (e) {}
+  try { import('../utils/logging.js').then(l => { (l.default || l).logError && (l.default || l).logError(new Error('dispatchEvent not initialized')); }).catch(() => {}); } catch (e) {}
     throw new Error("dispatchEvent not initialized");
   }
   return dispatchEvent;
