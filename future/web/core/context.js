@@ -8,8 +8,10 @@ export function setDOM(dom) {
 export function getDOM() {
   if (!domElements) {
     try { console.error("domElements not initialized"); } catch (e) {}
-    // Try to report to optional logger if available
-  try { import('../utils/logging.js').then(l => { (l.default || l).logError && (l.default || l).logError(new Error('domElements not initialized')); }).catch(() => {}); } catch (e) {}
+    try {
+      try { const r = require('./reporting.js'); r.reportError(new Error('domElements not initialized')); }
+      catch (e) { import('./reporting.js').then(m => { m.reportError(new Error('domElements not initialized')); }).catch(() => {}); }
+    } catch (e) {}
     throw new Error("domElements not initialized");
   }
   return domElements;
@@ -22,7 +24,10 @@ export function setDispatchEvent(dispatcher) {
 export function getDispatchEvent() {
   if (!dispatchEvent) {
     try { console.error("dispatchEvent not initialized"); } catch (e) {}
-  try { import('../utils/logging.js').then(l => { (l.default || l).logError && (l.default || l).logError(new Error('dispatchEvent not initialized')); }).catch(() => {}); } catch (e) {}
+    try {
+      try { const r = require('./reporting.js'); r.reportError(new Error('dispatchEvent not initialized')); }
+      catch (e) { import('./reporting.js').then(m => { m.reportError(new Error('dispatchEvent not initialized')); }).catch(() => {}); }
+    } catch (e) {}
     throw new Error("dispatchEvent not initialized");
   }
   return dispatchEvent;

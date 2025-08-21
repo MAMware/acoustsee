@@ -22,7 +22,10 @@ export async function startCamera(videoEl, constraints = { facingMode: 'environm
     } catch (e) {
       announceMessage('Unable to access camera.');
     }
-  try { import('../utils/logging.js').then(l => { (l.default || l).logError && (l.default || l).logError(err); }).catch(() => {}); } catch (e) {}
+    try {
+      try { const r = require('./reporting.js'); r.reportError(err); }
+      catch (e) { import('./reporting.js').then(m => { m.reportError(err); }).catch(() => {}); }
+    } catch (e) {}
     throw err;
   }
 }
@@ -40,7 +43,10 @@ export function stopCamera(videoEl) {
     try { trackFeatureUse('camera-stop', { timestamp: Date.now() }); } catch (e) {}
   } catch (err) {
     addSessionError({ message: 'stop-camera-failed', error: err?.message || String(err) });
-  try { import('../utils/logging.js').then(l => { (l.default || l).logError && (l.default || l).logError(err); }).catch(() => {}); } catch (e) {}
+    try {
+      try { const r = require('./reporting.js'); r.reportError(err); }
+      catch (e) { import('./reporting.js').then(m => { m.reportError(err); }).catch(() => {}); }
+    } catch (e) {}
   throw err;
   }
 }
