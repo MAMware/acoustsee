@@ -126,6 +126,49 @@ export function setFilterLevel(lvl) { filterLevel = lvl ? String(lvl).toUpperCas
 export function exportLogs() { return JSON.stringify(buffer, null, 2); }
 export function setPaused(v) { paused = !!v; }
 
+/**
+ * Import an array of log-like objects into the debug buffer.
+ * Each item should have { t, level, text } or compatible fields.
+ * Returns the number of entries added.
+ */
+export function importLogs(entries, { dedupe = true } = {}) {
+  try {
+    if (!Array.isArray(entries)) return 0;
+    let added = 0;
+    let lastText = null;
+    for (const e of entries) {
+      try {
+        const lvl = String((e && e.level) || 'INFO').toUpperCase();
+        const text = e && typeof e.text === 'string' ? e.text : (e && e.text ? JSON.stringify(e.text) : '');
+        if (dedupe && lastText !== null && lastText === text) continue;
+        const entry = { t: e && e.t ? e.t : Date.now(), level: lvl, text };
+        buffer.push(entry);
+        pendingEntries.push(entry);
+        if (buffer.length > maxEntries) buffer.shift();
+        lastText = text;
+        added++;
+      } catch (err) {
+        // ignore entry-level parse errors
+      }
+    }
+    // schedule a flush to render these entries
+    try { scheduleFlush(); } catch (err) {}
+    try { if (typeof onCountChange === 'function') onCountChange({ filtered: getFilteredCount(), total: getTotalCount() }); } catch (e) {}
+    return added;
+  } catch (e) { return 0; }
+}
+
+/**
+ * Parse JSON text (array) and import logs. Returns number added.
+ */
+export function importFromJson(jsonText, opts = {}) {
+  try {
+    if (!jsonText) return 0;
+    const arr = typeof jsonText === 'string' ? JSON.parse(jsonText) : jsonText;
+    return importLogs(arr, opts);
+  } catch (e) { return 0; }
+}
+
 // compatibility shim for non-module callers
 if (typeof window !== 'undefined' && !window.acoustseeDebugLog) window.acoustseeDebugLog = debugLog;
 

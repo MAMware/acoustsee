@@ -494,9 +494,9 @@ export function initializeDebugUI(engine, DOM) {
 
   engine.onStateChange(state => {
     // ... (all the other state syncs are unchanged)
-    autoFpsCheckbox.querySelector('input').checked = state.autoFPS;
-    workerCheckbox.querySelector('input').checked = !!state.enableFrameWorker;
-    transferCheckbox.querySelector('input').checked = !!state.workerTransferEnabled;
+  try { if (autoFpsEl) autoFpsEl.checked = !!state.autoFPS; } catch (e) {}
+  try { if (workerEl) workerEl.checked = !!state.enableFrameWorker; } catch (e) {}
+  try { if (transferEl) transferEl.checked = !!state.workerTransferEnabled; } catch (e) {}
     if (actions && actions.startStopBtn) {
       try { actions.startStopBtn.querySelector('button').textContent = state.isProcessing ? 'Stop Processing' : 'Start Processing'; } catch (e) {}
     }
