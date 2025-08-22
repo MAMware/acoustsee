@@ -18,9 +18,12 @@ function savePanelState(panel) {
 export async function showDebugPanel(options = {}) {
   const { waitForSplash = true, forceOnMobile = false } = options;
 
-  // register a one-time pointerdown to record that a user gesture occurred
-  if (!window.__acoustseeUserGesture) {
-    document.addEventListener('pointerdown', () => { window.__acoustseeUserGesture = true; }, { once: true, passive: true });
+  // register a one-time pointerdown to record that a debug-related gesture occurred.
+  // Do NOT set the global __acoustseeUserGesture flag here because that flag
+  // is relied upon by the audio unlock flow (the power button) and we must
+  // avoid accidental AudioContext unlocks from debug-panel interactions.
+  if (!window.__acoustseeDebugGesture) {
+    document.addEventListener('pointerdown', () => { window.__acoustseeDebugGesture = true; }, { once: true, passive: true });
   }
 
   // If a splash screen exists, wait until it is hidden/removed before opening the debug panel.
@@ -46,7 +49,7 @@ export async function showDebugPanel(options = {}) {
 
   // On touch devices, avoid auto-opening the panel before a user gesture unless forced.
   const isTouch = typeof navigator !== 'undefined' && ((navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window);
-  if (isTouch && !forceOnMobile && !window.__acoustseeUserGesture) {
+  if (isTouch && !forceOnMobile && !window.__acoustseeDebugGesture) {
     if (!document.getElementById('acoustsee-debug-opener')) {
       const opener = document.createElement('button');
       opener.id = 'acoustsee-debug-opener';

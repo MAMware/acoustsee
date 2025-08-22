@@ -180,7 +180,12 @@ export async function init() {
             DOM.powerOn.textContent = initLabel;
           }
          
-          // 2. Attempt to unlock and initialize audio within the user gesture
+          // 2. Attempt to unlock and initialize audio within the user gesture.
+          // Set a transient, explicit flag to indicate this unlock was initiated
+          // by the Power button. This prevents other UI interactions (for
+          // example debug-panel taps) from being treated as the main power
+          // gesture and accidentally unlocking the AudioContext.
+          try { window.__acoustseePowerGesture = true; } catch (e) {}
           const unlocked = await audioManager.unlockAudio(ev);
           if (!unlocked) {
             // This is a hard failure to unlock the context.
@@ -200,7 +205,7 @@ export async function init() {
           speakText(onMsg);
           try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
 
-        } catch (err) {
+  } catch (err) {
           // 5. --- New critical feedback logic ---
           addSessionError({ message: 'power-on-failed', error: err?.message || String(err) });
           structuredLog('ERROR', 'Power on handler failed', { error: err?.message || String(err) });
@@ -217,6 +222,9 @@ export async function init() {
             DOM.powerOn.textContent = origLabel;
           }
           DOM.powerOn.disabled = false;
+        } finally {
+          // Clear the transient power gesture flag to avoid leaking it to other code.
+          try { window.__acoustseePowerGesture = false; } catch (e) {}
         }
       }, { once: false });
     }

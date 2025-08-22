@@ -44,6 +44,14 @@ export class AudioManager {
     if (this._unlocked) return true;
     try {
   structuredLog('INFO', 'AudioManager: unlockAudio called', { hasEvent: !!userEvent });
+      // Disallow non-user or incidental calls: only proceed when the event is
+      // trusted (browser-reported user gesture) or when the transient power
+      // gesture flag was set by the Power button handler.
+      const powerFlag = !!(typeof window !== 'undefined' && window.__acoustseePowerGesture);
+      if (userEvent && typeof userEvent.isTrusted === 'boolean' && !userEvent.isTrusted && !powerFlag) {
+        structuredLog('WARN', 'AudioManager: unlockAudio rejected - event not trusted and no power flag');
+        return false;
+      }
       const ctx = this._createContextIfNeeded();
 
       if (ctx.state === 'suspended') {
