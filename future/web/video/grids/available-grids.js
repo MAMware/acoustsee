@@ -1,4 +1,4 @@
-import { mapFrameToCircleOfFifths } from './circle-of-fifths.js';
+import { mapFrameToCircleOfFifths } from './circle-of-fifths.template.js';
 import { mapFrameToHexTonnetz } from './hex-tonnetz.js';
 
 export const availableGridsData = [
