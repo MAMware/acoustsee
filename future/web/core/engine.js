@@ -276,13 +276,13 @@ export function createEngine() {
         s.language = newLang;
         try { await translatePage(document); } catch (e) { /* best-effort */ }
         break;
-      case 'maxNotes':
-        const current = Number(s.maxNotes) || 0;
-        // step sizes: +1 or -1
-        const next = Math.max(1, current + (direction > 0 ? 1 : -1));
-        s.maxNotes = next;
-        try { resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
-        break;
+  case 'maxNotes':
+  const current = Number(s.maxNotes) || 0;
+  // step sizes: +1 or -1
+  const next = Math.max(1, current + (direction > 0 ? 1 : -1));
+  s.maxNotes = next;
+  try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
+  break;
       case 'motionThreshold': // Adjust in steps of 20, clamp 20..120
         let newThreshold = (Number(s.motionThreshold) || 20) + (direction * 20);
         newThreshold = Math.max(20, Math.min(120, newThreshold));
@@ -335,6 +335,19 @@ export function createEngine() {
   // Helper to play a short test cue for debugging audio
   registerCommandHandler('playTestNote', async ({ state: s, payload }) => {
     try {
+      // Ensure AudioContext is resumed before attempting to play a cue. This
+      // helps when the context is still suspended due to browser autoplay
+      // policies even after user interaction in some environments.
+      try {
+        const resumeRes = await (async () => {
+          try { return await (await import('../audio/audio-processor.js')).resumeAudioContext(); } catch(e) { return { ok: false }; }
+        })();
+        if (!resumeRes || !resumeRes.ok) {
+          // best-effort: continue, but playCues will be no-op if context not running
+          structuredLog('WARN', 'playTestNote: audio context not running', { resumeRes });
+        }
+      } catch (e) { structuredLog('WARN', 'playTestNote: resumeAudioContext attempt failed', { error: e?.message || String(e) }); }
+
       const cues = [{ id: 'test-note', pitch: payload?.pitch || 440, pan: 0, intensity: 1.0 }];
       await dispatch('audioPlayCues', { cues });
       return { ok: true };
@@ -715,12 +728,12 @@ export function createEngine() {
         const parsed = JSON.parse(savedSettingsJSON);
        
         // Carefully apply loaded settings to the current state
-        Object.assign(s, parsed);
-
-        // Post-load actions
-        await setLanguage(s.language);
-        await translatePage(document);
-        resizeOscillatorPool(s.maxNotes);
+  Object.assign(s, parsed);
+       
+  // Post-load actions
+  await setLanguage(s.language);
+  await translatePage(document);
+  try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed during loadSettings', { error: e?.message || String(e) }); }
        
         const msg = await getText('settings.loaded').catch(() => 'Settings loaded successfully.');
         speakText(msg);
@@ -750,7 +763,7 @@ export function createEngine() {
       const next = availableGrids[(idx + 1) % availableGrids.length];
       s.gridType = next.id;
       if (next.maxNotes) {
-        try { resizeOscillatorPool(next.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed on cycleGrid', { err: e?.message || String(e) }); }
+        try { audioProcessor.resizeOscillatorPool(next.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed on cycleGrid', { err: e?.message || String(e) }); }
       }
       const msg = await getText('button1.tts.gridSelect', { state: s.gridType }).catch(() => null);
       if (msg) speakText(msg);
@@ -832,7 +845,7 @@ export function createEngine() {
     const maxNotes = parseInt(payload.maxNotes, 10);
     if (!isNaN(maxNotes) && maxNotes >= 1 && maxNotes <= 100) {
       s.maxNotes = maxNotes;
-      resizeOscillatorPool(s.maxNotes);
+      try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed in setMaxNotes', { error: e?.message || String(e) }); }
       structuredLog('INFO', 'DebugUI: Max notes set', { maxNotes });
     }
   });

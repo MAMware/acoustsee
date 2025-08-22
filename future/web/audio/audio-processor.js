@@ -41,7 +41,9 @@ export async function initializeAudio(context) {
     structuredLog('WARN', 'initializeAudio: diagnostic probe failed', { error: e?.message || String(e) });
   }
   masterGain = context.createGain();
-  masterGain.gain.value = 2.0; // Boosted volume
+  // Use a safe default volume. Previously this was 2.0 which can be
+  // unexpectedly loud or cause clipped signals in some environments.
+  masterGain.gain.value = 1.0;
   masterGain.connect(context.destination);
   // create mic gain node ready for pass-through routing
   micGainNode = context.createGain();
@@ -221,24 +223,51 @@ export async function playCues(cues) {
     const osc = getOscillator();
     if (!osc) return;
 
-    const panner = new PannerNode(context, {
-      panningModel: 'equalpower',
-      positionX: cue.pan,
-      positionY: 0,
-      positionZ: 1 - Math.abs(cue.pan)
-    });
+    let panner = null;
+    try {
+      // Prefer modern constructor when available, otherwise fall back to
+      // the legacy createPanner factory.
+      if (typeof PannerNode === 'function') {
+        panner = new PannerNode(context, {
+          panningModel: 'equalpower',
+          positionX: cue.pan,
+          positionY: 0,
+          positionZ: 1 - Math.abs(cue.pan)
+        });
+      } else if (typeof context.createPanner === 'function') {
+        panner = context.createPanner();
+        try { panner.panningModel = 'equalpower'; } catch (e) {}
+        try { panner.setPosition && panner.setPosition(cue.pan, 0, 1 - Math.abs(cue.pan)); } catch (e) {}
+      }
+    } catch (e) {
+      panner = null;
+    }
 
-    osc.frequency.setValueAtTime(cue.pitch, now);
-    osc.type = 'sine';
-    
-    const gainNode = context.createGain();
-    gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(cue.intensity * 0.5, now + 0.05);
-    gainNode.gain.linearRampToValueAtTime(0, now + 0.2);
+    try {
+      osc.frequency.setValueAtTime(cue.pitch, now);
+      osc.type = 'sine';
 
-    osc.connect(gainNode).connect(panner).connect(masterGain);
+      const gainNode = context.createGain();
+      gainNode.gain.setValueAtTime(0, now);
+      // Guard ramp operations — some browsers may throw on rapid schedules
+      try { gainNode.gain.linearRampToValueAtTime(cue.intensity * 0.5, now + 0.05); } catch (e) {}
+      try { gainNode.gain.linearRampToValueAtTime(0, now + 0.2); } catch (e) {}
 
-    osc.start(now);
+      // Connect through panner if available, otherwise connect directly
+      try {
+        if (panner) osc.connect(gainNode).connect(panner).connect(masterGain);
+        else osc.connect(gainNode).connect(masterGain);
+      } catch (e) {
+        // best-effort connect
+        try { osc.connect(gainNode); gainNode.connect(masterGain); } catch (er) {}
+      }
+
+      try { osc.start(now); } catch (e) { /* ignore start errors */ }
+    } catch (e) {
+      // If anything goes wrong building this note, ensure we don't throw
+      try { releaseOscillator(osc); } catch (er) {}
+      return;
+    }
     
     const timeoutId = setTimeout(() => {
       try {
@@ -274,7 +303,8 @@ export function getAudioDiagnostics() {
 export async function resumeAudioContext() {
   const context = audioManager?.context;
   if (!context) {
-    return { ok: false, state: 'no-context', error: 'No AudioContext available' };
+  structuredLog('WARN', 'resumeAudioContext: No AudioContext available');
+  return { ok: false, state: 'no-context', error: 'No AudioContext available' };
   }
   try {
     if (context.state === 'suspended') {
