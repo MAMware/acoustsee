@@ -8,7 +8,7 @@ import { getText, speakText, setLanguage, translatePage, announceMessage } from 
 import { trackFeatureUse } from '../core/ingest.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './media-controller.js';
 import { startMic, stopMic } from './microphone-controller.js';
-import { setMicStream, setAutoFpsBenchmark } from './state.js';
+import { setMicStream, setAutoFpsBenchmark, allocateFrameBuffer } from './state.js';
 import { computeAutoIntervalBenchmark, getPreferredIntervalMs } from '../utils/performance.js';
 import { processFrameWithState } from '../video/frame-processor.js';
 import * as audioProcessor from '../audio/audio-processor.js';
@@ -33,6 +33,26 @@ export function createEngine() {
   const listeners = new Set();
   const handlers = Object.create(null);
   const benchmarkListeners = new Set();
+  // Telemetry counters for buffer fallback events (per-engine instance)
+  const _telemetry = {
+    fallback_realloc_failed: 0,
+    fallback_size_mismatch_no_realloc: 0,
+    fallback_exception: 0,
+    fallback_skipped_hysteresis: 0
+  };
+
+  // Simple rate-limited logger: allow one log per key per intervalMs
+  const _lastLogTs = Object.create(null);
+  function rateLimitedLog(key, level, message, data = {}, intervalMs = 5000) {
+    try {
+      const now = Date.now();
+      const last = _lastLogTs[key] || 0;
+      if (now - last >= intervalMs) {
+        _lastLogTs[key] = now;
+        structuredLog(level, message, data);
+      }
+    } catch (e) { /* best-effort */ }
+  }
 
   function notifyListeners() {
     for (const fn of Array.from(listeners)) {
@@ -512,6 +532,14 @@ export function createEngine() {
       if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
       _videoElForScheduler = videoEl;
       _canvasElForScheduler = canvasEl;
+      // Proactively allocate a reusable frame buffer for zero-copy transfers
+      try {
+        const w = (videoEl && videoEl.videoWidth) || (canvasEl && canvasEl.width) || 0;
+        const h = (videoEl && videoEl.videoHeight) || (canvasEl && canvasEl.height) || 0;
+        if (w > 0 && h > 0 && s.workerTransferEnabled) {
+          try { allocateFrameBuffer(w, h); } catch (e) { /* best-effort */ }
+        }
+      } catch (e) { /* best-effort */ }
       s.isProcessing = true;
       try {
         if (_schedulerTimerId != null) try { clearTimeout(_schedulerTimerId); } catch (e) {}
@@ -565,7 +593,62 @@ export function createEngine() {
       const ctx = canvasEl.getContext('2d');
       try { ctx.drawImage(videoEl, 0, 0, w, h); } catch (e) { return null; }
       const img = ctx.getImageData(0, 0, w, h);
-      const result = await processFrameWithState(img.data, w, h);
+
+      // Default to the temporary buffer returned by getImageData
+      let frameBufferToUse = img.data;
+
+      // If a reusable buffer was allocated on the state, ensure it matches
+      // the current frame size. If the resolution changed, reallocate so the
+      // worker-transfer path remains valid. Fall back to img.data on errors.
+      try {
+        if (s._frameBuffer) {
+          const currentLen = s._frameBuffer.length || 0;
+          const newLen = img.data.length || 0;
+
+          // If sizes differ, only reallocate when change exceeds hysteresis threshold
+          // to avoid frequent reallocations on minor size changes. Use pixel-count
+          // (byte length) comparison; threshold is 1%.
+          if (currentLen !== newLen) {
+            const delta = Math.abs(newLen - currentLen);
+            const pct = currentLen > 0 ? (delta / Math.max(1, currentLen)) : 1;
+            const HYSTERESIS_PCT = 0.01; // 1%
+
+            if (pct > HYSTERESIS_PCT) {
+              // Significant change; reallocate only when transfers are enabled.
+              if (s.workerTransferEnabled) {
+                try {
+                  allocateFrameBuffer(w, h);
+                } catch (e) {
+                  _telemetry.fallback_realloc_failed += 1;
+                  rateLimitedLog('fallback_realloc_failed', 'WARN', 'Reusable buffer fallback activated', { reason: 'realloc_failed', message: e?.message });
+                }
+              } else {
+                // Clear buffer if transfer path disabled to avoid using stale size
+                try { s._frameBuffer = null; } catch (e) { /* best-effort */ }
+                _telemetry.fallback_size_mismatch_no_realloc += 1;
+                rateLimitedLog('fallback_size_mismatch_no_realloc', 'WARN', 'Reusable buffer fallback activated', { reason: 'size_mismatch_no_realloc' });
+              }
+            } else {
+              // Size change is within hysteresis; keep using existing buffer if possible.
+              // Fall through and attempt to copy if lengths match; otherwise keep img.data.
+              _telemetry.fallback_skipped_hysteresis += 1;
+              rateLimitedLog('fallback_skipped_hysteresis', 'INFO', 'Frame buffer size change within hysteresis; skipping realloc', { currentLen, newLen, pct });
+            }
+          }
+
+          if (s._frameBuffer && s._frameBuffer.length === img.data.length) {
+            s._frameBuffer.set(img.data);
+            frameBufferToUse = s._frameBuffer;
+          }
+        }
+        } catch (e) {
+        // If any error occurs, fall back to the img.data buffer and log warning
+        _telemetry.fallback_exception += 1;
+        rateLimitedLog('fallback_exception', 'WARN', 'Reusable buffer fallback activated', { reason: 'exception', message: e?.message || String(e) });
+        frameBufferToUse = img.data;
+      }
+
+      const result = await processFrameWithState(frameBufferToUse, w, h);
       try {
         let cuesToPlay = Array.isArray(result.cues) ? result.cues : [];
         if (cuesToPlay.length === 0 && Array.isArray(result.movingRegions) && result.movingRegions.length > 0) {
@@ -774,5 +857,7 @@ export function createEngine() {
     onStateChange,
     getState,
     onBenchmarkRequired,
+  // Expose telemetry for testing/inspecting fallback counters
+  getTelemetry: () => ({ ..._telemetry })
   };
 }

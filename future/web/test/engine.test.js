@@ -23,16 +23,23 @@ jest.mock('../utils/utils.js', () => ({
   announceMessage: jest.fn()
 }));
 
+// Mock the frame processor so tests can assert which buffer is passed
+jest.mock('../video/frame-processor.js', () => ({
+  processFrameWithState: jest.fn(async () => ({ cues: [] }))
+}));
+
 jest.mock('../audio/audio-processor.js', () => ({
   playAudio: jest.fn(),
   resizeOscillatorPool: jest.fn()
 }));
 
 jest.mock('../core/state.js', () => {
-  const settings = { autoFPS: true, updateInterval: 15, autoFpsBenchmark: {}, micStream: null };
+  const settings = { autoFPS: true, updateInterval: 15, autoFpsBenchmark: {}, micStream: null, workerTransferEnabled: true, _frameBuffer: undefined };
   return {
     settings,
-    setAutoFpsBenchmark: jest.fn()
+    setAutoFpsBenchmark: jest.fn(),
+    allocateFrameBuffer: jest.fn((w, h) => { const buf = new Uint8ClampedArray(w * h * 4); settings._frameBuffer = buf; return buf; }),
+    setFrameBuffer: jest.fn((buf) => { settings._frameBuffer = buf; return buf; })
   };
 });
 // structuredLog is mocked globally in setup.js
@@ -214,5 +221,54 @@ describe('engine camera and benchmark handlers', () => {
     await engine.dispatch('cycleFramerate');
     expect(settings.autoFPS).toBe(false);
     expect(Math.round(1000 / settings.updateInterval)).toBe(20);
+  });
+
+  test('startProcessing allocates frame buffer when workerTransferEnabled is true', async () => {
+    jest.useFakeTimers();
+    const videoEl = { srcObject: null, videoWidth: 80, videoHeight: 60, readyState: 4, getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(80 * 60 * 4) }) }) };
+    media.isCameraActive.mockReturnValue(false);
+    media.startCamera.mockImplementation(async (video) => { video.srcObject = {}; return {}; });
+
+    const stateModule = require('../core/state.js');
+    const engine = createEngine();
+    await engine.dispatch('startProcessing', { videoEl, canvasEl: { width: 80, height: 60, getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(80 * 60 * 4) }) }) } });
+
+    expect(stateModule.allocateFrameBuffer).toHaveBeenCalledWith(80, 60);
+    jest.useRealTimers();
+  });
+
+  test('processFrame uses settings._frameBuffer when available', async () => {
+    // Prepare a video and canvas with small size and deterministic pixel data
+    const w = 16, h = 16;
+    const pixelData = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < pixelData.length; i++) pixelData[i] = i % 256;
+
+    const canvasEl = {
+      width: w,
+      height: h,
+      getContext: () => ({
+        drawImage: () => {},
+        getImageData: () => ({ data: pixelData })
+      })
+    };
+
+    const videoEl = { readyState: 4, videoWidth: w, videoHeight: h };
+
+    const stateModule = require('../core/state.js');
+    // Allocate a reusable buffer and set it on settings
+    const buf = new Uint8ClampedArray(w * h * 4);
+    stateModule.setFrameBuffer(buf);
+
+    const fp = require('../video/frame-processor.js');
+    fp.processFrameWithState.mockClear();
+
+    const engine = createEngine();
+    // Call processFrame directly via dispatch
+    await engine.dispatch('processFrame', { videoEl, canvasEl });
+
+    // Ensure frame processor was called and the exact buffer instance was passed
+    expect(fp.processFrameWithState).toHaveBeenCalled();
+    const passed = fp.processFrameWithState.mock.calls[0][0];
+    expect(passed).toBe(stateModule.settings._frameBuffer);
   });
 });

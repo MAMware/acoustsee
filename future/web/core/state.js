@@ -20,8 +20,9 @@ export let settings = {
   autoFpsSamples: 2, // number of benchmark samples to take (1..4)
   enableFrameWorker: true, // opt-in flag to use OffscreenCanvas + Worker for frame processing
   // When true, transfer ArrayBuffer ownership to the worker to avoid copies
-  // (main thread must recreate/allocate a new buffer afterwards).
-  workerTransferEnabled: false,
+  // and prefer a reusable buffer allocation (main thread should allocate once).
+  // Enabled by default for higher-performance paths.
+  workerTransferEnabled: true,
   // Stores the most recent auto-FPS benchmark results (measured interval in ms and metadata)
   autoFpsBenchmark: {
     lastIntervalMs: null,
