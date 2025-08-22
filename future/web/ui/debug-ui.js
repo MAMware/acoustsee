@@ -4,7 +4,7 @@ import { settings } from '../core/state.js';
 import { setOutputCallback } from '../utils/core-logger.js';
 import { enableFrameWorker, enableWorkerTransfer } from '../video/frame-processor.js';
 import { getAudioDiagnostics } from '../audio/audio-processor.js';
-import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from './debug-log.js';
+import { debugLog, setLogView, clearLogs, exportLogs, setPaused, setFilterText, setFilterLevel, setOnCountChange, getFilteredCount, getTotalCount } from './debug-log.js';
 import { createControlGroup, createSelect, createSlider, createCheckbox } from './debug-ui.controls.js';
 import { createAndWireActions } from './debug-ui.actions.js';
 import initializeDebugUIBehavior from './debug-ui.behavior.js';
@@ -85,7 +85,7 @@ export function initializeDebugUI(engine, DOM) {
       </div>
     </div>
     <div class="debug-section logs-section">
-      <h2>Live Logs</h2>
+      <h2>Live Logs <span id="log-match-count" style="font-size:12px; margin-left:8px; color:#9ad;">(0/0)</span></h2>
       <div class="log-controls" style="display:flex; align-items:center; gap:8px;">
         <button id="log-pause-btn" type="button">Pause</button>
         <label style="margin-left:8px; font-size:12px;">
@@ -93,6 +93,9 @@ export function initializeDebugUI(engine, DOM) {
         </label>
         <button id="log-clear-btn" type="button" style="margin-left:8px;">Clear</button>
         <button id="log-export-btn" type="button" style="margin-left:4px;">Export</button>
+
+        <input id="log-search-input" type="search" placeholder="Search logs..." style="margin-left:8px; padding:4px 8px; min-width:160px;"> 
+        <button id="log-clear-filter-btn" type="button" title="Clear filter" style="margin-left:4px; font-size:12px; padding:4px 8px;">Clear Filter</button>
 
         <!-- push verbosity control to the right of export -->
         <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
@@ -331,11 +334,59 @@ export function initializeDebugUI(engine, DOM) {
   const logView = panel.querySelector('#debug-log-view');
   setLogView(logView, { maxEntries: 1000 });
 
+  // subscribe to filtered/total count updates and wire clear-filter
+  try {
+    const countEl = panel.querySelector('#log-match-count');
+    const clearFilterBtn = panel.querySelector('#log-clear-filter-btn');
+    // update UI with object payload { filtered, total }
+    setOnCountChange((counts) => { try {
+      if (!countEl) return;
+      const f = counts && typeof counts.filtered === 'number' ? counts.filtered : 0;
+      const t = counts && typeof counts.total === 'number' ? counts.total : 0;
+      countEl.textContent = `(${f}/${t})`;
+    } catch (e) {} });
+    // initialize
+    try { if (countEl) countEl.textContent = `(${getFilteredCount()}/${getTotalCount()})`; } catch (e) {}
+    // clear filter button
+    if (clearFilterBtn) {
+      clearFilterBtn.addEventListener('click', () => {
+        try {
+          // clear search input and reset filters
+          const searchInput = panel.querySelector('#log-search-input'); if (searchInput) searchInput.value = '';
+          setFilterText('');
+          setFilterLevel(null);
+        } catch (e) {}
+      });
+    }
+  } catch (e) { /* non-fatal */ }
+
+  // helper: enable/disable the Clear Filter button based on current filter state
+  function updateClearFilterState() {
+    try {
+      const btn = panel.querySelector('#log-clear-filter-btn');
+      if (!btn) return;
+      const searchInput = panel.querySelector('#log-search-input');
+      const verbositySel = panel.querySelector('#log-verbosity-select');
+      const hasText = searchInput && String(searchInput.value || '').trim().length > 0;
+      const levelFiltered = verbositySel && verbositySel.value && verbositySel.value !== 'INFO';
+      if (hasText || levelFiltered) {
+        btn.removeAttribute('disabled');
+        btn.style.opacity = '';
+        btn.title = 'Clear filter';
+      } else {
+        btn.setAttribute('disabled', 'true');
+        btn.style.opacity = '0.45';
+        btn.title = 'No active filters';
+      }
+    } catch (e) {}
+  }
+
   // now that logView exists, wire up the log controls we added earlier
   const logPauseBtn = panel.querySelector('#log-pause-btn');
   const autoscrollCheckbox = panel.querySelector('#autoscroll-checkbox');
   const logClearBtn = panel.querySelector('#log-clear-btn');
   const logExportBtn = panel.querySelector('#log-export-btn');
+  const logSearchInput = panel.querySelector('#log-search-input');
 
   logPauseBtn.addEventListener('click', () => {
     const isPaused = logPauseBtn.textContent === 'Pause';
@@ -354,6 +405,48 @@ export function initializeDebugUI(engine, DOM) {
       URL.revokeObjectURL(url);
     } catch (e) { console.error('Failed to export logs', e); }
   });
+
+  // wire search/filter to debug-log API (setFilterText/setFilterLevel)
+  // wire search/filter to debug-log API (setFilterText/setFilterLevel)
+  try {
+    // debounce helper to avoid frequent re-render while typing
+    function debounce(fn, wait = 150) {
+      let timer = null;
+      return function debounced(...args) {
+        try { if (timer) clearTimeout(timer); } catch (e) {}
+        timer = setTimeout(() => { try { fn(...args); } catch (e) {} }, wait);
+      };
+    }
+
+    const debouncedSetFilterText = debounce((v) => setFilterText(v), 150);
+    logSearchInput.addEventListener('input', (e) => { debouncedSetFilterText(e.target.value); try { updateClearFilterState(); } catch (e) {} });
+    // allow Escape to clear filter when search is focused
+    logSearchInput.addEventListener('keydown', (e) => {
+      try {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+          e.preventDefault();
+          logSearchInput.value = '';
+          setFilterText('');
+          // reset verbosity select to INFO
+          const verbositySel = panel.querySelector('#log-verbosity-select'); if (verbositySel) verbositySel.value = 'INFO';
+          setFilterLevel(null);
+          updateClearFilterState();
+        }
+      } catch (err) {}
+    });
+
+    // Also reuse verbosity control to filter by level when set to ERROR/WARN/DEBUG etc.
+    const verbosityFilterEl = panel.querySelector('#log-verbosity-select');
+    verbosityFilterEl.addEventListener('change', (e) => {
+      const val = e.target.value;
+      // treat INFO as no strict level filter
+  setFilterLevel(val === 'INFO' ? null : val);
+  try { updateClearFilterState(); } catch (e) {}
+    });
+  } catch (e) { /* non-fatal */ }
+
+  // ensure clear filter initial state is correct
+  try { updateClearFilterState(); } catch (e) {}
 
   // no-op: setLogView flushed buffered logs
 

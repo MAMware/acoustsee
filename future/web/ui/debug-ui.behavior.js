@@ -76,10 +76,80 @@ export function initializeDebugUIBehavior({ panel, DOM, settings, engine } = {})
       } catch (e) { /* fail silently */ }
     }
 
-    applyResponsiveLayout();
-    window.addEventListener('resize', applyResponsiveLayout, { passive: true });
-    window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
-    setTimeout(applyResponsiveLayout, 600);
+    // If user has saved bounds (now stored as normalized percentages), apply them and skip auto responsive layout.
+    const saved = (function readSavedBounds() {
+      try {
+        const raw = JSON.parse(localStorage.getItem('acoustsee.debug.panel.bounds'));
+        if (!raw) return null;
+        // New format stores normalized fractions (0..1)
+        if (typeof raw.leftPct === 'number' || typeof raw.topPct === 'number') return raw;
+        // Backwards-compat: legacy px values -> convert to normalized
+        return {
+          leftPct: typeof raw.left === 'number' ? raw.left / (window.innerWidth || 1) : null,
+          topPct: typeof raw.top === 'number' ? raw.top / (window.innerHeight || 1) : null,
+          widthPct: typeof raw.width === 'number' ? raw.width / (window.innerWidth || 1) : null,
+          heightPct: typeof raw.height === 'number' ? raw.height / (window.innerHeight || 1) : null
+        };
+      } catch (e) { return null; }
+    })();
+
+    if (saved && typeof saved === 'object') {
+      try {
+        const panelEl = document.getElementById('acoustsee-debug-panel') || panel;
+        function pctToPx(v, dim) { return (typeof v === 'number' ? Math.round(v * dim) : null); }
+
+        function reapplySavedBounds() {
+          try {
+            const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0) || 1;
+            const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) || 1;
+            const left = pctToPx(saved.leftPct, vw);
+            const top = pctToPx(saved.topPct, vh);
+            const width = pctToPx(saved.widthPct, vw);
+            const height = pctToPx(saved.heightPct, vh);
+            // clamp so panel remains on-screen
+            const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+            if (width !== null) {
+              const w = clamp(width, 240, Math.max(240, vw - 40));
+              panelEl.style.width = w + 'px';
+            }
+            if (height !== null) {
+              const h = clamp(height, 160, Math.max(160, vh - 40));
+              panelEl.style.height = h + 'px';
+            }
+            if (left !== null) {
+              const maxLeft = vw - (panelEl.getBoundingClientRect().width || 240) - 8;
+              const l = clamp(left, 8, Math.max(8, maxLeft));
+              panelEl.style.left = l + 'px';
+            }
+            if (top !== null) {
+              const maxTop = vh - (panelEl.getBoundingClientRect().height || 160) - 8;
+              const t = clamp(top, 8, Math.max(8, maxTop));
+              panelEl.style.top = t + 'px';
+            }
+            panelEl.style.position = 'fixed';
+            panelEl.style.right = 'auto';
+            panelEl.style.bottom = 'auto';
+          } catch (e) {
+            /* ignore */
+          }
+        }
+
+        // apply once and reapply on resize/orientationchange
+        reapplySavedBounds();
+        let resizeTimer = null;
+        const onResize = () => {
+          try { clearTimeout(resizeTimer); } catch (e) {}
+          resizeTimer = setTimeout(() => reapplySavedBounds(), 120);
+        };
+        window.addEventListener('resize', onResize, { passive: true });
+        window.addEventListener('orientationchange', onResize, { passive: true });
+      } catch (e) { /* apply responsive fallback below */ }
+    } else {
+      applyResponsiveLayout();
+      window.addEventListener('resize', applyResponsiveLayout, { passive: true });
+      window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
+      setTimeout(applyResponsiveLayout, 600);
+    }
   })();
 
   // Try to locate the video preview element and ensure it is above the debug panel.
@@ -196,6 +266,130 @@ export function initializeDebugUIBehavior({ panel, DOM, settings, engine } = {})
         setBadge('No context (not initialized)', '#c46');
       }
     }, 250);
+  })();
+
+  // Make panel draggable/resizable and persist bounds
+  (function makeDraggableResizable() {
+    try {
+      const panelEl = document.getElementById('acoustsee-debug-panel') || panel;
+      if (!panelEl) return;
+
+      // create drag handle
+      let dragHandle = panelEl.querySelector('#debug-drag-handle');
+      if (!dragHandle) {
+        dragHandle = document.createElement('div');
+        dragHandle.id = 'debug-drag-handle';
+        dragHandle.setAttribute('title', 'Drag to move');
+        dragHandle.style.position = 'absolute';
+        dragHandle.style.top = '6px';
+        dragHandle.style.right = '6px';
+        dragHandle.style.width = '18px';
+        dragHandle.style.height = '18px';
+        dragHandle.style.borderRadius = '4px';
+        dragHandle.style.background = 'rgba(255,255,255,0.06)';
+        dragHandle.style.cursor = 'move';
+        dragHandle.style.zIndex = '20';
+        panelEl.appendChild(dragHandle);
+      }
+
+      // create resizer
+      let resizer = panelEl.querySelector('.debug-resizer');
+      if (!resizer) {
+        resizer = document.createElement('div');
+        resizer.className = 'debug-resizer';
+        resizer.style.position = 'absolute';
+        resizer.style.width = '14px';
+        resizer.style.height = '14px';
+        resizer.style.right = '6px';
+        resizer.style.bottom = '6px';
+        resizer.style.cursor = 'se-resize';
+        resizer.style.zIndex = '20';
+        panelEl.appendChild(resizer);
+      }
+
+      function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+      function saveBounds() {
+        try {
+          const r = panelEl.getBoundingClientRect();
+          const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0) || 1;
+          const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0) || 1;
+          const bounds = {
+            leftPct: +(r.left / vw).toFixed(4),
+            topPct: +(r.top / vh).toFixed(4),
+            widthPct: +(r.width / vw).toFixed(4),
+            heightPct: +(r.height / vh).toFixed(4)
+          };
+          localStorage.setItem('acoustsee.debug.panel.bounds', JSON.stringify(bounds));
+        } catch (e) {}
+      }
+
+      // drag handlers
+      dragHandle.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        dragHandle.setPointerCapture(ev.pointerId);
+        const startX = ev.clientX;
+        const startY = ev.clientY;
+        const rect = panelEl.getBoundingClientRect();
+        const startLeft = rect.left;
+        const startTop = rect.top;
+
+        function onMove(e) {
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          const left = clamp(startLeft + dx, 0, window.innerWidth - 120);
+          const top = clamp(startTop + dy, 0, window.innerHeight - 80);
+          panelEl.style.left = left + 'px';
+          panelEl.style.top = top + 'px';
+          panelEl.style.right = 'auto';
+          panelEl.style.bottom = 'auto';
+          panelEl.style.position = 'fixed';
+        }
+
+        function onUp(e) {
+          try { dragHandle.releasePointerCapture(ev.pointerId); } catch (e) {}
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          saveBounds();
+        }
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      });
+
+      // resize handlers
+      resizer.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        resizer.setPointerCapture(ev.pointerId);
+        const startX = ev.clientX;
+        const startY = ev.clientY;
+        const rect = panelEl.getBoundingClientRect();
+        const startW = rect.width;
+        const startH = rect.height;
+
+        function onMove(e) {
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          const newW = clamp(startW + dx, 240, window.innerWidth - 40);
+          const newH = clamp(startH + dy, 160, window.innerHeight - 40);
+          panelEl.style.width = newW + 'px';
+          panelEl.style.height = newH + 'px';
+          panelEl.style.position = 'fixed';
+        }
+
+        function onUp(e) {
+          try { resizer.releasePointerCapture(ev.pointerId); } catch (e) {}
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          saveBounds();
+        }
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      });
+    } catch (e) {
+      // non-fatal
+    }
   })();
 }
 
