@@ -14,7 +14,8 @@ export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
   panel.id = 'acoustsee-debug-panel';
   // keep debug panel visually present but avoid covering video/splash
-  panel.style.zIndex = '5';
+  // Ensure the debug panel overlays the main video/content so controls are clickable.
+  panel.style.zIndex = '100';
   // Note: controls are created below; query them after mounting the innerHTML.
   DOM.uiPanelRoot.appendChild(panel);
 

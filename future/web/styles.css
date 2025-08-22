@@ -174,7 +174,7 @@ body.debug-mode #acoustsee-debug-panel {
   overflow: hidden;
   border-left: 2px solid #34495e;
   box-sizing: border-box;
-  z-index: 5;
+  z-index: 1000; /* high z-index so panel controls remain interactive above video */
 }
 .debug-section {
   padding: 10px;
