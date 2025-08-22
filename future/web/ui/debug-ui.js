@@ -8,6 +8,7 @@ import { debugLog, setLogView, clearLogs, exportLogs, setPaused, setFilterText, 
 import { createControlGroup, createSelect, createSlider, createCheckbox } from './debug-ui.controls.js';
 import { createAndWireActions } from './debug-ui.actions.js';
 import initializeDebugUIBehavior from './debug-ui.behavior.js';
+import installConsoleIngest from './debug-ingest.js';
 
 export function initializeDebugUI(engine, DOM) {
   const panel = document.createElement('div');
@@ -80,6 +81,11 @@ export function initializeDebugUI(engine, DOM) {
             <label style="display:flex; align-items:center; gap:6px;"><input id="enable-frame-buffer-checkbox" type="checkbox"> Enable Frame Buffer Transfer</label>
             <label style="display:flex; align-items:center; gap:6px;"><input id="include-process-logs-checkbox" type="checkbox"> Include Process Frame Logs</label>
           </div>
+          <div class="control-row" style="display:flex; gap:12px; align-items:center;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px;">
+              <input id="dev-console-ingest-checkbox" type="checkbox"> Dev: Console Ingest
+            </label>
+          </div>
         </div>
 
       </div>
@@ -114,6 +120,14 @@ export function initializeDebugUI(engine, DOM) {
       <div id="debug-log-view"></div>
     </div>
   `;
+
+  // install console ingest if allowed by settings (dev/local only by default)
+  try {
+    if (settings && settings.ingestEnabled) {
+      // installConsoleIngest returns a dispose fn; keep it on the panel for potential cleanup
+      try { panel.__disposeConsoleIngest = installConsoleIngest({ debugLog, settings }); } catch (e) {}
+    }
+  } catch (e) {}
 
   // show version badge (meta tag -> global constant -> fallback)
  
@@ -241,6 +255,12 @@ export function initializeDebugUI(engine, DOM) {
       // don't block UI on errors
     }
   })();
+
+    // final sync: ensure dev ingest checkbox and other UI states reflect settings
+    try {
+      const devIngestCheckbox = panel.querySelector('#dev-console-ingest-checkbox');
+      if (devIngestCheckbox) devIngestCheckbox.checked = !!settings.ingestEnabled;
+    } catch (e) {}
 
   // Load debug UI stylesheet (extracted to keep JS small and separate concerns)
   (function ensureDebugCss() {
@@ -405,6 +425,28 @@ export function initializeDebugUI(engine, DOM) {
       URL.revokeObjectURL(url);
     } catch (e) { console.error('Failed to export logs', e); }
   });
+
+  // Dev console ingest toggle wiring
+  try {
+    const devIngestCheckbox = panel.querySelector('#dev-console-ingest-checkbox');
+    if (devIngestCheckbox) {
+      // initialize checkbox from current settings
+      devIngestCheckbox.checked = !!settings.ingestEnabled;
+      devIngestCheckbox.addEventListener('change', (e) => {
+        try {
+          const enabled = !!e.target.checked;
+          settings.ingestEnabled = enabled;
+          if (enabled) {
+            // install if not already installed
+            if (!panel.__disposeConsoleIngest) panel.__disposeConsoleIngest = installConsoleIngest({ debugLog, settings });
+          } else {
+            // dispose if installed
+            try { if (panel.__disposeConsoleIngest) { panel.__disposeConsoleIngest(); panel.__disposeConsoleIngest = null; } } catch (err) {}
+          }
+        } catch (err) {}
+      });
+    }
+  } catch (e) {}
 
   // wire search/filter to debug-log API (setFilterText/setFilterLevel)
   // wire search/filter to debug-log API (setFilterText/setFilterLevel)
