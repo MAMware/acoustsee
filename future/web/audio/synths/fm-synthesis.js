@@ -1,3 +1,12 @@
+export const synthMeta = {
+  id: 'fm-synthesis',
+  name: 'FM Synthesis',
+  author: 'acoustsee',
+  description: 'Simple FM synthesis engine using modulators and shared oscillator pool.',
+  version: '0.1.0',
+  maxNotes: 24
+};
+
 export function playFmSynthesis(notes, ctx = {}) {
   // ctx may provide: audioContext, getOscillator, oscillatorPool, modulators, modulationIndex, settings
   const audioContext = ctx.audioContext || (typeof window !== 'undefined' && window.audioContext) || globalThis.audioContext;

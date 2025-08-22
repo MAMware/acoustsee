@@ -113,3 +113,12 @@ export function playStrings(notes = [], ctx = {}) {
     }, cleanupMs);
   });
 }
+
+export const synthMeta = {
+  id: 'strings',
+  name: 'Strings',
+  author: 'GPT-5 mini (preview)',
+  description: 'A lightweight Karplus–Strong plucked-string synth plugin.',
+  version: '0.1.0',
+  maxNotes: 8
+};

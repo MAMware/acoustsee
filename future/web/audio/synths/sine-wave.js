@@ -48,3 +48,12 @@ export function playSineWave(notes, ctx = {}) {
     }
   }
 }
+
+export const synthMeta = {
+  id: 'sine-wave',
+  name: 'Sine Wave',
+  author: 'acoustsee',
+  description: 'Simple sine-wave engine using the shared oscillator pool',
+  version: '0.1.0',
+  maxNotes: 16
+};

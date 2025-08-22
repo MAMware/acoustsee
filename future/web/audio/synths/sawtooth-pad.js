@@ -9,6 +9,15 @@
 */
 
 // A simple polyphonic sawtooth synthesizer plugin.
+export const synthMeta = {
+  id: 'sawtooth-pad',
+  name: 'Sawtooth Pad',
+  author: 'Gemini 2.5 Pro',
+  description: 'A classic polyphonic pad synth using filtered sawtooth waves.',
+  version: '1.0.0',
+  maxNotes: 16
+};
+
 export function playSawtoothPad(notes = [], ctx = {}) {
   const { audioContext, getOscillator, oscillatorPool } = ctx;
 
