@@ -6,7 +6,20 @@
 import { addIdbLog } from './idb-logger.js';
 import { output } from './core-logger.js';
 import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
-import { isMobile } from './performance.js';
+// Avoid importing `isMobile` from ./performance.js here because that module
+// imports `state.js` which in turn imports this logger. That circular import
+// can cause a temporal-dead-zone (TDZ) where logger internals aren't
+// initialized yet and calls like `structuredLog` throw. Detect mobile
+// synchronously here without pulling in the other module.
+
+function detectIsMobile() {
+  try {
+    const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+    return /Mobile|Android|iPhone|iPad/.test(ua);
+  } catch (e) {
+    return false;
+  }
+}
 
 // Safely stringify objects, handling circular refs and Error instances
 function safeStringify(obj) {
@@ -26,7 +39,7 @@ function safeStringify(obj) {
 // LOG_LEVELS now imported from constants.js
 
 let currentLogLevel = LOG_LEVELS[DEFAULT_LOG_LEVEL];
-let sampleRate = isMobile() ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
+let sampleRate = detectIsMobile() ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 
 export function setLogLevel(level) {
   const upperLevel = level.toUpperCase();
