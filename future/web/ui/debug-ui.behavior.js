@@ -1,6 +1,6 @@
 // Behavior and layout helpers for the debug UI (responsive layout, video z-index,
 // and stylesheet loader). Kept separate to reduce `debug-ui.js` size.
-export function initializeDebugUIBehavior({ panel, DOM, settings, engine } = {}) {
+export function initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDiagnostics = false } = {}) {
   // Responsive layout: landscape => panel right and video left; portrait => bottom sheet
   (function responsivePanelLayout() {
     const candidates = ['#video-container','#video-preview','.video-preview','#preview','video','#frameCanvas','canvas'];
@@ -146,9 +146,12 @@ export function initializeDebugUIBehavior({ panel, DOM, settings, engine } = {})
       } catch (e) { /* apply responsive fallback below */ }
     } else {
       applyResponsiveLayout();
-      window.addEventListener('resize', applyResponsiveLayout, { passive: true });
-      window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
-      setTimeout(applyResponsiveLayout, 600);
+      if (!skipDiagnostics) {
+        // only attach frequent listeners when not in passive debug startup
+        window.addEventListener('resize', applyResponsiveLayout, { passive: true });
+        window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
+        setTimeout(applyResponsiveLayout, 600);
+      }
     }
   })();
 
@@ -249,10 +252,12 @@ export function initializeDebugUIBehavior({ panel, DOM, settings, engine } = {})
 
     const start = Date.now();
     const timeoutMs = 7000;
-    const iv = setInterval(() => {
+    let iv = null;
+    if (!skipDiagnostics) {
+      iv = setInterval(() => {
       const ctx = getContext();
       if (ctx) {
-        clearInterval(iv);
+        try { if (iv) clearInterval(iv); } catch (e) {}
         try {
           const stateText = typeof ctx === 'object' ? (ctx.state || ctx.status || 'ready') : String(ctx);
           setBadge(String(stateText), '#2ecc71');
@@ -262,10 +267,18 @@ export function initializeDebugUIBehavior({ panel, DOM, settings, engine } = {})
         return;
       }
       if (Date.now() - start > timeoutMs) {
-        clearInterval(iv);
+        try { if (iv) clearInterval(iv); } catch (e) {}
         setBadge('No context (not initialized)', '#c46');
       }
-    }, 250);
+      }, 250);
+    } else {
+      // Passive mode: do a single, lightweight context probe without interval.
+      try {
+        const ctx = getContext();
+        if (ctx) setBadge('ready', '#2ecc71');
+        else setBadge('No context (passive)', '#c46');
+      } catch (e) { setBadge('No context (passive)', '#c46'); }
+    }
   })();
 
   // Make panel draggable/resizable and persist bounds

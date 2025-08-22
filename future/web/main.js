@@ -106,8 +106,11 @@ export async function init() {
 
     if (isDebugMode) {
       document.body.classList.add('debug-mode');
-      initializeDebugUI(engine, DOM);
-      structuredLog('INFO', 'Initialized in Debug UI mode.');
+      // In debug mode via URL param, instantiate the debug UI in a passive state:
+      // - autoOpen: false -> don't show heavy panel UI by default
+      // - skipDiagnostics: true -> avoid running device/audio diagnostics automatically
+      initializeDebugUI(engine, DOM, { autoOpen: false, skipDiagnostics: true });
+      structuredLog('INFO', 'Initialized in passive Debug UI mode.');
     } else {
       document.body.classList.add('accessible-mode');
       initializeAccessibleUI(engine, DOM);

@@ -8,12 +8,22 @@ test('debug UI grid and synth selects are clickable and dispatch', async ({ page
   // Wait for debug panel to attach
   await page.waitForSelector('#acoustsee-debug-panel', { state: 'attached', timeout: 10000 });
 
-  // Ensure the selects exist
+  // Ensure the selects exist (they may be hidden in passive debug mode)
   const gridSelect = page.locator('#acoustsee-debug-panel #grid-type-select');
   const synthSelect = page.locator('#acoustsee-debug-panel #synth-engine-select');
 
-  await expect(gridSelect).toBeVisible();
-  await expect(synthSelect).toBeVisible();
+  await page.waitForSelector('#acoustsee-debug-panel #grid-type-select', { state: 'attached', timeout: 10000 });
+  await page.waitForSelector('#acoustsee-debug-panel #synth-engine-select', { state: 'attached', timeout: 10000 });
+
+  // In passive debug mode the panel starts hidden. Make it visible to allow interaction (simulates user opening it).
+  await page.evaluate(() => {
+    const p = document.getElementById('acoustsee-debug-panel');
+    if (p) {
+      p.style.display = 'block';
+      // trigger layout recalculation that debug UI may rely on
+      window.dispatchEvent(new Event('resize'));
+    }
+  });
 
   // Capture current values
   const initialGrid = await gridSelect.inputValue();

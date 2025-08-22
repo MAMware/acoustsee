@@ -10,7 +10,8 @@ import { createAndWireActions } from './debug-ui.actions.js';
 import initializeDebugUIBehavior from './debug-ui.behavior.js';
 import installConsoleIngest from './debug-ingest.js';
 
-export function initializeDebugUI(engine, DOM) {
+export function initializeDebugUI(engine, DOM, options = {}) {
+  const { autoOpen = true, skipDiagnostics = false } = options || {};
   const panel = document.createElement('div');
   panel.id = 'acoustsee-debug-panel';
   // keep debug panel visually present but avoid covering video/splash
@@ -20,7 +21,7 @@ export function initializeDebugUI(engine, DOM) {
   DOM.uiPanelRoot.appendChild(panel);
 
   // initialize behavior (responsive layout, video z-index, stylesheet loader)
-  try { initializeDebugUIBehavior({ panel, DOM, settings, engine }); } catch (e) { /* non-fatal */ }
+  try { initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDiagnostics }); } catch (e) { /* non-fatal */ }
 
   panel.innerHTML = `
     <div class="debug-section state-section">
@@ -121,6 +122,11 @@ export function initializeDebugUI(engine, DOM) {
       <div id="debug-log-view"></div>
     </div>
   `;
+
+  if (!autoOpen) {
+    // Keep the panel hidden initially and avoid running heavy diagnostics.
+    try { panel.style.display = 'none'; } catch (e) {}
+  }
 
   // install console ingest if allowed by settings (dev/local only by default)
   try {
@@ -321,7 +327,7 @@ export function initializeDebugUI(engine, DOM) {
   const verbosityEl = panel.querySelector('#log-verbosity-select');
 
   // create and wire action buttons (moved to debug-ui.actions.js)
-  const actions = createAndWireActions(actionsContainer, { engine, DOM, getAudioDiagnostics, debugLog, settings });
+  const actions = createAndWireActions(actionsContainer, { engine, DOM, getAudioDiagnostics, debugLog, settings, skipDiagnostics });
 
   // --- 3. WIRE UP INPUTS (Now adapted to the new DOM) ---
   gridTypeEl.addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
