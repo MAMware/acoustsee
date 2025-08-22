@@ -4,9 +4,11 @@
 import { settings } from '../core/state.js';
 import { structuredLog } from '../utils/logging.js';
 import { getCurrentGrid } from '../core/grid-manager.js';
+import { registerWorker, unregisterWorker } from '../debug/worker-monitor.js';
 
 let frameWorker = null;
 let workerEnabled = false;
+let frameWorkerId = null;
 let _pendingResolve = null;
 let _prevFrameData = null; // used for synchronous fallback motion detection and tests
 
@@ -28,7 +30,8 @@ function startFrameWorker() {
     frameWorker.onerror = (e) => {
       structuredLog('ERROR', 'frameWorker error', e.message || e);
     };
-    workerEnabled = true;
+  try { frameWorkerId = registerWorker(frameWorker, 'frame-worker'); } catch (e) { frameWorkerId = null; }
+  workerEnabled = true;
     return frameWorker;
   } catch (e) {
     structuredLog('WARN', 'startFrameWorker failed', e);
@@ -41,6 +44,7 @@ function startFrameWorker() {
 function stopFrameWorker() {
   if (!frameWorker) return;
   try { frameWorker.terminate(); } catch (e) { /* ignore */ }
+  try { if (frameWorkerId) unregisterWorker(frameWorkerId); } catch (e) {}
   frameWorker = null;
   workerEnabled = false;
 }

@@ -1,5 +1,6 @@
 import { createButton } from './debug-ui.controls.js';
 import { getWorkerStats } from '../debug/worker-monitor.js';
+import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';
 
 // Create action buttons and wire up their event handlers. Keeps debug-ui.js smaller.
 export function createAndWireActions(actionsContainer, deps) {
@@ -209,7 +210,7 @@ export function createAndWireActions(actionsContainer, deps) {
   (function workerExplorer() {
     const panel = document.createElement('div');
     panel.id = 'worker-explorer-panel';
-    panel.style.cssText = 'margin-top:8px;padding:8px;border:1px solid #333;background:#070707;color:#ddd;max-height:260px;overflow:auto;font-size:12px;display:none;border-radius:6px;';
+    panel.style.cssText = 'margin-top:8px;padding:8px;border:1px solid #333;background:#070707;color:#ddd;max-height:320px;overflow:auto;font-size:12px;display:none;border-radius:6px;';
     actionsContainer.append(panel);
 
     const infoRow = document.createElement('div');
@@ -217,47 +218,49 @@ export function createAndWireActions(actionsContainer, deps) {
     infoRow.innerHTML = `<div style="opacity:0.8;font-size:12px">Shows worker-reported CPU (busy %) and optional heap info.</div>`;
     panel.appendChild(infoRow);
 
-    const content = document.createElement('div');
-    panel.appendChild(content);
+    // single canvas + legend approach
+    const multiWrapper = document.createElement('div');
+    multiWrapper.style.cssText = 'margin-top:8px;padding:8px;border:1px solid #333;background:#060606;color:#ddd;border-radius:6px;';
+    const legend = document.createElement('div');
+    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;font-size:12px;';
+    const multiCanvas = document.createElement('canvas');
+    scaleCanvasForDPR(multiCanvas, 640, 96);
+    multiWrapper.appendChild(legend);
+    multiWrapper.appendChild(multiCanvas);
+    panel.appendChild(multiWrapper);
 
-    const history = new Map();
-    function ensureHist(id) { if (!history.has(id)) history.set(id, { util: [], memory: [] }); return history.get(id); }
+    const historyMap = new Map(); // id -> { ring, name }
+    const MAX_SAMPLES = 60;
+    function ensureSeries(id, name) {
+      if (!historyMap.has(id)) {
+        historyMap.set(id, { ring: new RingBuffer(MAX_SAMPLES), name: name || id });
+        const item = document.createElement('div'); item.dataset.workerId = id; item.style.cssText = 'display:flex;align-items:center;gap:6px;';
+        const sw = document.createElement('span'); sw.style.cssText = `width:10px;height:10px;border-radius:2px;background:${(id||'').toString().length?('hsl('+(Math.abs(id.toString().split('').reduce((a,c)=>a*31+c.charCodeAt(0),1))%360)+' 72% 58%)'):'#888'};display:inline-block;`;
+        const label = document.createElement('div'); label.textContent = name || id; item.appendChild(sw); item.appendChild(label); legend.appendChild(item);
+      }
+      return historyMap.get(id);
+    }
 
-    function renderCharts() {
+    function renderAll() {
+      const seriesMap = new Map();
+      historyMap.forEach((v, k) => seriesMap.set(k, v.ring.toArray()));
+      drawMultiSparkline(multiCanvas, seriesMap, {});
+    }
+    const requestRender = makeThrottledRenderer(renderAll, 2);
+
+    function syncFromRegistry() {
       const stats = (typeof getWorkerStats === 'function') ? getWorkerStats() : (window.__acoustseeGetWorkerStats ? window.__acoustseeGetWorkerStats() : []);
-      content.innerHTML = '';
-      if (!stats || stats.length === 0) { content.innerHTML = '<div style="opacity:0.7">No registered workers</div>'; return; }
+      if (!stats || stats.length === 0) return;
       stats.forEach(s => {
-        const last = s.last;
-        const h = ensureHist(s.id);
-        if (last) { h.util.push(last.util ?? 0); if (h.util.length > 60) h.util.shift(); if (last.memory && typeof last.memory.usedJSHeapSize === 'number') { h.memory.push(last.memory.usedJSHeapSize); if (h.memory.length > 60) h.memory.shift(); } } else { h.util.push(0); if (h.util.length > 60) h.util.shift(); }
-
-        const row = document.createElement('div'); row.style.cssText = 'padding:6px;border-bottom:1px solid #111;margin-bottom:6px;';
-        const title = document.createElement('div'); title.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
-        title.innerHTML = `<div style="font-weight:600">${s.name}</div><div style="font-size:11px;opacity:0.8">${last ? (last.util ?? '-') + '%' : 'no data'}</div>`;
-        row.appendChild(title);
-
-        const c = document.createElement('canvas'); c.width = 320; c.height = 48; c.style.cssText = 'display:block;background:#020202;border:1px solid #111;border-radius:4px;margin-bottom:6px;width:100%;height:48px;';
-        try {
-          const ctx = c.getContext('2d'); ctx.fillStyle='#020202'; ctx.fillRect(0,0,c.width,c.height);
-          ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.beginPath(); for (let i=1;i<=3;i++){ const y=(c.height/4)*i; ctx.moveTo(0,y); ctx.lineTo(c.width,y);} ctx.stroke();
-          ctx.strokeStyle='#29b573'; ctx.lineWidth=2; ctx.beginPath(); const arr=h.util.slice(-60); for (let i=0;i<arr.length;i++){ const x=(i/(Math.max(1,arr.length-1)))*(c.width-6)+3; const v=arr[i]/100; const y=c.height-(v*(c.height-6))-3; if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.stroke(); ctx.fillStyle='rgba(41,181,115,0.08)'; ctx.lineTo(c.width-3,c.height-3); ctx.lineTo(3,c.height-3); ctx.closePath(); ctx.fill(); if (last && typeof last.util==='number'){ ctx.fillStyle='#bfead6'; ctx.font='12px system-ui, sans-serif'; ctx.fillText(`${last.util}%`,6,14); }
-        } catch (e) {}
-        row.appendChild(c);
-
-        if (h.memory && h.memory.length > 0) {
-          const cm = document.createElement('canvas'); cm.width=320; cm.height=28; cm.style.cssText='display:block;background:#020202;border:1px solid #111;border-radius:4px;margin-bottom:6px;width:100%;height:28px;';
-          try {
-            const mctx = cm.getContext('2d'); mctx.fillStyle='#020202'; mctx.fillRect(0,0,cm.width,cm.height); const max = Math.max(...h.memory,1); mctx.fillStyle='#4aa3ff'; const arrm=h.memory.slice(-60); for (let i=0;i<arrm.length;i++){ const x=(i/(Math.max(1,arrm.length-1)))*(cm.width-4)+2; const v=arrm[i]/max; const hgt=Math.max(1,Math.round(v*(cm.height-6))); mctx.fillRect(x,cm.height-3,2,-hgt); }
-          } catch (e) {}
-          row.appendChild(cm);
-        }
-        content.appendChild(row);
+        const id = s.id; const name = s.name || id; const last = s.last;
+        const entry = ensureSeries(id, name);
+        entry.ring.push(last ? (last.util ?? 0) : 0);
       });
+      requestRender();
     }
 
     let explorerInterval = null;
-    function startExplorerPolling(){ if (explorerInterval) return; renderCharts(); explorerInterval=setInterval(renderCharts,1000); }
+    function startExplorerPolling(){ if (explorerInterval) return; syncFromRegistry(); explorerInterval=setInterval(syncFromRegistry,500); }
     function stopExplorerPolling(){ if (!explorerInterval) return; clearInterval(explorerInterval); explorerInterval=null; }
 
     workerExplorerBtn.querySelector('button').addEventListener('click', () => {
