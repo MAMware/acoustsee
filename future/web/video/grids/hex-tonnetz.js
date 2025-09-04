@@ -1,3 +1,9 @@
+// Minimal hex-tonnetz mapper (stub) to satisfy imports during diagnostics.
+export function mapFrameToHexTonnetz(frame, opts = {}) {
+  // frame: ImageData or similar; opts may include motion data
+  // Return an object with cues array for compatibility with other mappers.
+  return { cues: [], meta: { id: 'hex-tonnetz' } };
+}
 import { settings } from "../../core/state.js";
 import { detectMotion } from "../motion-detector.js";
 

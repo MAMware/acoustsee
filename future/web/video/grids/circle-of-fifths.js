@@ -23,10 +23,20 @@ function detectMotion(frameData, prevFrameData, width, height, opts = {}) {
    return { movingRegions: movingRegions.slice(0, maxRegions) };
 }
 
-export function mapFrameToCues(frameData, width, height, prevFrameData) {
-   const { movingRegions } = detectMotion(frameData, prevFrameData, width, height);
+export function mapFrameToCues(frameData, width, height, prevFrameData, opts = {}) {
+    // opts may include precomputed movingRegions or a luma plane: { movingRegions, yPlane }
+    let movingRegions = opts.movingRegions;
+    if (!movingRegions) {
+       if (opts.yPlane) {
+          // Use a luma-based detector if yPlane is supplied to avoid RGB math
+          movingRegions = detectMotion(opts.yPlane, prevFrameData, width, height, { luma: true });
+          movingRegions = movingRegions.movingRegions || [];
+       } else {
+          movingRegions = detectMotion(frameData, prevFrameData, width, height).movingRegions;
+       }
+    }
    const cues = [];
-   const regionsToProcess = movingRegions.slice(0, 8); // default maxNotes=8
+    const regionsToProcess = movingRegions.slice(0, 8); // default maxNotes=8
 
    for (const region of regionsToProcess) {
       const { pixelX, pixelY, intensity } = region;

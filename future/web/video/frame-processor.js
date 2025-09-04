@@ -1,22 +1,26 @@
 // File: web/video/frame-processor.js
-// FINAL VERSION: Pure manager that delegates all detection work to the worker.
+// FINAL VERSION: Was mean to be a Pure manager that delegates all detection work to the worker.
+// REVIEW DATE: 2025-09-04 , R4925: observation
 
 import { settings } from '../core/state.js';
 import { structuredLog } from '../utils/logging.js';
 import { getCurrentGrid } from '../core/grid-manager.js';
 import { registerWorker, unregisterWorker } from '../debug/worker-monitor.js';
+import { extractYFromVideoFrame, rgbaToY } from './videoframe-helper.js';  //R4925: feels slopy and much of the same 
 
 let frameWorker = null;
+let motionWorker = null;
 let workerEnabled = false;
 let frameWorkerId = null;
 let _pendingResolve = null;
 let _prevFrameData = null; // used for synchronous fallback motion detection and tests
+let _motionInFlight = false; // R4925: lets explain how we achieve this
 
 // --- Worker Lifecycle Management ---
 function startFrameWorker() {
   if (frameWorker) return frameWorker;
   try {
-  // Avoid using `import.meta.url` here so Jest/Babel won't choke when parsing
+  // (R4925: lets try to clear this issue, not priority) Avoid using `import.meta.url` here so Jest/Babel won't choke when parsing
   // this module in a test environment. Using a relative path lets browsers
   // resolve the worker script at runtime when served from the same folder.
   frameWorker = new Worker('./workers/frame-worker.js', { type: 'module' });
@@ -41,6 +45,49 @@ function startFrameWorker() {
   }
 }
 
+function startMotionWorker() {
+  if (motionWorker) return motionWorker;
+  try {
+    motionWorker = new Worker('./workers/motion-worker.js', { type: 'module' });
+    motionWorker.onmessage = (ev) => {
+      const msg = ev.data || {};
+      if (msg.type === 'motion' && _pendingResolve) {
+        // resolve pending frame promise with movingRegions constructed from flat buffers , R4925: How this allows us to efficiently process motion data without unnecessary overhead.
+        try {
+          const coords = new Uint16Array(msg.coordsBuffer || new ArrayBuffer(0));
+          const ints = new Uint8Array(msg.intensBuffer || new ArrayBuffer(0));
+          const regions = [];
+          for (let i = 0; i < msg.count; i++) {
+            regions.push({ x: coords[i * 2], y: coords[i * 2 + 1], intensity: ints[i] });
+          }
+          _pendingResolve({ movingRegions: regions });
+          _pendingResolve = null;
+          _motionInFlight = false;
+        } catch (e) {
+          _pendingResolve({ movingRegions: [] });
+          _pendingResolve = null;
+          _motionInFlight = false;
+        }
+      } else if (msg.type === 'ready') {
+        structuredLog('INFO', 'motionWorker ready', { features: msg.features });
+      }
+    };
+    motionWorker.onerror = (e) => { structuredLog('ERROR', 'motionWorker error', e.message || e); };
+    try { registerWorker(motionWorker, 'motion-worker'); } catch (e) {}
+    return motionWorker;
+  } catch (e) {
+    structuredLog('WARN', 'startMotionWorker failed', e);
+    motionWorker = null;
+    return null;
+  }
+}
+
+function stopMotionWorker() {
+  if (!motionWorker) return;
+  try { motionWorker.terminate(); } catch (e) {}
+  motionWorker = null;
+}
+
 function stopFrameWorker() {
   if (!frameWorker) return;
   try { frameWorker.terminate(); } catch (e) { /* ignore */ }
@@ -52,6 +99,10 @@ function stopFrameWorker() {
 export function enableFrameWorker(enable = true) {
   if (enable) startFrameWorker();
   else stopFrameWorker();
+}
+
+export function enableMotionWorker(enable = true) {
+  if (enable) startMotionWorker(); else stopMotionWorker();
 }
 
 export function shutdownFrameWorker() {
@@ -75,17 +126,61 @@ function processFrameViaWorker(frameBuffer, width, height) {
       // Tiny debug: confirm what threshold we're sending
       try { console.debug('processFrameViaWorker -> motionThreshold', settings.motionThreshold); } catch (e) {}
 
-      // Use transfer when available to avoid copying large buffers
+      // Use the motion worker: extract Y plane and send minimal buffer
       try {
+        const mw = startMotionWorker();
+        if (!mw) {
+          // fallback to old frame worker path
+          if (settings.workerTransferEnabled && frameBuffer && frameBuffer.buffer) {
+            const ab = frameBuffer.buffer;
+            w.postMessage({ type: 'process', frameBuffer: ab, width, height, settings: { motionThreshold: settings.motionThreshold }, transferred: true }, [ab]);
+          } else {
+            w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: settings.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
+          }
+          return;
+        }
+
+        // Avoid sending multiple frames concurrently to the motion worker
+        if (_motionInFlight) return resolve({ movingRegions: [] });
+        _motionInFlight = true;
+
+        // frameBuffer may be an RGBA buffer; attempt to extract Y quickly on main thread
+        let yBuf = null;
+        try {
+          // frameBuffer could be an ArrayBuffer or Uint8ClampedArray. Normalize.
+          const arr = frameBuffer.buffer ? new Uint8ClampedArray(frameBuffer) : new Uint8ClampedArray(frameBuffer);
+          yBuf = rgbaToY(arr, width, height);
+        } catch (e) {
+          // fallback: try to send raw buffer
+          try { yBuf = new Uint8Array(frameBuffer.buffer || frameBuffer); } catch (e2) { yBuf = null; }
+        }
+
+        if (!yBuf) {
+          // fallback to frame worker if Y extraction failed
+          w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: settings.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
+          _motionInFlight = false;
+          return;
+        }
+
+        // Send Y buffer as transferable
+        _pendingResolve = resolve;
+        try {
+          mw.postMessage({ type: 'frame', ts: Date.now(), w: width, h: height, yBuffer: yBuf.buffer, step: 6, threshold: settings.motionThreshold }, [yBuf.buffer]);
+        } catch (e) {
+          // if posting fails, clear state and fallback
+          _motionInFlight = false;
+          _pendingResolve = null;
+          resolve({ movingRegions: [] });
+        }
+        return;
+      } catch (e) {
+        // fallback to old behavior
         if (settings.workerTransferEnabled && frameBuffer && frameBuffer.buffer) {
           const ab = frameBuffer.buffer;
           w.postMessage({ type: 'process', frameBuffer: ab, width, height, settings: { motionThreshold: settings.motionThreshold }, transferred: true }, [ab]);
         } else {
           w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: settings.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
         }
-      } catch (e) {
-        // fallback: try without transfer
-        w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: settings.motionThreshold } });
       }
     } catch (e) {
       resolve({ movingRegions: [] });

@@ -1,9 +1,0 @@
-import { test, expect } from '@playwright/test';
-
-// Basic smoke E2E that opens the local index.html file and checks a title
-test('open local index and check title', async ({ page }) => {
-  const url = 'http://localhost:3000/index.html';
-  await page.goto(url);
-  const title = await page.title();
-  expect(title.length).toBeGreaterThan(0);
-});

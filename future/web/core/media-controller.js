@@ -2,6 +2,7 @@
 import { trackFeatureUse } from '../core/ingest.js';
 import { addSessionError } from '../utils/performance.js';
 import { announceMessage, getText } from '../utils/utils.js';
+import { notifyDebug } from '../ui/debug-notifier.js';
 
 let _cameraStream = null;
 
@@ -17,10 +18,15 @@ export async function startCamera(videoEl, constraints = { facingMode: 'environm
   } catch (err) {
     addSessionError({ message: 'start-camera-failed', error: err?.message || String(err) });
     try {
-      const msg = await getText('camera.unable');
-      announceMessage(msg);
+      // Show an accessible, translated witness via the debug UI and announcements.
+      await notifyDebug({ key: 'camera.unable', persistent: true, tts: true });
     } catch (e) {
-      announceMessage('Unable to access camera.');
+      try {
+        const msg = await getText('camera.unable');
+        announceMessage(msg);
+      } catch (e2) {
+        announceMessage('Unable to access camera.');
+      }
     }
     try {
       try { const r = require('./reporting.js'); r.reportError(err); }
