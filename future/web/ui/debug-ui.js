@@ -137,87 +137,6 @@ export function initializeDebugUI(engine, DOM, options = {}) {
   } catch (e) {}
 
   // show version badge (meta tag -> global constant -> fallback)
- 
-  // Responsive layout: landscape => panel right and video left; portrait => bottom sheet
-  (function responsivePanelLayout() {
-    const candidates = ['#video-container','#video-preview','.video-preview','#preview','video','#frameCanvas','canvas'];
-
-    function findVideoElement() {
-      for (const sel of candidates) {
-        try {
-          const el = document.querySelector(sel);
-          if (!el || !document.body.contains(el)) continue;
-          // skip any element that is inside the debug panel itself
-          if (el.closest && el.closest('#acoustsee-debug-panel')) continue;
-          return el;
-        } catch (e) { /* ignore selector errors */ }
-      }
-      // fallback: any visible video or canvas not inside the debug panel
-      const vid = Array.from(document.querySelectorAll('video, canvas')).find(v => v && document.body.contains(v) && !(v.closest && v.closest('#acoustsee-debug-panel')));
-      return vid || null;
-    }
-
-    function applyLandscape(el, panelEl) {
-      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-      const preferred = panelEl.getBoundingClientRect().width || 400;
-      const calcWidth = Math.min(preferred, Math.max(280, Math.round(vw * 0.36)));
-      panelEl.style.position = 'fixed';
-      panelEl.style.right = '0';
-      panelEl.style.left = 'auto';
-      panelEl.style.top = '0';
-      panelEl.style.bottom = 'auto';
-      panelEl.style.width = calcWidth + 'px';
-      panelEl.style.height = '100vh';
-      panelEl.style.borderLeft = '2px solid #34495e';
-      panelEl.style.borderTop = '';
-      if (el) {
-        const container = el.parentElement || el;
-        container.style.boxSizing = 'border-box';
-        container.style.marginRight = (calcWidth + 12) + 'px';
-        container.style.marginBottom = '';
-      }
-    }
-
-    function applyPortrait(el, panelEl) {
-      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-      const sheetHeight = Math.max(220, Math.round(vh * 0.42));
-      panelEl.style.position = 'fixed';
-      panelEl.style.left = '8px';
-      panelEl.style.right = '8px';
-      panelEl.style.top = 'auto';
-      panelEl.style.bottom = '8px';
-      panelEl.style.width = `calc(100% - 16px)`;
-      panelEl.style.height = sheetHeight + 'px';
-      panelEl.style.borderLeft = 'none';
-      panelEl.style.borderTop = '2px solid #34495e';
-      panelEl.style.borderRadius = '8px';
-      if (el) {
-        const container = el.parentElement || el;
-        container.style.boxSizing = 'border-box';
-        container.style.marginBottom = (sheetHeight + 12) + 'px';
-        container.style.marginRight = '';
-      }
-    }
-
-    function applyResponsiveLayout() {
-      try {
-        const panelEl = document.getElementById('acoustsee-debug-panel');
-        if (!panelEl) return;
-        const el = findVideoElement();
-        const isLandscape = window.innerWidth > window.innerHeight;
-        if (isLandscape) {
-          applyLandscape(el, panelEl);
-        } else {
-          applyPortrait(el, panelEl);
-        }
-      } catch (e) { /* fail silently */ }
-    }
-
-    applyResponsiveLayout();
-    window.addEventListener('resize', applyResponsiveLayout, { passive: true });
-    window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
-    setTimeout(applyResponsiveLayout, 600);
-  })();
   
 
   // Try to locate the video preview element and ensure it is above the debug panel.
@@ -268,29 +187,6 @@ export function initializeDebugUI(engine, DOM, options = {}) {
       const devIngestCheckbox = panel.querySelector('#dev-console-ingest-checkbox');
       if (devIngestCheckbox) devIngestCheckbox.checked = !!settings.ingestEnabled;
     } catch (e) {}
-
-  // Load debug UI stylesheet (extracted to keep JS small and separate concerns)
-  (function ensureDebugCss() {
-    try {
-      if (document.getElementById('acoustsee-debug-ui-css')) return;
-      const candidates = [
-      'ui/debug-ui.css'
-      ];
-      for (const href of candidates) {
-        const link = document.createElement('link');
-        link.id = 'acoustsee-debug-ui-css';
-        link.rel = 'stylesheet';
-        link.href = href;
-        // when a candidate fails to load, remove it so the next can try
-        link.onerror = () => { try { if (link.parentNode) link.parentNode.removeChild(link); } catch (e) {} };
-        document.head.appendChild(link);
-      }
-      // force a layout recalculation shortly after insertion so sizes adjust
-      setTimeout(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, 250);
-    } catch (e) {
-      // silent
-    }
-  })();
 
   // --- 2. POPULATE CONTROLS (populate the two-column grid and action buttons) ---
   const controlsGrid = panel.querySelector('.controls-grid');

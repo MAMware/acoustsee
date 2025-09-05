@@ -94,8 +94,8 @@ export function playFmSynthesis(notes, ctx = {}) {
     const depth = Math.max(0, Math.min(2000, modulationIndex * intensity));
     if (typeof modData.gain.gain.setTargetAtTime === 'function') {
       modData.gain.gain.setTargetAtTime(depth, now, 0.015);
-
-      modData.gain.gain.value = depth;
+    } else if ('value' in modData.gain.gain) {
+      modData.gain.gain.value = depth; // Correctly use else if
     }
 
     // Connect modulator -> gain -> carrier.frequency (AudioParam)

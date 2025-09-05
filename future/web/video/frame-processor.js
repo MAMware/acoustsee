@@ -237,7 +237,16 @@ export async function processFrameWithState(frameData, width, height) {
   try {
     const res = await processFrameViaWorker(frameData, width, height);
     const movingRegions = (res && res.movingRegions) ? res.movingRegions : [];
-    const cues = mapRegionsToCues(movingRegions, width, height);
+    
+    // Use unified logic: let grid handle cue mapping instead of legacy mapRegionsToCues
+    const grid = getCurrentGrid();
+    if (!grid || typeof grid.mapFrameToCues !== 'function') {
+      structuredLog('WARN', 'Worker frame processing: No grid or mapFrameToCues available.');
+      return { cues: [], movingRegions };
+    }
+    
+    const out = grid.mapFrameToCues(frameData, width, height, _prevFrameData, { movingRegions }) || {};
+    const cues = out.cues || [];
     return { cues, movingRegions };
   } catch (err) {
     structuredLog('ERROR', 'Worker frame processing failed.', { error: err && err.message ? err.message : String(err) });
