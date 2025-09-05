@@ -73,7 +73,7 @@ let inStructuredLog = false;
 /**
  * Logs a structured message synchronously with recursion guard.
  */
-export async function structuredLog(level, message, data = {}, persist = true, sample = true) {
+export function structuredLog(level, message, data = {}, persist = true, sample = true) {
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
   if (numericLevel < currentLogLevel) return;
   if (sample && level.toUpperCase() === 'DEBUG' && Math.random() > sampleRate) return;
