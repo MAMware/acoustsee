@@ -69,14 +69,40 @@ export async function init() {
     // Validate DOM early
     validateDOM();
 
-    // configs are now loaded synchronously via import
+    // STEP 1: Load all asynchronous resources 
+    try {
+      const grids = await loadAvailableGrids();
+      if (grids && grids.length > 0) {
+        settings.availableGrids = grids;
+        // Set a default grid if one isn't already set
+        if (!settings.gridType) {
+          settings.gridType = grids[0].id;
+        }
+        structuredLog('INFO', 'init: Video grids loaded successfully', { count: grids.length, default: settings.gridType });
+      } else {
+        structuredLog('WARN', 'init: No video grids were loaded.');
+      }
+    } catch (e) {
+      structuredLog('ERROR', 'init: Failed to load video grids', { error: e?.message || String(e) });
+    }
+
+    // STEP 2: Now that all configs are loaded, log and check them.
     structuredLog('INFO', 'init: Configurations loaded', {
       gridType: settings.gridType,
       synthesisEngine: settings.synthesisEngine,
       language: settings.language
     });
 
-    // Handle missing configuration gracefully
+    // Ensure language is initialized before UI translation
+    initializeLanguageIfNeeded();
+    try {
+      await setLanguage(settings.language);
+      translatePage(document);
+    } catch (e) {
+      structuredLog('WARN', 'setLanguage/translatePage failed', { error: e?.message || String(e) });
+    }
+
+    // This check will now run AFTER grids are loaded, so the warning should disappear.
     if (!settings.gridType || !settings.synthesisEngine || !settings.language) {
       const missing = [];
       if (!settings.gridType) missing.push('grids');
@@ -88,32 +114,9 @@ export async function init() {
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
 
-    // Ensure language is initialized and preloaded before UI translation
-    initializeLanguageIfNeeded();
-    try {
-      await setLanguage(settings.language);
-      translatePage(document);
-    } catch (e) {
-      structuredLog('WARN', 'setLanguage/translatePage failed', { error: e?.message || String(e) });
-    }
-
     // --- Headless engine: instantiate and wire up ---
     const engine = createEngine();
     setDispatchEvent(engine.dispatch);
-
-    // --- NEW: Asynchronously load grids and populate settings ---
-    try {
-      const grids = await loadAvailableGrids();
-      if (grids && grids.length > 0) {
-        settings.availableGrids = grids;
-        if (!settings.gridType) settings.gridType = grids[0].id;
-        structuredLog('INFO', 'init: Video grids loaded successfully', { count: grids.length, default: settings.gridType });
-      } else {
-        structuredLog('WARN', 'init: No video grids were loaded.');
-      }
-    } catch (e) {
-      structuredLog('ERROR', 'init: Failed to load video grids', { error: e?.message || String(e) });
-    }
 
     // --- UI LOADER LOGIC ---
     const urlParams = new URLSearchParams(window.location.search);
@@ -131,6 +134,7 @@ export async function init() {
       initializeAccessibleUI(engine, DOM);
       structuredLog('INFO', 'Initialized in Accessible UI mode.');
     }
+    
     // --- Start frame worker if configured to run by default ---
     try {
       if (settings.enableFrameWorker) enableFrameWorker(true);
