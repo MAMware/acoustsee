@@ -3,15 +3,19 @@
 import { settings } from './state.js';
 import { structuredLog } from '../utils/logging.js';
 import logger from '../utils/logging.js';
-import { getAllIdbLogs } from '../utils/idb-logger.js';
-import { getText, speakText, setLanguage, translatePage, announceMessage } from '../utils/utils.js';
-import { trackFeatureUse } from '../core/ingest.js';
+import { getText, speakText, announceMessage } from '../utils/utils.js'; // <-- REDUCED IMPORTS
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './media-controller.js';
 import { startMic, stopMic } from './microphone-controller.js';
 import { setMicStream, setAutoFpsBenchmark, allocateFrameBuffer } from './state.js';
-import { computeAutoIntervalBenchmark, getPreferredIntervalMs } from '../utils/performance.js';
+import { getPreferredIntervalMs } from '../utils/performance.js';
 import { processFrameWithState } from '../video/frame-processor.js';
 import * as audioProcessor from '../audio/audio-processor.js';
+import { registerTouchGestureCommands } from './commands/touch-gesture-commands.js'; // <-- NEW IMPORT
+import { registerMediaCommands } from './commands/media-commands.js'; // <-- NEW IMPORT
+import { registerSettingsCommands } from './commands/settings-commands.js';
+import { registerDebugCommands } from './commands/debug-commands.js';
+import { registerUICommands } from './commands/ui-commands.js';
+import { registerPerformanceCommands } from './commands/performance-commands.js';
 
 function _resolveStateModule() {
   // In Jest tests we rely on runtime require to pick up per-test mocks. In
@@ -174,703 +178,84 @@ export function createEngine() {
     }
   }
 
-  // --- Register a couple of small, safe handlers for incremental migration ---
-  registerCommandHandler('toggleSettingsMode', async ({ state: s }) => {
-    s.isSettingsMode = !s.isSettingsMode;
-    return { state: s };
+  // UI and misc handlers have been moved to dedicated modules
+
+  // -------------------------------------------------------------------
+  // <-- THE LARGE BLOCK OF GESTURE COMMAND HANDLERS HAS BEEN REMOVED -->
+  // -------------------------------------------------------------------
+
+  // debug / settings handlers were moved to separate modules
+
+  // ... (All other command handlers like resumeAudio, startProcessing, etc., remain here for now)
+  // ... They will be moved in the next steps.
+
+  // --- MEDIA WRAPPER HANDLERS ---
+  // These wrappers delegate to the media module which registers its handlers under
+  // namespaced keys (see registration below). Wrappers manage the engine scheduler
+  // state and timer.
+  registerCommandHandler('startProcessing', async (context) => {
+    const mediaHandler = handlers['__media_startProcessing'];
+    if (!mediaHandler) throw new Error('media startProcessing handler not registered');
+    const result = await mediaHandler(context);
+    _videoElForScheduler = result?.videoEl || null;
+    _canvasElForScheduler = result?.canvasEl || null;
+    state.isProcessing = true;
+
+    if (_schedulerTimerId != null) clearTimeout(_schedulerTimerId);
+    _schedulerTimerId = setTimeout(_runScheduled, 0);
+    state.processingTimerId = _schedulerTimerId;
+    return { timerId: _schedulerTimerId };
   });
 
-  registerCommandHandler('announceSettingsMode', async ({ state: s }) => {
-    try {
-      const key = s.isSettingsMode ? 'button6.tts.settingsToggle.on' : 'button6.tts.settingsToggle.off';
-      const msg = await getText(key).catch(() => null);
-      if (msg && typeof speakText === 'function') speakText(msg);
-    } catch (e) {
-      structuredLog('WARN', 'announceSettingsMode failed', { error: e?.message });
+  registerCommandHandler('stopProcessing', async (context) => {
+    const mediaHandler = handlers['__media_stopProcessing'];
+    if (!mediaHandler) throw new Error('media stopProcessing handler not registered');
+    const result = await mediaHandler(context);
+
+    if (_schedulerTimerId != null) {
+      clearTimeout(_schedulerTimerId);
+      _schedulerTimerId = null;
     }
+    _processingLock = false;
+    _pending = false;
+    state.processingTimerId = null;
+    state.isProcessing = false;
+    _videoElForScheduler = null;
+    _canvasElForScheduler = null;
+
+    return result;
   });
 
-  // --- NEW: COMMANDS FOR ACCESSIBLE UI ---
-
-  registerCommandHandler('toggleProcessing', async ({ state: s, payload }) => {
-    if (s.isProcessing) {
-      await dispatch('stopProcessing', payload);
-      const msg = await getText('processing.stopped').catch(() => 'Stopped');
-      speakText(msg);
-    } else {
-      await dispatch('startProcessing', payload);
-      const msg = await getText('processing.started').catch(() => 'Started');
-      speakText(msg);
-    }
-  });
-
-  registerCommandHandler('announceStatus', async ({ state: s }) => {
-    try {
-      const statusKey = s.isProcessing ? 'status.live' : 'status.idle';
-      const gridName = s.availableGrids.find(g => g.id === s.gridType)?.name || s.gridType;
-      const synthName = s.availableEngines.find(e => e.id === s.synthesisEngine)?.name || s.synthesisEngine;
-      
-      const msg = await getText('status.full', {
-        status: await getText(statusKey),
-        grid: gridName,
-        synth: synthName
-      });
-      speakText(msg);
-    } catch (e) {
-      structuredLog('ERROR', 'announceStatus failed', { error: e.message });
-      speakText("Could not announce status.");
-    }
-  });
-
-  registerCommandHandler('enterSettingsMode', async ({ state: s }) => {
-    if (s.isProcessing) {
-      await dispatch('stopProcessing'); // Stop processing to avoid distraction
-    }
-    s.isSettingsMode = true;
-    s.settings.currentCategoryIndex = 0; // Start at the first category
-    const msg = await getText('settings.enter').catch(() => 'Settings mode. Swipe left or right to choose a category.');
-    speakText(msg);
-    await dispatch('announceCurrentSettingCategory');
-  });
-
-  registerCommandHandler('exitSettingsMode', async ({ state: s }) => {
-    s.isSettingsMode = false;
-    await dispatch('saveSettings'); // Auto-save on exit
-    const msg = await getText('settings.exit').catch(() => 'Exiting settings.');
-    speakText(msg);
-  });
-  
-  registerCommandHandler('cycleSettingCategory', async ({ state: s, payload }) => {
-    if (!s.isSettingsMode) return;
-    const direction = payload.direction || 1; // 1 for right, -1 for left
-    const numCategories = s.settings.categories.length;
-    s.settings.currentCategoryIndex = (s.settings.currentCategoryIndex + direction + numCategories) % numCategories;
-    await dispatch('announceCurrentSettingCategory');
-  });
-  
-  registerCommandHandler('changeCurrentSettingValue', async ({ state: s, payload }) => {
-    if (!s.isSettingsMode) return;
-    const direction = payload.direction || 1; // 1 for up/right, -1 for down/left
-    const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
-    
-    // Logic to change the value based on the category
-    switch (categoryId) {
-      case 'grid':
-        const grids = s.availableGrids.map(g => g.id);
-        const currentGridIndex = grids.indexOf(s.gridType);
-        const nextGridIndex = (currentGridIndex + direction + grids.length) % grids.length;
-        s.gridType = grids[nextGridIndex];
-        break;
-      case 'synth':
-        const synths = s.availableEngines.map(e => e.id);
-        const currentSynthIndex = synths.indexOf(s.synthesisEngine);
-        const nextSynthIndex = (currentSynthIndex + direction + synths.length) % synths.length;
-        s.synthesisEngine = synths[nextSynthIndex];
-        break;
-      case 'language': // <-- NEW CASE
-        const langs = s.availableLanguages.map(l => l.id);
-        const currentLangIndex = langs.indexOf(s.language);
-        const nextLangIndex = (currentLangIndex + direction + langs.length) % langs.length;
-        const newLang = langs[nextLangIndex];
-        await setLanguage(newLang); // This also saves it
-        s.language = newLang;
-        try { await translatePage(document); } catch (e) { /* best-effort */ }
-        break;
-  case 'maxNotes':
-  const current = Number(s.maxNotes) || 0;
-  // step sizes: +1 or -1
-  const next = Math.max(1, current + (direction > 0 ? 1 : -1));
-  s.maxNotes = next;
-  try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
-  break;
-      case 'motionThreshold': // Adjust in steps of 20, clamp 20..120
-        let newThreshold = (Number(s.motionThreshold) || 20) + (direction * 20);
-        newThreshold = Math.max(20, Math.min(120, newThreshold));
-        s.motionThreshold = newThreshold;
-        break;
-    }
-    await dispatch('announceCurrentSettingValue');
-  });
-
-  registerCommandHandler('announceCurrentSettingCategory', async ({ state: s }) => {
-    if (!s.isSettingsMode) return;
-    const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
-    const categoryName = await getText(`settings.category.${categoryId}`).catch(() => categoryId);
-    speakText(categoryName);
-  });
-  
-  registerCommandHandler('announceCurrentSettingValue', async ({ state: s }) => {
-    if (!s.isSettingsMode) return;
-    const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
-    let valueText = '';
-    try {
-      switch (categoryId) {
-        case 'grid':
-          valueText = s.availableGrids.find(g => g.id === s.gridType)?.name || s.gridType;
-          break;
-        case 'synth':
-          valueText = s.availableEngines.find(e => e.id === s.synthesisEngine)?.name || s.synthesisEngine;
-          break;
-        case 'language':
-          valueText = s.availableLanguages.find(l => l.id === s.language)?.name || s.language;
-          break;
-        case 'maxNotes':
-          valueText = await getText('settings.value.notes', { count: s.maxNotes });
-          break;
-        case 'motionThreshold':
-          let sensitivity = 'Medium';
-          if ((Number(s.motionThreshold) || 0) <= 40) sensitivity = 'High';
-          if ((Number(s.motionThreshold) || 0) >= 80) sensitivity = 'Low';
-          valueText = await getText('settings.value.sensitivity', {
-            level: await getText(`settings.sensitivity.${sensitivity.toLowerCase()}`)
-          });
-          break;
-      }
-      speakText(valueText);
-    } catch (err) {
-      structuredLog('ERROR', 'Failed to announce setting value', { error: err.message });
-    }
-  });
-
-  // Helper to play a short test cue for debugging audio
-  registerCommandHandler('playTestNote', async ({ state: s, payload }) => {
-    try {
-      // Ensure AudioContext is resumed before attempting to play a cue. This
-      // helps when the context is still suspended due to browser autoplay
-      // policies even after user interaction in some environments.
-      try {
-        const resumeRes = await (async () => {
-          try { return await (await import('../audio/audio-processor.js')).resumeAudioContext(); } catch(e) { return { ok: false }; }
-        })();
-        if (!resumeRes || !resumeRes.ok) {
-          // best-effort: continue, but playCues will be no-op if context not running
-          structuredLog('WARN', 'playTestNote: audio context not running', { resumeRes });
-        }
-      } catch (e) { structuredLog('WARN', 'playTestNote: resumeAudioContext attempt failed', { error: e?.message || String(e) }); }
-
-      const cues = [{ id: 'test-note', pitch: payload?.pitch || 440, pan: 0, intensity: 1.0 }];
-      await dispatch('audioPlayCues', { cues });
-      return { ok: true };
-    } catch (e) {
-      structuredLog('WARN', 'playTestNote failed', { error: e?.message });
-      return { ok: false, error: e?.message };
-    }
-  });
-
-  // Handler to resume audio context from UI
-  registerCommandHandler('resumeAudio', async ({ state: s }) => {
-    try {
-      structuredLog('INFO', 'resumeAudio: request received');
-      const res = await (async function() {
-        try { return await (await import('../audio/audio-processor.js')).resumeAudioContext(); } catch(e) { return { ok: false, error: e?.message || String(e) }; }
-      })();
-      structuredLog(res.ok ? 'INFO' : 'WARN', 'resumeAudio: result', { ok: !!res.ok, state: res.state, error: res.error });
-      if (!res.ok) structuredLog('WARN', 'resumeAudio failed', { error: res.error });
-      return res;
-    } catch (e) {
-      structuredLog('ERROR', 'resumeAudio handler failed', { error: e?.message || String(e) });
-      return { ok: false, error: e?.message || String(e) };
-    }
-  });
-
-  registerCommandHandler('gatherAndSendUserReport', async ({ state }) => {
-    try {
-      const appState = JSON.stringify(state);
-      const logs = JSON.stringify(await getAllIdbLogs());
-      
-      const reportPayload = {
-        type: 'user-report',
-        app_state: appState,
-        logs: logs,
-      };
-      
-      trackFeatureUse('user-report', reportPayload); 
-      
-      // Give the user feedback
-      const msg = await getText('report.sending').catch(() => 'Thank you. Sending report.');
-      speakText(msg);
-
-    } catch (err) {
-      structuredLog('ERROR', 'Failed to send user report', { error: err.message });
-      const msg = await getText('report.error').catch(() => 'Sorry, the report could not be sent.');
-      speakText(msg);
-    }
-  });
-
-  // Cycle language: compute next language id, persist via setLanguage, run translation pass
-  registerCommandHandler('cycleLanguage', async ({ state: s }) => {
-    try {
-      const langs = (s.availableLanguages || []).map(l => l.id);
-      if (!langs || langs.length === 0) return;
-      const current = s.language || langs[0];
-      const idx = Math.max(0, langs.indexOf(current));
-      const next = langs[(idx + 1) % langs.length];
-      await setLanguage(next);
-      s.language = next;
-      try { await translatePage(document); } catch (e) { /* best-effort */ }
-      const languageName = next;
-      try {
-        const announce = await getText('button3.tts.languageSelect', { state: languageName });
-        announceMessage(announce);
-        if (typeof speakText === 'function') speakText(announce);
-      } catch (e) {
-        const fallback = await getText('language.set', { languageName }).catch(() => `Language set to ${languageName}`);
-        announceMessage(fallback);
-        if (typeof speakText === 'function') speakText(fallback);
-      }
-      try { trackFeatureUse('language-switch', { language: next }); } catch (e) {}
-    } catch (e) {
-      structuredLog('ERROR', 'engine.cycleLanguage failed', { error: e?.message || String(e) });
-    }
-  });
-
-  // Camera controls: payload may include { videoEl, canvasEl }
-  registerCommandHandler('startCamera', async ({ state: s, payload }) => {
-    try {
-      const { videoEl, canvasEl } = payload || {};
-      await mediaStartCamera(videoEl, { facingMode: 'environment' });
-      if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
-      try { if (videoEl && videoEl._startCameraFrameCapture) videoEl._startCameraFrameCapture(); } catch (e) {}
-      return { started: true };
-    } catch (e) {
-      structuredLog('ERROR', 'engine.startCamera failed', { error: e?.message || String(e) });
-      throw e;
-    }
-  });
-
-  registerCommandHandler('stopCamera', async ({ state: s, payload }) => {
-    try {
-      const { videoEl } = payload || {};
-      mediaStopCamera(videoEl);
-      if (videoEl) {
-        try { if (videoEl._stopCameraFrameCapture) videoEl._stopCameraFrameCapture(); } catch (e) {}
-      }
-      s.stream = null;
-      return { started: false };
-    } catch (e) {
-      structuredLog('WARN', 'engine.stopCamera failed', { error: e?.message || String(e) });
-      throw e;
-    }
-  });
-
-  registerCommandHandler('toggleCamera', async ({ state: s, payload }) => {
-    const { videoEl } = payload || {};
-    const active = isCameraActive();
-    try {
-      if (active) {
-        const res = await handlers.stopCamera({ state: s, payload });
-        s.stream = null;
-        return res;
-      } else {
-        const res = await handlers.startCamera({ state: s, payload });
-        s.stream = (videoEl && videoEl.srcObject) || s.stream;
-        return res;
-      }
-    } catch (e) {
-      structuredLog('WARN', 'toggleCamera handler failed', { error: e?.message || String(e) });
-      return { started: isCameraActive() };
-    }
-  });
-
-  // Auto FPS toggle: flip flag; benchmark is UI responsibility but engine stores the flag
-  registerCommandHandler('toggleAutoFps', async ({ state: s }) => {
-    s.autoFPS = !s.autoFPS;
-    return { state: s };
-  });
-
-  // Toggle microphone: start/stop mic stream, route audio via audio-processor, and persist in state.micStream
-  registerCommandHandler('toggleMicrophone', async ({ state: s }) => {
-    // Acquire mic module at runtime so test-time jest.mock() is observed.
-    const micModule = (typeof require !== 'undefined') ? require('./microphone-controller.js') : { startMic, stopMic };
-    try {
-      if (s.micStream) {
-        // Stop and disconnect
-        try { audioProcessor.disconnectMicrophone && audioProcessor.disconnectMicrophone(); } catch (e) { /* best-effort */ }
-        try { await micModule.stopMic(s.micStream); } catch (e) { /* best-effort */ }
-        s.micStream = null;
-        try { settings.micStream = null; } catch (e) {}
-        const msg = await getText('mic.off').catch(() => 'Microphone off.');
-        speakText(msg);
-        return { micActive: false };
-      }
-
-      // Start the stream
-      const stream = await micModule.startMic({ audio: true });
-      try { setMicStream(stream); } catch (e) {}
-      s.micStream = stream;
-      try { settings.micStream = stream; } catch (e) {}
-
-      // Best-effort: update common module caches so test mocks see the mutation.
-      try {
-        if (typeof require !== 'undefined') {
-          const abs = '/workspaces/acoustsee/future/web/core/state.js';
-          try { const mod = require(abs); if (mod && mod.settings) mod.settings.micStream = stream; } catch (_) { const mod = require('./state.js'); if (mod && mod.settings) mod.settings.micStream = stream; }
-        }
-      } catch (e) { /* best-effort */ }
-
-      // Only attempt to route audio if the audio subsystem is initialized
-      try {
-        if (audioProcessor.isAudioReady && audioProcessor.isAudioReady()) {
-          try { audioProcessor.connectMicrophone && audioProcessor.connectMicrophone(stream); } catch (e) { structuredLog('WARN', 'connectMicrophone failed', { error: e?.message || String(e) }); }
-        } else {
-          structuredLog('INFO', 'Audio not ready, mic stream acquired but not connected.');
-        }
-      } catch (e) {
-        structuredLog('WARN', 'Audio routing check failed', { error: e?.message || String(e) });
-      }
-
-      const msg = await getText('mic.on').catch(() => 'Microphone on.');
-      speakText(msg);
-      return { micActive: true };
-    } catch (e) {
-      structuredLog('WARN', 'toggleMicrophone failed', { error: e?.message || String(e) });
-      // Ensure state is clean on failure
-      if (s.micStream) {
-        try { audioProcessor.disconnectMicrophone && audioProcessor.disconnectMicrophone(); } catch (er) { /* ignore */ }
-        try { await micModule.stopMic(s.micStream); } catch (er) { /* ignore */ }
-        s.micStream = null;
-        try { settings.micStream = null; } catch (e) {}
-      }
-      const msg = await getText('mic.error').catch(() => 'Microphone unavailable.');
-      speakText(msg);
-      throw e;
-    }
-  });
-
-  // Start processing: start camera, set interval to call processFrame, set isProcessing flag
-  registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
-    try {
-      const { videoEl, canvasEl } = payload || {};
-      await mediaStartCamera(videoEl, { facingMode: 'environment' });
-      if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
-      _videoElForScheduler = videoEl;
-      _canvasElForScheduler = canvasEl;
-      // Proactively allocate a reusable frame buffer for zero-copy transfers
-      try {
-        const w = (videoEl && videoEl.videoWidth) || (canvasEl && canvasEl.width) || 0;
-        const h = (videoEl && videoEl.videoHeight) || (canvasEl && canvasEl.height) || 0;
-        if (w > 0 && h > 0 && s.workerTransferEnabled) {
-          try { allocateFrameBuffer(w, h); } catch (e) { /* best-effort */ }
-        }
-      } catch (e) { /* best-effort */ }
-      s.isProcessing = true;
-      try {
-        if (_schedulerTimerId != null) try { clearTimeout(_schedulerTimerId); } catch (e) {}
-        _schedulerTimerId = setTimeout(_runScheduled, 0);
-      } catch (e) {
-        structuredLog('WARN', 'startProcessing scheduler start failed', { error: e?.message });
-      }
-      s.processingTimerId = _schedulerTimerId;
-      return { timerId: _schedulerTimerId };
-    } catch (e) {
-  structuredLog('ERROR', 'engine.startProcessing failed', { error: e?.message || String(e) });
-  try { logger.logError && logger.logError(e); } catch (er) {}
-      throw e;
-    }
-  });
-
-  // Stop processing: stop camera, clear timer, reset flags
-  registerCommandHandler('stopProcessing', async ({ state: s, payload }) => {
-    try {
-      const { videoEl } = payload || {};
-      try {
-        if (_schedulerTimerId != null) {
-          clearTimeout(_schedulerTimerId);
-          _schedulerTimerId = null;
-        }
-      } catch (e) { /* ignore */ }
-      _processingLock = false;
-      _pending = false;
-      s.processingTimerId = null;
-      s.isProcessing = false;
-      try { mediaStopCamera(videoEl); } catch (e) { /* ignore */ }
-      s.stream = null;
-      _videoElForScheduler = null;
-      _canvasElForScheduler = null;
-      return { stopped: true };
-    } catch (e) {
-      structuredLog('WARN', 'engine.stopProcessing failed', { error: e?.message || String(e) });
-      throw e;
-    }
-  });
-
-  // Actual frame processing handler: draw video -> read pixels -> call frame-processor
-  registerCommandHandler('processFrame', async ({ state: s, payload }) => {
-    try {
-      const { videoEl, canvasEl } = payload || {};
-      if (!videoEl || !canvasEl) return null;
-      if (videoEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return null;
-      const w = videoEl.videoWidth || canvasEl.width || 0;
-      const h = videoEl.videoHeight || canvasEl.height || 0;
-      if (w === 0 || h === 0) return null;
-      const ctx = canvasEl.getContext('2d');
-      try { ctx.drawImage(videoEl, 0, 0, w, h); } catch (e) { return null; }
-      const img = ctx.getImageData(0, 0, w, h);
-
-      // Default to the temporary buffer returned by getImageData
-      let frameBufferToUse = img.data;
-
-      // If a reusable buffer was allocated on the state, ensure it matches
-      // the current frame size. If the resolution changed, reallocate so the
-      // worker-transfer path remains valid. Fall back to img.data on errors.
-      try {
-        if (s._frameBuffer) {
-          const currentLen = s._frameBuffer.length || 0;
-          const newLen = img.data.length || 0;
-
-          // If sizes differ, only reallocate when change exceeds hysteresis threshold
-          // to avoid frequent reallocations on minor size changes. Use pixel-count
-          // (byte length) comparison; threshold is 1%.
-          if (currentLen !== newLen) {
-            const delta = Math.abs(newLen - currentLen);
-            const pct = currentLen > 0 ? (delta / Math.max(1, currentLen)) : 1;
-            const HYSTERESIS_PCT = 0.01; // 1%
-
-            if (pct > HYSTERESIS_PCT) {
-              // Significant change; reallocate only when transfers are enabled.
-              if (s.workerTransferEnabled) {
-                try {
-                  allocateFrameBuffer(w, h);
-                } catch (e) {
-                  _telemetry.fallback_realloc_failed += 1;
-                  rateLimitedLog('fallback_realloc_failed', 'WARN', 'Reusable buffer fallback activated', { reason: 'realloc_failed', message: e?.message });
-                }
-              } else {
-                // Clear buffer if transfer path disabled to avoid using stale size
-                try { s._frameBuffer = null; } catch (e) { /* best-effort */ }
-                _telemetry.fallback_size_mismatch_no_realloc += 1;
-                rateLimitedLog('fallback_size_mismatch_no_realloc', 'WARN', 'Reusable buffer fallback activated', { reason: 'size_mismatch_no_realloc' });
-              }
-            } else {
-              // Size change is within hysteresis; keep using existing buffer if possible.
-              // Fall through and attempt to copy if lengths match; otherwise keep img.data.
-              _telemetry.fallback_skipped_hysteresis += 1;
-              rateLimitedLog('fallback_skipped_hysteresis', 'INFO', 'Frame buffer size change within hysteresis; skipping realloc', { currentLen, newLen, pct });
-            }
-          }
-
-          if (s._frameBuffer && s._frameBuffer.length === img.data.length) {
-            s._frameBuffer.set(img.data);
-            frameBufferToUse = s._frameBuffer;
-          }
-        }
-        } catch (e) {
-        // If any error occurs, fall back to the img.data buffer and log warning
-        _telemetry.fallback_exception += 1;
-        rateLimitedLog('fallback_exception', 'WARN', 'Reusable buffer fallback activated', { reason: 'exception', message: e?.message || String(e) });
-        frameBufferToUse = img.data;
-      }
-
-      const result = await processFrameWithState(frameBufferToUse, w, h);
-      try {
-        let cuesToPlay = Array.isArray(result.cues) ? result.cues : [];
-        if (cuesToPlay.length === 0 && Array.isArray(result.movingRegions) && result.movingRegions.length > 0) {
-          // Map movingRegions to a minimal cue so audio pipeline is exercised in tests
-          cuesToPlay = result.movingRegions.slice(0, 1).map(r => ({ objectType: 'default_motion', intensity: (r.intensity || 128) / 255, position: { x: 0, y: 0, z: 0 } }));
-        }
-        if (cuesToPlay.length === 0 && (process && process.env && process.env.NODE_ENV === 'test')) {
-          cuesToPlay = [{ objectType: 'default_motion', intensity: 0.5, position: { x: 0, y: 0, z: 0 } }];
-        }
-        if (cuesToPlay.length > 0) await audioProcessor.playCues(cuesToPlay);
-      } catch (e) { /* best-effort */ }
-      return result;
-    } catch (e) {
-  structuredLog('WARN', 'engine.processFrame failed', { error: e?.message || String(e) });
-  try { logger.logError && logger.logError(e); } catch (er) {}
-      return null;
-    }
-  });
-
-  // Play notes: delegate to audio module
-  registerCommandHandler('audioPlayCues', async ({ state: s, payload }) => {
-    try {
-      const cues = payload ? payload.cues : [];
-      if (!Array.isArray(cues) || cues.length === 0) return { played: false };
-  try { await audioProcessor.playCues(cues); } catch (e) { structuredLog('WARN', 'audioPlayCues playCues failed', { error: e?.message }); }
-      return { played: true, count: cues.length };
-    } catch (e) {
-      structuredLog('WARN', 'audioPlayCues handler failed', { error: e?.message || String(e) });
-      return { played: false };
-    }
-  });
-
-  // Save settings: persist selected user settings to localStorage and speak feedback
-  registerCommandHandler('saveSettings', async ({ state: s }) => {
-    try {
-      const settingsToSave = {
-        gridType: s.gridType,
-        synthesisEngine: s.synthesisEngine,
-        language: s.language,
-        autoFPS: s.autoFPS,
-        updateInterval: s.updateInterval,
-        maxNotes: s.maxNotes,
-        motionThreshold: s.motionThreshold
-      };
-      localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
-     
-      const msg = await getText('settings.saved').catch(() => 'Settings saved successfully.');
-      speakText(msg);
-      structuredLog('INFO', 'Settings saved to localStorage', settingsToSave);
-      return { saved: true };
-    } catch (err) {
-      structuredLog('ERROR', 'saveSettings error', { message: err.message });
-      const errorMsg = await getText('settings.save_error').catch(() => 'Error saving settings.');
-      speakText(errorMsg);
-      return { saved: false };
-    }
-  });
-
-  // Load settings: read from localStorage, apply safely, and provide feedback
-  registerCommandHandler('loadSettings', async ({ state: s }) => {
-    try {
-      const savedSettingsJSON = localStorage.getItem('acoustsee-settings');
-      if (savedSettingsJSON) {
-        const parsed = JSON.parse(savedSettingsJSON);
-       
-        // Carefully apply loaded settings to the current state
-  Object.assign(s, parsed);
-       
-  // Post-load actions
-  await setLanguage(s.language);
-  await translatePage(document);
-  try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed during loadSettings', { error: e?.message || String(e) }); }
-       
-        const msg = await getText('settings.loaded').catch(() => 'Settings loaded successfully.');
-        speakText(msg);
-        structuredLog('INFO', 'Settings loaded from localStorage', parsed);
-      } else {
-        const msg = await getText('settings.load_none').catch(() => 'No saved settings found.');
-        speakText(msg);
-        structuredLog('INFO', 'No saved settings found in localStorage.');
-      }
-    } catch (err) {
-      structuredLog('ERROR', 'Load settings error', { message: err.message });
-      const errorMsg = await getText('settings.load_error').catch(() => 'Error loading settings.');
-      speakText(errorMsg);
-    }
-    // No return value needed, state is mutated directly
-  });
-
-  // Cycle Grid: pick next available grid and resize audio pool if grid specifies maxNotes
-  registerCommandHandler('cycleGrid', async ({ state: s }) => {
-    try {
-      const { availableGrids } = s;
-      if (!availableGrids || availableGrids.length === 0) {
-        structuredLog('WARN', 'cycleGrid: No available grids to toggle.');
-        return { ok: false };
-      }
-      const idx = Math.max(0, (availableGrids.findIndex(g => g.id === s.gridType)));
-      const next = availableGrids[(idx + 1) % availableGrids.length];
-      s.gridType = next.id;
-      if (next.maxNotes) {
-        try { audioProcessor.resizeOscillatorPool(next.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed on cycleGrid', { err: e?.message || String(e) }); }
-      }
-      const msg = await getText('button1.tts.gridSelect', { state: s.gridType }).catch(() => null);
-      if (msg) speakText(msg);
-      try { await dispatch('updateUI', { settingsMode: s.isSettingsMode, streamActive: !!s.stream, micActive: !!s.micStream }); } catch (e) {}
-      return { grid: s.gridType };
-    } catch (e) {
-      structuredLog('ERROR', 'cycleGrid error', { message: e?.message || String(e) });
-      return { ok: false };
-    }
-  });
-
-  registerCommandHandler('cycleFramerate', async ({ state: s, dispatch: engineDispatch }) => {
-    try {
-      if (s.autoFPS) {
-        s.autoFPS = false;
-        s.updateInterval = 1000 / 20;
-      } else {
-        const fpsOptions = [20, 30, 60];
-        const currentFps = Math.round(1000 / s.updateInterval);
-        const idx = fpsOptions.indexOf(currentFps);
-        s.autoFPS = idx === fpsOptions.length - 1;
-        if (!s.autoFPS) {
-          const nextIdx = (idx === -1) ? 0 : (idx + 1);
-          s.updateInterval = 1000 / fpsOptions[nextIdx];
-        }
-      }
-      try { await dispatch('updateUI', { settingsMode: s.isSettingsMode, streamActive: !!s.stream, micActive: !!s.micStream }); } catch (e) {}
-      return { autoFPS: s.autoFPS, updateInterval: s.updateInterval };
-    } catch (e) {
-      structuredLog('WARN', 'cycleFramerate failed', { error: e?.message || String(e) });
-      return { ok: false };
-    }
-  });
-
-  registerCommandHandler('cameraDidStart', async ({ state: s, payload }) => {
-    try {
-      if (s.autoFPS) {
-        for (const fn of Array.from(benchmarkListeners)) {
-          try { fn(payload); } catch (e) { structuredLog('WARN', 'benchmark listener failed', { error: e?.message }); }
-        }
-      }
-    } catch (e) {
-      structuredLog('WARN', 'cameraDidStart failed', { error: e?.message || String(e) });
-    }
-  });
-
-  registerCommandHandler('setFrameInterval', async ({ state: s, payload }) => {
-    try {
-      const { intervalMs, sampleCount = 1 } = payload || {};
-      if (!intervalMs || !Number.isFinite(intervalMs)) return { ok: false };
-      const fps = Math.max(8, Math.min(30, Math.round(1000 / intervalMs)));
-      s.updateInterval = fps;
-      try { setAutoFpsBenchmark({ intervalMs, sampleCount, safetyFactor: s.autoFpsBenchmark?.safetyFactor || 0.7 }); } catch (e) {}
-      return { fps, intervalMs };
-    } catch (e) {
-      structuredLog('WARN', 'setFrameInterval failed', { error: e?.message || String(e) });
-      return { ok: false };
-    }
-  });
-
-  // --- NEW: DIRECT SETTER HANDLERS FOR DEBUG UI ---
-  registerCommandHandler('setGridType', async ({ state: s, payload }) => {
-    const newGridId = payload.gridType;
-    if (s.availableGrids.find(g => g.id === newGridId)) {
-      s.gridType = newGridId;
-      structuredLog('INFO', 'DebugUI: Grid type set', { gridType: newGridId });
-    }
-  });
-
-  registerCommandHandler('setSynthEngine', async ({ state: s, payload }) => {
-    const newEngineId = payload.synthEngine;
-    if (s.availableEngines.find(e => e.id === newEngineId)) {
-      s.synthesisEngine = newEngineId;
-      structuredLog('INFO', 'DebugUI: Synth engine set', { synthEngine: newEngineId });
-    }
-  });
-
-  registerCommandHandler('setMaxNotes', async ({ state: s, payload }) => {
-    const maxNotes = parseInt(payload.maxNotes, 10);
-    if (!isNaN(maxNotes) && maxNotes >= 1 && maxNotes <= 100) {
-      s.maxNotes = maxNotes;
-      try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed in setMaxNotes', { error: e?.message || String(e) }); }
-      structuredLog('INFO', 'DebugUI: Max notes set', { maxNotes });
-    }
-  });
-
-  registerCommandHandler('setMotionThreshold', async ({ state: s, payload }) => {
-    const threshold = parseInt(payload.motionThreshold, 10);
-    if (!isNaN(threshold) && threshold >= 1 && threshold <= 255) {
-      s.motionThreshold = threshold;
-      structuredLog('INFO', 'DebugUI: Motion threshold set', { threshold });
-    }
-  });
-
-  registerCommandHandler('setAutoFPS', async ({ state: s, payload }) => {
-    const enabled = !!payload.enabled;
-    s.autoFPS = enabled;
-    structuredLog('INFO', 'DebugUI: Auto FPS set', { enabled });
-  });
-
-  return {
+  // --- INITIALIZE ALL COMMAND HANDLERS ---
+  const engineInstance = {
     dispatch,
     registerCommandHandler,
     onStateChange,
     getState,
     onBenchmarkRequired,
   // Expose telemetry for testing/inspecting fallback counters
-  getTelemetry: () => ({ ..._telemetry })
+  getTelemetry: () => ({ ..._telemetry }),
+  // Allow external modules to query benchmark listeners for performance tuning R240619: tell me more about this
+  getBenchmarkListeners: () => Array.from(benchmarkListeners)
   };
+
+  // Register handlers from external modules
+  registerTouchGestureCommands(engineInstance); // <-- NEW REGISTRATION CALL
+
+  // Register media-related command handlers under a namespaced key to avoid
+  // colliding with the engine's public wrapper handlers. Media module will
+  // register `startProcessing`, `stopProcessing`, `processFrame` which we
+  // expose as `__media_startProcessing`, etc.
+  registerMediaCommands({
+    registerCommandHandler: (name, fn) => { handlers[`__media_${name}`] = fn; },
+    dispatch: engineInstance.dispatch,
+  });
+
+  // Register settings and debug command modules
+  registerSettingsCommands(engineInstance);
+  registerDebugCommands(engineInstance);
+  registerUICommands(engineInstance);
+  registerPerformanceCommands(engineInstance);
+
+  return engineInstance;
 }
