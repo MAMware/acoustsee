@@ -20,10 +20,16 @@ let _motionInFlight = false; // R4925: lets explain how we achieve this
 function startFrameWorker() {
   if (frameWorker) return frameWorker;
   try {
-  // (R4925: lets try to clear this issue, not priority) Avoid using `import.meta.url` here so Jest/Babel won't choke when parsing
-  // this module in a test environment. Using a relative path lets browsers
-  // resolve the worker script at runtime when served from the same folder.
-  frameWorker = new Worker('./workers/frame-worker.js', { type: 'module' });
+  // Prefer a robust, deployment-friendly URL relative to this module.
+  // Fall back to a simple relative path if import.meta.url isn't available
+  // (some test runners or older bundlers may not support it).
+  let frameWorkerPath;
+  try {
+    frameWorkerPath = new URL('./workers/frame-worker.js', import.meta.url);
+  } catch (e) {
+    frameWorkerPath = './workers/frame-worker.js';
+  }
+  frameWorker = new Worker(frameWorkerPath, { type: 'module' });
     frameWorker.onmessage = (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'result' && _pendingResolve) {
@@ -48,7 +54,14 @@ function startFrameWorker() {
 function startMotionWorker() {
   if (motionWorker) return motionWorker;
   try {
-    motionWorker = new Worker('./workers/motion-worker.js', { type: 'module' });
+    // Same robust resolution as frame worker: use import.meta.url when possible
+    let motionWorkerPath;
+    try {
+      motionWorkerPath = new URL('./workers/motion-worker.js', import.meta.url);
+    } catch (e) {
+      motionWorkerPath = './workers/motion-worker.js';
+    }
+    motionWorker = new Worker(motionWorkerPath, { type: 'module' });
     motionWorker.onmessage = (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'motion' && _pendingResolve) {

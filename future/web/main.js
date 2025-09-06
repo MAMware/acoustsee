@@ -10,6 +10,7 @@ import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
 import { processFrameWithState } from './video/frame-processor.js';
 import { enableFrameWorker } from './video/frame-processor.js';
+import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { initializeDebugUI } from './ui/debug-ui.js';
 import { initializeAccessibleUI } from './ui/accessible-ui.js';
@@ -99,6 +100,20 @@ export async function init() {
     // --- Headless engine: instantiate and wire up ---
     const engine = createEngine();
     setDispatchEvent(engine.dispatch);
+
+    // --- NEW: Asynchronously load grids and populate settings ---
+    try {
+      const grids = await loadAvailableGrids();
+      if (grids && grids.length > 0) {
+        settings.availableGrids = grids;
+        if (!settings.gridType) settings.gridType = grids[0].id;
+        structuredLog('INFO', 'init: Video grids loaded successfully', { count: grids.length, default: settings.gridType });
+      } else {
+        structuredLog('WARN', 'init: No video grids were loaded.');
+      }
+    } catch (e) {
+      structuredLog('ERROR', 'init: Failed to load video grids', { error: e?.message || String(e) });
+    }
 
     // --- UI LOADER LOGIC ---
     const urlParams = new URLSearchParams(window.location.search);

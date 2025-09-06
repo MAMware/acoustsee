@@ -24,7 +24,7 @@ export function loadAvailableGrids() {
         const { name, m } = r.value;
         // Try common export names for compatibility with various mappers - R4925: This seems hardcoded and not very scalable. We could use a registration system instead?.
         const mapFn = m.mapFrameToCircleOfFifths || m.mapFrameToHexTonnetz || m.mapFrameToCues || m.mapFrameToGrid;
-        const id = (m.meta && m.meta.id) || name;3
+  const id = (m.meta && m.meta.id) || name;
         if (typeof mapFn === 'function') {
           grids.push({ id, mapFunction: mapFn, meta: m.meta || {} });
         } else {
