@@ -2,6 +2,7 @@
 
 import { settings } from '../core/state.js';
 import { structuredLog } from '../utils/logging.js';
+import { soundProfileManifest } from './sound-profiles.js'; // <-- NEW IMPORT
 
 let audioManager = null;
 const oscillatorPool = [];
@@ -198,88 +199,55 @@ function releaseOscillator(oscillator) {
   }
 }
 
+// --- NEW "CONDUCTOR" VERSION of playCues ---
+// This function is a significant rewrite.
 export async function playCues(cues) {
   const context = audioManager?.context;
   if (!context || context.state !== 'running') return;
-  
-  const now = context.currentTime;
-  const cuesToPlay = cues.slice(0, settings.maxNotes);
-  
-  // Clear oscillators that are no longer needed
-  const activeIds = new Set(cuesToPlay.map(c => c.id));
-  for (const [id, activeOsc] of activeOscillators.entries()) {
-    if (!activeIds.has(id)) {
-      clearTimeout(activeOsc.timeoutId);
-      activeOsc.osc.stop();
-      activeOsc.osc.disconnect();
-      releaseOscillator(activeOsc.osc);
-      activeOscillators.delete(id);
+
+  // 1. Map the incoming cues to a list of "notes" ready for the synthesizers.
+  const notes = cues.map(cue => {
+    // Look up the sound profile for this cue's objectType, falling back to default.
+    const profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
+    
+    // Combine the static parameters from the profile with the dynamic properties from the cue.
+    return {
+      ...profile.params,  // Base sound design (e.g., duration, attack).
+      pitch: cue.pitch,
+      intensity: cue.intensity,
+      position: cue.position
+    };
+  }).slice(0, settings.maxNotes); // Enforce the polyphony limit.
+
+  // 2. Group the notes by the synthesizer function they need to use.
+  // This is an optimization to call each synth only once per frame.
+  const notesBySynth = {};
+  notes.forEach((note, i) => {
+    const cueObjectType = cues[i].objectType || 'default_motion';
+    const profile = soundProfileManifest[cueObjectType] || soundProfileManifest['default_motion'];
+    const synthFunctionName = profile.playFunction.name;
+    
+    if (!notesBySynth[synthFunctionName]) {
+      notesBySynth[synthFunctionName] = [];
+    }
+    notesBySynth[synthFunctionName].push(note);
+  });
+
+  // 3. Call each synthesizer with its corresponding batch of notes.
+  for (const synthFunctionName in notesBySynth) {
+    const synthProfile = Object.values(soundProfileManifest).find(p => p.playFunction.name === synthFunctionName);
+    if (synthProfile) {
+      // Create a context object for the synth, providing necessary resources.
+      const synthContext = {
+        audioContext: context,
+        getOscillator,
+        oscillatorPool
+        // We can pass more shared resources here in the future.
+      };
+      // Dispatch the notes to the correct synth function.
+      synthProfile.playFunction(notesBySynth[synthFunctionName], synthContext);
     }
   }
-
-  cuesToPlay.forEach(cue => {
-    if (activeOscillators.has(cue.id)) return;
-
-    const osc = getOscillator();
-    if (!osc) return;
-
-    let panner = null;
-    try {
-      // Prefer modern constructor when available, otherwise fall back to
-      // the legacy createPanner factory.
-      if (typeof PannerNode === 'function') {
-        panner = new PannerNode(context, {
-          panningModel: 'equalpower',
-          positionX: cue.pan,
-          positionY: 0,
-          positionZ: 1 - Math.abs(cue.pan)
-        });
-      } else if (typeof context.createPanner === 'function') {
-        panner = context.createPanner();
-        try { panner.panningModel = 'equalpower'; } catch (e) {}
-        try { panner.setPosition && panner.setPosition(cue.pan, 0, 1 - Math.abs(cue.pan)); } catch (e) {}
-      }
-    } catch (e) {
-      panner = null;
-    }
-
-    try {
-      osc.frequency.setValueAtTime(cue.pitch, now);
-      osc.type = 'sine';
-
-      const gainNode = context.createGain();
-      gainNode.gain.setValueAtTime(0, now);
-      // Guard ramp operations — some browsers may throw on rapid schedules
-      try { gainNode.gain.linearRampToValueAtTime(cue.intensity * 0.5, now + 0.05); } catch (e) {}
-      try { gainNode.gain.linearRampToValueAtTime(0, now + 0.2); } catch (e) {}
-
-      // Connect through panner if available, otherwise connect directly
-      try {
-        if (panner) osc.connect(gainNode).connect(panner).connect(masterGain);
-        else osc.connect(gainNode).connect(masterGain);
-      } catch (e) {
-        // best-effort connect
-        try { osc.connect(gainNode); gainNode.connect(masterGain); } catch (er) {}
-      }
-
-      try { osc.start(now); } catch (e) { /* ignore start errors */ }
-    } catch (e) {
-      // If anything goes wrong building this note, ensure we don't throw
-      try { releaseOscillator(osc); } catch (er) {}
-      return;
-    }
-    
-    const timeoutId = setTimeout(() => {
-      try {
-        osc.stop();
-        osc.disconnect();
-        releaseOscillator(osc);
-        activeOscillators.delete(cue.id);
-      } catch(e) { /* Already stopped */ }
-    }, 250);
-
-    activeOscillators.set(cue.id, { osc, panner, timeoutId });
-  });
 }
 
 /**

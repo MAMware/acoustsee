@@ -41,13 +41,23 @@ export function mapFrameToCues(frameData, width, height, prevFrameData, opts = {
    for (const region of regionsToProcess) {
       const { pixelX, pixelY, intensity } = region;
 
+      // --- DYNAMIC PITCH MAPPING ---
+      // Map the vertical position (pixelY) of the motion to a musical pitch.
+      // Top of the screen (y=0) -> high pitch. Bottom (y=height) -> low pitch.
+      const pitch = 200 + (1 - (pixelY / height)) * 800; // Maps Y to a 200-1000 Hz range.
+
       const cue = {
+         // A future object detection module could assign a more specific type here
+         // (e.g., 'wall', 'sidewalk'). For now, all motion is 'default_motion'.
          objectType: 'default_motion',
-         intensity: intensity / 255,
+         
+         // --- MUSICAL & SPATIAL PROPERTIES ---
+         pitch: pitch, // The dynamically calculated pitch.
+         intensity: intensity / 255, // Normalized intensity for volume.
          position: {
-            x: (pixelX / width) * 2 - 1,
-            y: -((pixelY / height) * 2 - 1),
-            z: 0.0
+            x: (pixelX / width) * 2 - 1,       // Horizontal position for stereo panning (-1 to 1).
+            y: -((pixelY / height) * 2 - 1),  // Vertical position.
+            z: 0.0                            // Placeholder for future depth data.
          }
       };
       cues.push(cue);
