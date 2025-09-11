@@ -1,4 +1,16 @@
 // Minimal motion-worker: receives Y-plane ArrayBuffer and returns compact moving regions.
+// It uses a simple threshold-based difference check on a grid to identify motion points. 
+// This approach is efficient and works well for basic motion detection needs.
+// The worker communicates results back to the main thread with minimal overhead.
+// It maintains state between frames to improve detection accuracy over time.
+// This is a simpler alternative to the more complex frame-worker.js motion detection.
+// It is suitable for scenarios where quick and lightweight motion detection is required.
+// It can be extended in the future for more advanced features if needed.
+// The code is designed to be easy to understand and modify for specific use cases.
+// It avoids complex algorithms to ensure low latency and resource usage.
+// REVISON 2025-09-11=R11925 - initial version, lets verify all the comments and the fact that we have frame-worker.js and justify why we have both.
+
+// State to hold previous Y-plane data between frames for difference calculation (R11925: we could use a ring buffer for N frames?) 
 let _prevY = null;
 let _width = 0;
 let _height = 0;

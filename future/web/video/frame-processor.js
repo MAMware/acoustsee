@@ -1,6 +1,6 @@
 // File: web/video/frame-processor.js
-// FINAL VERSION: Was mean to be a Pure manager that delegates all detection work to the worker.
-// REVIEW DATE: 2025-09-04 , R4925: observation
+// FINAL VERSION: Should be a "frame manager" delegator.
+// REVIEWS: 2025-09-04=R4925 (in progress), 2025-09-11=R11925 
 
 import { settings } from '../core/state.js';
 import { structuredLog } from '../utils/logging.js';
@@ -209,27 +209,13 @@ export async function processFrameWithState(frameData, width, height) {
   if (!workerEnabled || !frameWorker) {
     try {
       const grid = getCurrentGrid();
-      if (!grid || typeof grid.mapFrameToCues !== 'function') {
-        structuredLog('WARN', 'Frame processing skipped: No grid or mapFrameToCues available.');
+      // The check should look for `mapFunction`, which is the standardized property name.
+      if (!grid || typeof grid.mapFunction !== 'function') {
+        structuredLog('WARN', 'Frame processing skipped: No grid or mapFunction available.');
         return { cues: [], movingRegions: [] };
       }
-      // Let the grid implementation run its mapping (it will invoke detectMotion)
-      // Support multiple grid shapes: some grids expose `mapFunction`, others
-      // export `mapFrameToCues`. Normalize both here.
-      let out = {};
-      if (typeof grid.mapFunction === 'function') {
-        out = grid.mapFunction(frameData, width, height, _prevFrameData) || {};
-      } else if (typeof grid.mapFrameToCues === 'function') {
-        out = grid.mapFrameToCues(frameData, width, height, _prevFrameData) || {};
-      } else if (typeof grid.getNote === 'function') {
-        // Older grid API: produce regions and map to cues
-        // We can't call internal detector here, so return empty in this branch.
-        structuredLog('WARN', 'Grid has getNote but no map function; skipping fallback.');
-        out = { cues: [], movingRegions: [] };
-      } else {
-        structuredLog('WARN', 'Unknown grid shape; skipping frame processing.');
-        out = { cues: [], movingRegions: [] };
-      }
+      // Call the standardized mapFunction directly.
+      let out = grid.mapFunction(frameData, width, height, _prevFrameData) || {};
       // Store current frame for next invocation
       try { _prevFrameData = new Uint8ClampedArray(frameData); } catch (e) { _prevFrameData = frameData; }
       let cues = out.cues || [];
@@ -253,12 +239,13 @@ export async function processFrameWithState(frameData, width, height) {
     
     // Use unified logic: let grid handle cue mapping instead of legacy mapRegionsToCues
     const grid = getCurrentGrid();
-    if (!grid || typeof grid.mapFrameToCues !== 'function') {
-      structuredLog('WARN', 'Worker frame processing: No grid or mapFrameToCues available.');
+    // Use the standardized property name used by available-grids.js
+    if (!grid || typeof grid.mapFunction !== 'function') {
+      structuredLog('WARN', 'Worker frame processing: No grid or mapFunction available.');
       return { cues: [], movingRegions };
     }
-    
-    const out = grid.mapFrameToCues(frameData, width, height, _prevFrameData, { movingRegions }) || {};
+
+    const out = grid.mapFunction(frameData, width, height, _prevFrameData, { movingRegions }) || {};
     const cues = out.cues || [];
     return { cues, movingRegions };
   } catch (err) {

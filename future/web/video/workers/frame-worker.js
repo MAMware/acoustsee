@@ -1,19 +1,27 @@
 // File: web/workers/frame-worker.js
-// This is the new, intelligent version of the worker.
-// File: web/workers/frame-worker.js
 // FINAL VERSION: Smart worker with adaptive thresholding and robust messaging.
+// REVIEW: 2025-09-11=R11925: lets explain with a summary comment what this does and lets check we dont duplicate dutys with motion-detector.js and motion-worker.js
+
+// This worker processes video frames to detect moving regions using a robust flood-fill algorithm.
+// It adapts motion detection sensitivity based on region size and intensity, ensuring reliable detection
+// even in noisy conditions. The worker communicates results back to the main thread efficiently.
+// It maintains state between frames to improve detection accuracy over time. 
+
+// State variables
 
 let lastFrameData = null;
 let regionCounter = 0;
 
-// Helper: return grayscale intensity for pixel at index (0..w*h-1)
+// Helper: return grayscale intensity for pixel at index (0..w*h-1) R11925: dont we have the videoframe-helper.js for this? getGray for where? what about colorspace?
 function getGrayAt(frameArr, idx) {
     const base = idx * 4;
     if (base + 2 >= frameArr.length) return 0;
     return (frameArr[base] + frameArr[base + 1] + frameArr[base + 2]) / 3;
 }
 
-// Robust flood-fill that returns region stats
+// Robust flood-fill that returns region stats (R11925: we should explain the algorithm in a comment)
+// Uses an explicit stack to avoid recursion limits and tracks visited pixels
+// Returns region size, average intensity difference, and centroid coordinates (R11925: to check)
 function floodFill(startX, startY, width, height, frameData, lastFrameData, visited, motionThreshold) {
     const threshold = motionThreshold / 2;
     const regionId = ++regionCounter;
@@ -68,7 +76,7 @@ function floodFill(startX, startY, width, height, frameData, lastFrameData, visi
 }
 
 
-// Main message handler
+// Main message handler R11925: we should explain the message protocol in a comment (what messages we expect, what we send back)    
 self.onmessage = (e) => {
     const { frameBuffer, width, height, settings } = e.data || {};
     const frameData = new Uint8ClampedArray(frameBuffer);
@@ -84,8 +92,10 @@ self.onmessage = (e) => {
     const movingRegions = [];
     const visited = new Uint8Array(width * height);
     const motionThreshold = (settings && typeof settings.motionThreshold === 'number') ? settings.motionThreshold : 60;
-    const MIN_REGION_SIZE = 10;
-    const SIZE_BONUS_FACTOR = 1.5;
+    const MIN_REGION_SIZE = 10; //R11925: hardcoding?
+    const SIZE_BONUS_FACTOR = 1.5; // R11925: hardcoding?
+
+    // Scan through all pixels, initiating flood-fills for unvisited pixels with significant motion (R11925:check this claim) 
 
     for (let i = 0; i < width * height; i++) {
         if (!visited[i]) {
