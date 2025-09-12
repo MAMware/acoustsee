@@ -1,19 +1,29 @@
 // File: web/main.js
+// Main entry point for the web application.
+// Initializes the UI, audio, video processing, and core engine.
+// Handles configuration loading, error reporting, and user interactions.
+// Extensive use of async/await to ensure proper sequencing of initialization steps.
+// REQUIRES: modern browser with ES6+ support, Fetch API, Web Audio API, Web Workers.
+// Note: This file can be quite large due to the comprehensive initialization logic.
+// REVIEW: 2025-09-12=R12925: Check the claims from the comment above are still accurate.
+// R12925:Wouldnt the imports look better by not duplicating when they come from the same file?
+
 import { createEngine } from './core/engine.js';
 import { settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM, setDispatchEvent } from './core/context.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
-import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
-import { initializeAudio } from './audio/audio-processor.js';
+import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js'; //R12925: looks like we do much of the same here
+import { initializeAudio } from './audio/audio-processor.js'; //R12925: duplicated file source
 import AudioManager from './audio/audio-manager.js';
-import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
-import { processFrameWithState } from './video/frame-processor.js';
-import { enableFrameWorker } from './video/frame-processor.js';
+import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js'; //R12925: duplicated file source
+import { processFrameWithState } from './video/frame-processor.js'; //R12925: duplicated file source
+import { enableFrameWorker } from './video/frame-processor.js'; //R12925: duplicated file source
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
-import { initializeDebugUI } from './ui/debug-ui.js';
-import { initializeAccessibleUI } from './ui/accessible-ui.js';
+import { initializeDebugUI } from './ui/debug-ui.js'; //R12925: looks alike to deboug-panel.js 
+import { initializeAccessibleUI } from './ui/accessible-ui.js'; //R12925: i dont like this name, touch-gesture-ui.js might be better
+import { showDebugPanel } from './ui/debug-panel.js';
 
 
 const HEALTH_CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
@@ -226,6 +236,20 @@ export async function init() {
           const onMsg = await getText('audioOn').catch(() => 'Audio enabled');
           speakText(onMsg);
           try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
+
+          // --- NEW LOGIC: SHOW DEBUG PANEL ON POWER ON ---
+          // After a successful audio unlock, check if we're in debug mode
+          // via the URL query param and show the debug panel immediately.
+          try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isDebugModeNow = urlParams.get('debug') === 'true';
+            if (isDebugModeNow && typeof showDebugPanel === 'function') {
+              showDebugPanel({ waitForSplash: false });
+            }
+          } catch (e) {
+            console.warn('showDebugPanel failed or not available', e);
+          }
+          // --- END NEW LOGIC ---
 
   } catch (err) {
           // 5. --- New critical feedback logic ---
