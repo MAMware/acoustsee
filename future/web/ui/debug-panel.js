@@ -117,10 +117,12 @@ export async function showDebugPanel(options = {}) {
   } catch (e) { /* ignore malformed storage */ }
 
   try {
-    const dispatch = getDispatchEvent();
-    const logs = await dispatch('inspectState');
+  const dispatch = getDispatchEvent();
+  // Request the application state via the engine's debug command.
+  const stateQuery = await dispatch('inspectState');
+  const appState = stateQuery && stateQuery.ok ? stateQuery.result : { error: 'Failed to fetch state' };
 
-    // build header and logs container
+  // build header and logs container
     debugPanel.innerHTML = '';
 
     const header = document.createElement('div');
@@ -196,14 +198,28 @@ export async function showDebugPanel(options = {}) {
     header.appendChild(controls);
     debugPanel.appendChild(header);
 
-    const logsContainer = document.createElement('div');
-    logsContainer.id = 'debugPanelLogs';
+  const logsContainer = document.createElement('div');
+  logsContainer.id = 'debugPanelLogs';
     logsContainer.style.maxHeight = '50vh';
     logsContainer.style.overflowY = 'auto';
     logsContainer.style.padding = '6px';
     logsContainer.style.borderTop = '1px solid rgba(255,255,255,0.04)';
     logsContainer.style.display = 'block';
     debugPanel.appendChild(logsContainer);
+
+  // State inspector view (below the logs)
+  const stateView = document.createElement('pre');
+  stateView.id = 'debug-state-view';
+  stateView.style.maxHeight = '30vh';
+  stateView.style.overflow = 'auto';
+  stateView.style.background = 'rgba(0,0,0,0.06)';
+  stateView.style.padding = '8px';
+  stateView.style.marginTop = '8px';
+  stateView.style.borderRadius = '4px';
+  stateView.style.fontSize = '12px';
+  stateView.style.whiteSpace = 'pre-wrap';
+  stateView.textContent = JSON.stringify(appState, null, 2);
+  debugPanel.appendChild(stateView);
 
     // restore collapsed state if present
     try {
@@ -225,10 +241,15 @@ export async function showDebugPanel(options = {}) {
     });
   clearBtn.addEventListener('click', () => { try { clearLogs(); } catch(e){} try { const raw = localStorage.getItem('acoustsee.debugPanel'); const saved = raw ? JSON.parse(raw) : {}; saved.clearedAt = Date.now(); localStorage.setItem('acoustsee.debugPanel', JSON.stringify(saved)); } catch(e){} });
 
-    // push inspected logs into the centralized logging core
-    logs.forEach(log => {
-      try { debugLog(log.level || 'INFO', `${log.message || ''}${log.data ? ' ' + JSON.stringify(log.data) : ''}`); } catch (e) {}
-    });
+    // If the engine provided logs as part of the stateQuery, and it's an array, push
+    // them into the centralized logging core. Otherwise, just initialize the log view
+    // to show live logs moving forward.
+    try {
+      const maybeLogs = stateQuery && stateQuery.result && Array.isArray(stateQuery.result.logs) ? stateQuery.result.logs : null;
+      if (maybeLogs) {
+        maybeLogs.forEach(log => { try { debugLog(log.level || 'INFO', `${log.message || ''}${log.data ? ' ' + JSON.stringify(log.data) : ''}`); } catch (e) {} });
+      }
+    } catch (e) {}
 
     // bind the logs container to the centralized log view so future logs render here
     try { setLogView(logsContainer, { maxEntries: 2000 }); } catch (e) { /* ignore */ }

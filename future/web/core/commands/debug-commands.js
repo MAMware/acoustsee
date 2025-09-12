@@ -4,7 +4,7 @@
 import { structuredLog } from '../../utils/logging.js';
 
 export function registerDebugCommands(engine) {
-  const { registerCommandHandler, dispatch } = engine;
+  const { registerCommandHandler, dispatch, getState } = engine;
 
   // Helper to play a short test cue for debugging audio
   registerCommandHandler('playTestNote', async ({ state: s, payload }) => {
@@ -40,6 +40,18 @@ export function registerDebugCommands(engine) {
       return res;
     } catch (e) {
       structuredLog('ERROR', 'resumeAudio handler failed', { error: e?.message || String(e) });
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // --- NEW HANDLER ---
+  // Provide a simple inspectState command that returns the engine state.
+  registerCommandHandler('inspectState', async () => {
+    try {
+      const state = typeof getState === 'function' ? getState() : null;
+      return { ok: true, result: state };
+    } catch (e) {
+      structuredLog('WARN', 'inspectState failed', { error: e?.message || String(e) });
       return { ok: false, error: e?.message || String(e) };
     }
   });
