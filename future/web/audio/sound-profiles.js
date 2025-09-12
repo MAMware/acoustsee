@@ -1,12 +1,12 @@
 // File: web/audio/sound-profiles.js
-// This manifest maps an `objectType` string (from an AcousticCue) to a
+// This manifest maps an `objectType` string (from a Cue) to a
 // sound profile. The profile specifies which synthesizer to use (`playFunction`)
 // and the base parameters for that sound.
 
-// 1. Import all available synth functions that will be used in our profiles.
 import { playSineWave } from './synths/sine-wave.js';
 import { playStrings } from './synths/strings.js';
 import { playSawtoothPad } from './synths/sawtooth-pad.js';
+// As you create new synths, you will import their play functions here.
 
 /**
  * The Sound Profile Manifest.
@@ -20,7 +20,7 @@ export const soundProfileManifest = {
       duration: 0.2,
       attack: 0.01,
       release: 0.1
-      // Note: Pitch, intensity, and position will be supplied by the cue itself.
+      // Note: Pitch, intensity, and position are supplied dynamically by the cue itself.
     }
   },
 

@@ -205,47 +205,41 @@ export async function playCues(cues) {
   const context = audioManager?.context;
   if (!context || context.state !== 'running') return;
 
-  // 1. Map the incoming cues to a list of "notes" ready for the synthesizers.
-  const notes = cues.map(cue => {
-    // Look up the sound profile for this cue's objectType, falling back to default.
+  // 1. Group the incoming cues by the synthesizer function that needs to play them.
+  const notesBySynth = new Map();
+
+  const cuesToProcess = Array.isArray(cues) ? cues.slice(0, settings.maxNotes) : [];
+
+  for (const cue of cuesToProcess) {
     const profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
-    
-    // Combine the static parameters from the profile with the dynamic properties from the cue.
-    return {
-      ...profile.params,  // Base sound design (e.g., duration, attack).
+    if (!profile || typeof profile.playFunction !== 'function') continue;
+
+    if (!notesBySynth.has(profile.playFunction)) {
+      notesBySynth.set(profile.playFunction, []);
+    }
+    // Create a "note" object by combining static profile params with dynamic cue properties.
+    const note = {
+      ...profile.params,
       pitch: cue.pitch,
       intensity: cue.intensity,
       position: cue.position
     };
-  }).slice(0, settings.maxNotes); // Enforce the polyphony limit.
+    notesBySynth.get(profile.playFunction).push(note);
+  }
 
-  // 2. Group the notes by the synthesizer function they need to use.
-  // This is an optimization to call each synth only once per frame.
-  const notesBySynth = {};
-  notes.forEach((note, i) => {
-    const cueObjectType = cues[i].objectType || 'default_motion';
-    const profile = soundProfileManifest[cueObjectType] || soundProfileManifest['default_motion'];
-    const synthFunctionName = profile.playFunction.name;
-    
-    if (!notesBySynth[synthFunctionName]) {
-      notesBySynth[synthFunctionName] = [];
-    }
-    notesBySynth[synthFunctionName].push(note);
-  });
-
-  // 3. Call each synthesizer with its corresponding batch of notes.
-  for (const synthFunctionName in notesBySynth) {
-    const synthProfile = Object.values(soundProfileManifest).find(p => p.playFunction.name === synthFunctionName);
-    if (synthProfile) {
-      // Create a context object for the synth, providing necessary resources.
+  // 2. Call each synth function ONCE with the array of notes it's responsible for.
+  for (const [playFunction, notes] of notesBySynth.entries()) {
+    try {
       const synthContext = {
         audioContext: context,
         getOscillator,
-        oscillatorPool
-        // We can pass more shared resources here in the future.
+        releaseOscillator,
+        oscillatorPool,
+        masterGain
       };
-      // Dispatch the notes to the correct synth function.
-      synthProfile.playFunction(notesBySynth[synthFunctionName], synthContext);
+      playFunction(notes, synthContext);
+    } catch (e) {
+      structuredLog('ERROR', `Synth function '${playFunction.name}' failed`, { error: e?.message || String(e) });
     }
   }
 }

@@ -20,7 +20,7 @@ export function registerDebugCommands(engine) {
         structuredLog('WARN', 'playTestNote: resumeAudioContext attempt failed', { error: e?.message || String(e) });
       }
 
-      const cues = [{ id: 'test-note', pitch: payload?.pitch || 440, pan: 0, intensity: 1.0 }];
+  const cues = [{ id: 'test-note', pitch: payload?.pitch || 440, pan: 0, intensity: 1.0, objectType: 'default_motion', position: { x: 0 } }];
       await dispatch('audioPlayCues', { cues });
       return { ok: true };
     } catch (e) {
