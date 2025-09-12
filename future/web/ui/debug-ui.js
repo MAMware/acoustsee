@@ -12,6 +12,25 @@ import installConsoleIngest from './debug-ingest.js';
 
 export function initializeDebugUI(engine, DOM, options = {}) {
   const { autoOpen = true, skipDiagnostics = false } = options || {};
+
+  // --- DYNAMIC STYLESHEET LOADER ---
+  // The debug UI is responsible for loading its own styles, making it a true "plugin".
+  (function ensureDebugCss() {
+    try {
+      const cssId = 'acoustsee-debug-ui-css';
+      if (document.getElementById(cssId)) {
+        return; // Stylesheet is already loaded.
+      }
+      const link = document.createElement('link');
+      link.id = cssId;
+      link.rel = 'stylesheet';
+      link.href = './ui/debug-ui.css'; 
+      document.head.appendChild(link);
+    } catch (e) {
+      console.warn('Failed to load debug-ui.css', e);
+    }
+  })();
+
   const panel = document.createElement('div');
   panel.id = 'acoustsee-debug-panel';
   // keep debug panel visually present but avoid covering video/splash
