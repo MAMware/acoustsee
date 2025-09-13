@@ -13,9 +13,11 @@ import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERS
 
 // Add debug logs to confirm versions are loaded
 console.log('Versions loaded:', { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION });
+console.log('debug-ui module loaded');
 
 export function initializeDebugUI(engine, DOM, options = {}) {
   const { autoOpen = true, skipDiagnostics = false } = options || {};
+  console.log('initializeDebugUI called', { autoOpen, skipDiagnostics, hasDOM: !!DOM });
 
   // --- DYNAMIC STYLESHEET LOADER ---
   // The debug UI is responsible for loading its own styles, making it a true "plugin".
@@ -23,12 +25,15 @@ export function initializeDebugUI(engine, DOM, options = {}) {
     try {
       const cssId = 'acoustsee-debug-ui-css';
       if (document.getElementById(cssId)) {
+        console.log('ensureDebugCss: stylesheet already present');
         return; // Stylesheet is already loaded.
       }
       const link = document.createElement('link');
       link.id = cssId;
       link.rel = 'stylesheet';
       link.href = './ui/debug-ui.css'; 
+      link.onload = () => console.log('ensureDebugCss: debug-ui.css loaded');
+      link.onerror = (e) => console.warn('ensureDebugCss: failed to load debug-ui.css', e);
       document.head.appendChild(link);
     } catch (e) {
       console.warn('Failed to load debug-ui.css', e);
@@ -41,15 +46,24 @@ export function initializeDebugUI(engine, DOM, options = {}) {
   // Ensure the debug panel overlays the main video/content so controls are clickable.
   panel.style.zIndex = '100';
   // Note: controls are created below; query them after mounting the innerHTML.
-  DOM.uiPanelRoot.appendChild(panel);
+  // Append to provided root or fall back to sensible defaults, log which was used.
+  const root = (DOM && DOM.uiPanelRoot) || document.getElementById('ui-root') || document.getElementById('acoustsee-root') || document.body;
+  try {
+    root.appendChild(panel);
+    console.log('Debug panel appended to root', root && root.id ? root.id : root.tagName);
+  } catch (e) {
+    console.error('Failed to append debug panel to root', e);
+    try { document.body.appendChild(panel); console.log('Appended debug panel to document.body as fallback'); } catch (err) { console.error('Failed to append debug panel to body', err); }
+  }
 
   // initialize behavior (responsive layout, video z-index, stylesheet loader)
-  try { initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDiagnostics }); } catch (e) { /* non-fatal */ }
+  try { initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDiagnostics }); } catch (e) { console.warn('initializeDebugUIBehavior failed', e); }
 
   // Debug log for version badge
   console.log('Setting version badge to:', BUILD_VERSION);
 
-  panel.innerHTML = `
+  try {
+    panel.innerHTML = `
     <div class="debug-section state-section">
   <h2>State Inspector
     <span id="audio-version-badge" style="margin-left:8px;padding:2px 6px;border-radius:8px;font-size:10px;vertical-align:middle;">${BUILD_VERSION}</span>
@@ -151,6 +165,12 @@ export function initializeDebugUI(engine, DOM, options = {}) {
       <div id="debug-log-view"></div>
     </div>
   `;
+  } catch (e) {
+    console.error('Failed to set panel.innerHTML', e);
+    try {
+      panel.innerHTML = '<div style="padding:12px;color:#f66;">Debug UI failed to render. Check console.</div>';
+    } catch (err) { console.error('Fallback innerHTML also failed', err); }
+  }
 
   if (!autoOpen) {
     // Keep the panel hidden initially and avoid running heavy diagnostics.
@@ -219,6 +239,7 @@ export function initializeDebugUI(engine, DOM, options = {}) {
 
   // --- 2. POPULATE CONTROLS (populate the two-column grid and action buttons) ---
   const controlsGrid = panel.querySelector('.controls-grid');
+  if (!controlsGrid) console.error('controls-grid not found in debug panel; panel.innerHTML may have failed or been modified.');
   // create an actions container (for start/stop, test note, resume, etc.) after the grid
   let actionsContainer = panel.querySelector('#debug-controls-actions');
   if (!actionsContainer) {
@@ -227,7 +248,13 @@ export function initializeDebugUI(engine, DOM, options = {}) {
     actionsContainer.style.marginTop = '10px';
   // use a compact grid layout for action buttons
   actionsContainer.className = 'debug-actions-grid';
-  controlsGrid.parentNode.insertBefore(actionsContainer, controlsGrid.nextSibling);
+  try {
+    if (controlsGrid && controlsGrid.parentNode) controlsGrid.parentNode.insertBefore(actionsContainer, controlsGrid.nextSibling);
+    else panel.appendChild(actionsContainer);
+  } catch (e) {
+    console.error('Failed to insert actionsContainer next to controlsGrid', e);
+    try { panel.appendChild(actionsContainer); } catch (err) { console.error('Fallback append of actionsContainer failed', err); }
+  }
   }
 
   // populate selects from settings
@@ -252,7 +279,13 @@ export function initializeDebugUI(engine, DOM, options = {}) {
   const verbosityEl = panel.querySelector('#log-verbosity-select');
 
   // create and wire action buttons (moved to debug-ui.actions.js)
-  const actions = createAndWireActions(actionsContainer, { engine, DOM, getAudioDiagnostics, debugLog, settings, skipDiagnostics });
+  let actions = null;
+  try {
+    actions = createAndWireActions(actionsContainer, { engine, DOM, getAudioDiagnostics, debugLog, settings, skipDiagnostics });
+    console.log('createAndWireActions completed', { hasActions: !!actions });
+  } catch (e) {
+    console.error('createAndWireActions failed', e);
+  }
 
   // --- 3. WIRE UP INPUTS (Now adapted to the new DOM) ---
   gridTypeEl.addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
@@ -284,7 +317,12 @@ export function initializeDebugUI(engine, DOM, options = {}) {
   // --- 4. WIRE UP OUTPUTS (Now complete) ---
   const stateView = panel.querySelector('#debug-state-view');
   const logView = panel.querySelector('#debug-log-view');
-  setLogView(logView, { maxEntries: 1000 });
+  try {
+    setLogView(logView, { maxEntries: 1000 });
+    console.log('setLogView initialized');
+  } catch (e) {
+    console.error('setLogView failed', e);
+  }
 
   // subscribe to filtered/total count updates and wire clear-filter
   try {
@@ -446,7 +484,9 @@ export function initializeDebugUI(engine, DOM, options = {}) {
     } catch (e) {
       stateView.textContent = JSON.stringify(state, null, 2);
     }
+    try { console.debug('Debug UI state synced', { isProcessing: state.isProcessing, audio: getAudioDiagnostics() }); } catch (e) {}
   });
+  console.log('initializeDebugUI completed');
   setOutputCallback((level, text) => {
     const severity = ['ERROR','WARN','INFO','DEBUG','VERBOSE'];
     const lvl = String(level || '').toUpperCase();
