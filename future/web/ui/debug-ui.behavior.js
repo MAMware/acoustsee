@@ -1,3 +1,4 @@
+// REVIEW 2025-09-13=R13925: please check all comments, it seems have leftover that act like a confusing bradcrums  
 // Behavior and layout helpers for the debug UI (responsive layout, video z-index,
 // and stylesheet loader). Kept separate to reduce `debug-ui.js` size.
 export function initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDiagnostics = false } = {}) {
@@ -198,6 +199,7 @@ export function initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDi
     }
   })();
 
+  // R13925: Please check the claims from this comments til line 205.
   // Load debug UI stylesheet (extracted to keep JS small and separate concerns)
   // Styles are consolidated into `future/web/styles.css` under the `body.debug-mode` namespace.
   // The app should include that stylesheet; no dynamic loader necessary here.
@@ -206,10 +208,10 @@ export function initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDi
   // show version badge (meta tag -> global constant -> fallback)
   (function setVersionBadge() {
     try {
-      const meta = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
-      const ver = meta || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || null;
       const badge = document.getElementById('audio-version-badge');
-      if (badge) {
+      if (badge && badge.textContent === '?') {  // Only set if not already set
+        const meta = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
+        const ver = meta || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || null;
         badge.textContent = ver || 'unknown';
         badge.style.background = '#111';
         badge.style.color = '#9ad';

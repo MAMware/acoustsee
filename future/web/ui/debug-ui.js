@@ -9,6 +9,7 @@ import { createControlGroup, createSelect, createSlider, createCheckbox } from '
 import { createAndWireActions } from './debug-ui.actions.js';
 import initializeDebugUIBehavior from './debug-ui.behavior.js';
 import installConsoleIngest from './debug-ingest.js';
+import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION } from '../core/constants.js';
 
 export function initializeDebugUI(engine, DOM, options = {}) {
   const { autoOpen = true, skipDiagnostics = false } = options || {};
@@ -45,10 +46,13 @@ export function initializeDebugUI(engine, DOM, options = {}) {
   panel.innerHTML = `
     <div class="debug-section state-section">
   <h2>State Inspector
-    <span id="audio-version-badge" style="margin-left:8px;padding:2px 6px;border-radius:8px;font-size:10px;vertical-align:middle;">?</span>
+    <span id="audio-version-badge" style="margin-left:8px;padding:2px 6px;border-radius:8px;font-size:10px;vertical-align:middle;">${BUILD_VERSION}</span>
     <span id="audio-context-badge" style="margin-left:8px;padding:2px 6px;border-radius:8px;font-size:10px;vertical-align:middle;color:#c46;">No context</span>
   </h2>
       <pre id="debug-state-view">Loading state...</pre>
+      <div style="margin-top:8px;font-size:11px;color:#aaa;">
+        Versions: Audio ${AUDIO_VERSION} | Video ${VIDEO_VERSION} | UI ${UI_VERSION} | Lang ${LANGUAGES_VERSION}
+      </div>
     </div>
     <div class="debug-section controls-section">
       <h2>Controls</h2>
