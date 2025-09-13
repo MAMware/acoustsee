@@ -11,6 +11,9 @@ import initializeDebugUIBehavior from './debug-ui.behavior.js';
 import installConsoleIngest from './debug-ingest.js';
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION } from '../core/constants.js';
 
+// Add debug logs to confirm versions are loaded
+console.log('Versions loaded:', { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION });
+
 export function initializeDebugUI(engine, DOM, options = {}) {
   const { autoOpen = true, skipDiagnostics = false } = options || {};
 
@@ -42,6 +45,9 @@ export function initializeDebugUI(engine, DOM, options = {}) {
 
   // initialize behavior (responsive layout, video z-index, stylesheet loader)
   try { initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDiagnostics }); } catch (e) { /* non-fatal */ }
+
+  // Debug log for version badge
+  console.log('Setting version badge to:', BUILD_VERSION);
 
   panel.innerHTML = `
     <div class="debug-section state-section">
