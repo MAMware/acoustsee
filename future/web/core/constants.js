@@ -14,5 +14,5 @@ export const LOG_LEVELS = {
 export const BUILD_VERSION = '0.8.2-modularUI';
 export const AUDIO_VERSION = '0.7-AcousticCues';
 export const VIDEO_VERSION = '0.4-grids';
-export const UI_VERSION = '0.5-modularUI';
+export const UI_VERSION = '0.5.4-debugUI';
 export const LANGUAGES_VERSION = '0.2-spaEng';

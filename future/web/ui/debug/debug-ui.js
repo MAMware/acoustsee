@@ -30,7 +30,7 @@ export function initializeDebugUI(engine, DOM, options = {}) {
 			const link = document.createElement('link');
 			link.id = cssId;
 			link.rel = 'stylesheet';
-			link.href = './debug-ui.css'; 
+			link.href = './ui/debug/debug-ui.css'; 
 			link.onload = () => console.log('ensureDebugCss: debug-ui.css loaded');
 			link.onerror = (e) => console.warn('ensureDebugCss: failed to load debug-ui.css', e);
 			document.head.appendChild(link);
@@ -418,7 +418,6 @@ export function initializeDebugUI(engine, DOM, options = {}) {
 	} catch (e) {}
 
 	// wire search/filter to debug-log API (setFilterText/setFilterLevel)
-	// wire search/filter to debug-log API (setFilterText/setFilterLevel)
 	try {
 		// debounce helper to avoid frequent re-render while typing
 		function debounce(fn, wait = 150) {
@@ -503,7 +502,3 @@ export function initializeDebugUI(engine, DOM, options = {}) {
 	});
 }
 
-// --- Helper functions (These should all be present and correct) ---
-// Helper factories are now provided by ./debug-ui.controls.js
-
-// (start/stop handler lives inside initializeDebugUI to keep scope correct)
