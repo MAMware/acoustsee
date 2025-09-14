@@ -21,8 +21,8 @@ import { processFrameWithState } from './video/frame-processor.js'; //R12925: du
 import { enableFrameWorker } from './video/frame-processor.js'; //R12925: duplicated file source
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
-import { initializeDebugUI } from './ui/debug-ui.js'; //R12925: looks alike to deboug-panel.js 
-import { initializeAccessibleUI } from './ui/accessible-ui.js'; //R12925: i dont like this name, touch-gesture-ui.js might be better
+import { initializeDebugUI } from './ui/debug/debug-ui.js';
+import { initializeAccessibleUI } from './ui/touch-gestures/touch-gestures-ui.js';
 import { showDebugPanel } from './ui/debug-panel.js';
 
 

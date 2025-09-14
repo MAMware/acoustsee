@@ -1,5 +1,5 @@
 import { createButton } from './debug-ui.controls.js';
-import { getWorkerStats } from '../debug/worker-monitor.js';
+import { getWorkerStats } from '../../debug/worker-monitor.js';
 import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';
 
 // Create action buttons and wire up their event handlers. Keeps debug-ui.js smaller.
@@ -270,3 +270,4 @@ export function createAndWireActions(actionsContainer, deps) {
 
   return { startStopBtn, emitTestNoteBtn, resumeAudioBtn, logAudioDiagsBtn, deviceDiagsBtn, audioTestBtn, saveBtn, loadBtn };
 }
+// End of createAndWireActions implementation

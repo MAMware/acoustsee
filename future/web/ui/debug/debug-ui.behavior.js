@@ -1,4 +1,3 @@
-// REVIEW 2025-09-13=R13925: please check all comments, it seems have leftover that act like a confusing bradcrums  
 // Behavior and layout helpers for the debug UI (responsive layout, video z-index,
 // and stylesheet loader). Kept separate to reduce `debug-ui.js` size.
 export function initializeDebugUIBehavior({ panel, DOM, settings, engine, skipDiagnostics = false } = {}) {

@@ -1,6 +1,4 @@
-// File: web/ui/accessible-ui.js
-// The Blind User UI ("Core Experience")
-
+// The Blind/User Accessible UI moved into touch-gestures namespace
 export function initializeAccessibleUI(engine, DOM) {
   console.log('Initializing Accessible UI...');
   
@@ -146,3 +144,6 @@ export function initializeAccessibleUI(engine, DOM) {
     mainArea.addEventListener('pointerup', handlePointerUp);
     createSwipeDetector(mainArea, handleSwipe);
 }
+// Moved from accessible-ui.js to touch-gestures/touch-gestures-ui.js
+// Export the local implementation (moved from accessible-ui.js) so we don't depend on the legacy root file.
+export { initializeAccessibleUI as initializeTouchGesturesUI } from '../touch-gestures/touch-gestures-ui.js';
