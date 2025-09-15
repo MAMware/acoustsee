@@ -23,7 +23,6 @@ import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { initializeDebugUI } from './ui/debug/debug-ui.js';
 import { initializeAccessibleUI } from './ui/touch-gestures/touch-gestures-ui.js';
-import { showDebugPanel } from './ui/debug-panel.js';
 
 
 const HEALTH_CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
@@ -237,17 +236,18 @@ export async function init() {
           speakText(onMsg);
           try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
 
-          // --- NEW LOGIC: SHOW DEBUG PANEL ON POWER ON ---
+          // R15926 This was a root cause for major lost time time refactoring --- (NEW LOGIC: SHOW DEBUG PANEL ON POWER ON ---)
           // After a successful audio unlock, check if we're in debug mode
           // via the URL query param and show the debug panel immediately.
           try {
             const urlParams = new URLSearchParams(window.location.search);
             const isDebugModeNow = urlParams.get('debug') === 'true';
-            if (isDebugModeNow && typeof showDebugPanel === 'function') {
-              showDebugPanel({ waitForSplash: false });
+            if (isDebugModeNow && typeof initializeDebugUI === 'function') {
+              // initializeDebugUI was already called in init() in passive mode; show by calling with autoOpen true
+              try { initializeDebugUI(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}
             }
           } catch (e) {
-            console.warn('showDebugPanel failed or not available', e);
+            console.warn('showing debugUI failed', e);
           }
           // --- END NEW LOGIC ---
 

@@ -1,27 +1,18 @@
-// File: web/ui/debug/debug-ui.js (Consolidated and Final Version)
-// This single file contains all the logic for the Debug UI component.
+// File: web/ui/debug/debug-ui.js (Definitive Consolidated Version)
 
 import { settings } from '../../core/state.js';
 import { setOutputCallback } from '../../utils/core-logger.js';
-import { enableFrameWorker, enableWorkerTransfer } from '../../video/frame-processor.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
-import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../debug-log.js';
-import { getWorkerStats } from '../../debug/worker-monitor.js';
-import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';
+import { debugLog, setLogView } from '../debug-log.js';
+import { createAndWireActions } from './debug-ui.actions.js';
+import { initializeDebugUIBehavior } from './debug-ui.behavior.js';
+import { BUILD_VERSION } from '../../core/constants.js';
 
-// --- Helper Factories (from former debug-ui.controls.js) ---
-function createButton(label) {
-  const group = document.createElement('div');
-  group.className = 'control-group';
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.textContent = label;
-  group.appendChild(btn);
-  return group;
-}
+console.log('debug-ui module loaded. Version:', BUILD_VERSION);
 
 export function initializeDebugUI(engine, DOM, options = {}) {
-  const { autoOpen = true, skipDiagnostics = false } = options || {};
+  const { autoOpen = false, skipDiagnostics = false } = options || {};
+  console.log('initializeDebugUI called', { autoOpen, skipDiagnostics });
 
   const panel = document.createElement('div');
   panel.id = 'acoustsee-debug-panel';
@@ -29,17 +20,37 @@ export function initializeDebugUI(engine, DOM, options = {}) {
   const root = DOM.uiPanelRoot || document.body;
   root.appendChild(panel);
 
-  if (!autoOpen) {
-    panel.style.display = 'none';
+  // Start with the panel hidden. It will be shown by a gesture or if autoOpen is true.
+  panel.style.display = 'none';
+
+  // Function to actually show the panel
+  function showPanel() {
+    if (panel.style.display !== 'none') return; // Already visible
+    console.log('Showing debug panel.');
+    panel.style.display = 'flex';
   }
 
-  // --- HTML STRUCTURE WITH data-action ATTRIBUTES ---
+  // If autoOpen is true, show it immediately. Otherwise, set up a gesture.
+  if (autoOpen) {
+    showPanel();
+  } else {
+    // Set up a long-press gesture on the main container to reveal the panel.
+    let pressTimer = null;
+    const mainContainer = DOM.mainContainer || document.body;
+    mainContainer.addEventListener('pointerdown', () => {
+      pressTimer = setTimeout(showPanel, 800);
+    });
+    mainContainer.addEventListener('pointerup', () => clearTimeout(pressTimer));
+    mainContainer.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+  }
+
+  // --- HTML STRUCTURE ---
   try {
     panel.innerHTML = `
       <div class="debug-section state-section">
         <h2>State Inspector
-          <span id="audio-version-badge"></span>
-          <span id="audio-context-badge"></span>
+          <span id="audio-version-badge" title="Build Version">v${BUILD_VERSION}</span>
+          <span id="audio-context-badge">...</span>
         </h2>
         <pre id="debug-state-view">Loading state...</pre>
       </div>
@@ -110,148 +121,16 @@ export function initializeDebugUI(engine, DOM, options = {}) {
         window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
     })();
 
-  // --- CONSOLIDATED ACTIONS ---
-  (function createAndWireActions() {
-    const actionsContainer = panel.querySelector('.debug-actions-grid');
-    if (!actionsContainer) return;
-
-    actionsContainer.append(
-      createButton('Start/Stop Processing'),
-      createButton('Emit Test Note'),
-      createButton('Resume Audio'),
-      createButton('Save Settings'),
-      createButton('Load Settings'),
-      createButton('Worker Explorer')
-    );
-
-    // Delegated action handling using data-action attributes
-    actionsContainer.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('button[data-action]');
-      if (!btn || !actionsContainer.contains(btn)) return;
-      const action = btn.getAttribute('data-action');
-      switch (action) {
-        case 'toggleProcessing':
-          engine.dispatch('toggleProcessing', { videoEl: DOM.videoFeed, canvasEl: DOM.frameCanvas });
-          break;
-        case 'playTestNote':
-          engine.dispatch('playTestNote', { pitch: 440 });
-          break;
-        case 'resumeAudio':
-          engine.dispatch('resumeAudio');
-          break;
-        case 'saveSettings':
-          engine.dispatch('saveSettings');
-          break;
-        case 'loadSettings':
-          engine.dispatch('loadSettings');
-          break;
-        // 'toggleWorkerExplorer' is handled by the explicit workerExplorerBtn handler below
-      }
-    });
-        
-    // Wire Controls
-    const gridTypeEl = panel.querySelector('#grid-type-select');
-    settings.availableGrids.forEach(g => { const opt = document.createElement('option'); opt.value = g.id; opt.textContent = g.id; gridTypeEl.appendChild(opt); });
-    gridTypeEl.addEventListener('change', (e) => engine.dispatch('setGridType', { gridType: e.target.value }));
-
-    const synthEngineEl = panel.querySelector('#synth-engine-select');
-    settings.availableEngines.forEach(e => { const opt = document.createElement('option'); opt.value = e.id; opt.textContent = e.id; synthEngineEl.appendChild(opt); });
-    synthEngineEl.addEventListener('change', (e) => engine.dispatch('setSynthEngine', { synthEngine: e.target.value }));
-
-    const maxNotesEl = panel.querySelector('#max-notes-slider');
-    const maxNotesValueEl = panel.querySelector('#max-notes-value');
-    maxNotesEl.addEventListener('input', (e) => { engine.dispatch('setMaxNotes', { maxNotes: e.target.value }); maxNotesValueEl.textContent = e.target.value; });
-
-    const motionEl = panel.querySelector('#motion-threshold-slider');
-    const motionValueEl = panel.querySelector('#motion-threshold-value');
-    motionEl.addEventListener('input', (e) => { engine.dispatch('setMotionThreshold', { motionThreshold: e.target.value }); motionValueEl.textContent = e.target.value; });
-
-    panel.querySelector('#auto-fps-checkbox').addEventListener('change', e => engine.dispatch('setAutoFPS', { enabled: e.target.checked }));
-    panel.querySelector('#enable-frame-worker-checkbox').addEventListener('change', e => enableFrameWorker(e.target.checked));
-
-    // Video Preview (enhanced)
-    const vp = document.createElement('div');
-    vp.style.cssText = 'border:1px solid #333;padding:8px;margin-top:10px;background:#0b0b0b;border-radius:6px;';
-    vp.innerHTML = `<div style="font-size:13px;font-weight:600;margin-bottom:6px;">Video Preview</div>`;
-    const videoWrap = document.createElement('div');
-    videoWrap.style.position = 'relative'; videoWrap.style.height = '140px'; videoWrap.style.background = '#000';
-    const preview = document.createElement('video');
-    preview.autoplay = true; preview.muted = true; preview.playsInline = true;
-    preview.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-    if (DOM.videoFeed && DOM.videoFeed.srcObject) preview.srcObject = DOM.videoFeed.srcObject;
-    videoWrap.appendChild(preview);
-    vp.appendChild(videoWrap);
-    actionsContainer.appendChild(vp);
-
-    // create a named worker explorer panel (toggled via data-action)
-    let explorerPanel = panel.querySelector('#worker-explorer-panel');
-    if (!explorerPanel) {
-      explorerPanel = document.createElement('div');
-      explorerPanel.id = 'worker-explorer-panel';
-      explorerPanel.style.display = 'none';
-      explorerPanel.style.marginTop = '10px';
-      actionsContainer.appendChild(explorerPanel);
+  // --- Wire actions via the modular actions module ---
+  try {
+    const actionsModule = createAndWireActions(panel, engine, DOM, skipDiagnostics);
+    // store dispose handle on the panel for potential teardown
+    if (actionsModule && typeof actionsModule.dispose === 'function') {
+      panel.__debugActionsDispose = actionsModule.dispose;
     }
-
-    const multiWrapper = document.createElement('div');
-    multiWrapper.style.cssText = 'padding:8px;border:1px solid #333;background:#070707;border-radius:6px;';
-    const legend = document.createElement('div');
-    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;font-size:12px;';
-    const multiCanvas = document.createElement('canvas');
-    scaleCanvasForDPR(multiCanvas, 360, 96);
-    multiWrapper.appendChild(legend);
-    multiWrapper.appendChild(multiCanvas);
-    explorerPanel.appendChild(multiWrapper);
-
-    const historyMap = new Map(); // id -> { ring, name }
-    const MAX_SAMPLES = 60;
-
-    function ensureSeries(id, name) {
-      if (!historyMap.has(id)) {
-        historyMap.set(id, { ring: new RingBuffer(MAX_SAMPLES), name: name || id });
-        // Update legend
-        const item = document.createElement('div');
-        const color = `hsl(${(historyMap.size * 137) % 360}, 72%, 58%)`;
-        item.innerHTML = `<span style="width:10px;height:10px;background:${color};display:inline-block;margin-right:4px;"></span>${name}`;
-        legend.appendChild(item);
-      }
-      return historyMap.get(id);
-    }
-
-    function renderAll() {
-      const seriesMap = new Map();
-      historyMap.forEach((v, k) => seriesMap.set(k, v.ring.toArray()));
-      drawMultiSparkline(multiCanvas, seriesMap, {});
-    }
-    const requestRender = makeThrottledRenderer(renderAll, 2);
-
-    function syncFromRegistry() {
-      const stats = getWorkerStats();
-      if (!stats) return;
-      stats.forEach(s => {
-        const entry = ensureSeries(s.id, s.name);
-        if(s.last) entry.ring.push(s.last.util ?? 0);
-      });
-      requestRender();
-    }
-
-    let explorerInterval = null;
-    // explicit button reference: find the button with data-action toggleWorkerExplorer
-    const workerExplorerBtn = panel.querySelector('button[data-action="toggleWorkerExplorer"]');
-    if (workerExplorerBtn) {
-      workerExplorerBtn.addEventListener('click', () => {
-        if (explorerPanel.style.display === 'none') {
-          explorerPanel.style.display = 'block';
-          syncFromRegistry(); // Initial render
-          explorerInterval = setInterval(syncFromRegistry, 500);
-        } else {
-          explorerPanel.style.display = 'none';
-          if (explorerInterval) clearInterval(explorerInterval);
-          explorerInterval = null;
-        }
-      });
-    }
-  })();
+  } catch (e) {
+    console.error('initializeDebugUI: createAndWireActions failed', e);
+  }
 
     // --- OUTPUT WIRING ---
     const stateView = panel.querySelector('#debug-state-view');
