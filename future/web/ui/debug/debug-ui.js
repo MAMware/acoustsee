@@ -49,32 +49,23 @@ export function initializeDebugUI(engine, DOM, options = {}) {
     panel.innerHTML = `
       <div class="debug-section state-section">
         <h2>State Inspector
-          <span id="audio-version-badge" title="Build Version">v${BUILD_VERSION}</span>
-          <span id="audio-context-badge">...</span>
+          <span id="audio-version-badge" title="Build Version"></span>
         </h2>
         <pre id="debug-state-view">Loading state...</pre>
+        <div id="version-footer"></div>
       </div>
       <div class="debug-section controls-section">
         <h2>Controls</h2>
         <div class="controls-grid">
-          <div class="controls-col-left">
-            <div class="control-row"><label>Grid Type<select id="grid-type-select"></select></label></div>
-            <div class="control-row"><label>Max Notes<input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span></label></div>
-             <div class="control-row"><label><input id="auto-fps-checkbox" type="checkbox"> Auto FPS</label></div>
-          </div>
-          <div class="controls-col-right">
-            <div class="control-row"><label>Synth Engine<select id="synth-engine-select"></select></label></div>
-            <div class="control-row"><label>Motion Threshold<input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span></label></div>
-            <div class="control-row"><label><input id="enable-frame-worker-checkbox" type="checkbox"> Enable Frame Worker</label></div>
-          </div>
+          <div class="control-row"><label>Grid Type<select id="grid-type-select"></select></label></div>
+          <div class="control-row"><label>Synth Engine<select id="synth-engine-select"></select></label></div>
+          <div class="control-row"><label>Max Notes<input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span></label></div>
+          <div class="control-row"><label>Motion Threshold<input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span></label></div>
         </div>
-        <div class="debug-actions-grid">
-          <div class="control-group"><button data-action="toggleProcessing">Start/Stop Processing</button></div>
-          <div class="control-group"><button data-action="playTestNote">Emit Test Note</button></div>
-          <div class="control-group"><button data-action="resumeAudio">Resume Audio</button></div>
-          <div class="control-group"><button data-action="saveSettings">Save Settings</button></div>
-          <div class="control-group"><button data-action="loadSettings">Load Settings</button></div>
-          <div class="control-group"><button data-action="toggleWorkerExplorer">Worker Explorer</button></div>
+        <div class="debug-actions-grid"></div>
+        <div id="worker-explorer-container" style="display:none; margin-top:8px;">
+          <div id="worker-explorer-legend"></div>
+          <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
         </div>
       </div>
       <div class="debug-section logs-section">
@@ -120,6 +111,82 @@ export function initializeDebugUI(engine, DOM, options = {}) {
         window.addEventListener('resize', applyResponsiveLayout, { passive: true });
         window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
     })();
+
+    // --- RESTORE VERSION FOOTER ---
+    try {
+      const versionBadge = panel.querySelector('#audio-version-badge');
+      const versionFooter = panel.querySelector('#version-footer');
+      const metaVer = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
+      const ver = metaVer || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || BUILD_VERSION;
+      if (versionBadge) versionBadge.textContent = `v${ver}`;
+      if (versionFooter) versionFooter.textContent = `Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || ver}`;
+    } catch (e) {}
+
+    // --- WIRE WORKER EXPLORER CANVAS ---
+    try {
+      const explorerContainer = panel.querySelector('#worker-explorer-container');
+      const explorerLegend = panel.querySelector('#worker-explorer-legend');
+      const explorerCanvas = panel.querySelector('#worker-explorer-canvas');
+      if (explorerContainer && explorerCanvas) {
+        // Resize for DPR
+        try { scaleCanvasForDPR(explorerCanvas, explorerCanvas.width || 360, explorerCanvas.height || 96); } catch (e) {}
+        // Basic polling/render function
+        let explorerInterval = null;
+        const historyMap = new Map();
+        const MAX_SAMPLES = 60;
+        function ensureSeries(id, name) {
+          if (!historyMap.has(id)) {
+            historyMap.set(id, { ring: new RingBuffer(MAX_SAMPLES), name: name || id });
+            if (explorerLegend) {
+              const item = document.createElement('div');
+              const color = `hsl(${(historyMap.size * 137) % 360}, 72%, 58%)`;
+              item.innerHTML = `<span style="width:10px;height:10px;background:${color};display:inline-block;margin-right:4px;"></span>${name}`;
+              explorerLegend.appendChild(item);
+            }
+          }
+          return historyMap.get(id);
+        }
+        function renderAll() {
+          const seriesMap = new Map();
+          historyMap.forEach((v, k) => seriesMap.set(k, v.ring.toArray()));
+          drawMultiSparkline(explorerCanvas, seriesMap, {});
+        }
+        function syncFromRegistry() {
+          try {
+            const stats = getWorkerStats();
+            if (!stats) return;
+            stats.forEach(s => {
+              const entry = ensureSeries(s.id, s.name);
+              if (s.last) entry.ring.push(s.last.util ?? 0);
+            });
+            renderAll();
+          } catch (e) {}
+        }
+        // toggle when buttons are clicked (the actions module wires the action button)
+        panel.__debugExplorerStart = () => { if (!explorerInterval) { syncFromRegistry(); explorerInterval = setInterval(syncFromRegistry, 500); } };
+        panel.__debugExplorerStop = () => { if (explorerInterval) { clearInterval(explorerInterval); explorerInterval = null; } };
+      }
+    } catch (e) {}
+
+    // --- FIX: link video preview to DOM.videoFeed stream if present ---
+    try {
+      const previewEl = panel.querySelector('.debug-video-preview video') || panel.querySelector('#debug-video-preview');
+      if (previewEl && DOM && DOM.videoFeed) {
+        // Update immediately if stream is already present
+        if (DOM.videoFeed.srcObject && previewEl.srcObject !== DOM.videoFeed.srcObject) {
+          previewEl.srcObject = DOM.videoFeed.srcObject;
+        }
+        // Observe the application's video element for stream assignment
+        try {
+          const obs = new MutationObserver(() => {
+            try { if (DOM.videoFeed.srcObject && previewEl.srcObject !== DOM.videoFeed.srcObject) previewEl.srcObject = DOM.videoFeed.srcObject; } catch (e) {}
+          });
+          obs.observe(DOM.videoFeed, { attributes: true });
+          // store observer for potential teardown
+          panel.__videoPreviewObserver = obs;
+        } catch (e) {}
+      }
+    } catch (e) {}
 
   // --- Wire actions via the modular actions module ---
   try {

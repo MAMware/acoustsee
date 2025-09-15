@@ -128,32 +128,40 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
     console.error('createAndWireActions: error creating video preview', e);
   }
 
-  // Worker explorer panel and toggler
+  // Prefer the explorer container created by the coordinator markup (avoid duplicate IDs)
   let createdExplorer = false;
-  const explorerPanel = panel.querySelector('#worker-explorer-panel') || (function createExplorer() {
-    const el = document.createElement('div');
-    el.id = 'worker-explorer-panel';
-    el.style.display = 'none';
-    el.style.marginTop = '10px';
-    actionsContainer.appendChild(el);
-    createdNodes.push(el);
+  let explorerPanel = panel.querySelector('#worker-explorer-container');
+  if (!explorerPanel) {
+    // Fallback: create an internal explorerPanel if coordinator didn't provide one
+    explorerPanel = document.createElement('div');
+    explorerPanel.id = 'worker-explorer-panel';
+    explorerPanel.style.display = 'none';
+    explorerPanel.style.marginTop = '10px';
+    actionsContainer.appendChild(explorerPanel);
+    createdNodes.push(explorerPanel);
     createdExplorer = true;
-    return el;
-  })();
+  }
 
   // build canvas area inside explorer if empty
   let multiCanvas;
   try {
-    const multiWrapper = document.createElement('div');
-    multiWrapper.style.cssText = 'padding:8px;border:1px solid #333;background:#070707;border-radius:6px;';
-    const legend = document.createElement('div');
-    legend.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;font-size:12px;';
-    multiCanvas = document.createElement('canvas');
-    scaleCanvasForDPR(multiCanvas, 360, 96);
-    multiWrapper.appendChild(legend);
-    multiWrapper.appendChild(multiCanvas);
-    explorerPanel.appendChild(multiWrapper);
-    createdNodes.push(multiWrapper);
+    // Try to reuse coordinator-provided legend and canvas if present
+    const legend = explorerPanel.querySelector('#worker-explorer-legend') || (function () {
+      const d = document.createElement('div');
+      d.id = 'worker-explorer-legend';
+      explorerPanel.appendChild(d);
+      createdNodes.push(d);
+      return d;
+    })();
+    multiCanvas = explorerPanel.querySelector('#worker-explorer-canvas') || (function () {
+      const c = document.createElement('canvas');
+      c.id = 'worker-explorer-canvas';
+      c.width = 360; c.height = 96;
+      explorerPanel.appendChild(c);
+      createdNodes.push(c);
+      return c;
+    })();
+    try { scaleCanvasForDPR(multiCanvas, multiCanvas.width || 360, multiCanvas.height || 96); } catch (e) {}
 
     const historyMap = new Map();
     const MAX_SAMPLES = 60;

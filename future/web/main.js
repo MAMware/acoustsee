@@ -21,8 +21,9 @@ import { processFrameWithState } from './video/frame-processor.js'; //R12925: du
 import { enableFrameWorker } from './video/frame-processor.js'; //R12925: duplicated file source
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
-import { initializeDebugUI } from './ui/debug/debug-ui.js';
-import { initializeAccessibleUI } from './ui/touch-gestures/touch-gestures-ui.js';
+// UI modules are loaded dynamically below to ensure only one UI initializes
+// at runtime (debug vs accessible). Dynamic import prevents duplicate IDs
+// and avoids initializing both UIs in the same session.
 
 
 const HEALTH_CHECK_INTERVAL_MS = 60 * 1000; // Check every 60 seconds
@@ -127,21 +128,27 @@ export async function init() {
     const engine = createEngine();
     setDispatchEvent(engine.dispatch);
 
-    // --- UI LOADER LOGIC ---
+    // --- UI LOADER LOGIC (dynamic import to avoid duplicate initialization) ---
     const urlParams = new URLSearchParams(window.location.search);
     const isDebugMode = urlParams.get('debug') === 'true';
-
     if (isDebugMode) {
       document.body.classList.add('debug-mode');
-      // In debug mode via URL param, instantiate the debug UI in a passive state:
-      // - autoOpen: false -> don't show heavy panel UI by default
-      // - skipDiagnostics: true -> avoid running device/audio diagnostics automatically
-      initializeDebugUI(engine, DOM, { autoOpen: false, skipDiagnostics: true });
-      structuredLog('INFO', 'Initialized in passive Debug UI mode.');
+      try {
+        const mod = await import('./ui/debug/debug-ui.js');
+        if (mod && typeof mod.initializeDebugUI === 'function') {
+          mod.initializeDebugUI(engine, DOM, { autoOpen: false, skipDiagnostics: true });
+          structuredLog('INFO', 'Initialized in passive Debug UI mode.');
+        }
+      } catch (e) { structuredLog('WARN', 'Failed to load debug UI', { error: e?.message || String(e) }); }
     } else {
       document.body.classList.add('accessible-mode');
-      initializeAccessibleUI(engine, DOM);
-      structuredLog('INFO', 'Initialized in Accessible UI mode.');
+      try {
+        const mod = await import('./ui/touch-gestures/touch-gestures-ui.js');
+        if (mod && typeof mod.initializeAccessibleUI === 'function') {
+          mod.initializeAccessibleUI(engine, DOM);
+          structuredLog('INFO', 'Initialized in Accessible UI mode.');
+        }
+      } catch (e) { structuredLog('WARN', 'Failed to load accessible UI', { error: e?.message || String(e) }); }
     }
     
     // --- Start frame worker if configured to run by default ---

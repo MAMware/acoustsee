@@ -60,3 +60,18 @@ body.debug-mode #ui-panel-root {
 #acoustsee-debug-panel .control-group button:hover { background:#3498db; }
 #acoustsee-debug-panel .debug-actions-grid { display:grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap:8px; align-items:start; margin-top:8px; }
 @media (max-width:420px) { #acoustsee-debug-panel .debug-actions-grid { grid-template-columns: 1fr; } }
+
+/* Two-column grid for control sliders and selects */
+#acoustsee-debug-panel .controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+#acoustsee-debug-panel #version-footer {
+  font-size: 10px;
+  color: #95a5a6;
+  margin-top: 8px;
+  border-top: 1px solid #34495e;
+  padding-top: 4px;
+}
