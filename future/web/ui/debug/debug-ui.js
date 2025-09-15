@@ -145,10 +145,7 @@ export function initializeDebugUI(engine, DOM, options = {}) {
         case 'loadSettings':
           engine.dispatch('loadSettings');
           break;
-        case 'toggleWorkerExplorer':
-          const explorer = panel.querySelector('#worker-explorer-panel');
-          if (explorer) explorer.style.display = explorer.style.display === 'none' ? 'block' : 'none';
-          break;
+        // 'toggleWorkerExplorer' is handled by the explicit workerExplorerBtn handler below
       }
     });
         
@@ -239,17 +236,21 @@ export function initializeDebugUI(engine, DOM, options = {}) {
     }
 
     let explorerInterval = null;
-    workerExplorerBtn.addEventListener('click', () => {
-      if (explorerPanel.style.display === 'none') {
-        explorerPanel.style.display = 'block';
-        syncFromRegistry(); // Initial render
-        explorerInterval = setInterval(syncFromRegistry, 500);
-      } else {
-        explorerPanel.style.display = 'none';
-        if (explorerInterval) clearInterval(explorerInterval);
-        explorerInterval = null;
-      }
-    });
+    // explicit button reference: find the button with data-action toggleWorkerExplorer
+    const workerExplorerBtn = panel.querySelector('button[data-action="toggleWorkerExplorer"]');
+    if (workerExplorerBtn) {
+      workerExplorerBtn.addEventListener('click', () => {
+        if (explorerPanel.style.display === 'none') {
+          explorerPanel.style.display = 'block';
+          syncFromRegistry(); // Initial render
+          explorerInterval = setInterval(syncFromRegistry, 500);
+        } else {
+          explorerPanel.style.display = 'none';
+          if (explorerInterval) clearInterval(explorerInterval);
+          explorerInterval = null;
+        }
+      });
+    }
   })();
 
     // --- OUTPUT WIRING ---
