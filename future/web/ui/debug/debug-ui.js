@@ -3,7 +3,7 @@
 import { settings } from '../../core/state.js';
 import { setOutputCallback } from '../../utils/core-logger.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
-import { debugLog, setLogView } from '../debug-log.js';
+import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../debug-log.js';
 import { createAndWireActions } from './debug-ui.actions.js';
 import { initializeDebugUIBehavior } from './debug-ui.behavior.js';
 import { BUILD_VERSION } from '../../core/constants.js';

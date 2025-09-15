@@ -242,6 +242,19 @@ export function createEngine() {
   // Register handlers from external modules
   registerTouchGestureCommands(engineInstance); // <-- NEW REGISTRATION CALL
 
+  // Restore audioPlayCues handler (was accidentally removed during refactor)
+  registerCommandHandler('audioPlayCues', async ({ state: s, payload }) => {
+    try {
+      const cues = payload?.cues || [];
+      if (!Array.isArray(cues) || cues.length === 0) return { played: false };
+      await audioProcessor.playCues(cues);
+      return { played: true, count: cues.length };
+    } catch (e) {
+      structuredLog('WARN', 'audioPlayCues handler failed', { error: e?.message || String(e) });
+      return { played: false };
+    }
+  });
+
   // Register media-related command handlers under a namespaced key to avoid
   // colliding with the engine's public wrapper handlers. Media module will
   // register `startProcessing`, `stopProcessing`, `processFrame` which we

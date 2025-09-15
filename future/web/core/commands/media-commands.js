@@ -23,7 +23,14 @@ export function registerMediaCommands(engine) {
   registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
     try {
       const { videoEl, canvasEl } = payload || {};
-      await mediaStartCamera(videoEl, { facingMode: 'environment' });
+      try {
+        await mediaStartCamera(videoEl, { facingMode: 'environment' });
+      } catch (cameraError) {
+        structuredLog('ERROR', 'command.startProcessing: mediaStartCamera failed', { error: cameraError?.message || String(cameraError) });
+        // Attempt best-effort user notification if engine dispatch is available
+        try { if (engine && typeof engine.dispatch === 'function') engine.dispatch('announceMessage', { message: 'Camera failed to start.' }); } catch (_) {}
+        throw cameraError;
+      }
       if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
 
       _videoElForScheduler = videoEl;

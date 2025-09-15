@@ -39,8 +39,11 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         engine.dispatch && engine.dispatch('loadSettings');
         break;
       case 'toggleWorkerExplorer':
-        // Handled by explicit listener below if present; keep as fallback
-        toggleExplorer();
+        // Handled by explicit listener below if present; as a safe fallback trigger the button if it exists
+        try {
+          const btn = panel.querySelector('button[data-action="toggleWorkerExplorer"]');
+          if (btn) btn.click();
+        } catch (e) {}
         break;
       default:
         break;
