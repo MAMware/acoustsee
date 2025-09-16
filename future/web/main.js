@@ -136,6 +136,11 @@ export async function init() {
       try {
         const mod = await import('./ui/debug/debug-ui.js');
         if (mod && typeof mod.initializeDebugUI === 'function') {
+          // Expose the initializer globally so other runtime code (for example
+          // the power-on gesture) can open the debug UI after user gestures
+          // such as unlocking audio. This avoids a ReferenceError when later
+          // attempting to call initializeDebugUI from a different scope.
+          try { window.initializeDebugUI = mod.initializeDebugUI; } catch (e) {}
           mod.initializeDebugUI(engine, DOM, { autoOpen: false, skipDiagnostics: true });
           structuredLog('INFO', 'Initialized in passive Debug UI mode.');
         }
@@ -249,9 +254,10 @@ export async function init() {
           try {
             const urlParams = new URLSearchParams(window.location.search);
             const isDebugModeNow = urlParams.get('debug') === 'true';
-            if (isDebugModeNow && typeof initializeDebugUI === 'function') {
-              // initializeDebugUI was already called in init() in passive mode; show by calling with autoOpen true
-              try { initializeDebugUI(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}
+            // Prefer the globally exposed initializer if available (set during module import)
+            const globalInit = window.initializeDebugUI || null;
+            if (isDebugModeNow && typeof globalInit === 'function') {
+              try { globalInit(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}
             }
           } catch (e) {
             console.warn('showing debugUI failed', e);
