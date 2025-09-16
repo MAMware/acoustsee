@@ -1,9 +1,7 @@
-// File: web/ui/debug/debug-ui.behavior.js
-// Handles the visual behavior of the debug panel, including its layout and positioning.
+// File: web/ui/dev-panel/dev-panel.behavior.js
+// Handles the visual behavior of the dev panel, including its layout and positioning.
 
-export function initializeDebugUIBehavior({ panel, DOM }) {
-  // Responsive layout: landscape => panel right and video left; portrait => bottom sheet
-  // --- Responsive Layout ---
+export function initializeDevPanelBehavior({ panel, DOM }) {
   function applyResponsiveLayout() {
     try {
       const isLandscape = window.innerWidth > window.innerHeight;
@@ -15,7 +13,6 @@ export function initializeDebugUIBehavior({ panel, DOM }) {
     } catch (e) {}
   }
 
-  // --- Z-Index Management ---
   (function ensureVideoOnTop() {
     try {
       const videoEl = DOM.videoFeed || document.querySelector('video');
@@ -23,7 +20,7 @@ export function initializeDebugUIBehavior({ panel, DOM }) {
         videoEl.style.position = 'relative';
         videoEl.style.zIndex = '50';
       }
-      panel.style.zIndex = '1000'; // Ensure panel is always on top
+      panel.style.zIndex = '1000';
     } catch(e) {}
   })();
 

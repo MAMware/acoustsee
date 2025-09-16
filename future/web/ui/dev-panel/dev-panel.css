@@ -1,0 +1,17 @@
+/* Minimal styles for dev-panel (copied from debug-ui.css with renamed selectors) */
+#acoustsee-dev-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255,255,255,0.96);
+  color: #111;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  max-width: 420px;
+  z-index: 10000;
+}
+
+.debug-section { margin-bottom: 8px; }
+.controls-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.debug-actions-grid { display: flex; gap: 8px; flex-wrap: wrap; }

@@ -21,6 +21,7 @@ import { processFrameWithState } from './video/frame-processor.js'; //R12925: du
 import { enableFrameWorker } from './video/frame-processor.js'; //R12925: duplicated file source
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
+import { getComponent } from './ui/ui-registry.js';
 // UI modules are loaded dynamically below to ensure only one UI initializes
 // at runtime (debug vs accessible). Dynamic import prevents duplicate IDs
 // and avoids initializing both UIs in the same session.
@@ -134,17 +135,13 @@ export async function init() {
     if (isDebugMode) {
       document.body.classList.add('debug-mode');
       try {
-        const mod = await import('./ui/debug/debug-ui.js');
-        if (mod && typeof mod.initializeDebugUI === 'function') {
-          // Expose the initializer globally so other runtime code (for example
-          // the power-on gesture) can open the debug UI after user gestures
-          // such as unlocking audio. This avoids a ReferenceError when later
-          // attempting to call initializeDebugUI from a different scope.
-          try { window.initializeDebugUI = mod.initializeDebugUI; } catch (e) {}
-          mod.initializeDebugUI(engine, DOM, { autoOpen: false, skipDiagnostics: true });
-          structuredLog('INFO', 'Initialized in passive Debug UI mode.');
+        const mod = await import('./ui/dev-panel/dev-panel.js');
+        if (mod && typeof mod.initializeDevPanel === 'function') {
+          // Module registers initializer in ui-registry; call it in passive mode
+          try { mod.initializeDevPanel(engine, DOM, { autoOpen: false, skipDiagnostics: true }); } catch (e) {} //R16925: do we still need such "autoOpen"? what about "skipDiagnostics"?
+          structuredLog('INFO', 'Initialized in passive Dev Panel mode.');
         }
-      } catch (e) { structuredLog('WARN', 'Failed to load debug UI', { error: e?.message || String(e) }); }
+      } catch (e) { structuredLog('WARN', 'Failed to load dev panel UI', { error: e?.message || String(e) }); }
     } else {
       document.body.classList.add('accessible-mode');
       try {
@@ -248,17 +245,21 @@ export async function init() {
           speakText(onMsg);
           try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
 
-          // R15926 This was a root cause for major lost time time refactoring --- (NEW LOGIC: SHOW DEBUG PANEL ON POWER ON ---)
+          // R15925 This was a root cause for major lost time time refactoring --- (NEW LOGIC: SHOW DEBUG PANEL ON POWER ON ---)
           // After a successful audio unlock, check if we're in debug mode
           // via the URL query param and show the debug panel immediately.
           try {
             const urlParams = new URLSearchParams(window.location.search);
             const isDebugModeNow = urlParams.get('debug') === 'true';
-            // Prefer the globally exposed initializer if available (set during module import)
-            const globalInit = window.initializeDebugUI || null;
-            if (isDebugModeNow && typeof globalInit === 'function') {
-              try { globalInit(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}
-            }
+            // Prefer the registry-provided initializer if available
+            try {
+              const registryInit = getComponent('initializeDevPanel') || getComponent('initializeDebugUI');
+              const fallbackGlobal = window.initializeDebugUI || null;
+              const initFn = registryInit || fallbackGlobal;
+              if (isDebugModeNow && typeof initFn === 'function') {
+                try { initFn(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}
+              }
+            } catch (e) {}
           } catch (e) {
             console.warn('showing debugUI failed', e);
           }
