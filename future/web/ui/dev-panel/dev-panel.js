@@ -168,7 +168,8 @@ export function initializeDevPanel(engine, DOM, options = {}) {
     setOutputCallback((level, text) => debugLog(level, text));
   }
 
-  // Stylesheet loader (uses new path)
+  // Stylesheet loader (module-relative). Use import.meta.url so the CSS is resolved correctly
+  // regardless of how the module is hosted (GitHub Pages, nested basePath, etc.).
   (function ensureDevCss(){
     try{
       const cssId = 'acoustsee-dev-panel-css';
@@ -176,12 +177,18 @@ export function initializeDevPanel(engine, DOM, options = {}) {
       const link = document.createElement('link');
       link.id = cssId;
       link.rel = 'stylesheet';
-      link.href = './dev-panel/dev-panel.css';
+      try {
+        // Resolve CSS relative to this module file
+        link.href = new URL('./dev-panel.css', import.meta.url).href;
+      } catch (e) {
+        // Fallback for older test environments that don't support import.meta.url
+        link.href = './ui/dev-panel/dev-panel.css';
+      }
       link.onload = () => setupUI();
-      link.onerror = (e) => { console.error('Failed to load dev-panel stylesheet', e); setupUI(); };
+      link.onerror = (e) => { console.warn('Failed to load dev-panel stylesheet', e); setupUI(); };
       document.head.appendChild(link);
     } catch(e) {
-      console.error('Exception loading dev-panel stylesheet', e);
+      console.warn('Exception loading dev-panel stylesheet', e);
       try{ setupUI(); } catch(_){ }
     }
   })();
