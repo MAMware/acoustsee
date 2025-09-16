@@ -1,13 +1,13 @@
 # AcoustSee
 
-AcoustSee is an open-source web application designed to help blind and visually impaired individuals perceive their surroundings through sound. It uses a device's camera to detect motion and translates it into a real-time, informative soundscape.
+AcoustSee is an open-source framker that runs a into a web application designed to help blind and visually impaired individuals perceive their surroundings through sound. It uses a device's camera and translates visuals into a real-time, informative soundscapes.
 
 The project is built with a focus on accessibility, performance, and extensibility, using vanilla JavaScript and modern browser APIs to run efficiently on a wide range of devices, especially mobile phones.
 
 ## Core Features
 
-- **Real-Time Motion Sonification:** Translates visual motion into musical and tonal cues.
-- **Pluggable UI Architecture:** Features two distinct interfaces for different user needs.
+- **Real-Time Motion Sonification:** Translates visual motion into musical, tonal and sound cues.
+- **Pluggable UI Architecture:** Features distinct interfaces for different user needs.
 - **Gesture-Based Accessible UI:** A fully non-visual interface designed for blind users.
 - **Developer Panel (Dev Panel):** A comprehensive tool for sighted developers and testers to iterate and debug quickly. (Historically called "Debug UI"; the codebase now exposes it under `ui/dev-panel/`.)
 - **High-Performance Engine:** Uses a Web Worker to offload heavy processing, ensuring a smooth and responsive UI.
@@ -40,7 +40,7 @@ This is the core experience for the end-user. The screen is an input surface, no
 
 ### 2. The Dev Panel (For Developers & Testers)
 
-This UI is a powerful dashboard for development and testing. It is still enabled by the `?debug=true` query param for convenience and backwards compatibility.
+This UI is a powerful dashboard for development and testing. It is enabled by the `?debug=true` query param.
 
 **How to Activate:**
 Add `?debug=true` to the end of the URL.

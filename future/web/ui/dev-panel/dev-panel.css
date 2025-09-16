@@ -12,6 +12,6 @@
   z-index: 10000;
 }
 
-.debug-section { margin-bottom: 8px; }
+.devpanel-section { margin-bottom: 8px; }
 .controls-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-.debug-actions-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+.devpanel-actions-grid { display: flex; gap: 8px; flex-wrap: wrap; }

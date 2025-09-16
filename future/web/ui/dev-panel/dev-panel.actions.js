@@ -3,13 +3,14 @@
 // R16925: we seem not to use the import 
 
 import { createButton } from './dev-panel.controls.js';
+// worker-monitor.js remains in `web/debug/` as a small helper for worker stats
 import { getWorkerStats } from '../../debug/worker-monitor.js';
 import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';
 
 export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
-  const actionsContainer = panel.querySelector('.debug-actions-grid');
+  const actionsContainer = panel.querySelector('.devpanel-actions-grid');
   if (!actionsContainer) {
-    console.error('createAndWireActions: Could not find .debug-actions-grid container in the provided panel.');
+    console.error('createAndWireActions: Could not find .devpanel-actions-grid container in the provided panel.');
     return { dispose() {} };
   }
 
@@ -51,7 +52,7 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   attachedHandlers.push({ el: actionsContainer, type: 'click', fn: delegatedClick });
 
   try {
-    const gridTypeEl = panel.querySelector('#grid-type-select');
+  const gridTypeEl = panel.querySelector('#grid-type-select');
     if (gridTypeEl && engine && engine.dispatch && Array.isArray(window?.settings?.availableGrids)) {
       window.settings.availableGrids.forEach(g => { const opt = document.createElement('option'); opt.value = g.id; opt.textContent = g.id; gridTypeEl.appendChild(opt); });
       const gridChange = (e) => engine.dispatch('setGridType', { gridType: e.target.value });
@@ -59,7 +60,7 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       attachedHandlers.push({ el: gridTypeEl, type: 'change', fn: gridChange });
     }
 
-    const synthEngineEl = panel.querySelector('#synth-engine-select');
+  const synthEngineEl = panel.querySelector('#synth-engine-select');
     if (synthEngineEl && engine && engine.dispatch && Array.isArray(window?.settings?.availableEngines)) {
       window.settings.availableEngines.forEach(en => { const opt = document.createElement('option'); opt.value = en.id; opt.textContent = en.id; synthEngineEl.appendChild(opt); });
       const synthChange = (e) => engine.dispatch('setSynthEngine', { synthEngine: e.target.value });
@@ -67,7 +68,7 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       attachedHandlers.push({ el: synthEngineEl, type: 'change', fn: synthChange });
     }
 
-    const maxNotesEl = panel.querySelector('#max-notes-slider');
+  const maxNotesEl = panel.querySelector('#max-notes-slider');
     const maxNotesValueEl = panel.querySelector('#max-notes-value');
     if (maxNotesEl) {
       const onMaxNotes = (e) => { engine.dispatch && engine.dispatch('setMaxNotes', { maxNotes: e.target.value }); if (maxNotesValueEl) maxNotesValueEl.textContent = e.target.value; };
@@ -75,7 +76,7 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       attachedHandlers.push({ el: maxNotesEl, type: 'input', fn: onMaxNotes });
     }
 
-    const motionEl = panel.querySelector('#motion-threshold-slider');
+  const motionEl = panel.querySelector('#motion-threshold-slider');
     const motionValueEl = panel.querySelector('#motion-threshold-value');
     if (motionEl) {
       const onMotion = (e) => { engine.dispatch && engine.dispatch('setMotionThreshold', { motionThreshold: e.target.value }); if (motionValueEl) motionValueEl.textContent = e.target.value; };
@@ -83,14 +84,14 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       attachedHandlers.push({ el: motionEl, type: 'input', fn: onMotion });
     }
 
-    const autoFps = panel.querySelector('#auto-fps-checkbox');
+  const autoFps = panel.querySelector('#auto-fps-checkbox');
     if (autoFps) {
       const onAutoFps = (e) => engine.dispatch && engine.dispatch('setAutoFPS', { enabled: e.target.checked });
       autoFps.addEventListener('change', onAutoFps);
       attachedHandlers.push({ el: autoFps, type: 'change', fn: onAutoFps });
     }
 
-    const enableFrameWorker = panel.querySelector('#enable-frame-worker-checkbox');
+  const enableFrameWorker = panel.querySelector('#enable-frame-worker-checkbox');
     if (enableFrameWorker) {
       const onFW = (e) => { if (typeof window.enableFrameWorker === 'function') window.enableFrameWorker(e.target.checked); else engine.dispatch && engine.dispatch('setFrameWorkerEnabled', { enabled: e.target.checked }); };
       enableFrameWorker.addEventListener('change', onFW);

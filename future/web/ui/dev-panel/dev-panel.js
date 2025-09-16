@@ -48,14 +48,14 @@ export function initializeDevPanel(engine, DOM, options = {}) {
   // --- HTML STRUCTURE ---
   try {
     panel.innerHTML = `
-      <div class="debug-section state-section">
+      <div class="devpanel-section state-section">
         <h2>State Inspector
           <span id="audio-version-badge" title="Build Version"></span>
         </h2>
-        <pre id="debug-state-view">Loading state...</pre>
+        <pre id="devpanel-state-view">Loading state...</pre>
         <div id="version-footer"></div>
       </div>
-      <div class="debug-section controls-section">
+      <div class="devpanel-section controls-section">
         <h2>Controls</h2>
         <div class="controls-grid">
           <div class="control-row"><label>Grid Type<select id="grid-type-select"></select></label></div>
@@ -63,20 +63,20 @@ export function initializeDevPanel(engine, DOM, options = {}) {
           <div class="control-row"><label>Max Notes<input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span></label></div>
           <div class="control-row"><label>Motion Threshold<input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span></label></div>
         </div>
-        <div class="debug-actions-grid"></div>
+  <div class="devpanel-actions-grid"></div>
         <div id="worker-explorer-container" style="display:none; margin-top:8px;">
           <div id="worker-explorer-legend"></div>
           <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
         </div>
       </div>
-      <div class="debug-section logs-section">
+      <div class="devpanel-section logs-section">
         <h2>Live Logs</h2>
         <div class="log-controls">
           <button id="log-pause-btn" type="button">Pause</button>
           <button id="log-clear-btn" type="button">Clear</button>
           <button id="log-export-btn" type="button">Export</button>
         </div>
-        <div id="debug-log-view"></div>
+        <div id="devpanel-log-view"></div>
       </div>
     `;
   } catch (e) {
@@ -132,8 +132,8 @@ export function initializeDevPanel(engine, DOM, options = {}) {
       console.error('initializeDevPanel: createAndWireActions failed', e);
     }
 
-    const stateView = panel.querySelector('#debug-state-view');
-    const logView = panel.querySelector('#debug-log-view');
+  const stateView = panel.querySelector('#devpanel-state-view');
+  const logView = panel.querySelector('#devpanel-log-view');
     setLogView(logView);
 
     panel.querySelector('#log-pause-btn').addEventListener('click', (e) => {
@@ -149,11 +149,11 @@ export function initializeDevPanel(engine, DOM, options = {}) {
         const a = document.createElement('a'); a.href = url; a.download = 'acoustsee-logs.json'; a.click();
         URL.revokeObjectURL(url);
     });
-
+// R16925: lets explain in more detail why how and what we do here
     engine.onStateChange(state => {
         try {
             const diags = getAudioDiagnostics();
-            if(stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
+        if(stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
             panel.querySelector('#grid-type-select').value = state.gridType;
             panel.querySelector('#synth-engine-select').value = state.synthesisEngine;
             panel.querySelector('#max-notes-slider').value = state.maxNotes;
@@ -187,5 +187,5 @@ export function initializeDevPanel(engine, DOM, options = {}) {
   })();
 }
 
-// Register initializer in the ui-registry for other modules to access later
-try { registerComponent('initializeDevPanel', initializeDevPanel); } catch (e) {}
+// Register initializer in the ui-registry for other modules to access later under the canonical name
+try { registerComponent('dev-panel', initializeDevPanel); } catch (e) {}

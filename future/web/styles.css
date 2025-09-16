@@ -83,10 +83,9 @@ body.accessible-mode #mainContainer {
   z-index: 1;
 }
 
-/* --- NEW & IMPROVED RESPONSIVE: Portrait Mode Layout (Panel on top) --- */
-/* Debug mode styles moved to web/ui/debug-ui.css */
 
-/* --- Other styles (Unchanged) --- */
+
+/* --- Other styles (Unchanged) R16925: what "other styles" are these? --- */ 
 .sr-only {
   position: absolute !important;
   height: 1px; width: 1px;
@@ -113,4 +112,4 @@ body.accessible-mode #mainContainer {
   font-size: 3vw;
 }
 
-/* Debug UI styles moved to web/ui/debug-ui.css */
+/* Dev Panel styles moved to web/ui/dev-panel/dev-panel.css */

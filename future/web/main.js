@@ -253,8 +253,9 @@ export async function init() {
             const isDebugModeNow = urlParams.get('debug') === 'true';
             // Prefer the registry-provided initializer if available
             try {
-              const registryInit = getComponent('initializeDevPanel') || getComponent('initializeDebugUI');
-              const fallbackGlobal = window.initializeDebugUI || null;
+              // Prefer the registry-provided initializer under the canonical name 'dev-panel'
+              const registryInit = getComponent('dev-panel');
+              const fallbackGlobal = window.initializeDevPanel || null;
               const initFn = registryInit || fallbackGlobal;
               if (isDebugModeNow && typeof initFn === 'function') {
                 try { initFn(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}

@@ -142,11 +142,11 @@ registerComponent('dev-panel', initializeDevPanel);
 This file is authoritative. Follow it to prevent regressions and circular rework.
 ## 5. UI Submodule Structure
 A UI directory should contain:
-- `debug-ui.js` (coordinator)
-- `debug-ui.behavior.js` (layout/visual behavior)
-- `debug-ui.actions.js` (event wiring)
-- `debug-ui.controls.js` (factory helpers)
-- `debug-ui.css` (styles)
+- `<name>.js` (coordinator, e.g. `dev-panel.js`)
+- `<name>.behavior.js` (layout/visual behavior)
+- `<name>.actions.js` (event wiring)
+- `<name>.controls.js` (factory helpers)
+- `<name>.css` (styles)
 - `worker-charts.js` or other contained subcomponents
 All files must be copy-paste-ready and complete.
 
