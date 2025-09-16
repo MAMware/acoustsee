@@ -3,7 +3,7 @@
 import { settings } from '../../core/state.js';
 import { setOutputCallback } from '../../utils/core-logger.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
-import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../debug-log.js';
+import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { createAndWireActions } from './dev-panel.actions.js';
 import { initializeDevPanelBehavior } from './dev-panel.behavior.js'; //R16925: we import it but it seems we not use it
 import { BUILD_VERSION } from '../../core/constants.js';

@@ -1,40 +1,28 @@
-// Adapter to show translated, accessible notifications inside the existing
-// debug UI panel and to reuse the app i18n/TTS/announce mechanisms.
-import { getText, announceMessage, speakText } from '../utils/utils.js';
+// Adapter to show translated, accessible notifications inside the Dev Panel.
+import { getText, announceMessage, speakText } from '../../utils/utils.js';
 
-/**
- * Show a debug notification using the existing debug panel when available.
- * Falls back to announceMessage/TTS when the panel is not present.
- * @param {{key:string, params?:Object, persistent?:boolean, tts?:boolean}} opts
- */
-export async function notifyDebug({ key, params = {}, persistent = false, tts = true } = {}) {
+export async function notifyDev({ key, params = {}, persistent = false, tts = true } = {}) {
   let text = key;
   try {
     text = await getText(key, params);
   } catch (e) {
-    // getText may throw in rare cases; fall back to key as message
-    try { console.warn('notifyDebug: getText failed', e); } catch (e2) {}
+    try { console.warn('notifyDev: getText failed', e); } catch (e2) {}
     text = key;
   }
 
-  // Always call announceMessage so screen reader regions are updated.
   try { announceMessage(text); } catch (e) { try { console.warn('announceMessage failed', e); } catch (e2) {} }
-
-  // Speak the message if requested. speakText is already guarded by settings and cooldown.
   if (tts) {
     try { speakText(text, 'tts'); } catch (e) { try { console.warn('speakText failed', e); } catch (e2) {} }
   }
 
-  // Try to reuse the debug UI panel if present; create a small persistent area.
   try {
     if (typeof document !== 'undefined') {
-      const panel = document.getElementById('acoustsee-debug-panel');
+      const panel = document.getElementById('acoustsee-dev-panel');
       if (panel) {
-        let container = document.getElementById('acoustsee-debug-notifier');
+        let container = document.getElementById('acoustsee-dev-notifier');
         if (!container) {
           container = document.createElement('div');
-          container.id = 'acoustsee-debug-notifier';
-          // make it visually compact and high-contrast inside the debug panel
+          container.id = 'acoustsee-dev-notifier';
           Object.assign(container.style, {
             display: 'flex',
             flexDirection: 'column',
@@ -43,13 +31,11 @@ export async function notifyDebug({ key, params = {}, persistent = false, tts = 
             maxHeight: '40vh',
             overflowY: 'auto'
           });
-          // insert at top of panel so it's visible immediately
           panel.insertBefore(container, panel.firstChild || null);
         }
 
-        // Create the message element
         const el = document.createElement('div');
-        el.className = 'acoustsee-debug-notice';
+        el.className = 'acoustsee-dev-notice';
         el.setAttribute('role', 'status');
         el.setAttribute('aria-live', 'polite');
         Object.assign(el.style, {
@@ -82,7 +68,6 @@ export async function notifyDebug({ key, params = {}, persistent = false, tts = 
           row.appendChild(dismiss);
           container.insertBefore(row, container.firstChild || null);
         } else {
-          // transient: auto-dismiss after a short timeout
           container.insertBefore(el, container.firstChild || null);
           setTimeout(() => { try { el.remove(); } catch (e) {} }, 4800);
         }
@@ -91,11 +76,10 @@ export async function notifyDebug({ key, params = {}, persistent = false, tts = 
       }
     }
   } catch (e) {
-    try { console.warn('notifyDebug panel update failed', e); } catch (e2) {}
+    try { console.warn('notifyDev panel update failed', e); } catch (e2) {}
   }
 
-  // Fallback: already announced / spoken above. Return for callers.
   return { shownInPanel: false, text };
 }
 
-export default notifyDebug;
+export default notifyDev;

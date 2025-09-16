@@ -2,9 +2,9 @@
 // Robust createAndWireActions which wires controls and returns a dispose handle.
 // R16925: we seem not to use the import 
 
-import { createButton } from '../debug-ui.controls.js';
+import { createButton } from './dev-panel.controls.js';
 import { getWorkerStats } from '../../debug/worker-monitor.js';
-import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from '../debug/worker-charts.js';
+import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';
 
 export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   const actionsContainer = panel.querySelector('.debug-actions-grid');

@@ -2,7 +2,7 @@
 import { trackFeatureUse } from '../core/ingest.js';
 import { addSessionError } from '../utils/performance.js';
 import { announceMessage, getText } from '../utils/utils.js';
-import { notifyDebug } from '../ui/debug-notifier.js';
+import { notifyDev as notifyDebug } from '../ui/dev-panel/dev-notifier.js';
 
 let _cameraStream = null;
 
