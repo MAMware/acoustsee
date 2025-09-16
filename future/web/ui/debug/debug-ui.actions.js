@@ -1,4 +1,5 @@
 // File: web/ui/debug/debug-ui.actions.js
+// Robust createAndWireActions which wires controls and returns a dispose handle.
 
 import { createButton } from './debug-ui.controls.js';
 import { getWorkerStats } from '../../debug/worker-monitor.js';
