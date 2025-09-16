@@ -9,7 +9,7 @@ The project is built with a focus on accessibility, performance, and extensibili
 - **Real-Time Motion Sonification:** Translates visual motion into musical and tonal cues.
 - **Pluggable UI Architecture:** Features two distinct interfaces for different user needs.
 - **Gesture-Based Accessible UI:** A fully non-visual interface designed for blind users.
-- **Powerful Debug UI:** A comprehensive tool for sighted developers and testers to iterate and debug quickly.
+- **Developer Panel (Dev Panel):** A comprehensive tool for sighted developers and testers to iterate and debug quickly. (Historically called "Debug UI"; the codebase now exposes it under `ui/dev-panel/`.)
 - **High-Performance Engine:** Uses a Web Worker to offload heavy processing, ensuring a smooth and responsive UI.
 - **Extensible:** Easily add new musical grids, sound synths, or languages.
 
@@ -38,9 +38,9 @@ This is the core experience for the end-user. The screen is an input surface, no
 - **Swipe Up / Down:** Change the value for the currently selected category.
 - **Long Press (1 second):** Exit Settings Mode and automatically save your changes.
 
-### 2. The Debug UI (For Developers & Testers)
+### 2. The Dev Panel (For Developers & Testers)
 
-This UI is a powerful dashboard for development and testing.
+This UI is a powerful dashboard for development and testing. It is still enabled by the `?debug=true` query param for convenience and backwards compatibility.
 
 **How to Activate:**
 Add `?debug=true` to the end of the URL.
@@ -49,12 +49,17 @@ Example: `http://mamware.github.io/acoustsee/future/web/index.html?debug=true`
 **Features:**
 - **Live Video Feed:** See what the camera sees.
 - **State Inspector:** A live, pretty-printed view of the application's entire state object.
-- **Live Log Viewer:** A real-time stream of application logs.
+- **Live Log Viewer:** A real-time stream of application logs (powered by the `web/ui/log-viewer.js` utility).
+- **Console & Error Ingest:** The dev-panel uses `web/ui/console-ingest.js` to capture console messages and uncaught errors into the log viewer; this is optionally installed by the panel.
 - **Interactive Controls:**
     - Dropdowns to select the musical grid and synth engine.
     - Sliders to adjust `Max Notes` and `Motion Threshold`.
     - Checkboxes to toggle `Auto FPS`, the `Web Worker`, and `Buffer Transfer` for performance testing.
     - Buttons to `Start/Stop Processing` and `Save/Load` settings to/from localStorage.
+
+**Developer notes:**
+- The dev-panel module registers its initializer with the `ui-registry` at `web/ui/ui-registry.js` so the bootloader and other modules can find and open the panel without relying on global functions.
+- If you need to access the dev-panel initializer programmatically, import `getComponent('dev-panel')` from the registry.
 
 ## Architecture Overview
 
@@ -65,7 +70,7 @@ The application is built on a decoupled, headless architecture.
 - **`video/frame-processor.js`:** Manages the high-performance Web Worker.
 - **`workers/frame-worker.js`:** The off-thread powerhouse where all heavy pixel analysis (motion detection, adaptive thresholding) happens.
 - **`audio/audio-processor.js`:** Manages the Web Audio API, oscillator pools, and sound generation.
-- **`ui/` directory:** Contains the "pluggable" UI modules (`accessible-ui.js` and `debug-ui.js`).
+- **`ui/` directory:** Contains the "pluggable" UI modules (`accessible-ui.js` and `dev-panel/`).
 
 ## Contributing
 

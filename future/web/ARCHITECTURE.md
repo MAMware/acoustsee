@@ -14,16 +14,51 @@ AcoustSee is modular, testable, and extensible. Keep concerns separated: core lo
 ## 3. Directory Responsibilities
 - `web/core/` — state machine, command registration, headless business logic.
 - `web/core/commands/` — grouped command implementations (media, settings, debug, performance).
-- `web/ui/` — pluggable UI modules; each UI lives in its own subdirectory (e.g., `ui/debug/`, `ui/touch-gestures/`).
+- `web/ui/` — pluggable UI modules; each UI lives in its own subdirectory (e.g., `ui/dev-panel/`, `ui/touch-gestures/`).
 - `web/audio/`, `web/video/`, `web/utils/`, `web/debug/` — well-scoped helpers and workers.
 
 ## 4. Pluggable UI Contract
 Each UI module must:
 - Live under `web/ui/<name>/`.
-- Export `initialize<Name>UI(engine, DOM, options = {})` (exact export name documented in the module README).
+- Export `initialize<Name>UI(engine, DOM, options = {})` (exact export name documented in the module README). Note: for the development dashboard the canonical module is `ui/dev-panel/` and it registers its initializer with the `ui-registry` (see below).
 - Create its DOM under a provided root (use `DOM.uiPanelRoot` if supplied).
 - Load its own stylesheet dynamically and run DOM measurement/wiring only in `link.onload`.
-- Use scoped IDs/prefixes to avoid collisions (e.g., `acoustsee-debug-*`).
+- Use scoped IDs/prefixes to avoid collisions (e.g., `acoustsee-devpanel-*`).
+- Use event delegation where possible and avoid fragile index-based child access.
+- Return a `dispose()` function (or attach it to the panel) that removes event listeners, clears intervals, stops polling, and removes created DOM.
+
+Example signature:
+```js
+export function initializeDebugUI(engine, DOM, options = {}) {
+  // returns { dispose() { ... } }
+}
+```
+# AcoustSee Architecture Guide
+
+This document defines the architectural contracts, patterns, and guardrails for AcoustSee. Follow these rules for all contributions.
+
+## 1. Core Philosophy
+AcoustSee is modular, testable, and extensible. Keep concerns separated: core logic, UI, and platform integration must remain decoupled.
+
+## 2. Headless Engine Pattern
+- `web/core/` contains the headless Engine and command handlers.
+- Core modules must not access `window`, `document`, or import anything from `web/ui/`.
+- The Engine exposes `engine.dispatch(command, payload)` and registers command handlers in `web/core/commands/`.
+- Command handlers return structured results (objects) and should not throw uncaught errors.
+
+## 3. Directory Responsibilities
+- `web/core/` — state machine, command registration, headless business logic.
+- `web/core/commands/` — grouped command implementations (media, settings, debug, performance).
+- `web/ui/` — pluggable UI modules; each UI lives in its own subdirectory (e.g., `ui/dev-panel/`, `ui/touch-gestures/`).
+- `web/audio/`, `web/video/`, `web/utils/`, `web/debug/` — well-scoped helpers and workers.
+
+## 4. Pluggable UI Contract
+Each UI module must:
+- Live under `web/ui/<name>/`.
+- Export `initialize<Name>UI(engine, DOM, options = {})` (exact export name documented in the module README). Note: for the development dashboard the canonical module is `ui/dev-panel/` and it registers its initializer with the `ui-registry` (see below).
+- Create its DOM under a provided root (use `DOM.uiPanelRoot` if supplied).
+- Load its own stylesheet dynamically and run DOM measurement/wiring only in `link.onload`.
+- Use scoped IDs/prefixes to avoid collisions (e.g., `acoustsee-devpanel-*`).
 - Use event delegation where possible and avoid fragile index-based child access.
 - Return a `dispose()` function (or attach it to the panel) that removes event listeners, clears intervals, stops polling, and removes created DOM.
 
@@ -36,13 +71,27 @@ export function initializeDebugUI(engine, DOM, options = {}) {
 
 ## 5. UI Submodule Structure
 A UI directory should contain:
-- `debug-ui.js` (coordinator)
-- `debug-ui.behavior.js` (layout/visual behavior)
-- `debug-ui.actions.js` (event wiring)
-- `debug-ui.controls.js` (factory helpers)
-- `debug-ui.css` (styles)
+- `<name>.js` (coordinator, e.g. `dev-panel.js`)
+- `<name>.behavior.js` (layout/visual behavior)
+- `<name>.actions.js` (event wiring)
+- `<name>.controls.js` (factory helpers)
+- `<name>.css` (styles)
 - `worker-charts.js` or other contained subcomponents
-All files must be copy-paste-ready and complete.
+All files must be copy-paste-ready (R16925:?) and complete.
+
+### ui-registry (recommended)
+To avoid accidental global exports and to make dynamically-loaded UI modules discoverable to other boot-time handlers, the project provides a small `ui-registry` helper at `web/ui/ui-registry.js`.
+
+The registry exposes:
+- `registerComponent(name, initializerFn)` — modules call this at load-time to make their initializer available.
+- `getComponent(name)` — returns the initializer function previously registered (or `undefined`).
+
+Example usage from a UI module:
+```js
+import { registerComponent } from '../ui/ui-registry.js';
+export function initializeDevPanel(engine, DOM, opts = {}) { /* ... */ }
+registerComponent('dev-panel', initializeDevPanel);
+```
 
 ## 6. Synth / Audio Contract
 - `web/audio/audio-processor.js` is the Conductor; `playCues(cues)` is the entry point.
@@ -90,43 +139,7 @@ All files must be copy-paste-ready and complete.
 
 ---
 
-This file is authoritative. Follow it to prevent regressions and circular rework.// filepath: /workspaces/acoustsee/future/ARCHITECTURE.md
-# AcoustSee Architecture Guide
-
-This document defines the architectural contracts, patterns, and guardrails for AcoustSee. Follow these rules for all contributions.
-
-## 1. Core Philosophy
-AcoustSee is modular, testable, and extensible. Keep concerns separated: core logic, UI, and platform integration must remain decoupled.
-
-## 2. Headless Engine Pattern
-- `web/core/` contains the headless Engine and command handlers.
-- Core modules must not access `window`, `document`, or import anything from `web/ui/`.
-- The Engine exposes `engine.dispatch(command, payload)` and registers command handlers in `web/core/commands/`.
-- Command handlers return structured results (objects) and should not throw uncaught errors.
-
-## 3. Directory Responsibilities
-- `web/core/` — state machine, command registration, headless business logic.
-- `web/core/commands/` — grouped command implementations (media, settings, debug, performance).
-- `web/ui/` — pluggable UI modules; each UI lives in its own subdirectory (e.g., `ui/debug/`, `ui/touch-gestures/`).
-- `web/audio/`, `web/video/`, `web/utils/`, `web/debug/` — well-scoped helpers and workers.
-
-## 4. Pluggable UI Contract
-Each UI module must:
-- Live under `web/ui/<name>/`.
-- Export `initialize<Name>UI(engine, DOM, options = {})` (exact export name documented in the module README).
-- Create its DOM under a provided root (use `DOM.uiPanelRoot` if supplied).
-- Load its own stylesheet dynamically and run DOM measurement/wiring only in `link.onload`.
-- Use scoped IDs/prefixes to avoid collisions (e.g., `acoustsee-debug-*`).
-- Use event delegation where possible and avoid fragile index-based child access.
-- Return a `dispose()` function (or attach it to the panel) that removes event listeners, clears intervals, stops polling, and removes created DOM.
-
-Example signature:
-```js
-export function initializeDebugUI(engine, DOM, options = {}) {
-  // returns { dispose() { ... } }
-}
-```
-
+This file is authoritative. Follow it to prevent regressions and circular rework.
 ## 5. UI Submodule Structure
 A UI directory should contain:
 - `debug-ui.js` (coordinator)
