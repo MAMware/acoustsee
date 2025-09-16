@@ -3,8 +3,8 @@
 // R16925: we seem not to use the import 
 
 import { createButton } from './dev-panel.controls.js';
-// worker-monitor.js remains in `web/debug/` as a small helper for worker stats
-import { getWorkerStats } from '../../debug/worker-monitor.js';
+// worker-monitor.js now lives alongside the dev-panel UI and provides worker stats
+import { getWorkerStats } from './worker-monitor.js';
 import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';
 
 export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {

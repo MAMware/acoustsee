@@ -133,7 +133,7 @@ export async function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const isDebugMode = urlParams.get('debug') === 'true';
     if (isDebugMode) {
-      document.body.classList.add('debug-mode');
+      document.body.classList.add('dev-panel-mode');
       try {
         const mod = await import('./ui/dev-panel/dev-panel.js');
         if (mod && typeof mod.initializeDevPanel === 'function') {

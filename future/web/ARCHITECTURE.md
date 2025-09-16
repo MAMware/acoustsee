@@ -15,7 +15,7 @@ AcoustSee is modular, testable, and extensible. Keep concerns separated: core lo
 - `web/core/` — state machine, command registration, headless business logic.
 - `web/core/commands/` — grouped command implementations (media, settings, debug, performance).
 - `web/ui/` — pluggable UI modules; each UI lives in its own subdirectory (e.g., `ui/dev-panel/`, `ui/touch-gestures/`).
-- `web/audio/`, `web/video/`, `web/utils/`, `web/debug/` — well-scoped helpers and workers.
+- `web/audio/`, `web/video/`, `web/utils/` — well-scoped helpers and workers. UI-specific helpers (for example worker monitors) may be colocated under `web/ui/<name>/`.
 
 ## 4. Pluggable UI Contract
 Each UI module must:
@@ -50,7 +50,7 @@ AcoustSee is modular, testable, and extensible. Keep concerns separated: core lo
 - `web/core/` — state machine, command registration, headless business logic.
 - `web/core/commands/` — grouped command implementations (media, settings, debug, performance).
 - `web/ui/` — pluggable UI modules; each UI lives in its own subdirectory (e.g., `ui/dev-panel/`, `ui/touch-gestures/`).
-- `web/audio/`, `web/video/`, `web/utils/`, `web/debug/` — well-scoped helpers and workers.
+- `web/audio/`, `web/video/`, `web/utils/` — well-scoped helpers and workers. UI-specific helpers (for example worker monitors) may be colocated under `web/ui/<name>/`.
 
 ## 4. Pluggable UI Contract
 Each UI module must:
