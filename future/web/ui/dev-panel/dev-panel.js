@@ -6,10 +6,21 @@ import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { createAndWireActions } from './dev-panel.actions.js';
 import { initializeDevPanelBehavior } from './dev-panel.behavior.js'; //R16925: we import it but it seems we not use it
-import { BUILD_VERSION } from '../../core/constants.js';
+import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION } from '../../core/constants.js';
 import { registerComponent } from '../ui-registry.js';
 
-console.log('dev-panel module loaded. Version:', BUILD_VERSION);
+// Log available version constants and fallbacks to help detect missing values early.
+console.log('dev-panel module loaded. Versions:', {
+  BUILD_VERSION,
+  AUDIO_VERSION,
+  VIDEO_VERSION,
+  UI_VERSION,
+  metaAcoustseeVersion: (typeof document !== 'undefined') ? document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content') : undefined,
+  windowVars: {
+    ACOUSTSEE_VERSION: (typeof window !== 'undefined') ? window.ACOUSTSEE_VERSION : undefined,
+    ACOUSTSEE_APP_VERSION: (typeof window !== 'undefined') ? window.ACOUSTSEE_APP_VERSION : undefined
+  }
+});
 
 export function initializeDevPanel(engine, DOM, options = {}) {
   const { autoOpen = false, skipDiagnostics = false } = options || {};
@@ -84,6 +95,15 @@ export function initializeDevPanel(engine, DOM, options = {}) {
     return;
   }
 
+  // Instrumentation: verify DOM was created successfully
+  try {
+    const sectionCount = panel.querySelectorAll('.devpanel-section').length;
+    console.log('dev-panel: DOM sections created =', sectionCount);
+    console.log('dev-panel: sample innerHTML snippet:', panel.innerHTML.slice(0,250));
+  } catch (err) {
+    console.warn('dev-panel: DOM inspection failed', err);
+  }
+
   function setupUI() {
     // Reuse previous behavior code (copied and adapted)
     (function initializeDevPanelBehavior() {
@@ -124,12 +144,24 @@ export function initializeDevPanel(engine, DOM, options = {}) {
     // worker explorer and video preview wiring replicated here (omitted for brevity)
 
     try {
+      // Instrumentation: snapshot pre-action wiring
+      try {
+        console.log('dev-panel: setupUI starting. nodes:', {
+          stateView: !!panel.querySelector('#devpanel-state-view'),
+          logView: !!panel.querySelector('#devpanel-log-view'),
+          actionsGrid: !!panel.querySelector('.devpanel-actions-grid')
+        });
+      } catch (_) {}
+
       const actionsModule = createAndWireActions(panel, engine, DOM, skipDiagnostics);
+      console.log('dev-panel: createAndWireActions returned', !!actionsModule);
       if (actionsModule && typeof actionsModule.dispose === 'function') {
         panel.__devActionsDispose = actionsModule.dispose;
       }
     } catch (e) {
       console.error('initializeDevPanel: createAndWireActions failed', e);
+      // expose failure in the DOM for quick visual detection
+      try { const cs = panel.querySelector('.controls-section'); if (cs) cs.textContent = 'Actions failed: see console'; } catch(_) {}
     }
 
   const stateView = panel.querySelector('#devpanel-state-view');
@@ -177,15 +209,16 @@ export function initializeDevPanel(engine, DOM, options = {}) {
       const link = document.createElement('link');
       link.id = cssId;
       link.rel = 'stylesheet';
-      try {
-        // Resolve CSS relative to this module file
-        link.href = new URL('./dev-panel.css', import.meta.url).href;
+        try {
+          link.href = new URL('./dev-panel.css', import.meta.url).href;
+          console.log('dev-panel: resolved dev-panel.css ->', link.href);
       } catch (e) {
-        // Fallback for older test environments that don't support import.meta.url
-        link.href = './ui/dev-panel/dev-panel.css';
+        // Fallback for older environments that might not support import.meta.url.
+          link.href = './ui/dev-panel/dev-panel.css';
+          console.log('dev-panel: using fallback dev-panel.css ->', link.href);
       }
       link.onload = () => setupUI();
-      link.onerror = (e) => { console.warn('Failed to load dev-panel stylesheet', e); setupUI(); };
+      link.onerror = (e) => { console.warn('Failed to load dev-panel stylesheet, continuing without styles.', e); setupUI(); };
       document.head.appendChild(link);
     } catch(e) {
       console.warn('Exception loading dev-panel stylesheet', e);
