@@ -2,7 +2,6 @@
 // Robust createAndWireActions which wires controls and returns a dispose handle.
 // R16925: we seem not to use the import 
 
-import { createButton } from './dev-panel.controls.js';
 // worker-monitor.js now lives alongside the dev-panel UI and provides worker stats
 import { getWorkerStats } from './worker-monitor.js';
 import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';

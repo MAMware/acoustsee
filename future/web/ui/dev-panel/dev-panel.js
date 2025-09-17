@@ -180,7 +180,9 @@ export function initializeDevPanel(engine, DOM, options = {}) {
         const a = document.createElement('a'); a.href = url; a.download = 'acoustsee-logs.json'; a.click();
         URL.revokeObjectURL(url);
     });
-// R16925: lets explain in more detail why how and what we do here
+    // This callback synchronizes the Dev Panel's UI controls (sliders, dropdowns,
+    // checkboxes) with the engine state whenever it changes, ensuring the panel
+    // reflects the current application settings and provides live feedback.
   engine.onStateChange(state => {
     try {
       const diags = getAudioDiagnostics();
