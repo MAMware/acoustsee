@@ -1,4 +1,6 @@
-# Contributing to AcoustSee
+//R17925: this file needs update since we have added TASKS.md, ADR under adr, PULL_REQUEST_TEMPLATE.md, ARCHITECTURE.md (Untracked by the repo).
+
+# Contributing to AcoustSee 
 
 Thank you for helping improve AcoustSee. This document contains a short, practical guide to contributing code, tests, and documentation.
 
