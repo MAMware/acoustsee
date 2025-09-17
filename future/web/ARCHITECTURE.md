@@ -5,6 +5,20 @@ This document defines the architectural contracts, patterns, and guardrails for 
 ## 1. Core Philosophy
 AcoustSee is modular, testable, and extensible. Keep concerns separated: core logic, UI, and platform integration must remain decoupled.
 
+## 1.5. Development Process
+
+To prevent rework and ensure clarity, this project follows a lightweight development process based on documented tasks and architectural decisions.
+
+*   **Task Tracking (`TASKS.md`):** All significant work is tracked in the `TASKS.md` file at the project root. Before starting work, please consult this file. All commits and Pull Requests should reference a Task ID (e.g., `PERF-1`).
+*   **Architectural Decisions (`docs/adr/`):** Major architectural decisions are documented as Architectural Decision Records (ADRs) in the `docs/adr/` directory. These serve as the rationale for the project's structure.
+*   **Work-in-Progress (WIP):** Code that is experimental or incomplete **must** be wrapped in a `WIP` comment block that references its Task ID. This protects it from premature refactoring.
+  *Example:*
+  ```javascript
+  // --- WIP: PERF-1 ---
+  // This logic is experimental. Do not modify without consulting TASKS.md.
+  // --- END WIP ---
+  ```
+
 ## 2. Headless Engine Pattern
 - `web/core/` contains the headless Engine and command handlers.
 - Core modules must not access `window`, `document`, or import anything from `web/ui/`.
