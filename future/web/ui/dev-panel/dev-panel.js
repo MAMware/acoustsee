@@ -15,8 +15,7 @@ console.log('dev-panel module loaded. Versions:', {
   AUDIO_VERSION,
   VIDEO_VERSION,
   UI_VERSION,
-  LANGUAGES_VERSION,
-  }
+  LANGUAGES_VERSION
 });
 
 export function initializeDevPanel(engine, DOM, options = {}) {
@@ -103,33 +102,36 @@ export function initializeDevPanel(engine, DOM, options = {}) {
 
   function setupUI() {
     // Reuse previous behavior code (copied and adapted)
-    (function initializeDevPanelBehavior() {
-        function applyResponsiveLayout() {
-            try {
-                const isLandscape = window.innerWidth > window.innerHeight;
-                if (isLandscape) {
-                    Object.assign(panel.style, { position: 'fixed', right: '0', top: '0', width: '400px', height: '100vh', borderLeft: '2px solid #34495e', borderTop: '' });
-                } else {
-                    Object.assign(panel.style, { position: 'fixed', left: '8px', right: '8px', bottom: '8px', top: 'auto', width: 'calc(100% - 16px)', height: '42vh', borderLeft: 'none', borderTop: '2px solid #34495e', borderRadius: '8px' });
-                }
-            } catch (e) {}
-        }
-        (function ensureVideoOnTop() {
-            try {
-                const videoEl = DOM.videoFeed || document.querySelector('video');
-                if (videoEl && !videoEl.style.zIndex) {
-                    videoEl.style.position = 'relative';
-                    videoEl.style.zIndex = '50';
-                }
-                panel.style.zIndex = '100';
-            } catch(e) {}
-        })();
+    // Delegate panel behavior to the shared module to avoid duplicate inline logic.
+    try {
+      // initializeDevPanelBehavior controls layout and z-index, and wires resize/orientation handlers.
+      initializeDevPanelBehavior({ panel, DOM });
+    } catch (e) {
+      // Best-effort: if the behavior module fails, fall back to a minimal responsive layout.
+      try {
+        const applyResponsiveLayout = () => {
+          const isLandscape = window.innerWidth > window.innerHeight;
+          if (isLandscape) {
+            Object.assign(panel.style, { position: 'fixed', right: '0', top: '0', width: '400px', height: '100vh', borderLeft: '2px solid #34495e' });
+          } else {
+            Object.assign(panel.style, { position: 'fixed', left: '8px', right: '8px', bottom: '8px', top: 'auto', width: 'calc(100% - 16px)', height: '42vh', borderTop: '2px solid #34495e', borderRadius: '8px' });
+          }
+        };
         applyResponsiveLayout();
         window.addEventListener('resize', applyResponsiveLayout, { passive: true });
-        window.addEventListener('orientationchange', applyResponsiveLayout, { passive: true });
-    })();
+      } catch (e2) { /* ignore */ }
+    }
 
     try {
+      // Cache frequently-updated DOM elements to avoid repeated querySelector calls
+      const gridTypeSelect = panel.querySelector('#grid-type-select');
+      const synthEngineSelect = panel.querySelector('#synth-engine-select');
+      const maxNotesSlider = panel.querySelector('#max-notes-slider');
+      const maxNotesValue = panel.querySelector('#max-notes-value');
+      const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
+      const motionThresholdValue = panel.querySelector('#motion-threshold-value');
+      const autoFpsCheckbox = panel.querySelector('#auto-fps-checkbox');
+      const enableFrameWorkerCheckbox = panel.querySelector('#enable-frame-worker-checkbox');
       const versionBadge = panel.querySelector('#audio-version-badge');
       const versionFooter = panel.querySelector('#version-footer');
       const metaVer = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
@@ -179,20 +181,20 @@ export function initializeDevPanel(engine, DOM, options = {}) {
         URL.revokeObjectURL(url);
     });
 // R16925: lets explain in more detail why how and what we do here
-    engine.onStateChange(state => {
-        try {
-            const diags = getAudioDiagnostics();
-        if(stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
-            panel.querySelector('#grid-type-select').value = state.gridType;
-            panel.querySelector('#synth-engine-select').value = state.synthesisEngine;
-            panel.querySelector('#max-notes-slider').value = state.maxNotes;
-            panel.querySelector('#max-notes-value').textContent = state.maxNotes;
-            panel.querySelector('#motion-threshold-slider').value = state.motionThreshold;
-            panel.querySelector('#motion-threshold-value').textContent = state.motionThreshold;
-            panel.querySelector('#auto-fps-checkbox').checked = state.autoFPS;
-            panel.querySelector('#enable-frame-worker-checkbox').checked = settings.enableFrameWorker;
-        } catch(e) {}
-    });
+  engine.onStateChange(state => {
+    try {
+      const diags = getAudioDiagnostics();
+      if (stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
+      if (gridTypeSelect) gridTypeSelect.value = state.gridType;
+      if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
+      if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
+      if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
+      if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
+      if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
+      if (autoFpsCheckbox) autoFpsCheckbox.checked = state.autoFPS;
+      if (enableFrameWorkerCheckbox) enableFrameWorkerCheckbox.checked = settings.enableFrameWorker;
+    } catch(e) {}
+  });
 
     setOutputCallback((level, text) => debugLog(level, text));
   }

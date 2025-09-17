@@ -110,7 +110,8 @@ const defaultAdapter = {
       // If payload is a string, map to message; if object, extract message
       const message = typeof payload === 'string' ? payload : (payload && payload.message) || String(payload || '');
       const data = (payload && payload.data) || (typeof payload === 'object' ? payload : {});
-      await structuredLog(level, message, data, true, true);
+      // structuredLog is synchronous; do not await a non-Promise to avoid misleading callers
+      structuredLog(level, message, data, true, true);
     } catch (err) {
       // Best-effort: avoid throwing from logger
       try { console.warn('logging.defaultAdapter.log failed', err); } catch (e) {}
@@ -120,7 +121,8 @@ const defaultAdapter = {
     try {
       const message = err && err.message ? err.message : String(err || 'Error');
       const data = { stack: err && err.stack };
-      await structuredLog('ERROR', message, data, true, false);
+      // structuredLog is synchronous; do not await a non-Promise to avoid misleading callers
+      structuredLog('ERROR', message, data, true, false);
     } catch (e) {
       try { console.warn('logging.defaultAdapter.logError failed', e); } catch (er) {}
     }

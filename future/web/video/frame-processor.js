@@ -279,28 +279,6 @@ export function __setPrevFrameDataForTest(left, right) {
   }
 }
 
-function mapRegionsToCues(regions, width, height) {
-  const grid = getCurrentGrid();
-  if (!grid) {
-    structuredLog('ERROR', 'mapRegionsToCues: Could not get current grid from manager.');
-    return [];
-  }
-
-  return regions.map(region => {
-    const normalizedX = region.x / width;
-    const normalizedY = region.y / height;
-    const note = grid.getNote(normalizedX, normalizedY);
-
-    if (note) {
-      return {
-        id: region.id,
-        type: 'default_motion',
-        pitch: note.pitch,
-        pan: (normalizedX * 2) - 1,
-        intensity: region.intensity,
-      };
-    }
-    return null;
-  }).filter(Boolean);
-}
- 
+// mapRegionsToCues removed: grids now expose a standardized `mapFunction`
+// which the frame processing pipeline calls directly to translate regions into cues.
+// R17925: lets explain in detail how grids now expose a standardized `mapFunction` reasoning behind this change

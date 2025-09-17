@@ -92,9 +92,21 @@ export function registerMediaCommands(engine) {
       const w = videoEl.videoWidth;
       const h = videoEl.videoHeight;
       if (w === 0 || h === 0) return null;
-
-      const ctx = canvasEl.getContext('2d');
-      ctx.drawImage(videoEl, 0, 0, w, h);
+// R17925 why we do processing here? what about SRP? shouldnt be done separately and monitored?
+  const ctx = canvasEl.getContext('2d');
+  // TODO: Performance note — this drawImage/getImageData sequence forces a
+  // GPU -> CPU synchronous readback on every frame which is a major
+  // performance bottleneck (high CPU usage, GC pressure, and frame jank).
+  // For future work, replace this with a zero-copy or GPU-accelerated
+  // pipeline. Options to consider:
+  //  - Use requestVideoFrameCallback + WebGL to process frames on the GPU.
+  //  - Use an OffscreenCanvas with transferControlToOffscreen and run
+  //    pixel-processing in a Worker to avoid main-thread copies.
+  //  - Where available, use VideoFrame and WebCodecs to access frame
+  //    data more efficiently without rasterizing to a 2D canvas.
+  // Leaving this todo here documents the hotspot for future optimization
+  // efforts.
+  ctx.drawImage(videoEl, 0, 0, w, h);
       const img = ctx.getImageData(0, 0, w, h);
 
       let frameBufferToUse = img.data;

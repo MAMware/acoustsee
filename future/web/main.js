@@ -206,85 +206,70 @@ export async function init() {
     try { bindAudioProcessor(audioManager); } catch (e) { console.warn('bindAudioProcessor failed', e); }
 
     if (DOM.powerOn) {
+      // Helper: unlock audio and initialize audio subsystems inside user gesture
+      async function handleAudioUnlock(event) {
+        // Show initializing feedback
+        const initLabel = await getText('powerOn.initializing', {}).catch(() => 'Initializing...');
+        if (DOM.powerOn.querySelector('.power-label')) {
+          DOM.powerOn.querySelector('.power-label').textContent = initLabel;
+        } else {
+          DOM.powerOn.textContent = initLabel;
+        }
+
+        try { window.__acoustseePowerGesture = true; } catch (e) {}
+        const unlocked = await audioManager.unlockAudio(event);
+        if (!unlocked) throw new Error('AudioContext could not be unlocked.');
+
+        await audioManager.initialize();
+        await initializeAudio(audioManager.context);
+      }
+
+      // Helper: show main UI and optional debug panel R17925 why optional debug panel? dont we have a ?debug=true param to show it?
+      async function transitionToMainUI() {
+        if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
+        if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';
+        DOM.powerOn.setAttribute('aria-pressed', 'true');
+        const onMsg = await getText('audioOn').catch(() => 'Audio enabled');
+        speakText(onMsg);
+        try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
+
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const isDebugModeNow = urlParams.get('debug') === 'true';
+          const registryInit = getComponent('dev-panel');
+          const fallbackGlobal = window.initializeDevPanel || null;
+          const initFn = registryInit || fallbackGlobal;
+          if (isDebugModeNow && typeof initFn === 'function') {
+            try { initFn(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}
+          }
+        } catch (e) { console.warn('showing debugUI failed', e); }
+      }
+
+      // Helper: centralize error handling and UI reset for power-on failures
+      async function handlePowerOnError(error, originalLabel) {
+        addSessionError({ message: 'power-on-failed', error: error?.message || String(error) });
+        structuredLog('ERROR', 'Power on handler failed', { error: error?.message || String(error) });
+        const failMsg = await getText('audio.unavailable').catch(() => 'Audio unavailable. Tap to try again.');
+        announceMessage(failMsg);
+        speakText(failMsg);
+        if (DOM.powerOn.querySelector('.power-label')) {
+          DOM.powerOn.querySelector('.power-label').textContent = originalLabel;
+        } else {
+          DOM.powerOn.textContent = originalLabel;
+        }
+        DOM.powerOn.disabled = false;
+      }
+
       DOM.powerOn.addEventListener('click', async (ev) => {
         ev.preventDefault();
         DOM.powerOn.disabled = true;
         const origLabel = DOM.powerOn.querySelector('.power-label')?.textContent || DOM.powerOn.textContent || 'Power On';
-       
         try {
-          // 1. Show "Initializing..." feedback immediately
-          const initLabel = await getText('powerOn.initializing', {}).catch(() => 'Initializing...');
-          if (DOM.powerOn.querySelector('.power-label')) {
-            DOM.powerOn.querySelector('.power-label').textContent = initLabel;
-          } else {
-            DOM.powerOn.textContent = initLabel;
-          }
-         
-          // 2. Attempt to unlock and initialize audio within the user gesture.
-          // Set a transient, explicit flag to indicate this unlock was initiated
-          // by the Power button. This prevents other UI interactions (for
-          // example debug-panel taps) from being treated as the main power
-          // gesture and accidentally unlocking the AudioContext.
-          try { window.__acoustseePowerGesture = true; } catch (e) {}
-          const unlocked = await audioManager.unlockAudio(ev);
-          if (!unlocked) {
-            // This is a hard failure to unlock the context.
-            throw new Error('AudioContext could not be unlocked.');
-          }
-
-          // 3. Once unlocked, initialize the rest of the audio graph.
-          await audioManager.initialize();
-          await initializeAudio(audioManager.context);
-         
-          // 4. Success! Transition to the main UI.
-          if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
-          if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';
-          DOM.powerOn.setAttribute('aria-pressed', 'true');
-
-          const onMsg = await getText('audioOn').catch(() => 'Audio enabled');
-          speakText(onMsg);
-          try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
-
-          // R15925 This was a root cause for major lost time time refactoring --- (NEW LOGIC: SHOW DEBUG PANEL ON POWER ON ---)
-          // After a successful audio unlock, check if we're in debug mode
-          // via the URL query param and show the debug panel immediately.
-          try {
-            const urlParams = new URLSearchParams(window.location.search);
-            const isDebugModeNow = urlParams.get('debug') === 'true';
-            // Prefer the registry-provided initializer if available
-            try {
-              // Prefer the registry-provided initializer under the canonical name 'dev-panel'
-              const registryInit = getComponent('dev-panel');
-              const fallbackGlobal = window.initializeDevPanel || null;
-              const initFn = registryInit || fallbackGlobal;
-              if (isDebugModeNow && typeof initFn === 'function') {
-                try { initFn(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}
-              }
-            } catch (e) {}
-          } catch (e) {
-            console.warn('showing debugUI failed', e);
-          }
-          // --- END NEW LOGIC ---
-
-  } catch (err) {
-          // 5. --- New critical feedback logic ---
-          addSessionError({ message: 'power-on-failed', error: err?.message || String(err) });
-          structuredLog('ERROR', 'Power on handler failed', { error: err?.message || String(err) });
-         
-          // Inform the user what happened and allow them to retry.
-          const failMsg = await getText('audio.unavailable').catch(() => 'Audio unavailable. Tap to try again.');
-          announceMessage(failMsg);
-          speakText(failMsg);
-
-          // Reset the button to its original state so the user can click again.
-          if (DOM.powerOn.querySelector('.power-label')) {
-            DOM.powerOn.querySelector('.power-label').textContent = origLabel;
-          } else {
-            DOM.powerOn.textContent = origLabel;
-          }
-          DOM.powerOn.disabled = false;
+          await handleAudioUnlock(ev);
+          await transitionToMainUI();
+        } catch (err) {
+          await handlePowerOnError(err, origLabel);
         } finally {
-          // Clear the transient power gesture flag to avoid leaking it to other code.
           try { window.__acoustseePowerGesture = false; } catch (e) {}
         }
       }, { once: false });

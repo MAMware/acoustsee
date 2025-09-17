@@ -74,8 +74,15 @@ export function registerTouchGestureCommands(engine) {
     const direction = payload.direction || 1; // 1 for up/right, -1 for down/left
     const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
     
-    // Logic to change the value based on the category
-    switch (categoryId) {
+  // TODO: This switch statement is becoming difficult to maintain.
+  // Consider refactoring to a data-driven settings manifest where each
+  // setting defines: type (e.g., 'cycle', 'numeric'), allowed values/range,
+  // and the state property it controls. A small generic handler can then
+  // perform updates and side-effects (e.g., saving, calling resize functions).
+  // This will make adding settings easier and reduce bugs from manual
+  // per-case implementations.
+  // Logic to change the value based on the category
+  switch (categoryId) {
       case 'grid':
         const grids = s.availableGrids.map(g => g.id);
         const currentGridIndex = grids.indexOf(s.gridType);
