@@ -120,3 +120,22 @@ export function mapFrameToCircleOfFifths(frameData, width, height, prevFrameData
 
    return { id: 'circle-of-fifths', bins, width, height, panValue };
 }
+
+// Backwards-compatible adapter: prefer `mapFunction` as the canonical export
+// contract used by available-grids.js. This adapter delegates to existing
+// legacy mappers while preserving their original exports for external users.
+export const mapFunction = function(frameData, width, height, prevFrameData, opts = {}) {
+   // Some mappers (like this file) expose multiple mapping utilities; choose
+   // the most appropriate legacy function based on opts.mode.
+   if (opts && opts.mode === 'circle') {
+      return mapFrameToCircleOfFifths(frameData, width, height, prevFrameData, opts.panValue || 0);
+   }
+   // Default to returning cue-style output when used as a generic mapFunction.
+   // Many consumers expect either { cues } or { bins } depending on the mapper.
+   // Here we prefer the cues variant when asked.
+   if (typeof mapFrameToCues === 'function') {
+      return mapFrameToCues(frameData, width, height, prevFrameData, opts);
+   }
+   // Fallback to circle-of-fifths bin mapper if cues are not available.
+   return mapFrameToCircleOfFifths(frameData, width, height, prevFrameData, opts.panValue || 0);
+};

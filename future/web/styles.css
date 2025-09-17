@@ -85,7 +85,7 @@ body.accessible-mode #mainContainer {
 
 
 
-/* --- Other styles (Unchanged) R16925: what "other styles" are these? --- */ 
+/* --- Accessibility & Overlay Styles R17925 why we have this here? didnt we agree to have plugable modular UIs? --- */
 .sr-only {
   position: absolute !important;
   height: 1px; width: 1px;

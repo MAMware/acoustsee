@@ -32,3 +32,12 @@ export function mapFrameToCues(frameData, width, height, prevFrameData) {
 
   return { cues };
 }
+
+// Provide the standardized `mapFunction` export to match the loader's
+// preferred contract. This adapter returns a cues-style response for
+// compatibility with the frame-processor pipeline.
+export const mapFunction = function(frameData, width, height, prevFrameData, opts = {}) {
+  // Some grid modules may accept an opts.mode; here we simply delegate to
+  // the existing mapFrameToCues implementation which returns { cues }.
+  return mapFrameToCues(frameData, width, height, prevFrameData, opts);
+};

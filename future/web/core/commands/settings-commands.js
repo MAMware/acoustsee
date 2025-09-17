@@ -1,6 +1,8 @@
 // File: web/core/commands/settings-commands.js
 // Handles commands related to saving, loading, and modifying user settings.
-// MAMware reviewed 2025-05-09 as R250905: the presense of debug handlers and more here makes the "debug-commands.js" file feel extra.
+// MAMware reviewed 2025-05-09 as 
+// R250905: the presense of debug handlers and more here makes the "debug-commands.js" file feel extra.
+// R170925: what is the role of this file vs debug-commands.js vs ui-commands.js and such? is this useful for a modular plug able UI?
 
 import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText, setLanguage, translatePage } from '../../utils/utils.js';
@@ -142,5 +144,31 @@ export function registerSettingsCommands(engine) {
       structuredLog('INFO', 'cycleLanguage', { language: next });
       return { language: next };
     } catch (e) { structuredLog('WARN', 'cycleLanguage failed', { error: e?.message }); }
+  });
+
+  // --- UI convenience handlers (migrated from ui-commands.js) R17925 button 6 is legacy we should move foward of this naming ---
+  registerCommandHandler('toggleSettingsMode', async ({ state: s }) => {
+    s.isSettingsMode = !s.isSettingsMode;
+    // Announce the change as a side effect
+    try {
+      const key = s.isSettingsMode ? 'button6.tts.settingsToggle.on' : 'button6.tts.settingsToggle.off';
+      const preferredKey = s.isSettingsMode ? 'announce.settingsMode' : 'announce.settingsMode.off';
+      const legacyKey = key;
+      const msg = (await getText(preferredKey).catch(() => null)) || (await getText(legacyKey).catch(() => null));
+      if (msg) speakText(msg);
+    } catch (e) {
+      structuredLog('WARN', 'announceSettingsMode failed during toggle', { error: e?.message });
+    }
+    return { isSettingsMode: s.isSettingsMode };
+  });
+
+  registerCommandHandler('announceSettingsMode', async ({ state: s }) => {
+    try {
+      const key = s.isSettingsMode ? 'button6.tts.settingsToggle.on' : 'button6.tts.settingsToggle.off';
+      const msg = await getText(key).catch(() => null);
+      if (msg) speakText(msg);
+    } catch (e) {
+      structuredLog('WARN', 'announceSettingsMode failed', { error: e?.message });
+    }
   });
 }

@@ -1,7 +1,15 @@
 // Dynamic loader for grid mappers. This tries to import optional grid
 // modules at runtime and returns only the ones that successfully load.
-// This avoids adding fake/stub modules into production code just to satisfy
-// static import checks. R4925: This file should allow for easier addition of new grid modules without modifying core code.-But, does this works on GitHubPages?. The legacy method from /scrips/dinamical-files-indexer.js used to work fine altought it had to be run after grids/synths/or languages were added.
+// WIP - This file is a work in progress and may change in future releases. 
+// Preferred module contract:
+//  - Export a function named `mapFunction(frameData, w, h, prevFrame, ctx)`
+//  - Export an optional `meta` object with { id, name, author, description }
+// This standard name simplifies the loader and reduces guesswork. Legacy
+// export names are still supported as fallbacks.
+//
+// Future improvement (non-trivial): use a build-time registration step or
+// indexer script (e.g., dinamical-files-indexer.js) to generate a manifest so
+// new grid modules can be discovered without editing this file.
 
 const GRID_MODULES = [
   'circle-of-fifths',
@@ -22,9 +30,10 @@ export function loadAvailableGrids() {
     for (const r of results) {
       if (r.status === 'fulfilled' && r.value && r.value.m) {
         const { name, m } = r.value;
-        // Try common export names for compatibility with various mappers - R4925: This seems hardcoded and not very scalable. We could use a registration system instead?.
-        const mapFn = m.mapFrameToCircleOfFifths || m.mapFrameToHexTonnetz || m.mapFrameToCues || m.mapFrameToGrid;
-  const id = (m.meta && m.meta.id) || name;
+        // Prefer standardized export name `mapFunction` and fall back to legacy
+        // names for backward compatibility. R17925 we should try not to hardcode, lets brainstorm how to
+        const mapFn = m.mapFunction || m.mapFrameToCircleOfFifths || m.mapFrameToHexTonnetz || m.mapFrameToCues || m.mapFrameToGrid;
+        const id = (m.meta && m.meta.id) || name;
         if (typeof mapFn === 'function') {
           grids.push({ id, mapFunction: mapFn, meta: m.meta || {} });
         } else {
