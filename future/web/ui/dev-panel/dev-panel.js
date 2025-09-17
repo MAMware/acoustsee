@@ -6,7 +6,7 @@ import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { createAndWireActions } from './dev-panel.actions.js';
 import { initializeDevPanelBehavior } from './dev-panel.behavior.js'; //R16925: we import it but it seems we not use it
-import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION } from '../../core/constants.js';
+import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION } from '../../core/constants.js';
 import { registerComponent } from '../ui-registry.js';
 
 // Log available version constants and fallbacks to help detect missing values early.
@@ -15,10 +15,7 @@ console.log('dev-panel module loaded. Versions:', {
   AUDIO_VERSION,
   VIDEO_VERSION,
   UI_VERSION,
-  metaAcoustseeVersion: (typeof document !== 'undefined') ? document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content') : undefined,
-  windowVars: {
-    ACOUSTSEE_VERSION: (typeof window !== 'undefined') ? window.ACOUSTSEE_VERSION : undefined,
-    ACOUSTSEE_APP_VERSION: (typeof window !== 'undefined') ? window.ACOUSTSEE_APP_VERSION : undefined
+  LANGUAGES_VERSION,
   }
 });
 
