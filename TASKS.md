@@ -8,6 +8,7 @@ This document tracks active and future development tasks to provide a clear proj
 -   **[ ] `ARCH-1`:** Consolidate `microphone-controller.js` into `media-controller.js` per ADR-0001.
 -   **[ ] `ARCH-2`:** Standardize the export contract for all synth and grid modules.
 -   **[ ] `UI-6`:** Refactor the settings logic in `touch-gesture-commands.js` to be data-driven.
+ -   **[ ] `ARCH-3`:** Define and implement a dual-paradigm architecture ("Flow" and "Focus" modes). See `docs/adr/0002-dual-paradigm-navigation-and-identification-modes.md`.
 
 ## Completed Tasks
 

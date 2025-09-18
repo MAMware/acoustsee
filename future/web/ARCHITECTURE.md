@@ -5,7 +5,19 @@ This document defines the architectural contracts, patterns, and guardrails for 
 ## 1. Core Philosophy
 AcoustSee is modular, testable, and extensible. Keep concerns separated: core logic, UI, and platform integration must remain decoupled.
 
-## 1.5. Development Process
+## 2. Core Operating Paradigms: Flow and Focus
+
+To serve the distinct needs of active navigation and detailed exploration, AcoustSee is built on two core operating paradigms. The application can be switched between these modes by the user. This dual-mode architecture is a fundamental design principle. (See ADR-0002 for details).
+
+*   **Navigation Mode ("Flow Mode"):**
+    *   **Goal:** Provide real-time, low-latency spatial awareness for safe movement.
+    *   **Behavior:** Uses fast, abstract processing to create a textural soundscape representing the shape of the environment. Performance is prioritized over detail.
+
+*   **Identification Mode ("Focus Mode"):**
+    *   **Goal:** Provide detailed, semantic information about specific objects in the user's vicinity.
+    *   **Behavior:** Engages computationally intensive Machine Learning models (e.g., object segmentation, depth estimation) to trigger specific, recognizable "AcousticCues." Accuracy is prioritized over speed.
+
+## 3. Development Process
 
 To prevent rework and ensure clarity, this project follows a lightweight development process based on documented tasks and architectural decisions.
 
@@ -19,19 +31,19 @@ To prevent rework and ensure clarity, this project follows a lightweight develop
   // --- END WIP ---
   ```
 
-## 2. Headless Engine Pattern
+## 4. Headless Engine Pattern
 - `web/core/` contains the headless Engine and command handlers.
 - Core modules must not access `window`, `document`, or import anything from `web/ui/`.
 - The Engine exposes `engine.dispatch(command, payload)` and registers command handlers in `web/core/commands/`.
 - Command handlers return structured results (objects) and should not throw uncaught errors.
 
-## 3. Directory Responsibilities
+## 5. Directory Responsibilities
 - `web/core/` — state machine, command registration, headless business logic.
 - `web/core/commands/` — grouped command implementations (media, settings, debug, performance).
 - `web/ui/` — pluggable UI modules; each UI lives in its own subdirectory (e.g., `ui/dev-panel/`, `ui/touch-gestures/`).
 - `web/audio/`, `web/video/`, `web/utils/` — well-scoped helpers and workers. UI-specific helpers (for example worker monitors) may be colocated under `web/ui/<name>/`.
 
-## 4. Pluggable UI Contract
+## 6. Pluggable UI Contract
 Each UI module must:
 - Live under `web/ui/<name>/`.
 - Export `initialize<Name>UI(engine, DOM, options = {})` (exact export name documented in the module README). Note: for the development dashboard the canonical module is `ui/dev-panel/` and it registers its initializer with the `ui-registry` (see below).
@@ -48,7 +60,7 @@ export function initializeDebugUI(engine, DOM, options = {}) {
 }
 ```
 
-## 5. UI Submodule Structure
+## 7. UI Submodule Structure
 A UI directory should contain:
 - `<name>.js` (coordinator, e.g. `dev-panel.js`)
 - `<name>.behavior.js` (layout/visual behavior)
@@ -72,64 +84,59 @@ export function initializeDevPanel(engine, DOM, opts = {}) { /* ... */ }
 registerComponent('dev-panel', initializeDevPanel);
 ```
 
-## 6. Synth / Audio Contract
-- `web/audio/audio-processor.js` is the Conductor; `playCues(cues)` is the single entry point for generating sound from visual data.
-- Synths in `web/audio/synths/` are pure: they accept `(notes, context)` and must not mutate global state.
-- The audio subsystem may throw internal errors, but command handlers should catch and return structured failure results.
+## 8. Video Subsystem: The Dynamic Frame Processing Pipeline
 
-### The Conductor Pattern
-The audio subsystem is orchestrated by a "Conductor" function, `playCues(cues)`, located in `web/audio/audio-processor.js`.
+The video subsystem captures and analyzes camera input. Its behavior adapts based on the current operating mode.
 
-The Conductor's responsibilities:
-1. Receives an array of `cues` (usually from the `frame-processor`) each frame.
-2. Consults the `sound-profiles.js` manifest (or equivalent mapping) to map each cue's `objectType` to a synthesizer and its sound parameters.
-3. Groups notes by the synthesizer (the `playFunction`) responsible for them so each synth is invoked once per frame with its batch of notes.
-4. Calls each required synthesizer with `(notes, context)`; supplies shared resources (audio context, oscillator pools, timing info) via the `context` object.
-5. Handles synth failures internally where possible; returns structured success/failure results for callers.
+*   **Entry Point:** `video/frame-processor.js` (`processFrameWithState`) remains the entry point.
+*   **In Flow Mode:** The pipeline uses lightweight, high-performance algorithms (e.g., motion detection, coarse luma-based analysis) to generate abstract data for the audio engine.
+*   **In Focus Mode:** The pipeline engages advanced ML models to perform tasks like object segmentation and depth estimation, producing rich, semantic `cues`.
+*   **Output Contract:** The subsystem's output is always an array of `cues`, but the content and richness of these cues will differ significantly between modes.
 
-Synthesizer contract:
-- Synths are pure modules under `web/audio/synths/` and must export a `play*` function that accepts `(notes, context)`.
-- Synths must not create their own `AudioContext` or mutate global audio state. All audio resources are provided via the `context` argument.
-- Synths should operate on the provided notes array and return a structured result or throw a documented, catchable error.
-- The Conductor must call each synth once per frame with its aggregated notes to avoid redundant allocation and ensure predictable scheduling.
-- Document synth metadata via top-level `/* PLUGIN-META { ... } */` blocks where applicable so indexers and plugin loaders can discover capabilities.
+## 9. Audio Subsystem: The Adaptive Conductor
 
-## 7. Guardrails — What Not To Do
+The audio subsystem, orchestrated by the `playCues` "Conductor," translates `cues` into sound. Its output also adapts to the current operating mode.
+
+*   **The Conductor Pattern:** The core pattern remains the same: `playCues` maps `cues` to synthesizers via the `sound-profiles.js` manifest.
+*   **In Flow Mode:** It generates continuous, textural, and abstract soundscapes designed for spatial awareness. Synthesizers used in this mode are optimized for responsiveness and clarity.
+*   **In Focus Mode:** It generates discrete, specific, and recognizable sounds ("AcousticCues") that correspond to identified objects. The sound profiles for this mode are semantically rich (e.g., a glass synth for a `glass` objectType).
+
+## 10. Guardrails — What Not To Do
 - Do not add business logic to `core/engine.js`.
 - Do not import UI modules into `core/` — enforce via lint rule.
 - Avoid fragile DOM access by index; prefer data-action attributes and delegation.
 - Avoid creating global IDs without module prefix.
 - Avoid starting polling/intervals without exposing a dispose that stops them.
 
-## 8. CSS & Layout Rules
+## 11. CSS & Layout Rules
 - UI modules must load CSS via a `<link>` element and do layout in `link.onload`.
 - Use a consistent stylesheet path resolution strategy (absolute or `document.baseURI`-aware`).
 - Controls should use responsive two-column grids where appropriate.
 
-## 9. Error Reporting and Logging
+## 12. Error Reporting and Logging
 - Core: structured logging (level, message, meta). Command handlers should use structured log helpers.
 - UI: non-blocking user notifications for errors; log to debug console pane.
 - Each UI module should log its module load with version badge: `console.log('module loaded', BUILD_VERSION)` when available.
 
-## 10. Testing & CI
+## 13. Testing & CI
 - Unit tests required for core command handlers and audio processor logic.
 - UI smoke tests (headless/browser) required for each UI module (e.g., Playwright or Puppeteer).
 - Linting rules must enforce core/ui import boundaries.
 - PRs must include tests for new command handlers or UI behaviors.
 
-## 11. Accessibility & Internationalization
+## 14. Accessibility & Internationalization
 - All interactive elements must provide keyboard access and ARIA attributes.
 - Text must be extracted into `web/languages/` and UIs must support locale injection.
 
-## 12. Versioning & Releases
+## 15. Versioning & Releases
 - Expose BUILD_VERSION in `web/core/constants.js`. UIs should display the version badge.
 - Keep changelog entries for architectural changes.
 
-## 13. Onboarding & Maintenance
+## 16. Onboarding & Maintenance
 - Each UI folder must contain a README describing its public API and lifecycle (initialize + dispose).
 - Keep a small architectural checklist in `docs/ARCHITECTURE_CHECKLIST.md` that PR reviewers use.
 
-## 14. Enforcement
+## 17. Enforcement
 - Add a CI lint rule to fail builds on core -> ui imports.
 - Add tests that assert UIs expose `dispose()` and that calling `initialize*UI` twice does not create duplicate IDs.
 
