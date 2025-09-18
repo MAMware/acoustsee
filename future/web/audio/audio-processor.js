@@ -201,6 +201,19 @@ function releaseOscillator(oscillator) {
 
 // --- NEW "CONDUCTOR" VERSION of playCues ---
 // This function is a significant rewrite.
+/**
+ * The audio "Conductor". This function orchestrates the translation of visual cues into sound.
+ * It follows a multi-step process:
+ * 1. Maps incoming cues to sound profiles defined in `sound-profiles.js`.
+ * 2. Creates "note" objects by combining cue data with profile parameters.
+ * 3. Groups notes by the synthesizer (`playFunction`) responsible for playing them.
+ * 4. Invokes each required synthesizer once per frame with its list of notes and a shared audio context.
+ *
+ * This pattern ensures that synthesizers remain pure and decoupled from the core application logic.
+ *
+ * @param {Array<Object>} cues - An array of cue objects from the frame processor. Each cue
+ *   should have `objectType`, `pitch`, `intensity`, and `position`.
+ */
 export async function playCues(cues) {
   const context = audioManager?.context;
   if (!context || context.state !== 'running') return;

@@ -59,7 +59,20 @@ export function clearTranslationsCache() {
 }
 
 /**
- * Fetches and formats a translated message. No DOM or TTS side-effects.
+ * Fetch and format a translated message for the currently selected language.
+ * This is a pure lookup/format operation (it does network fetches when the
+ * language file is not cached) and does not perform any DOM updates or TTS.
+ *
+ * Contract:
+ * - key: dot-notated translation key (e.g. 'powerOn.text').
+ * - params: substitution parameters for placeholders in the translation.
+ *
+ * Error modes:
+ * - If the language file cannot be fetched the function returns the original
+ *   key (caller may choose to fallback). It will also log the error.
+ * - Throws only on unexpected internal errors to allow callers to implement
+ *   custom fallback strategies.
+ *
  * @param {string} key - Translation key (dot-notated).
  * @param {Object} [params={}] - Params for placeholder replacement.
  * @returns {Promise<string>} The formatted message, or key on failure.

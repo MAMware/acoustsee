@@ -202,6 +202,20 @@ function processFrameViaWorker(frameBuffer, width, height) {
 }
 
 
+/**
+ * The main coordinator for the video processing pipeline.
+ *
+ * This function is called by the engine's scheduler for each video frame. It orchestrates
+ * the analysis of the frame, preferring to offload heavy work to a Web Worker. It then
+ * uses the currently active "grid" module to map the analysis results into an array of
+ * abstract `cues` that can be understood by the audio subsystem.
+ *
+ * @param {Uint8ClampedArray|ArrayBuffer} frameData - The raw pixel data of the video frame.
+ * @param {number} width - The width of the video frame.
+ * @param {number} height - The height of the video frame.
+ * @returns {Promise<Object>} A promise that resolves to an object containing the processing
+ *   results, primarily `{ cues: Array<Object>, movingRegions: Array<Object> }`.
+ */
 export async function processFrameWithState(frameData, width, height) {
   // If the worker isn't available, fall back to a synchronous CPU path so
   // tests (and environments without workers) can still exercise frame
