@@ -137,9 +137,9 @@ export async function init() {
       try {
         const mod = await import('./ui/dev-panel/dev-panel.js');
         if (mod && typeof mod.initializeDevPanel === 'function') {
-          // Module registers initializer in ui-registry; call it in passive mode
-          try { mod.initializeDevPanel(engine, DOM, { autoOpen: false, skipDiagnostics: true }); } catch (e) {} //R16925: do we still need such "autoOpen"? what about "skipDiagnostics"?
-          structuredLog('INFO', 'Initialized in passive Dev Panel mode.');
+          // Module registers initializer and should show the panel immediately in debug mode
+          try { mod.initializeDevPanel(engine, DOM); } catch (e) {}
+          structuredLog('INFO', 'Initialized Dev Panel (visible) for debug mode.');
         }
       } catch (e) { structuredLog('WARN', 'Failed to load dev panel UI', { error: e?.message || String(e) }); }
     } else {
@@ -234,13 +234,11 @@ export async function init() {
         try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
 
         try {
+          // Dev panel is initialized at startup when ?debug=true. No autoOpen needed here.
           const urlParams = new URLSearchParams(window.location.search);
           const isDebugModeNow = urlParams.get('debug') === 'true';
-          const registryInit = getComponent('dev-panel');
-          const fallbackGlobal = window.initializeDevPanel || null;
-          const initFn = registryInit || fallbackGlobal;
-          if (isDebugModeNow && typeof initFn === 'function') {
-            try { initFn(engine, DOM, { autoOpen: true, skipDiagnostics: true }); } catch (e) {}
+          if (isDebugModeNow) {
+            structuredLog('INFO', 'Power-on: debug mode active; dev panel should already be visible.');
           }
         } catch (e) { console.warn('showing debugUI failed', e); }
       }

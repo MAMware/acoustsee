@@ -5,7 +5,7 @@ import { setOutputCallback } from '../../utils/core-logger.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { createAndWireActions } from './dev-panel.actions.js';
-import { initializeDevPanelBehavior } from './dev-panel.behavior.js'; //R16925: we import it but it seems we not use it
+import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDebugRenderer } from './debug-renderer.js'; // R18925: "debug" 
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION } from '../../core/constants.js';
 import { registerComponent } from '../ui-registry.js';
@@ -19,9 +19,9 @@ console.log('dev-panel module loaded. Versions:', {
   LANGUAGES_VERSION
 });
 
-export function initializeDevPanel(engine, DOM, options = {}) {
-  const { autoOpen = false, skipDiagnostics = false } = options || {};
-  console.log('initializeDevPanel called', { autoOpen, skipDiagnostics });
+export function initializeDevPanel(engine, DOM) {
+  const skipDiagnostics = false; // older callers relied on this flag; keep default behavior internally, R18925: also we need to document better what this diagnostics are about
+  console.log('initializeDevPanel called (visible)');
 
   const panel = document.createElement('div');
   panel.id = 'acoustsee-dev-panel';
@@ -29,29 +29,8 @@ export function initializeDevPanel(engine, DOM, options = {}) {
   const root = DOM.uiPanelRoot || document.body;
   root.appendChild(panel);
 
-  // Start with the panel hidden. It will be shown by a gesture or if autoOpen is true.
-  panel.style.display = 'none';
-
-  // Function to actually show the panel
-  function showPanel() {
-    if (panel.style.display !== 'none') return; // Already visible
-    console.log('Showing dev panel.');
-    panel.style.display = 'flex';
-  }
-
-  // If autoOpen is true, show it immediately. Otherwise, set up a gesture.
-  if (autoOpen) {
-    showPanel();
-  } else {
-    // Set up a long-press gesture on the main container to reveal the panel.
-    let pressTimer = null;
-    const mainContainer = DOM.mainContainer || document.body;
-    mainContainer.addEventListener('pointerdown', () => {
-      pressTimer = setTimeout(showPanel, 800);
-    });
-    mainContainer.addEventListener('pointerup', () => clearTimeout(pressTimer));
-    mainContainer.addEventListener('pointerleave', () => clearTimeout(pressTimer));
-  }
+  // Panel should be visible by default in debug mode
+  panel.style.display = 'flex';
 
   // --- HTML STRUCTURE ---
   try {
@@ -112,8 +91,8 @@ export function initializeDevPanel(engine, DOM, options = {}) {
     // Reuse previous behavior code (copied and adapted)
     // Delegate panel behavior to the shared module to avoid duplicate inline logic.
     try {
-      // initializeDevPanelBehavior controls layout and z-index, and wires resize/orientation handlers.
-      initializeDevPanelBehavior({ panel, DOM });
+      // applyLayoutAndBehaviors controls layout and z-index, and wires resize/orientation handlers.
+      applyLayoutAndBehaviors({ panel, DOM });
     } catch (e) {
       // Best-effort: if the behavior module fails, fall back to a minimal responsive layout.
       try {
