@@ -18,6 +18,15 @@ let _motionInFlight = false; // R4925: lets explain how we achieve this
 
 // --- Worker Lifecycle Management ---
 function startFrameWorker() {
+  // Respect the dual-mode WIP guard: do not spawn heavy workers while the
+  // prototype is marked WIP. This prevents accidental heavy CPU usage during
+  // testing and lets the UI stay responsive.
+  try {
+    if (settings && settings.dualModeWIP) {
+      structuredLog('WARN', 'startFrameWorker skipped: dualModeWIP enabled (ARCH-3)');
+      return null;
+    }
+  } catch (e) { /* ignore guard check errors and continue to start worker */ }
   if (frameWorker) return frameWorker;
   try {
   // Prefer a robust, deployment-friendly URL relative to this module.
@@ -52,6 +61,13 @@ function startFrameWorker() {
 }
 
 function startMotionWorker() {
+  // Respect the dual-mode WIP guard: avoid starting the motion worker when in simulated WIP mode.
+  try {
+    if (settings && settings.dualModeWIP) {
+      structuredLog('WARN', 'startMotionWorker skipped: dualModeWIP enabled (ARCH-3)');
+      return null;
+    }
+  } catch (e) { /* ignore guard check errors and continue to start worker */ }
   if (motionWorker) return motionWorker;
   try {
     // Same robust resolution as frame worker: use import.meta.url when possible
@@ -217,6 +233,29 @@ function processFrameViaWorker(frameBuffer, width, height) {
  *   results, primarily `{ cues: Array<Object>, movingRegions: Array<Object> }`.
  */
 export async function processFrameWithState(frameData, width, height) {
+  // If we're in WIP/simulated dual-mode, return a tiny, deterministic simulated
+  // processing result so the rest of the pipeline (grids -> audio) can exercise
+  // without loading models or spawning workers.
+  try {
+    if (settings && settings.dualModeWIP) {
+      const grid = getCurrentGrid();
+      if (!grid || typeof grid.mapFunction !== 'function') {
+        structuredLog('WARN', 'Simulated frame processing skipped: No grid or mapFunction available.');
+        return { cues: [], movingRegions: [], simulated: true };
+      }
+
+      // Lightweight simulated moving region centered in the frame
+      const simRegion = [{ x: Math.floor((width || 1) / 2), y: Math.floor((height || 1) / 2), intensity: 0.6 }];
+      // Allow grids to map these simulated regions into cues so downstream flows are exercised
+      const out = grid.mapFunction(frameData, width, height, _prevFrameData, { movingRegions: simRegion }) || {};
+      const cues = out.cues || [];
+      return { cues, movingRegions: simRegion, simulated: true };
+    }
+  } catch (e) {
+    structuredLog('ERROR', 'Simulated frame processing failed', { error: e && e.message ? e.message : String(e) });
+    return { cues: [], movingRegions: [], simulated: true };
+  }
+
   // If the worker isn't available, fall back to a synchronous CPU path so
   // tests (and environments without workers) can still exercise frame
   // processing. This keeps behavior consistent and avoids early returns.

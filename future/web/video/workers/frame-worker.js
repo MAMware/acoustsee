@@ -78,7 +78,18 @@ function floodFill(startX, startY, width, height, frameData, lastFrameData, visi
 
 // Main message handler R11925: we should explain the message protocol in a comment (what messages we expect, what we send back)    
 self.onmessage = (e) => {
-    const { frameBuffer, width, height, settings } = e.data || {};
+    const data = e.data || {};
+    const { frameBuffer, width, height, settings } = data;
+
+    if (data && data.type === 'handshake') {
+        self.postMessage({ type: 'ready', features: ['frame-processing'] });
+        return;
+    }
+    if (data && data.type === 'simulate') {
+        // Acknowledge simulation mode; still able to return empty results.
+        self.postMessage({ type: 'ready', features: ['frame-processing'], simulated: true });
+        return;
+    }
     const frameData = new Uint8ClampedArray(frameBuffer);
 
     if (!lastFrameData) {

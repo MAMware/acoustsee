@@ -74,5 +74,8 @@ self.onmessage = (ev) => {
   } else if (msg.type === 'handshake') {
     // capability negotiation: we can support 'motion' and later depth/object if loaded
     self.postMessage({ type: 'ready', features: ['motion'] });
+  } else if (msg.type === 'simulate') {
+    // Respond to simulation request so the main thread can detect worker can run in simulated mode.
+    self.postMessage({ type: 'ready', features: ['motion'], simulated: true });
   }
 };
