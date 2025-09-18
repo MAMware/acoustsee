@@ -47,6 +47,14 @@ export let settings = {
   ingestEnabled: true,
   dayNightMode: 'day',
   resetStateOnError: true,
+  // --- WIP: ARCH-3 ---
+  // Dual-mode prototype flags and runtime guard.
+  // This is an experimental feature. Do not remove or change without referencing TASKS.md ARCH-3.
+  // Current operating mode: 'flow' (navigation) or 'focus' (identification)
+  currentMode: 'flow',
+  // When true, mode switches are simulated and heavy ML paths should be blocked by producers.
+  dualModeWIP: true,
+  // --- END WIP ---
   motionThreshold: 20,
   maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value
 };
@@ -81,6 +89,8 @@ function validateSettingsSchema(settingsObj) {
     dayNightMode: 'string',
     resetStateOnError: 'boolean',
     motionThreshold: 'number'
+    ,
+    currentMode: 'string'
   };
 
   for (const key in schema) {

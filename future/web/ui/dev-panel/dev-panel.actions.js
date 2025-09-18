@@ -25,6 +25,12 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       case 'toggleProcessing':
         engine.dispatch && engine.dispatch('toggleProcessing', { videoEl: DOM.videoFeed, canvasEl: DOM.frameCanvas });
         break;
+      case 'setMode':
+        try {
+          const mode = btn.getAttribute('data-mode');
+          engine.dispatch && engine.dispatch('setMode', { mode });
+        } catch (e) { console.warn('setMode dispatch failed', e); }
+        break;
       case 'playTestNote':
         engine.dispatch && engine.dispatch('playTestNote', { pitch: 440 });
         break;
@@ -99,6 +105,23 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   } catch (e) {
     console.error('createAndWireActions: error wiring controls', e);
   }
+
+  // Update mode button active state on engine state changes
+  try {
+    engine.onStateChange && engine.onStateChange(state => {
+      try {
+        const flowBtn = panel.querySelector('button[data-action="setMode"][data-mode="flow"]');
+        const focusBtn = panel.querySelector('button[data-action="setMode"][data-mode="focus"]');
+        if (flowBtn && focusBtn) {
+          if (state && state.currentMode === 'focus') {
+            flowBtn.classList.remove('active'); focusBtn.classList.add('active');
+          } else {
+            focusBtn.classList.remove('active'); flowBtn.classList.add('active');
+          }
+        }
+      } catch (e) { /* ignore */ }
+    });
+  } catch (e) { /* ignore */ }
 
   // Video preview and worker explorer wiring omitted for brevity (copied behavior exists in original file)
 

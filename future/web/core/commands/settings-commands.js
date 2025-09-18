@@ -171,4 +171,34 @@ export function registerSettingsCommands(engine) {
       structuredLog('WARN', 'announceSettingsMode failed', { error: e?.message });
     }
   });
+
+  // --- Mode switching (Flow / Focus) --- R18925: naming "newMode" feels silly to me, imagine a new developer reading this "newMode" it could think acording to who and what and when!? why not just "mode"? or alike.
+  registerCommandHandler('setMode', async ({ state: s, payload }) => {
+    try {
+      const mode = payload && payload.mode;
+      if (mode !== 'flow' && mode !== 'focus') {
+        structuredLog('WARN', 'setMode: invalid mode', { provided: mode });
+        return { error: 'invalid-mode' };
+      }
+
+      // --- WIP: ARCH-3 ---
+      // If dualModeWIP is enabled the handler performs a simulated mode switch:
+      //  - updates state.currentMode so UIs and inspectors can reflect the change
+      //  - logs a clear warning
+      //  - avoids starting any heavy ML models / pipelines (those should check state.dualModeWIP)
+      if (s.dualModeWIP) {
+        s.currentMode = mode;
+        structuredLog('WARN', `WIP: simulated mode change to ${mode} (ARCH-3)`);
+        try { speakText(`WIP mode set to ${mode}. This is a simulated change.`); } catch (_) {}
+        return { ok: true, simulated: true, mode };
+      }
+      // --- END WIP ---
+
+      // Production-path: real mode switch
+      s.currentMode = mode;
+      structuredLog('INFO', `Mode changed to ${mode}`);
+      try { speakText(`Mode set to ${mode}`); } catch (_) {}
+      return { ok: true, mode };
+    } catch (e) { structuredLog('ERROR', 'setMode handler failed', { error: e?.message }); }
+  });
 }

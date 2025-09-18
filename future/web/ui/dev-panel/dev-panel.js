@@ -6,6 +6,7 @@ import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { createAndWireActions } from './dev-panel.actions.js';
 import { initializeDevPanelBehavior } from './dev-panel.behavior.js'; //R16925: we import it but it seems we not use it
+import { initializeDebugRenderer } from './debug-renderer.js'; // R18925: "debug" 
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION } from '../../core/constants.js';
 import { registerComponent } from '../ui-registry.js';
 
@@ -65,6 +66,13 @@ export function initializeDevPanel(engine, DOM, options = {}) {
       <div class="devpanel-section controls-section">
         <h2>Controls</h2>
         <div class="controls-grid">
+          <div class="control-row mode-selector">
+            <label>Mode:</label>
+            <div class="segmented-control">
+              <button data-action="setMode" data-mode="flow" class="mode-btn active">Flow</button>
+              <button data-action="setMode" data-mode="focus" class="mode-btn">Focus</button>
+            </div>
+          </div>
           <div class="control-row"><label>Grid Type<select id="grid-type-select"></select></label></div>
           <div class="control-row"><label>Synth Engine<select id="synth-engine-select"></select></label></div>
           <div class="control-row"><label>Max Notes<input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span></label></div>
@@ -157,6 +165,10 @@ export function initializeDevPanel(engine, DOM, options = {}) {
       if (actionsModule && typeof actionsModule.dispose === 'function') {
         panel.__devActionsDispose = actionsModule.dispose;
       }
+      try {
+        // Initialize debug overlay renderer if present
+        initializeDebugRenderer(engine, DOM);
+      } catch (e) { /* ignore */ }
     } catch (e) {
       console.error('initializeDevPanel: createAndWireActions failed', e);
       // expose failure in the DOM for quick visual detection
