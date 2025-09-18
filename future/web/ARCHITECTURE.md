@@ -80,8 +80,13 @@ The registry exposes:
 Example usage from a UI module:
 ```js
 import { registerComponent } from '../ui/ui-registry.js';
-export function initializeDevPanel(engine, DOM, opts = {}) { /* ... */ }
+// Note: Dev panel initializer now follows a simplified signature. When running in
+// debug mode the panel is initialized and shown immediately by calling:
+export function initializeDevPanel(engine, DOM) { /* ... */ }
 registerComponent('dev-panel', initializeDevPanel);
+// Deprecated: previous versions accepted an `options` object (for example
+// `autoOpen`) — that behavior has been removed. Use `?debug=true` in the URL
+// to ensure the dev panel is loaded and visible at boot.
 ```
 
 ## 8. Video Subsystem: The Dynamic Frame Processing Pipeline
