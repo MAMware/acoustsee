@@ -2,7 +2,12 @@
 // FINAL VERSION: Should be a "frame manager" delegator.
 // REVIEWS: 2025-09-04=R4925 (in progress), 2025-09-11=R11925 
 
-import { settings } from '../core/state.js';
+// Settings are injected via initializeVideo(config) to avoid direct coupling to core/state
+let _config = {};
+import { structuredLog } from '../utils/logging.js';
+import { getCurrentGrid } from '../core/grid-manager.js';
+import { registerWorker, unregisterWorker } from '../ui/dev-panel/worker-monitor.js';
+import { extractYFromVideoFrame, rgbaToY } from './videoframe-helper.js';  //R4925: feels slopy and much of the same 
 import { structuredLog } from '../utils/logging.js';
 import { getCurrentGrid } from '../core/grid-manager.js';
 import { registerWorker, unregisterWorker } from '../ui/dev-panel/worker-monitor.js';
@@ -22,7 +27,7 @@ function startFrameWorker() {
   // prototype is marked WIP. This prevents accidental heavy CPU usage during
   // testing and lets the UI stay responsive.
   try {
-    if (settings && settings.dualModeWIP) {
+    if (_config && _config.dualModeWIP) {
       structuredLog('WARN', 'startFrameWorker skipped: dualModeWIP enabled (ARCH-3)');
       return null;
     }
@@ -63,7 +68,7 @@ function startFrameWorker() {
 function startMotionWorker() {
   // Respect the dual-mode WIP guard: avoid starting the motion worker when in simulated WIP mode.
   try {
-    if (settings && settings.dualModeWIP) {
+    if (_config && _config.dualModeWIP) {
       structuredLog('WARN', 'startMotionWorker skipped: dualModeWIP enabled (ARCH-3)');
       return null;
     }
@@ -139,8 +144,8 @@ export function shutdownFrameWorker() {
 }
 
 export function enableWorkerTransfer(enable) {
-  settings.workerTransferEnabled = !!enable;
-  structuredLog('INFO', `Worker buffer transfer set to: ${settings.workerTransferEnabled}`);
+  _config.workerTransferEnabled = !!enable;
+  structuredLog('INFO', `Worker buffer transfer set to: ${_config.workerTransferEnabled}`);
 }
 
 // Process a frame by delegating to the worker. Returns a Promise that resolves
@@ -152,19 +157,19 @@ function processFrameViaWorker(frameBuffer, width, height) {
       if (!w) return resolve({ movingRegions: [] });
       _pendingResolve = resolve;
 
-      // Tiny debug: confirm what threshold we're sending
-      try { console.debug('processFrameViaWorker -> motionThreshold', settings.motionThreshold); } catch (e) {}
+  // Tiny debug: confirm what threshold we're sending
+  try { console.debug('processFrameViaWorker -> motionThreshold', _config.motionThreshold); } catch (e) {}
 
       // Use the motion worker: extract Y plane and send minimal buffer
       try {
         const mw = startMotionWorker();
         if (!mw) {
           // fallback to old frame worker path
-          if (settings.workerTransferEnabled && frameBuffer && frameBuffer.buffer) {
+          if (_config.workerTransferEnabled && frameBuffer && frameBuffer.buffer) {
             const ab = frameBuffer.buffer;
-            w.postMessage({ type: 'process', frameBuffer: ab, width, height, settings: { motionThreshold: settings.motionThreshold }, transferred: true }, [ab]);
+            w.postMessage({ type: 'process', frameBuffer: ab, width, height, settings: { motionThreshold: _config.motionThreshold }, transferred: true }, [ab]);
           } else {
-            w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: settings.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
+            w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: _config.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
           }
           return;
         }
@@ -186,7 +191,7 @@ function processFrameViaWorker(frameBuffer, width, height) {
 
         if (!yBuf) {
           // fallback to frame worker if Y extraction failed
-          w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: settings.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
+          w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: _config.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
           _motionInFlight = false;
           return;
         }
@@ -194,7 +199,7 @@ function processFrameViaWorker(frameBuffer, width, height) {
         // Send Y buffer as transferable
         _pendingResolve = resolve;
         try {
-          mw.postMessage({ type: 'frame', ts: Date.now(), w: width, h: height, yBuffer: yBuf.buffer, step: 6, threshold: settings.motionThreshold }, [yBuf.buffer]);
+          mw.postMessage({ type: 'frame', ts: Date.now(), w: width, h: height, yBuffer: yBuf.buffer, step: 6, threshold: _config.motionThreshold }, [yBuf.buffer]);
         } catch (e) {
           // if posting fails, clear state and fallback
           _motionInFlight = false;
@@ -204,11 +209,11 @@ function processFrameViaWorker(frameBuffer, width, height) {
         return;
       } catch (e) {
         // fallback to old behavior
-        if (settings.workerTransferEnabled && frameBuffer && frameBuffer.buffer) {
+        if (_config.workerTransferEnabled && frameBuffer && frameBuffer.buffer) {
           const ab = frameBuffer.buffer;
-          w.postMessage({ type: 'process', frameBuffer: ab, width, height, settings: { motionThreshold: settings.motionThreshold }, transferred: true }, [ab]);
+          w.postMessage({ type: 'process', frameBuffer: ab, width, height, settings: { motionThreshold: _config.motionThreshold }, transferred: true }, [ab]);
         } else {
-          w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: settings.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
+          w.postMessage({ type: 'process', frameBuffer, width, height, settings: { motionThreshold: _config.motionThreshold } }, [frameBuffer.buffer ? frameBuffer.buffer : frameBuffer]);
         }
       }
     } catch (e) {
@@ -237,7 +242,7 @@ export async function processFrameWithState(frameData, width, height) {
   // processing result so the rest of the pipeline (grids -> audio) can exercise
   // without loading models or spawning workers.
   try {
-    if (settings && settings.dualModeWIP) {
+    if (_config && _config.dualModeWIP) {
       const grid = getCurrentGrid();
       if (!grid || typeof grid.mapFunction !== 'function') {
         structuredLog('WARN', 'Simulated frame processing skipped: No grid or mapFunction available.');
@@ -335,3 +340,20 @@ export function __setPrevFrameDataForTest(left, right) {
 // mapRegionsToCues removed: grids now expose a standardized `mapFunction`
 // which the frame processing pipeline calls directly to translate regions into cues.
 // R17925: lets explain in detail how grids now expose a standardized `mapFunction` reasoning behind this change
+
+/**
+ * Initialize the video module with injected configuration.
+ * @param {Object} config - { engineDispatch, motionThreshold, workerTransferEnabled, dualModeWIP, workerFactory }
+ */
+export function initializeVideo(config = {}) {
+  _config = Object.assign({}, _config, config || {});
+  if (_config.workerFactory) {
+    // workerFactory support can be implemented to override worker creation where needed.
+  }
+  return {
+    processFrame: processFrameWithState,
+    setGrid: (gridId) => { /* engine should call core/grid-manager to update grid */ },
+    setMotionThreshold: (v) => { _config.motionThreshold = v; },
+    teardown: () => { stopFrameWorker(); stopMotionWorker(); }
+  };
+}

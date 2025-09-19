@@ -17,7 +17,7 @@ import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLan
 import { initializeAudio } from './audio/audio-processor.js'; //R12925: duplicated file source
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js'; //R12925: duplicated file source
-import { processFrameWithState } from './video/frame-processor.js'; //R12925: duplicated file source
+import { processFrameWithState, initializeVideo } from './video/frame-processor.js'; //R12925: duplicated file source
 import { enableFrameWorker } from './video/frame-processor.js'; //R12925: duplicated file source
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
@@ -201,9 +201,9 @@ export async function init() {
     };
 
     // --- Audio manager and gated startup (user gesture required) ---
-    const audioManager = new AudioManager();
-    DOM.audioManager = audioManager;
-    try { bindAudioProcessor(audioManager); } catch (e) { console.warn('bindAudioProcessor failed', e); }
+  const audioManager = new AudioManager();
+  DOM.audioManager = audioManager;
+  try { bindAudioProcessor(audioManager); } catch (e) { console.warn('bindAudioProcessor failed', e); }
 
     if (DOM.powerOn) {
       // Helper: unlock audio and initialize audio subsystems inside user gesture
@@ -221,7 +221,13 @@ export async function init() {
         if (!unlocked) throw new Error('AudioContext could not be unlocked.');
 
         await audioManager.initialize();
-        await initializeAudio(audioManager.context);
+        try {
+          // Initialize audio processor using dependency injection via a config object.
+          await initializeAudio({ audioManager, maxNotes: settings.maxNotes, engineDispatch: engine.dispatch });
+        } catch (initErr) {
+          structuredLog('ERROR', 'initializeAudio failed', { error: initErr?.message || String(initErr) });
+          throw initErr;
+        }
       }
 
       // Helper: show main UI and optional debug panel R17925 why optional debug panel? dont we have a ?debug=true param to show it?
@@ -278,7 +284,14 @@ export async function init() {
       // ... (This function remains unchanged, no need to copy it again) ...
     })();
     
-    settings._frameProcessor = processFrameWithState;
+    // Initialize video module with dependency injection and expose its processFrame to the engine
+    try {
+      const videoApi = initializeVideo({ engineDispatch: engine.dispatch, motionThreshold: settings.motionThreshold, workerTransferEnabled: settings.workerTransferEnabled, dualModeWIP: settings.dualModeWIP });
+      settings._frameProcessor = (videoApi && videoApi.processFrame) ? videoApi.processFrame : processFrameWithState;
+    } catch (e) {
+      structuredLog('WARN', 'initializeVideo failed; falling back to direct function', { error: e?.message || String(e) });
+      settings._frameProcessor = processFrameWithState;
+    }
 
     structuredLog('INFO', 'init: UI setup complete');
     const stopHealthChecker = startHealthChecker({

@@ -1,17 +1,17 @@
 {
   "name": "acoustsee",
-  "version": "0.8.5"
+  "version": "0.8.6",
   "description": "AcoustSee: Audio-Visual Synthesis Interface",
   "main": "main.js",
   "type": "module",
   "scripts": {
     "test": "jest --config jest.config.cjs",
-  "test:unit": "jest --config jest.config.cjs --testPathPattern=future/web/test --runInBand",
+    "test:unit": "jest --config jest.config.cjs --testPathPattern=future/web/test --runInBand",
     "test:e2e": "npx playwright test --config=playwright.config.cjs",
     "playwright:install": "npx playwright install",
     "start:static": "node ./scripts/static-server.cjs",
-  "test:e2e:http": "npx playwright test --config=playwright.config.cjs",
-  "collect:artifacts": "node ./scripts/collect-artifacts.cjs"
+    "test:e2e:http": "npx playwright test --config=playwright.config.cjs",
+    "collect:artifacts": "node ./scripts/collect-artifacts.cjs"
   },
   "keywords": [],
   "author": "",

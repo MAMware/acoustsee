@@ -1,10 +1,10 @@
 // File: web/audio/audio-processor.js
 
-import { settings } from '../core/state.js';
 import { structuredLog } from '../utils/logging.js';
 import { soundProfileManifest } from './sound-profiles.js'; // <-- NEW IMPORT
 
 let audioManager = null;
+let _config = {};
 const oscillatorPool = [];
 const activeOscillators = new Map();
 let masterGain = null;
@@ -19,11 +19,20 @@ export function bindAudioManager(manager) {
   audioManager = manager;
 }
 
-export async function initializeAudio(context) {
+export async function initializeAudio(config = {}) {
+  // Accept either an object with an `audioManager` or a raw AudioContext for compatibility.
+  _config = Object.assign({}, _config, config || {});
+
+  // If the caller provided an audioManager, use it. Otherwise fall back to previously bound one.
+  if (_config.audioManager) audioManager = _config.audioManager;
+
+  const context = audioManager?.context || _config.context;
+
   if (!context) {
-    structuredLog('ERROR', 'initializeAudio: AudioContext not provided.');
-    return;
+    structuredLog('ERROR', 'initializeAudio: AudioContext (or audioManager) not provided.');
+    throw new Error('initializeAudio requires { audioManager } or { context } in config');
   }
+
   try {
     structuredLog('DEBUG', 'initializeAudio: starting', { state: context.state });
     // Attempt to collect available media device info for diagnostics
@@ -49,7 +58,8 @@ export async function initializeAudio(context) {
   // create mic gain node ready for pass-through routing
   micGainNode = context.createGain();
   micGainNode.gain.value = 1.0;
-  resizeOscillatorPool(settings.maxNotes);
+  // Use injected maxNotes, fall back to a safe default of 8
+  resizeOscillatorPool(Number(_config.maxNotes) || 8);
 
   // If a mic stream was queued before audio initialization, connect it now
   if (queuedMicStream) {
