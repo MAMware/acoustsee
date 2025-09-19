@@ -177,18 +177,7 @@ export function createEngine() {
       return { ok: false, error: err?.message || String(err) };
     }
   }
-
-  // UI and misc handlers have been moved to dedicated modules
-
-  // -------------------------------------------------------------------
-  // <-- THE LARGE BLOCK OF GESTURE COMMAND HANDLERS HAS BEEN REMOVED -->
-  // -------------------------------------------------------------------
-
-  // debug / settings handlers were moved to separate modules
-
-  // ... (All other command handlers like resumeAudio, startProcessing, etc., remain here for now)
-  // ... They will be moved in the next steps.
-
+  
   // --- MEDIA WRAPPER HANDLERS ---
   // These wrappers delegate to the media module which registers its handlers under
   // namespaced keys (see registration below). Wrappers manage the engine scheduler
@@ -241,17 +230,17 @@ export function createEngine() {
 
   // Register handlers from external modules
   registerTouchGestureCommands(engineInstance); // <-- NEW REGISTRATION CALL
-
-  // Restore audioPlayCues handler (was accidentally removed during refactor)
-  registerCommandHandler('audioPlayCues', async ({ state: s, payload }) => {
+  // Register audio command handlers in a dedicated module
+  // Try dynamic import first (works in modern browsers). Fall back to require() for test environments.
+  import('./commands/audio-commands.js').then(mod => {
+    try { mod.registerAudioCommands && mod.registerAudioCommands(engineInstance); } catch (e) { structuredLog('WARN', 'registerAudioCommands failed', { error: e?.message || String(e) }); }
+  }).catch((e) => {
     try {
-      const cues = payload?.cues || [];
-      if (!Array.isArray(cues) || cues.length === 0) return { played: false };
-      await audioProcessor.playCues(cues);
-      return { played: true, count: cues.length };
-    } catch (e) {
-      structuredLog('WARN', 'audioPlayCues handler failed', { error: e?.message || String(e) });
-      return { played: false };
+      // eslint-disable-next-line no-undef
+      const req = typeof require !== 'undefined' ? require('./commands/audio-commands.js') : null;
+      if (req && req.registerAudioCommands) req.registerAudioCommands(engineInstance);
+    } catch (err) {
+      structuredLog('WARN', 'Failed to register audio commands', { error: err?.message || String(err) });
     }
   });
 
