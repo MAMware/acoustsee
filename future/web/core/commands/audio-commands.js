@@ -4,6 +4,7 @@
 import { structuredLog } from '../../utils/logging.js';
 import logger from '../../utils/logging.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
+import { getAudioApi } from '../../audio/audio-processor.js';
 
 export function registerAudioCommands(engine) {
   const { registerCommandHandler } = engine;
@@ -13,7 +14,12 @@ export function registerAudioCommands(engine) {
     try {
       const cues = payload?.cues || [];
       if (!Array.isArray(cues) || cues.length === 0) return { played: false };
-      await audioProcessor.playCues(cues);
+      const api = getAudioApi();
+      if (api && typeof api.playCues === 'function') {
+        await api.playCues(cues);
+      } else {
+        await audioProcessor.playCues(cues);
+      }
       return { played: true, count: cues.length };
     } catch (e) {
       structuredLog('WARN', 'audioPlayCues handler failed', { error: e?.message || String(e) });

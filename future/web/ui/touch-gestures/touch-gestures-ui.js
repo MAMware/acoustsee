@@ -1,5 +1,19 @@
 // The Blind/User Accessible UI moved into touch-gestures namespace
-export function initializeAccessibleUI(engine, DOM) {
+export function initializeAccessibleUI(arg1, arg2) {
+  // Support legacy signature initializeAccessibleUI(engine, DOM)
+  // and DI signature initializeAccessibleUI({ engine, engineDispatch, dom, getEngineState })
+  let engine = null;
+  let DOM = null;
+  if (arg1 && typeof arg1.getState === 'function') {
+    engine = arg1;
+    DOM = arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+  } else {
+    const cfg = arg1 || {};
+    engine = cfg.engine || (cfg.engineDispatch ? { dispatch: cfg.engineDispatch, getState: cfg.getEngineState || (()=>({})) } : null);
+    DOM = cfg.dom || arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+  }
+  engine = engine || { dispatch: () => {}, getState: () => ({}) };
+  DOM = DOM || (typeof window !== 'undefined' ? window.DOM : undefined);
   console.log('Initializing Accessible UI...');
   
   // This UI is primarily for end-users. It will be gesture-based.

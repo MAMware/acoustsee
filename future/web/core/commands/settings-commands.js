@@ -7,6 +7,7 @@
 import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText, setLanguage, translatePage } from '../../utils/utils.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
+import { getAudioApi } from '../../audio/audio-processor.js';
 
 export function registerSettingsCommands(engine) {
   const { registerCommandHandler, dispatch } = engine;
@@ -32,7 +33,11 @@ export function registerSettingsCommands(engine) {
     const maxNotes = parseInt(payload.maxNotes, 10);
     if (!isNaN(maxNotes) && maxNotes >= 1 && maxNotes <= 100) {
       s.maxNotes = maxNotes;
-      try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
+      try {
+        const api = getAudioApi();
+        if (api && typeof api.setMaxNotes === 'function') api.setMaxNotes(s.maxNotes);
+        else audioProcessor.resizeOscillatorPool(s.maxNotes);
+      } catch (e) { structuredLog('WARN', 'setMaxNotes/resizeOscillatorPool failed', { error: e?.message }); }
       structuredLog('INFO', 'DebugUI: Max notes set', { maxNotes });
     }
   });
@@ -82,9 +87,9 @@ export function registerSettingsCommands(engine) {
       if (savedSettingsJSON) {
         const parsed = JSON.parse(savedSettingsJSON);
         Object.assign(s, parsed);
-        try { await setLanguage(s.language); } catch (e) {}
-        try { await translatePage(document); } catch (e) {}
-        try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) {}
+  try { await setLanguage(s.language); } catch (e) {}
+  try { await translatePage(document); } catch (e) {}
+  try { const api = getAudioApi(); if (api && typeof api.setMaxNotes === 'function') api.setMaxNotes(s.maxNotes); else audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) {}
         const msg = await getText('settings.loaded').catch(() => 'Settings loaded successfully.');
         speakText(msg);
         structuredLog('INFO', 'Settings loaded from localStorage', parsed);

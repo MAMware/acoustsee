@@ -223,7 +223,8 @@ export async function init() {
         await audioManager.initialize();
         try {
           // Initialize audio processor using dependency injection via a config object.
-          await initializeAudio({ audioManager, maxNotes: settings.maxNotes, engineDispatch: engine.dispatch });
+          const audioApi = await initializeAudio({ audioManager, maxNotes: settings.maxNotes, engineDispatch: engine.dispatch });
+          try { const { setAudioApi } = await import('./audio/audio-processor.js'); setAudioApi(audioApi); } catch(e) {}
         } catch (initErr) {
           structuredLog('ERROR', 'initializeAudio failed', { error: initErr?.message || String(initErr) });
           throw initErr;

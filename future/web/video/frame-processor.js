@@ -8,10 +8,6 @@ import { structuredLog } from '../utils/logging.js';
 import { getCurrentGrid } from '../core/grid-manager.js';
 import { registerWorker, unregisterWorker } from '../ui/dev-panel/worker-monitor.js';
 import { extractYFromVideoFrame, rgbaToY } from './videoframe-helper.js';  //R4925: feels slopy and much of the same 
-import { structuredLog } from '../utils/logging.js';
-import { getCurrentGrid } from '../core/grid-manager.js';
-import { registerWorker, unregisterWorker } from '../ui/dev-panel/worker-monitor.js';
-import { extractYFromVideoFrame, rgbaToY } from './videoframe-helper.js';  //R4925: feels slopy and much of the same 
 
 let frameWorker = null;
 let motionWorker = null;

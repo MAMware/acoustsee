@@ -5,6 +5,15 @@ import { soundProfileManifest } from './sound-profiles.js'; // <-- NEW IMPORT
 
 let audioManager = null;
 let _config = {};
+let _audioApi = null;
+
+export function setAudioApi(api) {
+  _audioApi = api || null;
+}
+
+export function getAudioApi() {
+  return _audioApi;
+}
 const oscillatorPool = [];
 const activeOscillators = new Map();
 let masterGain = null;
@@ -225,6 +234,11 @@ function releaseOscillator(oscillator) {
  *   should have `objectType`, `pitch`, `intensity`, and `position`.
  */
 export async function playCues(cues) {
+  // If an external audio API was registered, prefer it. This allows DI migration.
+  if (_audioApi && typeof _audioApi.playCues === 'function') {
+    return _audioApi.playCues(cues);
+  }
+
   const context = audioManager?.context;
   if (!context || context.state !== 'running') return;
 

@@ -19,8 +19,24 @@ console.log('dev-panel module loaded. Versions:', {
   LANGUAGES_VERSION
 });
 
-export function initializeDevPanel(engine, DOM) {
-  const skipDiagnostics = false; // older callers relied on this flag; keep default behavior internally, R18925: also we need to document better what this diagnostics are about
+export function initializeDevPanel(arg1, arg2) {
+  // Support two call patterns for migration:
+  //  - initializeDevPanel(engine, DOM)  (legacy)
+  //  - initializeDevPanel({ engine, engineDispatch, dom, getEngineState }) (DI)
+  let engine = null;
+  let DOM = null;
+  const skipDiagnostics = false;
+  if (arg1 && typeof arg1.getState === 'function') {
+    engine = arg1;
+    DOM = arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+  } else {
+    const cfg = arg1 || {};
+    engine = cfg.engine || (cfg.engineDispatch ? { dispatch: cfg.engineDispatch, getState: cfg.getEngineState || (()=>({})), onStateChange: cfg.onStateChange || (()=>{}) } : null);
+    DOM = cfg.dom || arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+  }
+  // Ensure safe engine / DOM defaults to avoid crashing during migration
+  engine = engine || { dispatch: () => {}, getState: () => ({}), onStateChange: () => {} };
+  DOM = DOM || (typeof window !== 'undefined' ? window.DOM : undefined);
   console.log('initializeDevPanel called (visible)');
 
   const panel = document.createElement('div');
