@@ -93,8 +93,6 @@ Dynamic updates: Adjust volume and filter cutoff every 66ms based on depth/motio
 
 
 
-
-
 Example of UI Templates:
 
 - Bezel type template: The top trapezoid is (should be) where the setting toggle is, this toggle shifts the function of the lateral trapezoid a the left (dayNight toggle without shift) and right (languaje selectror for speech synthesis) for a cursor for options navigation such as grid and synth engine both versioned selector.
@@ -106,3 +104,67 @@ The start and stop of the navigation is done by pressing the buttom trapezoid.
 - A reintroduction of a frames per seconds (FPS) toggle that is usefull if your device stutters or generates artifacts due to processing issues, likely by a cpu processor limitation will be reconsidered as a configuration option, among the grid and synth engine selector.
 
 A console log live view and a copy feature is being considered too.
+
+# Task: Extract Scheduler & Finish Engine Modularization
+
+Summary
+- Make createEngine lean: move remaining inline command handlers out of engine.js and extract the scheduler into its own module.
+- Primary goals: engine becomes a pure dispatcher, scheduler is testable/replaceable, audio handlers live in audio-commands.js.
+
+Why
+- Separation of concerns, improved testability, easier reasoning about timing, and consistency with existing registerXCommands pattern.
+
+Scope & Acceptance
+- Create `core/commands/audio-commands.js` and move `audioPlayCues` there.
+- Remove inline `audioPlayCues` registration from `core/engine.js`.
+- Extract scheduler logic (single-run lock, pending flag, timers, targets) into `core/scheduler.js`.
+- Replace inline `startProcessing`/`stopProcessing` wrappers with small adapters that call scheduler API or register scheduler commands from a module.
+- Update `core/engine.js` to import `registerAudioCommands` and `createScheduler` (or `registerSchedulerCommands`) and wire them.
+- Update docs: `web/ARCHITECTURE.md` and any references to handler signatures.
+- Add unit tests for `audio-commands` and `scheduler` behavior; run smoke UI test `/?debug=true`.
+
+Checklist (runbook)
+- [ ] Add file: `future/web/core/commands/audio-commands.js` (export `registerAudioCommands(engineApi)`).
+- [ ] Remove inline `audioPlayCues` from `future/web/core/engine.js`.
+- [ ] Add file: `future/web/core/scheduler.js` (export factory: `createScheduler({tickFn, options})` or `registerSchedulerCommands`).
+- [ ] Replace inline start/stop wrapper code in engine with scheduler adapter calls.
+- [ ] Update imports and dynamic-import fallbacks (keep import(...).then(...) + require fallback).
+- [ ] Add unit tests:
+  - `future/test/audio-commands.test.js` (mock audio-processor).
+  - `future/test/scheduler.test.js` (single-run lock, pending run semantics, timer switching).
+- [ ] Update `future/web/ARCHITECTURE.md` and any code comments referencing old locations/signatures.
+- [ ] Run full test suite and manual smoke: serve `future/web` and open `/?debug=true`.
+
+Risks & Mitigations
+- Timing regressions and race conditions
+  - Mitigation: ship scheduler with comprehensive unit tests (simulate timers), keep engine adapters minimal at first.
+- Hidden closure-coupling (video/canvas refs, state)
+  - Mitigation: explicitly pass required accessors (getState, setSchedulerTargets, getVideoEl) to the scheduler or adapters.
+- Circular imports / test mocks break
+  - Mitigation: keep command modules self-contained and accept registerCommandHandler rather than importing engine internals; keep dynamic import + require fallback pattern.
+- Test flakiness
+  - Mitigation: mock timers in unit tests and run deterministic integration smoke tests.
+
+Estimated effort
+- Audio handler move: 1–2 hours.
+- Scheduler extraction & adapter work: 4–8 hours (design + tests).
+- Full validation + test fixes: 1–3 hours.
+
+Commands / quick checks
+- Find inline handlers:
+  - rg "registerCommandHandler\\(" future/web -n
+- Run smoke server:
+  - cd future/web && python3 -m http.server 8000
+  - Open http://localhost:8000/?debug=true
+- Run tests (project-specific; example):
+  - npm test
+  - npx jest future/test/scheduler.test.js
+
+Implementation notes
+- Prefer passing minimal dependencies into new modules (e.g., registerAudioCommands({ registerCommandHandler, getState, structuredLog })).
+- Keep engine.dispatch as the single dispatch entry point; do not import a central dispatcher from other modules.
+- Keep dynamic import + require fallback used elsewhere to preserve test mocking behavior.
+
+If approved, implement in two PRs:
+1. Move audio handler + tests (low-risk).
+2. Extract scheduler + update engine + tests (higher-risk, gated by CI and smoke tests).

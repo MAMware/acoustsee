@@ -1,6 +1,6 @@
 {
   "name": "acoustsee",
-  "version": "0.6.0",
+  "version": "0.8.5"
   "description": "AcoustSee: Audio-Visual Synthesis Interface",
   "main": "main.js",
   "type": "module",

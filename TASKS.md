@@ -18,3 +18,10 @@ This document tracks active and future development tasks to provide a clear proj
 
 -   **[ ] `AUDIO-3`:** Implement a data-driven manifest for synth settings.
 -   **[ ] `DOCS-1`:** Add data flow diagrams to `ARCHITECTURE.md`.
+ -   **[ ] `ARCH-4`:** Extract scheduler and finish engine modularization.
+		 - Goal: make `createEngine()` a thin dispatcher. Move remaining inline handlers into `core/commands/*` (audio, media, mic) and extract the frame scheduler into `core/scheduler.js` so it can be unit-tested, swapped, and reused.
+		 - Acceptance criteria:
+			 - `audioPlayCues` moved to `future/web/core/commands/audio-commands.js` and registered from `engine.js`.
+			 - Scheduler logic (single-run lock, pending flag, timers) implemented in `future/web/core/scheduler.js` with a small adapter in `engine.js`.
+			 - Unit tests added for `audio-commands` and `scheduler` behavior, and a browser smoke test that verifies `/?debug=true` boots and audio dispatch works.
+		 - Rationale: improves separation of concerns, testability, and reduces risk when changing timing policies.
