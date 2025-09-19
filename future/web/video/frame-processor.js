@@ -10,8 +10,8 @@ let _config = {};
 // initializeVideo({ importMetaUrl: '...' }) if needed.
 let importMetaUrl = undefined;
 import { structuredLog } from '../utils/logging.js';
-import { getCurrentGrid } from '../core/grid-manager.js';
-import { registerWorker, unregisterWorker } from '../ui/dev-panel/worker-monitor.js';
+import { getCurrentGrid as defaultGetCurrentGrid } from '../core/grid-manager.js';
+import { registerWorker as defaultRegisterWorker, unregisterWorker as defaultUnregisterWorker } from '../ui/dev-panel/worker-monitor.js';
 import { extractYFromVideoFrame, rgbaToY } from './videoframe-helper.js';  //R4925: feels slopy and much of the same 
 
 let frameWorker = null;
@@ -21,6 +21,10 @@ let frameWorkerId = null;
 let _pendingResolve = null;
 let _prevFrameData = null; // used for synchronous fallback motion detection and tests
 let _motionInFlight = false; // R4925: lets explain how we achieve this
+// Allow these helpers to be injected via initializeVideo for testability / isolation
+let _getCurrentGrid = defaultGetCurrentGrid;
+let _registerWorker = defaultRegisterWorker;
+let _unregisterWorker = defaultUnregisterWorker;
 
 // --- Worker Lifecycle Management ---
 function startFrameWorker() {
@@ -63,6 +67,7 @@ function startFrameWorker() {
       structuredLog('ERROR', 'frameWorker error', e.message || e);
     };
   try { frameWorkerId = registerWorker(frameWorker, 'frame-worker'); } catch (e) { frameWorkerId = null; }
+  try { frameWorkerId = (_registerWorker ? _registerWorker(frameWorker, 'frame-worker') : null); } catch (e) { frameWorkerId = null; }
   workerEnabled = true;
     return frameWorker;
   } catch (e) {
@@ -92,7 +97,7 @@ function startMotionWorker() {
     } catch (e) { motionWorkerPath = './workers/motion-worker.js'; }
     if (!WorkerCtor) throw new Error('No Worker constructor available');
     motionWorker = new WorkerCtor(motionWorkerPath, { type: 'module' });
-    motionWorker.onmessage = (ev) => {
+  motionWorker.onmessage = (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'motion' && _pendingResolve) {
         // resolve pending frame promise with movingRegions constructed from flat buffers , R4925: How this allows us to efficiently process motion data without unnecessary overhead.
@@ -116,7 +121,7 @@ function startMotionWorker() {
       }
     };
     motionWorker.onerror = (e) => { structuredLog('ERROR', 'motionWorker error', e.message || e); };
-    try { registerWorker(motionWorker, 'motion-worker'); } catch (e) {}
+  try { if (_registerWorker) _registerWorker(motionWorker, 'motion-worker'); } catch (e) {}
     return motionWorker;
   } catch (e) {
     structuredLog('WARN', 'startMotionWorker failed', e);
@@ -252,7 +257,7 @@ export async function processFrameWithState(frameData, width, height) {
   // without loading models or spawning workers.
   try {
     if (_config && _config.dualModeWIP) {
-      const grid = getCurrentGrid();
+      const grid = (_getCurrentGrid ? _getCurrentGrid() : null);
       if (!grid || typeof grid.mapFunction !== 'function') {
         structuredLog('WARN', 'Simulated frame processing skipped: No grid or mapFunction available.');
         return { cues: [], movingRegions: [], simulated: true };
@@ -275,7 +280,7 @@ export async function processFrameWithState(frameData, width, height) {
   // processing. This keeps behavior consistent and avoids early returns.
   if (!workerEnabled || !frameWorker) {
     try {
-      const grid = getCurrentGrid();
+      const grid = (_getCurrentGrid ? _getCurrentGrid() : null);
       // The check should look for `mapFunction`, which is the standardized property name.
       if (!grid || typeof grid.mapFunction !== 'function') {
         structuredLog('WARN', 'Frame processing skipped: No grid or mapFunction available.');
@@ -305,7 +310,7 @@ export async function processFrameWithState(frameData, width, height) {
     const movingRegions = (res && res.movingRegions) ? res.movingRegions : [];
     
     // Use unified logic: let grid handle cue mapping instead of legacy mapRegionsToCues
-    const grid = getCurrentGrid();
+    const grid = (_getCurrentGrid ? _getCurrentGrid() : null);
     // Use the standardized property name used by available-grids.js
     if (!grid || typeof grid.mapFunction !== 'function') {
       structuredLog('WARN', 'Worker frame processing: No grid or mapFunction available.');
@@ -361,6 +366,10 @@ export function initializeVideo(config = {}) {
   if (config && config.WorkerCtor) _config.WorkerCtor = config.WorkerCtor;
   // Provide importMetaUrl fallback if tests provided one
   if (config && config.importMetaUrl) importMetaUrl = config.importMetaUrl;
+  // Allow injection of helper functions to avoid importing app-wide globals in tests
+  if (config && typeof config.getCurrentGrid === 'function') _getCurrentGrid = config.getCurrentGrid;
+  if (config && typeof config.registerWorker === 'function') _registerWorker = config.registerWorker;
+  if (config && typeof config.unregisterWorker === 'function') _unregisterWorker = config.unregisterWorker;
   if (_config.workerFactory) {
     // workerFactory support can be implemented to override worker creation where needed.
   }

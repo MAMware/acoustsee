@@ -1,6 +1,7 @@
 // File: web/ui/dev-panel/dev-panel.js (Renamed from debug-ui.js)
 
-import { settings } from '../../core/state.js';
+// Settings will be provided via initializer config to avoid implicit global coupling
+let _config = {};
 import { setOutputCallback } from '../../utils/core-logger.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
@@ -37,12 +38,14 @@ export function initializeDevPanel(arg1, arg2) {
   // Ensure safe engine / DOM defaults to avoid crashing during migration
   engine = engine || { dispatch: () => {}, getState: () => ({}), onStateChange: () => {} };
   DOM = DOM || (typeof window !== 'undefined' ? window.DOM : undefined);
+  // Merge config for use in internal helpers
+  _config = Object.assign({}, _config, (typeof arg1 === 'object' && !arg1.getState) ? arg1 : (arg2 && typeof arg2 === 'object' ? arg2 : {}));
   console.log('initializeDevPanel called (visible)');
 
   const panel = document.createElement('div');
   panel.id = 'acoustsee-dev-panel';
   
-  const root = DOM.uiPanelRoot || document.body;
+  const root = (DOM && DOM.uiPanelRoot) || document.body;
   root.appendChild(panel);
 
   // Panel should be visible by default in debug mode
@@ -137,8 +140,8 @@ export function initializeDevPanel(arg1, arg2) {
       const enableFrameWorkerCheckbox = panel.querySelector('#enable-frame-worker-checkbox');
       const versionBadge = panel.querySelector('#audio-version-badge');
       const versionFooter = panel.querySelector('#version-footer');
-      const metaVer = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
-      const ver = metaVer || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || BUILD_VERSION;
+  const metaVer = (typeof document !== 'undefined' && document.querySelector) ? document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content') : null;
+  const ver = metaVer || (typeof window !== 'undefined' && (window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION)) || BUILD_VERSION;
       if (versionBadge) versionBadge.textContent = `v${ver}`;
       if (versionFooter) versionFooter.textContent = `Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || ver}`;
     } catch (e) {}
@@ -201,15 +204,15 @@ export function initializeDevPanel(arg1, arg2) {
       if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
       if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
       if (autoFpsCheckbox) autoFpsCheckbox.checked = state.autoFPS;
-      if (enableFrameWorkerCheckbox) enableFrameWorkerCheckbox.checked = settings.enableFrameWorker;
+      if (enableFrameWorkerCheckbox) enableFrameWorkerCheckbox.checked = (_config.settings && _config.settings.enableFrameWorker) || false;
     } catch(e) {}
   });
 
     setOutputCallback((level, text) => debugLog(level, text));
   }
 
-  // Stylesheet loader (module-relative). Use import.meta.url so the CSS is resolved correctly
-  // regardless of how the module is hosted (GitHub Pages, nested basePath, etc.).
+  // Stylesheet loader (module-relative). Prefer an injected importMetaUrl to
+  // avoid top-level `import.meta.url` which many test runners cannot parse.
   (function ensureDevCss(){
     try{
       const cssId = 'acoustsee-dev-panel-css';
@@ -218,10 +221,16 @@ export function initializeDevPanel(arg1, arg2) {
       link.id = cssId;
       link.rel = 'stylesheet';
         try {
-          link.href = new URL('./dev-panel.css', import.meta.url).href;
+          const base = (_config && _config.importMetaUrl) ? _config.importMetaUrl : undefined;
+          if (base) {
+            link.href = new URL('./dev-panel.css', base).href;
+          } else {
+            // last-resort relative path
+            link.href = './ui/dev-panel/dev-panel.css';
+          }
           console.log('dev-panel: resolved dev-panel.css ->', link.href);
       } catch (e) {
-        // Fallback for older environments that might not support import.meta.url.
+        // Fallback for older environments
           link.href = './ui/dev-panel/dev-panel.css';
           console.log('dev-panel: using fallback dev-panel.css ->', link.href);
       }
@@ -236,4 +245,4 @@ export function initializeDevPanel(arg1, arg2) {
 }
 
 // Register initializer in the ui-registry for other modules to access later under the canonical name
-try { registerComponent('dev-panel', initializeDevPanel); } catch (e) {}
+try { registerComponent && registerComponent('dev-panel', initializeDevPanel); } catch (e) {}

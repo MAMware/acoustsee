@@ -11,7 +11,8 @@ import { structuredLog } from '../utils/logging.js';
  * @returns {{movingRegions: Array<Object>, avgIntensity: number}} An object containing an array of detected motion regions and the average frame intensity.
  */
 export function detectMotion(frameData, prevFrameData, width, height) {
-  const motionThreshold = settings.motionThreshold || 20;
+  // Prefer settings passed in; fall back to a safe default.
+  const motionThreshold = (settings && typeof settings.motionThreshold === 'number') ? settings.motionThreshold : 20;
   const movingRegions = [];
   
   let totalIntensity = 0;

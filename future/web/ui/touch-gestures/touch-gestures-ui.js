@@ -1,4 +1,7 @@
 // The Blind/User Accessible UI moved into touch-gestures namespace
+// Settings / config injected here to avoid implicit global coupling
+let _uiConfig = {};
+
 export function initializeAccessibleUI(arg1, arg2) {
   // Support legacy signature initializeAccessibleUI(engine, DOM)
   // and DI signature initializeAccessibleUI({ engine, engineDispatch, dom, getEngineState })
@@ -7,10 +10,12 @@ export function initializeAccessibleUI(arg1, arg2) {
   if (arg1 && typeof arg1.getState === 'function') {
     engine = arg1;
     DOM = arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+    _uiConfig = Object.assign({}, _uiConfig, (typeof arg2 === 'object' ? arg2 : {}));
   } else {
     const cfg = arg1 || {};
     engine = cfg.engine || (cfg.engineDispatch ? { dispatch: cfg.engineDispatch, getState: cfg.getEngineState || (()=>({})) } : null);
     DOM = cfg.dom || arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+    _uiConfig = Object.assign({}, _uiConfig, cfg || {});
   }
   engine = engine || { dispatch: () => {}, getState: () => ({}) };
   DOM = DOM || (typeof window !== 'undefined' ? window.DOM : undefined);
@@ -20,20 +25,23 @@ export function initializeAccessibleUI(arg1, arg2) {
   // The original "Start/Stop" button overlay on the video is a good
   // fit for this UI's primary interaction.
 
-  const startStopButton = DOM.button1;
-  if (startStopButton) {
-    startStopButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      const isProcessing = engine.getState().isProcessing;
-      if (isProcessing) {
-        engine.dispatch('stopProcessing', { videoEl: DOM.videoFeed });
-        engine.dispatch('announceMessage', { message: 'Stopping' }); // Placeholder for proper getText
-      } else {
-        engine.dispatch('startProcessing', { videoEl: DOM.videoFeed, canvasEl: DOM.frameCanvas });
-        engine.dispatch('announceMessage', { message: 'Starting' });
-      }
-    });
-  }
+  // Guard DOM elements - add listeners only when present
+  try {
+    const startStopButton = DOM && DOM.button1;
+    if (startStopButton && typeof startStopButton.addEventListener === 'function') {
+      startStopButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isProcessing = engine.getState().isProcessing;
+        if (isProcessing) {
+          engine.dispatch('stopProcessing', { videoEl: DOM && DOM.videoFeed });
+          engine.dispatch('announceMessage', { message: 'Stopping' }); // Placeholder for proper getText
+        } else {
+          engine.dispatch('startProcessing', { videoEl: DOM && DOM.videoFeed, canvasEl: DOM && DOM.frameCanvas });
+          engine.dispatch('announceMessage', { message: 'Starting' });
+        }
+      });
+    }
+  } catch (e) { /* best effort */ }
 
     // --- Simple Swipe Detection Helper ---
     function createSwipeDetector(element, onSwipe) {
@@ -152,12 +160,13 @@ export function initializeAccessibleUI(arg1, arg2) {
     }
 
     // --- Attach Listeners ---
-    const mainArea = DOM.mainContainer;
-    mainArea.addEventListener('click', handleClick);
-    mainArea.addEventListener('pointerdown', handlePointerDown);
-    mainArea.addEventListener('pointerup', handlePointerUp);
-    createSwipeDetector(mainArea, handleSwipe);
+    const mainArea = DOM && DOM.mainContainer;
+    if (mainArea && typeof mainArea.addEventListener === 'function') {
+      mainArea.addEventListener('click', handleClick);
+      mainArea.addEventListener('pointerdown', handlePointerDown);
+      mainArea.addEventListener('pointerup', handlePointerUp);
+      createSwipeDetector(mainArea, handleSwipe);
+    }
 }
-// Moved from accessible-ui.js to touch-gestures/touch-gestures-ui.js
-// Export the local implementation (moved from accessible-ui.js) so we don't depend on the legacy root file.
-export { initializeAccessibleUI as initializeTouchGesturesUI } from '../touch-gestures/touch-gestures-ui.js';
+// Provide a canonical export for the touch gestures initializer (legacy name)
+export const initializeTouchGesturesUI = initializeAccessibleUI;

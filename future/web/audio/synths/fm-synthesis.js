@@ -9,14 +9,16 @@ export const synthMeta = {
 
 export function playFmSynthesis(notes, ctx = {}) {
   // ctx may provide: audioContext, getOscillator, oscillatorPool, modulators, modulationIndex, settings
-  const audioContext = ctx.audioContext || (typeof window !== 'undefined' && window.audioContext) || globalThis.audioContext;
-  const getOscillator = ctx.getOscillator || (typeof window !== 'undefined' && window.getOscillator) || globalThis.getOscillator;
-  const oscillatorPool = ctx.oscillatorPool || (typeof window !== 'undefined' && window.oscillatorPool) || globalThis.oscillatorPool || [];
-  const modulators = ctx.modulators || (typeof window !== 'undefined' && window.modulators) || globalThis.modulators || [];
-  const modulationIndex = typeof ctx.modulationIndex === 'number' ? ctx.modulationIndex : (ctx.settings?.modulationIndex || 50);
+  // Require explicit injection of runtime helpers via ctx. Avoid reading from
+  // global/window/globalThis so modules are testable and isolated.
+  const audioContext = ctx.audioContext;
+  const getOscillator = ctx.getOscillator;
+  const oscillatorPool = ctx.oscillatorPool || [];
+  const modulators = ctx.modulators || [];
+  const modulationIndex = typeof ctx.modulationIndex === 'number' ? ctx.modulationIndex : (ctx.settings?.modulationIndex ?? 50);
 
   if (!audioContext || typeof getOscillator !== 'function') {
-    console.warn('playFmSynthesis: missing audioContext or getOscillator in context');
+    console.warn('playFmSynthesis: missing required ctx.audioContext or ctx.getOscillator — synth cannot run in isolation');
     return;
   }
 

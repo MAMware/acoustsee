@@ -245,7 +245,9 @@ export async function playCues(cues) {
   // 1. Group the incoming cues by the synthesizer function that needs to play them.
   const notesBySynth = new Map();
 
-  const cuesToProcess = Array.isArray(cues) ? cues.slice(0, settings.maxNotes) : [];
+  // Use maxNotes from the injected config, fall back to a safe default.
+  const maxNotes = Number(_config.maxNotes) || 8;
+  const cuesToProcess = Array.isArray(cues) ? cues.slice(0, maxNotes) : [];
 
   for (const cue of cuesToProcess) {
     const profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
@@ -272,7 +274,11 @@ export async function playCues(cues) {
         getOscillator,
         releaseOscillator,
         oscillatorPool,
-        masterGain
+        masterGain,
+        // Pass along optional settings object from initializer config so synths
+        // can be pure and receive their settings via ctx.settings instead of
+        // reading global `settings`.
+        settings: _config.settings || undefined
       };
       playFunction(notes, synthContext);
     } catch (e) {

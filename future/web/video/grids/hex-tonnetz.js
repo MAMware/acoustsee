@@ -4,7 +4,6 @@ export function mapFrameToHexTonnetz(frame, opts = {}) {
   // Return an object with cues array for compatibility with other mappers.
   return { cues: [], meta: { id: 'hex-tonnetz' } };
 }
-import { settings } from "../../core/state.js";
 import { detectMotion } from "../motion-detector.js";
 
 export function mapFrameToCues(frameData, width, height, prevFrameData) {
@@ -13,7 +12,8 @@ export function mapFrameToCues(frameData, width, height, prevFrameData) {
   
   // Optional: Add logic here to prevent cues from being too spatially close, if desired.
   // For now, we take the most prominent motion regions up to the maxNotes limit.
-  const regionsToProcess = movingRegions.slice(0, settings.maxNotes || 16);
+  const maxNotes = (opts && opts.settings && typeof opts.settings.maxNotes === 'number') ? opts.settings.maxNotes : 16;
+  const regionsToProcess = movingRegions.slice(0, maxNotes);
 
   for (const region of regionsToProcess) {
     const { pixelX, pixelY, intensity } = region;
