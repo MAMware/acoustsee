@@ -4,6 +4,11 @@
 
 // Settings are injected via initializeVideo(config) to avoid direct coupling to core/state
 let _config = {};
+// Capture a fallback import meta url when available (most bundlers expose import.meta.url)
+// Note: do NOT reference `import.meta` at module top-level — many test runners
+// (Jest in CJS mode) cannot parse it. Tests or bundlers can inject a value via
+// initializeVideo({ importMetaUrl: '...' }) if needed.
+let importMetaUrl = undefined;
 import { structuredLog } from '../utils/logging.js';
 import { getCurrentGrid } from '../core/grid-manager.js';
 import { registerWorker, unregisterWorker } from '../ui/dev-panel/worker-monitor.js';
@@ -30,16 +35,23 @@ function startFrameWorker() {
   } catch (e) { /* ignore guard check errors and continue to start worker */ }
   if (frameWorker) return frameWorker;
   try {
-  // Prefer a robust, deployment-friendly URL relative to this module.
-  // Fall back to a simple relative path if import.meta.url isn't available
-  // (some test runners or older bundlers may not support it).
-  let frameWorkerPath;
+  // Prefer using an injected Worker constructor (for tests) and an injected
+  // base URL for worker assets. This avoids using import.meta at module load
+  // time which is not supported in some test runners.
+  const WorkerCtor = _config && _config.WorkerCtor ? _config.WorkerCtor : (typeof Worker !== 'undefined' ? Worker : null);
+  let frameWorkerPath = './workers/frame-worker.js';
   try {
-    frameWorkerPath = new URL('./workers/frame-worker.js', import.meta.url);
+    if (_config && _config.workerBaseUrl) {
+      frameWorkerPath = new URL('./workers/frame-worker.js', _config.workerBaseUrl).href;
+    } else if (typeof importMetaUrl !== 'undefined') {
+      frameWorkerPath = new URL('./workers/frame-worker.js', importMetaUrl).href;
+    }
   } catch (e) {
+    // fallback to relative path
     frameWorkerPath = './workers/frame-worker.js';
   }
-  frameWorker = new Worker(frameWorkerPath, { type: 'module' });
+  if (!WorkerCtor) throw new Error('No Worker constructor available');
+  frameWorker = new WorkerCtor(frameWorkerPath, { type: 'module' });
     frameWorker.onmessage = (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'result' && _pendingResolve) {
@@ -71,14 +83,15 @@ function startMotionWorker() {
   } catch (e) { /* ignore guard check errors and continue to start worker */ }
   if (motionWorker) return motionWorker;
   try {
-    // Same robust resolution as frame worker: use import.meta.url when possible
-    let motionWorkerPath;
+    // Resolve worker path using injected base URL or importMetaUrl if provided.
+    const WorkerCtor = _config && _config.WorkerCtor ? _config.WorkerCtor : (typeof Worker !== 'undefined' ? Worker : null);
+    let motionWorkerPath = './workers/motion-worker.js';
     try {
-      motionWorkerPath = new URL('./workers/motion-worker.js', import.meta.url);
-    } catch (e) {
-      motionWorkerPath = './workers/motion-worker.js';
-    }
-    motionWorker = new Worker(motionWorkerPath, { type: 'module' });
+      if (_config && _config.workerBaseUrl) motionWorkerPath = new URL('./workers/motion-worker.js', _config.workerBaseUrl).href;
+      else if (importMetaUrl) motionWorkerPath = new URL('./workers/motion-worker.js', importMetaUrl).href;
+    } catch (e) { motionWorkerPath = './workers/motion-worker.js'; }
+    if (!WorkerCtor) throw new Error('No Worker constructor available');
+    motionWorker = new WorkerCtor(motionWorkerPath, { type: 'module' });
     motionWorker.onmessage = (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'motion' && _pendingResolve) {
@@ -343,6 +356,11 @@ export function __setPrevFrameDataForTest(left, right) {
  */
 export function initializeVideo(config = {}) {
   _config = Object.assign({}, _config, config || {});
+  // Allow tests to pass a Worker constructor or a base URL for worker files
+  if (config && config.workerBaseUrl) _config.workerBaseUrl = config.workerBaseUrl;
+  if (config && config.WorkerCtor) _config.WorkerCtor = config.WorkerCtor;
+  // Provide importMetaUrl fallback if tests provided one
+  if (config && config.importMetaUrl) importMetaUrl = config.importMetaUrl;
   if (_config.workerFactory) {
     // workerFactory support can be implemented to override worker creation where needed.
   }
