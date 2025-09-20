@@ -52,7 +52,8 @@ function startFrameWorker() {
     }
   } catch (e) {
     // fallback to relative path
-    frameWorkerPath = './workers/frame-worker.js';
+    // The fallback must include the /video prefix because this module is under /video
+    frameWorkerPath = './video/workers/frame-worker.js';
   }
   if (!WorkerCtor) throw new Error('No Worker constructor available');
   frameWorker = new WorkerCtor(frameWorkerPath, { type: 'module' });
@@ -95,6 +96,8 @@ function startMotionWorker() {
       if (_config && _config.workerBaseUrl) motionWorkerPath = new URL('./workers/motion-worker.js', _config.workerBaseUrl).href;
       else if (importMetaUrl) motionWorkerPath = new URL('./workers/motion-worker.js', importMetaUrl).href;
     } catch (e) { motionWorkerPath = './workers/motion-worker.js'; }
+    // Ensure fallback path includes /video because the worker files live under video/workers
+    if (motionWorkerPath === './workers/motion-worker.js') motionWorkerPath = './video/workers/motion-worker.js';
     if (!WorkerCtor) throw new Error('No Worker constructor available');
     motionWorker = new WorkerCtor(motionWorkerPath, { type: 'module' });
   motionWorker.onmessage = (ev) => {

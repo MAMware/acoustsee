@@ -137,7 +137,18 @@ export async function init() {
       try {
         // Import the module so it can register itself and listen for lifecycle events.
         await import('./ui/dev-panel/dev-panel.js');
-        structuredLog('INFO', 'Dev Panel module loaded (listening for app:poweredOn).');
+        structuredLog('INFO', 'Dev Panel module loaded. Initializing via registry.');
+        try {
+          const devPanelInitializer = getComponent('dev-panel');
+          if (typeof devPanelInitializer === 'function') {
+            devPanelInitializer(engine, DOM, { importMetaUrl: import.meta.url, settings });
+            structuredLog('INFO', 'Dev Panel initialized via registry.');
+          } else {
+            structuredLog('ERROR', 'Dev Panel module loaded but did not register an initializer.');
+          }
+        } catch (e) {
+          structuredLog('ERROR', 'Dev Panel initialization via registry failed', { error: e?.message || String(e) });
+        }
       } catch (e) { structuredLog('WARN', 'Failed to load dev panel UI', { error: e?.message || String(e) }); }
     } else {
       document.body.classList.add('accessible-mode');
@@ -239,11 +250,8 @@ export async function init() {
 
         try {
           // Dev panel is initialized at startup when ?debug=true. No autoOpen needed here.
-          const urlParams = new URLSearchParams(window.location.search);
-          const isDebugModeNow = urlParams.get('debug') === 'true';
-          if (isDebugModeNow) {
-            structuredLog('INFO', 'Power-on: debug mode active; dev panel should already be visible.');
-          }
+          // No direct action required here; the Dev Panel manages its own visibility
+          // via the engine lifecycle event. main.js should not assume UI state.
         } catch (e) { console.warn('showing debugUI failed', e); }
       }
 
