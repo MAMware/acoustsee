@@ -249,6 +249,10 @@ export function createEngine() {
   getBenchmarkListeners: () => Array.from(benchmarkListeners)
   };
 
+  // Expose event bus methods
+  engineInstance.on = on;
+  engineInstance.emit = emit;
+
   // Register handlers from external modules
   registerTouchGestureCommands(engineInstance); // <-- NEW REGISTRATION CALL
   // Register audio command handlers in a dedicated module
