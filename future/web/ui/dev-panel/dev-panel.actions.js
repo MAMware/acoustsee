@@ -16,6 +16,11 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   const attachedHandlers = [];
   const createdNodes = [];
   let explorerInterval = null;
+  // Cache worker explorer DOM nodes
+  const workerExplorerContainer = panel.querySelector('#worker-explorer-container');
+  const workerExplorerCanvas = panel.querySelector('#worker-explorer-canvas');
+  const workerExplorerLegend = panel.querySelector('#worker-explorer-legend');
+  let isExplorerVisible = false;
 
   const delegatedClick = (ev) => {
     const btn = ev.target.closest && ev.target.closest('button[data-action]');
@@ -45,9 +50,48 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         break;
       case 'toggleWorkerExplorer':
         try {
-          const btn = panel.querySelector('button[data-action="toggleWorkerExplorer"]');
-          if (btn) btn.click();
-        } catch (e) {}
+          isExplorerVisible = !isExplorerVisible;
+          if (workerExplorerContainer) {
+            workerExplorerContainer.style.display = isExplorerVisible ? 'block' : 'none';
+          }
+
+          if (isExplorerVisible && workerExplorerCanvas) {
+            // Start the monitoring interval
+            if (explorerInterval) clearInterval(explorerInterval);
+
+            const workerDataBuffers = new Map(); // Map<workerId, RingBuffer>
+            scaleCanvasForDPR(workerExplorerCanvas);
+
+            const renderCharts = makeThrottledRenderer(() => {
+              const stats = getWorkerStats();
+              const seriesMap = new Map();
+              let legendHTML = '';
+
+              stats.forEach((workerStat, i) => {
+                if (!workerDataBuffers.has(workerStat.id)) {
+                  workerDataBuffers.set(workerStat.id, new RingBuffer(64));
+                }
+                const buffer = workerDataBuffers.get(workerStat.id);
+                buffer.push(workerStat.last ? workerStat.last.util : 0);
+                seriesMap.set(workerStat.id, buffer.toArray());
+
+                const color = `hsl(${(i * 137) % 360}, 72%, 58%)`;
+                legendHTML += `<span style="color: ${color}; margin-right: 10px;">■ ${workerStat.name || workerStat.id}</span>`;
+              });
+
+              if (workerExplorerLegend) workerExplorerLegend.innerHTML = legendHTML;
+              drawMultiSparkline(workerExplorerCanvas, seriesMap);
+            }, 10); // Render at 10 FPS
+
+            explorerInterval = setInterval(renderCharts, 100); // Poll for stats every 100ms
+          } else {
+            // Stop the monitoring interval
+            if (explorerInterval) {
+              clearInterval(explorerInterval);
+              explorerInterval = null;
+            }
+          }
+        } catch (e) { /* ignore */ }
         break;
       default:
         break;

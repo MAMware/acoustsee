@@ -1,11 +1,10 @@
-// Debug renderer for the dev-panel overlay canvas
-// R18925 this file seems that could use have a more suitable file name, perhaps dev-canvas-renderer.js or similar
+// Dev-panel renderer for the overlay canvas (renamed for consistency)
 
 let ctx;
 let canvas;
 let videoEl = null;
 
-export function initializeDebugRenderer(engine, DOM) {
+export function initializeDevPanelRenderer(engine, DOM) {
   canvas = DOM.debugOverlayCanvas || document.getElementById('debugOverlayCanvas');
   videoEl = DOM.videoFeed || document.getElementById('videoFeed');
   if (!canvas || !videoEl) return;
@@ -42,19 +41,13 @@ function render(state) {
   } else if (state.currentMode === 'focus') {
     drawFocusModeDebug(result);
   }
-  // --- WIP: ARCH-3 --- 
-  // Render a prominent WIP watermark when the dual-mode feature is flagged as WIP.
-  // This helps testers and developers immediately see that the mode switch is simulated
-  // and that heavy model initialization is intentionally disabled.
   try {
     if (state && state.dualModeWIP) {
       ctx.save();
-      // faint red overlay across the whole canvas
       ctx.fillStyle = 'rgba(180,20,20,0.06)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // large rotated WIP text in center
-      const text = 'WIP MODE (SIMULATED) — ARCH-3';
+      const text = 'WIP MODE (SIMULATED) ARCH-3';
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.rotate(-0.35);
       ctx.font = 'bold 48px sans-serif';
@@ -62,7 +55,6 @@ function render(state) {
       ctx.textAlign = 'center';
       ctx.fillText(text, 0, 0);
 
-      // explanatory caption along bottom-left
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.font = '14px sans-serif';
       ctx.fillStyle = 'rgba(220,40,40,0.95)';

@@ -135,12 +135,9 @@ export async function init() {
     if (isDebugMode) {
       document.body.classList.add('dev-panel-mode');
       try {
-        const mod = await import('./ui/dev-panel/dev-panel.js');
-        if (mod && typeof mod.initializeDevPanel === 'function') {
-          // Module registers initializer and should show the panel immediately in debug mode
-          try { mod.initializeDevPanel(engine, DOM); } catch (e) {}
-          structuredLog('INFO', 'Initialized Dev Panel (visible) for debug mode.');
-        }
+        // Import the module so it can register itself and listen for lifecycle events.
+        await import('./ui/dev-panel/dev-panel.js');
+        structuredLog('INFO', 'Dev Panel module loaded (listening for app:poweredOn).');
       } catch (e) { structuredLog('WARN', 'Failed to load dev panel UI', { error: e?.message || String(e) }); }
     } else {
       document.body.classList.add('accessible-mode');
@@ -271,7 +268,9 @@ export async function init() {
         const origLabel = DOM.powerOn.querySelector('.power-label')?.textContent || DOM.powerOn.textContent || 'Power On';
         try {
           await handleAudioUnlock(ev);
-          await transitionToMainUI();
+            // Emit global lifecycle event so UI modules can self-activate
+            try { engine.emit && engine.emit('app:poweredOn'); } catch (e) { structuredLog('WARN', 'engine.emit failed', { error: e?.message }); }
+            await transitionToMainUI();
         } catch (err) {
           await handlePowerOnError(err, origLabel);
         } finally {

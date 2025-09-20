@@ -37,6 +37,8 @@ export function createEngine() {
   const listeners = new Set();
   const handlers = Object.create(null);
   const benchmarkListeners = new Set();
+  // Simple event bus for lifecycle and cross-module events
+  const eventBus = new Map();
   // Telemetry counters for buffer fallback events (per-engine instance)
   const _telemetry = {
     fallback_realloc_failed: 0,
@@ -85,6 +87,25 @@ export function createEngine() {
   function onBenchmarkRequired(fn) {
     benchmarkListeners.add(fn);
     return () => benchmarkListeners.delete(fn);
+  }
+
+  // --- Event bus API (lightweight) ---
+  function on(eventName, listener) {
+    if (!eventBus.has(eventName)) eventBus.set(eventName, []);
+    eventBus.get(eventName).push(listener);
+    return () => {
+      const list = eventBus.get(eventName);
+      if (!list) return;
+      const idx = list.indexOf(listener);
+      if (idx > -1) list.splice(idx, 1);
+    };
+  }
+
+  function emit(eventName, payload) {
+    const list = (eventBus.get(eventName) || []).slice();
+    for (const fn of list) {
+      try { fn(payload); } catch (e) { structuredLog('ERROR', `Event listener for '${eventName}' failed`, { error: e?.message }); }
+    }
   }
 
   // --- Scheduler internals (single-run lock + one-pending-frame) ---
@@ -167,7 +188,7 @@ export function createEngine() {
       if (commandName !== 'processFrame') {
         structuredLog('DEBUG', `Engine dispatch ${commandName}`, { payload });
       }
-      const result = await handler({ state, payload, dispatch });
+    const result = await handler({ state, payload, dispatch, emit });
       // notify after handler runs in case it mutated shared state
       notifyListeners();
       return { ok: true, result };

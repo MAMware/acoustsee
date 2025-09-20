@@ -7,7 +7,7 @@ import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { createAndWireActions } from './dev-panel.actions.js';
 import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
-import { initializeDebugRenderer } from './debug-renderer.js'; // R18925: "debug" 
+import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION } from '../../core/constants.js';
 import { registerComponent } from '../ui-registry.js';
 
@@ -44,16 +44,19 @@ export function initializeDevPanel(arg1, arg2) {
 
   const panel = document.createElement('div');
   panel.id = 'acoustsee-dev-panel';
-  
   const root = (DOM && DOM.uiPanelRoot) || document.body;
   root.appendChild(panel);
 
-  // Panel should be visible by default in debug mode
-  panel.style.display = 'flex';
+  // Start hidden. Panel will be rendered, styled, and wired on activation.
+  panel.style.display = 'none';
 
-  // --- HTML STRUCTURE ---
-  try {
-    panel.innerHTML = `
+  // Activation handler: renders HTML, loads CSS, wires UI, and shows the panel.
+  const onAppPoweredOn = () => {
+    console.log('Activating Dev Panel in response to app:poweredOn event.');
+
+    // 1) Render HTML structure
+    try {
+      panel.innerHTML = `
       <div class="devpanel-section state-section">
         <h2>State Inspector
           <span id="audio-version-badge" title="Build Version"></span>
@@ -76,7 +79,9 @@ export function initializeDevPanel(arg1, arg2) {
           <div class="control-row"><label>Max Notes<input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span></label></div>
           <div class="control-row"><label>Motion Threshold<input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span></label></div>
         </div>
-  <div class="devpanel-actions-grid"></div>
+        <div class="devpanel-actions-grid">
+          <button data-action="toggleWorkerExplorer" type="button">Worker Stats</button>
+        </div>
         <div id="worker-explorer-container" style="display:none; margin-top:8px;">
           <div id="worker-explorer-legend"></div>
           <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
@@ -92,19 +97,55 @@ export function initializeDevPanel(arg1, arg2) {
         <div id="devpanel-log-view"></div>
       </div>
     `;
-  } catch (e) {
-    panel.textContent = 'Error: Dev panel could not be rendered.';
-    return;
-  }
+    } catch (e) {
+      panel.textContent = 'Error: Dev panel could not be rendered.';
+      console.error('Dev Panel innerHTML rendering failed', e);
+      return; // Abort activation on critical failure
+    }
 
-  // Instrumentation: verify DOM was created successfully
-  try {
-    const sectionCount = panel.querySelectorAll('.devpanel-section').length;
-    console.log('dev-panel: DOM sections created =', sectionCount);
-    console.log('dev-panel: sample innerHTML snippet:', panel.innerHTML.slice(0,250));
-  } catch (err) {
-    console.warn('dev-panel: DOM inspection failed', err);
-  }
+    // 2) Define wiring function which will be called after CSS is loaded
+    const wireUpUI = () => {
+      try {
+        setupUI(); // setupUI is declared below
+        panel.style.display = 'flex';
+      } catch (e) {
+        console.error('Dev Panel setupUI failed during wiring', e);
+      }
+    };
+
+    // 3) Load stylesheet and call wireUpUI once loaded (or immediately if already present)
+    try {
+      const cssId = 'acoustsee-dev-panel-css';
+      if (document.getElementById(cssId)) {
+        wireUpUI();
+        return;
+      }
+      const link = document.createElement('link');
+      link.id = cssId;
+      link.rel = 'stylesheet';
+      try {
+        const base = (_config && _config.importMetaUrl) ? _config.importMetaUrl : undefined;
+        if (base) {
+          link.href = new URL('./dev-panel.css', base).href;
+        } else {
+          link.href = './ui/dev-panel/dev-panel.css';
+        }
+        console.log('dev-panel: resolved dev-panel.css ->', link.href);
+      } catch (e) {
+        link.href = './ui/dev-panel/dev-panel.css';
+        console.log('dev-panel: using fallback dev-panel.css ->', link.href);
+      }
+      link.onload = wireUpUI;
+      link.onerror = (e) => {
+        console.warn('Failed to load dev-panel stylesheet, continuing without styles.', e);
+        wireUpUI();
+      };
+      document.head.appendChild(link);
+    } catch (e) {
+      console.warn('Exception loading dev-panel stylesheet', e);
+      try { wireUpUI(); } catch (_) {}
+    }
+  };
 
   function setupUI() {
     // Reuse previous behavior code (copied and adapted)
@@ -146,7 +187,7 @@ export function initializeDevPanel(arg1, arg2) {
       if (versionFooter) versionFooter.textContent = `Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || ver}`;
     } catch (e) {}
 
-    // worker explorer and video preview wiring replicated here (omitted for brevity)
+  // worker explorer and video preview wiring replicated here (omitted for brevity) R190925 omitted? why? 
 
     try {
       // Instrumentation: snapshot pre-action wiring
@@ -164,8 +205,8 @@ export function initializeDevPanel(arg1, arg2) {
         panel.__devActionsDispose = actionsModule.dispose;
       }
       try {
-        // Initialize debug overlay renderer if present
-        initializeDebugRenderer(engine, DOM);
+        // Initialize dev-panel overlay renderer if present
+        initializeDevPanelRenderer(engine, DOM);
       } catch (e) { /* ignore */ }
     } catch (e) {
       console.error('initializeDevPanel: createAndWireActions failed', e);
@@ -175,7 +216,7 @@ export function initializeDevPanel(arg1, arg2) {
 
   const stateView = panel.querySelector('#devpanel-state-view');
   const logView = panel.querySelector('#devpanel-log-view');
-    setLogView(logView);
+  setLogView(logView);
 
     panel.querySelector('#log-pause-btn').addEventListener('click', (e) => {
         const isPaused = e.target.textContent === 'Pause';
@@ -211,37 +252,18 @@ export function initializeDevPanel(arg1, arg2) {
     setOutputCallback((level, text) => debugLog(level, text));
   }
 
-  // Stylesheet loader (module-relative). Prefer an injected importMetaUrl to
-  // avoid top-level `import.meta.url` which many test runners cannot parse.
-  (function ensureDevCss(){
-    try{
-      const cssId = 'acoustsee-dev-panel-css';
-      if (document.getElementById(cssId)) { setupUI(); return; }
-      const link = document.createElement('link');
-      link.id = cssId;
-      link.rel = 'stylesheet';
-        try {
-          const base = (_config && _config.importMetaUrl) ? _config.importMetaUrl : undefined;
-          if (base) {
-            link.href = new URL('./dev-panel.css', base).href;
-          } else {
-            // last-resort relative path
-            link.href = './ui/dev-panel/dev-panel.css';
-          }
-          console.log('dev-panel: resolved dev-panel.css ->', link.href);
-      } catch (e) {
-        // Fallback for older environments
-          link.href = './ui/dev-panel/dev-panel.css';
-          console.log('dev-panel: using fallback dev-panel.css ->', link.href);
-      }
-      link.onload = () => setupUI();
-      link.onerror = (e) => { console.warn('Failed to load dev-panel stylesheet, continuing without styles.', e); setupUI(); };
-      document.head.appendChild(link);
-    } catch(e) {
-      console.warn('Exception loading dev-panel stylesheet', e);
-      try{ setupUI(); } catch(_){ }
+  // --- NEW: register a one-time activation listener ---
+  try {
+    if (engine && typeof engine.on === 'function') {
+      let unsubscribe = null;
+      unsubscribe = engine.on('app:poweredOn', () => {
+        try { onAppPoweredOn(); } catch (e) { console.warn('Dev Panel activation failed', e); }
+        try { if (typeof unsubscribe === 'function') unsubscribe(); } catch (_) {}
+      });
+    } else {
+      console.warn('Dev Panel cannot self-activate: engine is missing "on" method.');
     }
-  })();
+  } catch (e) { console.warn('Dev Panel activation wiring failed', e); }
 }
 
 // Register initializer in the ui-registry for other modules to access later under the canonical name
