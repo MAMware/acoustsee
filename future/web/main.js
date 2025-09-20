@@ -54,6 +54,62 @@ const DOM = {
 
 setDOM(DOM);
 
+/*
+  Runtime basePath detection
+
+  Why this exists:
+  - When the app is hosted in a subdirectory (for example on GitHub Pages
+    under https://<org>.github.io/acoustsee/), simple root-relative paths
+    like `/ui/dev-panel/dev-panel.css` will not include the deeper
+    repository path segment (for example `/acoustsee/future/web/`) and will
+    therefore 404. This has historically caused worker and stylesheet MIME
+    errors because the server returned HTML instead of the expected file.
+
+  - To make the app resilient to being deployed under different base paths
+    (root, repo subpath, or other nested folders), we compute a `basePath`
+    at runtime from the script element that loaded the bootloader (usually
+    `boot.js`) and use it as the anchor for constructing dynamic asset URLs
+    (workers, dynamically-loaded CSS, etc.).
+
+  How it works:
+  - We inspect the DOM to find the <script> element which loaded `boot.js`.
+    The script's `src` contains the actual URL used to fetch the app bundle
+    and therefore reveals the app's hosting path (for example
+    `https://.../acoustsee/future/web/boot.js`). We extract the directory
+    portion and use it as `basePath`.
+
+  - Callers that load assets dynamically should accept a `basePath` or
+    allow the initializer to pass a `workerBaseUrl` / `basePath` through
+    their config. Example: `enableFrameWorker(true, { workerBaseUrl: basePath + 'video/' })`.
+
+  - This logic intentionally prefers the boot script's location because the
+    boot script is the most reliable anchor for the app's deployment root
+    and works for variations such as `/past/web/`, `/present/web/`, and
+    `/future/web/`.
+
+  NOTE: This is a runtime compatibility shim — build-time bundlers that
+  produce absolute import.meta URLs may still provide import.meta.url to
+  modules, but relying on import.meta alone is not safe for all test or
+  runtime environments (some test runners strip it). The boot-script
+  derived basePath is robust across those environments.
+*/
+
+let basePath = './';
+try {
+  // Prefer the script element that loaded boot.js
+  const bootScript = document.querySelector('script[src*="boot.js"]');
+  if (bootScript && bootScript.src) {
+    const src = bootScript.src;
+    basePath = src.substring(0, src.lastIndexOf('/') + 1);
+  } else if (document.currentScript && document.currentScript.src) {
+    const src = document.currentScript.src;
+    basePath = src.substring(0, src.lastIndexOf('/') + 1);
+  }
+  console.log('Application base path established:', basePath);
+} catch (e) {
+  console.warn('Could not determine base path automatically, falling back to "./"');
+}
+
 class CustomError extends Error {
   constructor(message, data = {}) {
     super(message);
@@ -163,7 +219,16 @@ export async function init() {
     
     // --- Start frame worker if configured to run by default ---
     try {
-      if (settings.enableFrameWorker) enableFrameWorker(true);
+      if (settings.enableFrameWorker) {
+        // Pass a workerBaseUrl derived from the basePath so the frame-processor
+        // can resolve the correct worker URL regardless of hosting location.
+        try {
+          enableFrameWorker(true, { workerBaseUrl: basePath + 'video/' });
+        } catch (e) {
+          // Fallback to previous call if anything unexpected happens
+          enableFrameWorker(true);
+        }
+      }
     } catch (e) {
       structuredLog('WARN', 'enableFrameWorker failed', { error: e?.message || String(e) });
     }

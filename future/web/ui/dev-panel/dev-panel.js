@@ -120,14 +120,20 @@ export function initializeDevPanel(arg1, arg2) {
         wireUpUI();
         return;
       }
-      // Candidate href list to try resolving stylesheet robustly across
-      // diverse hosting setups. Order matters: prefer configured importMeta,
-      // then root-relative, then packaged path.
+      // Construct a prioritized href list. Prefer an explicit basePath provided
+      // via _config.basePath or _config.workerBaseUrl, then fall back to
+      // importMetaUrl and packaged relative paths.
       const candidates = [];
       try {
-        const base = (_config && _config.importMetaUrl) ? _config.importMetaUrl : undefined;
-        if (base) candidates.push(new URL('./dev-panel.css', base).href);
+        const explicitBase = (_config && (_config.basePath || _config.workerBaseUrl || _config.importMetaUrl));
+        if (explicitBase) {
+          // If the provided base looks like it points to a directory containing
+          // the `video/` directory or the app root, attempt to build a path to
+          // the UI asset relative to it.
+          try { candidates.push(new URL('./ui/dev-panel/dev-panel.css', explicitBase).href); } catch (e) {}
+        }
       } catch (e) {}
+      // Also try the common packaged locations
       candidates.push('/ui/dev-panel/dev-panel.css');
       candidates.push('./ui/dev-panel/dev-panel.css');
 

@@ -147,3 +147,25 @@ The audio subsystem, orchestrated by the `playCues` "Conductor," translates `cue
 
 ---
 This file is authoritative. Follow it to prevent regressions and circular rework.
+
+## Runtime basePath detection (hosting compatibility)
+
+When AcoustSee is deployed under a repository subpath (for example on GitHub Pages
+at `https://<org>.github.io/acoustsee/`), root-relative asset paths like
+`/ui/dev-panel/dev-panel.css` will not include the deeper path segments such as
+`/acoustsee/future/web/` and will therefore 404.
+
+To handle this, the application computes a runtime `basePath` from the script
+element that loaded the bootloader (usually `boot.js`) and passes this base
+path into modules that dynamically load assets (workers, stylesheets, etc.).
+
+Key points:
+- `main.js` establishes `basePath` at startup by inspecting the `boot.js` script
+  element. This is the most reliable anchor available at runtime.
+- Dynamic loaders (for example `enableFrameWorker(...)` and UI initializers)
+  should accept a `basePath` or a `workerBaseUrl` in their options and use
+  it to construct full asset URLs (e.g., `new URL('./workers/frame-worker.js', workerBaseUrl).href`).
+- Prefer using the injected basePath over hard-coded root-relative paths.
+
+If you add new modules that load assets dynamically, document and accept a
+`basePath` option in the initializer to maintain hosting compatibility.

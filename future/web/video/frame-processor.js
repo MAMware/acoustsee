@@ -51,8 +51,16 @@ function startFrameWorker() {
     if (_config && _config.workerBaseUrl) candidates.push(new URL('./workers/frame-worker.js', _config.workerBaseUrl).href);
   } catch (e) {}
   try { if (typeof importMetaUrl !== 'undefined' && importMetaUrl) candidates.push(new URL('./workers/frame-worker.js', importMetaUrl).href); } catch (e) {}
-  // Root-relative and repo-relative fallbacks
-  candidates.push('/video/workers/frame-worker.js');
+  // Root-relative and repo-relative fallbacks. Prefer constructing absolute
+  // URLs from a reasonable runtime anchor (`_config.workerBaseUrl`,
+  // importMetaUrl, or document.baseURI) rather than hard-coding leading
+  // '/' which will break when hosted under a subpath.
+  try {
+    // If a workerBaseUrl is configured, construct relative to it
+    if (_config && _config.workerBaseUrl) candidates.push(new URL('./workers/frame-worker.js', _config.workerBaseUrl).href);
+  } catch (e) {}
+  try { if (typeof importMetaUrl !== 'undefined' && importMetaUrl) candidates.push(new URL('./workers/frame-worker.js', importMetaUrl).href); } catch (e) {}
+  try { if (typeof document !== 'undefined' && document.baseURI) candidates.push(new URL('./video/workers/frame-worker.js', document.baseURI).href); } catch (e) {}
   candidates.push('./video/workers/frame-worker.js');
   candidates.push('./workers/frame-worker.js');
   let frameWorkerPath = null;
@@ -115,7 +123,11 @@ function startMotionWorker() {
       if (_config && _config.workerBaseUrl) candidates.push(new URL('./workers/motion-worker.js', _config.workerBaseUrl).href);
     } catch (e) {}
     try { if (importMetaUrl) candidates.push(new URL('./workers/motion-worker.js', importMetaUrl).href); } catch (e) {}
-    candidates.push('/video/workers/motion-worker.js');
+    try {
+      if (_config && _config.workerBaseUrl) candidates.push(new URL('./workers/motion-worker.js', _config.workerBaseUrl).href);
+    } catch (e) {}
+    try { if (importMetaUrl) candidates.push(new URL('./workers/motion-worker.js', importMetaUrl).href); } catch (e) {}
+    try { if (typeof document !== 'undefined' && document.baseURI) candidates.push(new URL('./video/workers/motion-worker.js', document.baseURI).href); } catch (e) {}
     candidates.push('./video/workers/motion-worker.js');
     candidates.push('./workers/motion-worker.js');
     let motionWorkerPath = null;
@@ -179,7 +191,22 @@ function stopFrameWorker() {
   workerEnabled = false;
 }
 
-export function enableFrameWorker(enable = true) {
+export function enableFrameWorker(enable = true, config = {}) {
+  // Merge any provided config (workerBaseUrl, WorkerCtor, etc.) into the
+  // internal _config so the start*Worker functions can prefer injected values.
+  try {
+    if (config && typeof config === 'object') {
+      _config = Object.assign({}, _config, config);
+      if (config.workerBaseUrl) {
+        // Normalize workerBaseUrl: allow passing a basePath that points at the
+        // directory containing `video/` (main.js passes basePath + 'video/').
+        try {
+          // If a path ends with 'video/' allow constructing relative URLs from it
+          _config.workerBaseUrl = config.workerBaseUrl;
+        } catch (e) { /* ignore */ }
+      }
+    }
+  } catch (e) {}
   if (enable) startFrameWorker();
   else stopFrameWorker();
 }

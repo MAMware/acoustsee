@@ -9,11 +9,12 @@ const fetch = require('node-fetch');
 
 const WEB_DIR = join(__dirname, '..', '..'); // future/web
 const PORT = process.env.PORT || 9000;
+const BASE_PATH = process.env.BASE_PATH || ''; // e.g. '/acoustsee/future/web'
 const ASSETS = [
-  '/boot.js',
-  '/ui/dev-panel/dev-panel.css',
-  '/video/workers/frame-worker.js',
-  '/video/workers/motion-worker.js'
+  `${BASE_PATH}/boot.js`,
+  `${BASE_PATH}/ui/dev-panel/dev-panel.css`,
+  `${BASE_PATH}/video/workers/frame-worker.js`,
+  `${BASE_PATH}/video/workers/motion-worker.js`
 ];
 
 function startStaticServer() {
