@@ -43,20 +43,39 @@ function startFrameWorker() {
   // base URL for worker assets. This avoids using import.meta at module load
   // time which is not supported in some test runners.
   const WorkerCtor = _config && _config.WorkerCtor ? _config.WorkerCtor : (typeof Worker !== 'undefined' ? Worker : null);
-  let frameWorkerPath = './workers/frame-worker.js';
+  // Build a small prioritized list of candidate worker URLs to try. This
+  // improves robustness when hosting setups rewrite paths or when import.meta
+  // is unavailable in runtime environments.
+  const candidates = [];
   try {
-    if (_config && _config.workerBaseUrl) {
-      frameWorkerPath = new URL('./workers/frame-worker.js', _config.workerBaseUrl).href;
-    } else if (typeof importMetaUrl !== 'undefined') {
-      frameWorkerPath = new URL('./workers/frame-worker.js', importMetaUrl).href;
-    }
-  } catch (e) {
-    // fallback to relative path
-    // The fallback must include the /video prefix because this module is under /video
-    frameWorkerPath = './video/workers/frame-worker.js';
-  }
+    if (_config && _config.workerBaseUrl) candidates.push(new URL('./workers/frame-worker.js', _config.workerBaseUrl).href);
+  } catch (e) {}
+  try { if (typeof importMetaUrl !== 'undefined' && importMetaUrl) candidates.push(new URL('./workers/frame-worker.js', importMetaUrl).href); } catch (e) {}
+  // Root-relative and repo-relative fallbacks
+  candidates.push('/video/workers/frame-worker.js');
+  candidates.push('./video/workers/frame-worker.js');
+  candidates.push('./workers/frame-worker.js');
+  let frameWorkerPath = null;
   if (!WorkerCtor) throw new Error('No Worker constructor available');
-  frameWorker = new WorkerCtor(frameWorkerPath, { type: 'module' });
+  // Try candidates until one successfully constructs a Worker. This avoids
+  // hard 404s when a hosting environment serves an HTML fallback for unknown
+  // paths.
+  let lastErr = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const p = candidates[i];
+    try {
+      frameWorker = new WorkerCtor(p, { type: 'module' });
+      frameWorkerPath = p;
+      break;
+    } catch (e) {
+      lastErr = e;
+      // continue to next candidate
+    }
+  }
+  if (!frameWorker) {
+    // As a last-ditch attempt, throw the last error so the caller can log.
+    throw lastErr || new Error('Failed to construct Frame Worker from any candidate path');
+  }
     frameWorker.onmessage = (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'result' && _pendingResolve) {
@@ -91,15 +110,28 @@ function startMotionWorker() {
   try {
     // Resolve worker path using injected base URL or importMetaUrl if provided.
     const WorkerCtor = _config && _config.WorkerCtor ? _config.WorkerCtor : (typeof Worker !== 'undefined' ? Worker : null);
-    let motionWorkerPath = './workers/motion-worker.js';
+    const candidates = [];
     try {
-      if (_config && _config.workerBaseUrl) motionWorkerPath = new URL('./workers/motion-worker.js', _config.workerBaseUrl).href;
-      else if (importMetaUrl) motionWorkerPath = new URL('./workers/motion-worker.js', importMetaUrl).href;
-    } catch (e) { motionWorkerPath = './workers/motion-worker.js'; }
-    // Ensure fallback path includes /video because the worker files live under video/workers
-    if (motionWorkerPath === './workers/motion-worker.js') motionWorkerPath = './video/workers/motion-worker.js';
+      if (_config && _config.workerBaseUrl) candidates.push(new URL('./workers/motion-worker.js', _config.workerBaseUrl).href);
+    } catch (e) {}
+    try { if (importMetaUrl) candidates.push(new URL('./workers/motion-worker.js', importMetaUrl).href); } catch (e) {}
+    candidates.push('/video/workers/motion-worker.js');
+    candidates.push('./video/workers/motion-worker.js');
+    candidates.push('./workers/motion-worker.js');
+    let motionWorkerPath = null;
     if (!WorkerCtor) throw new Error('No Worker constructor available');
-    motionWorker = new WorkerCtor(motionWorkerPath, { type: 'module' });
+    let lastErr = null;
+    for (let i = 0; i < candidates.length; i++) {
+      const p = candidates[i];
+      try {
+        motionWorker = new WorkerCtor(p, { type: 'module' });
+        motionWorkerPath = p;
+        break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (!motionWorker) throw lastErr || new Error('Failed to construct Motion Worker from any candidate path');
   motionWorker.onmessage = (ev) => {
       const msg = ev.data || {};
       if (msg.type === 'motion' && _pendingResolve) {

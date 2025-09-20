@@ -120,27 +120,48 @@ export function initializeDevPanel(arg1, arg2) {
         wireUpUI();
         return;
       }
+      // Candidate href list to try resolving stylesheet robustly across
+      // diverse hosting setups. Order matters: prefer configured importMeta,
+      // then root-relative, then packaged path.
+      const candidates = [];
+      try {
+        const base = (_config && _config.importMetaUrl) ? _config.importMetaUrl : undefined;
+        if (base) candidates.push(new URL('./dev-panel.css', base).href);
+      } catch (e) {}
+      candidates.push('/ui/dev-panel/dev-panel.css');
+      candidates.push('./ui/dev-panel/dev-panel.css');
+
       const link = document.createElement('link');
       link.id = cssId;
       link.rel = 'stylesheet';
-      try {
-        const base = (_config && _config.importMetaUrl) ? _config.importMetaUrl : undefined;
-        if (base) {
-          link.href = new URL('./dev-panel.css', base).href;
-        } else {
-          link.href = './ui/dev-panel/dev-panel.css';
+
+      let loaded = false;
+      const tryNext = (idx) => {
+        if (idx >= candidates.length) {
+          console.warn('dev-panel: all stylesheet candidates failed, proceeding without styles');
+          wireUpUI();
+          return;
         }
-        console.log('dev-panel: resolved dev-panel.css ->', link.href);
-      } catch (e) {
-        link.href = './ui/dev-panel/dev-panel.css';
-        console.log('dev-panel: using fallback dev-panel.css ->', link.href);
-      }
-      link.onload = wireUpUI;
-      link.onerror = (e) => {
-        console.warn('Failed to load dev-panel stylesheet, continuing without styles.', e);
-        wireUpUI();
+        const href = candidates[idx];
+        link.href = href;
+        // Use a temporary onerror handler to try the next candidate
+        const onErr = (e) => {
+          console.warn('dev-panel: stylesheet candidate failed', href, e);
+          // Try next candidate by cloning a fresh link element to avoid stateful failures.
+          const newLink = document.createElement('link');
+          newLink.id = cssId;
+          newLink.rel = 'stylesheet';
+          document.head.removeChild(link);
+          document.head.appendChild(newLink);
+          // Replace reference
+          link = newLink; // eslint-disable-line no-param-reassign
+          tryNext(idx + 1);
+        };
+        link.onload = () => { loaded = true; wireUpUI(); };
+        link.onerror = onErr;
+        document.head.appendChild(link);
       };
-      document.head.appendChild(link);
+      tryNext(0);
     } catch (e) {
       console.warn('Exception loading dev-panel stylesheet', e);
       try { wireUpUI(); } catch (_) {}
