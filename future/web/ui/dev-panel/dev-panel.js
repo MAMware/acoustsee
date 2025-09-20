@@ -252,18 +252,39 @@ export function initializeDevPanel(arg1, arg2) {
     setOutputCallback((level, text) => debugLog(level, text));
   }
 
-  // --- NEW: register a one-time activation listener ---
+  // --- Self-Activation Wiring ---
+  // The Dev Panel listens for the 'app:poweredOn' event. This establishes a
+  // clear contract: if the engine does not support `on`, fail fast and show
+  // an explicit error in the panel for developers.
   try {
-    if (engine && typeof engine.on === 'function') {
-      let unsubscribe = null;
-      unsubscribe = engine.on('app:poweredOn', () => {
-        try { onAppPoweredOn(); } catch (e) { console.warn('Dev Panel activation failed', e); }
-        try { if (typeof unsubscribe === 'function') unsubscribe(); } catch (_) {}
-      });
-    } else {
-      console.warn('Dev Panel cannot self-activate: engine is missing "on" method.');
+    if (!engine || typeof engine.on !== 'function') {
+      throw new Error('Engine does not support the required event emitter interface (`on` method).');
     }
-  } catch (e) { console.warn('Dev Panel activation wiring failed', e); }
+
+    let unsubscribe = null;
+    const activationListener = () => {
+      try {
+        onAppPoweredOn();
+      } catch (e) {
+        console.warn('Dev Panel activation failed', e);
+      }
+      try { if (typeof unsubscribe === 'function') unsubscribe(); } catch (_) {}
+    };
+
+    unsubscribe = engine.on('app:poweredOn', activationListener);
+  } catch (err) {
+    console.error('CRITICAL: Dev Panel self-activation wiring failed.', err);
+    // Provide visible feedback in the panel so developers notice immediately.
+    try {
+      panel.style.display = 'block';
+      panel.style.padding = '16px';
+      panel.style.background = '#fff6f6';
+      panel.style.border = '2px solid #d00';
+      panel.textContent = `Dev Panel failed to initialize: ${err.message}. See console for details.`;
+    } catch (e) {
+      console.error('Failed to display error in dev panel DOM', e);
+    }
+  }
 }
 
 // Register initializer in the ui-registry for other modules to access later under the canonical name
