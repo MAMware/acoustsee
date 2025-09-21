@@ -1,17 +1,179 @@
-/* Minimal styles for dev-panel (copied from debug-ui.css with renamed selectors) */
+/*
+  File: /workspaces/acoustsee/future/web/ui/dev-panel/dev-panel.css
+  Description: A complete stylesheet for the developer panel, restoring
+  the detailed styles for layout, controls, and the log viewer.
+*/
+
 #acoustsee-dev-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: rgba(255,255,255,0.96);
-  color: #111;
+  background: #fdfdfd;
+  color: #1a1a1a;
   padding: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-  max-width: 420px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  border-radius: 8px;
+  overflow: hidden; /* Ensures child elements respect the border radius */
   z-index: 10000;
 }
 
-.devpanel-section { margin-bottom: 8px; }
-.controls-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-.devpanel-actions-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+#acoustsee-dev-panel h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+  color: #34495e;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#audio-version-badge {
+  font-size: 11px;
+  font-weight: normal;
+  background: #ecf0f1;
+  color: #7f8c8d;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.devpanel-section {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+.devpanel-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* State Inspector */
+#devpanel-state-view {
+  background-color: #f4f6f8;
+  border: 1px solid #dfe4e8;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: "SF Mono", "Fira Code", "Consolas", menlo, monospace;
+  font-size: 12px;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #333;
+}
+
+/* Controls Section */
+.controls-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.controls-grid label {
+  font-weight: 500;
+}
+.controls-grid input[type="range"] {
+  width: 100%;
+}
+.controls-grid select {
+  width: 100%;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+.control-row {
+  display: contents; /* Allows children to participate directly in the grid */
+}
+
+/* Segmented button control for Mode */
+.segmented-control {
+  display: flex;
+  grid-column: 2 / 3; /* Span the second column */
+}
+.segmented-control button {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #bdc3c7;
+  background: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.segmented-control button:first-child {
+  border-radius: 4px 0 0 4px;
+  border-right-width: 0.5px;
+}
+.segmented-control button:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left-width: 0.5px;
+}
+.segmented-control button.active {
+  background-color: #3498db;
+  color: white;
+  border-color: #3498db;
+}
+
+.devpanel-actions-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.devpanel-actions-grid button,
+.log-controls button {
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid #bdc3c7;
+  background-color: #ecf0f1;
+  cursor: pointer;
+  font-size: 13px;
+}
+.devpanel-actions-grid button:hover,
+.log-controls button:hover {
+  background-color: #dce4e8;
+  border-color: #95a5a6;
+}
+
+/* Log Viewer */
+.log-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#devpanel-log-view {
+  background-color: #2c3e50;
+  color: #ecf0f1;
+  font-family: "SF Mono", "Fira Code", "Consolas", menlo, monospace;
+  font-size: 12px;
+  height: 200px;
+  overflow-y: scroll;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.log-entry {
+  display: flex;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+.log-timestamp {
+  color: #95a5a6;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.log-badge {
+  margin-right: 8px;
+  font-weight: bold;
+  padding: 0 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.log-badge.info { background: #3498db; color: white; }
+.log-badge.debug { background: #9b59b6; color: white; }
+.log-badge.warn { background: #f1c40f; color: #333; }
+.log-badge.error { background: #e74c3c; color: white; }
+.log-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
