@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+  <defs>
+    <style>
+      .bg { fill: #0b1220; }
+      .hex { fill: #0f1724; stroke: #22c1c3; stroke-width: 2; }
+      .core { fill: #0f1724; stroke: #7dd3fc; stroke-width: 1.5; }
+      .label { fill: #e6eef2; font-family: Arial, sans-serif; font-size: 14px; }
+      .small { font-size: 12px; fill: #cfeff6; }
+      .adapter { fill: #06202a; stroke: #94f5e6; stroke-width: 1.2; }
+      .arrow { stroke: #9eead7; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .box { fill: #05121a; stroke: #6ee7d3; stroke-width: 1.2; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9eead7" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#071421" />
+
+  <!-- Hexagon center -->
+  <g transform="translate(400,240)">
+    <polygon class="hex" points="0,-120 104,-60 104,60 0,120 -104,60 -104,-60"/>
+    <g>
+      <rect x="-80" y="-40" width="160" height="80" rx="6" class="core"/>
+      <text x="0" y="0" text-anchor="middle" class="label">Application Core</text>
+      <text x="0" y="18" text-anchor="middle" class="small">(web/core/engine.js)</text>
+    </g>
+  </g>
+
+  <!-- Adapters around -->
+  <!-- UI Adapter (top) -->
+  <g transform="translate(400,60)">
+    <rect class="box" x="-110" y="-34" width="220" height="68" rx="8"/>
+    <text x="0" y="-6" text-anchor="middle" class="label">UI Adapter</text>
+    <text x="0" y="12" text-anchor="middle" class="small">(web/ui/) - DOM & Events</text>
+  </g>
+  <path class="arrow" d="M400,140 L400,110" marker-end="url(#arrowhead)" />
+
+  <!-- Audio Adapter (right) -->
+  <g transform="translate(640,240)">
+    <rect class="box" x="-90" y="-34" width="180" height="68" rx="8"/>
+    <text x="0" y="-6" text-anchor="middle" class="label">Audio Adapter</text>
+    <text x="0" y="12" text-anchor="middle" class="small">(web/audio/) - Web Audio API</text>
+  </g>
+  <path class="arrow" d="M520,240 L512,240" marker-end="url(#arrowhead)" />
+
+  <!-- Video Adapter (bottom) -->
+  <g transform="translate(400,420)">
+    <rect class="box" x="-120" y="-34" width="240" height="68" rx="8"/>
+    <text x="0" y="-6" text-anchor="middle" class="label">Video Adapter</text>
+    <text x="0" y="12" text-anchor="middle" class="small">(web/video/) - Camera, Workers, ML</text>
+  </g>
+  <path class="arrow" d="M400,360 L400,330" marker-end="url(#arrowhead)" />
+
+  <!-- Test Adapter (left) -->
+  <g transform="translate(160,240)">
+    <rect class="box" x="-90" y="-34" width="180" height="68" rx="8"/>
+    <text x="0" y="-6" text-anchor="middle" class="label">Test Adapter</text>
+    <text x="0" y="12" text-anchor="middle" class="small">(test/) - Headless runners & assertions</text>
+  </g>
+  <path class="arrow" d="M280,240 L288,240" marker-end="url(#arrowhead)" />
+
+  <!-- small footer -->
+  <text x="24" y="462" class="small">Hexagonal Architecture (Ports & Adapters) — AcoustSee</text>
+
+</svg>

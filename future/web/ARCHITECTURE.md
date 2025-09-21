@@ -17,6 +17,62 @@ To serve the distinct needs of active navigation and detailed exploration, Acous
     *   **Goal:** Provide detailed, semantic information about specific objects in the user's vicinity.
     *   **Behavior:** Engages computationally intensive Machine Learning models (e.g., object segmentation, depth estimation) to trigger specific, recognizable "AcousticCues." Accuracy is prioritized over speed.
 
+
+## 2.5. Architectural Pattern: Hexagonal Architecture (Ports & Adapters)
+
+To ensure true modularity and testability, AcoustSee is designed following the principles of **Hexagonal Architecture**, also known as the **Ports and Adapters** pattern. The core principle is to isolate the application's central logic from external technologies and frameworks.
+
+This creates a clean separation of concerns, allowing different "pipelines" (UI, Audio, Video) to be developed and tested independently.
+
+### The Hexagon: The Application Core
+
+The "Hexagon" represents the pure, business logic of the application. It has no knowledge of the outside world (like the DOM, Web Audio API, or specific ML models).
+
+*   **Implementation:** `web/core/engine.js`
+*   **Responsibility:** Manages application state and orchestrates commands. It is the single source of truth for the application's behavior.
+
+### The Ports: The Formal API
+
+The Hexagon defines "Ports," which are the formal, technology-agnostic APIs for interacting with the core.
+
+1.  **Inbound Port (Driving Port):** This is the API for telling the application to *do something*.
+  *   **Implementation:** The `engine.dispatch('command', payload)` method.
+  *   **Contract:** All external interactions that modify or query the application state *must* go through the `dispatch` method.
+
+2.  **Outbound Port (Driven Port):** This is the API for the application to announce that *something has happened*.
+  *   **Implementation:** The `engine.on('event', listener)` method and the `engine.onStateChange(listener)` subscription.
+  *   **Contract:** The core notifies the outside world of changes via these event listeners. It does not call external modules directly.
+
+### The Adapters: The Outside World
+
+"Adapters" are the pluggable modules that connect external technologies to the Hexagon's Ports. They are responsible for translating between the specific technology and the application's generic commands and events.
+
+*   **UI Adapters (`web/ui/`):**
+  *   **Technology:** The Browser DOM (clicks, swipes, etc.).
+  *   **Function:** They listen for raw user input and *adapt* it into formal commands (e.g., a `click` becomes `dispatch('toggleProcessing')`). They also listen for state changes from the engine to update the screen.
+
+*   **Audio Adapter (`web/audio/`):**
+  *   **Technology:** The Web Audio API.
+  *   **Function:** It listens for a generic `playCues` command from the engine and *adapts* it into specific Web Audio API calls (`createOscillator`, `.start()`, etc.). The engine itself does not know what an oscillator is.
+
+*   **Video Adapter (`web/video/`):**
+  *   **Technology:** Camera streams, Web Workers, and ML models.
+  *   **Function:** It adapts raw video frames into meaningful data (like motion regions or identified objects) and can be triggered by commands from the engine.
+
+*   **Test Adapters (`/test/`):**
+  *   **Technology:** A testing framework (e.g., Playwright, Jest).
+  *   **Function:** A test script acts as another adapter. It drives the application through the `dispatch` port and verifies outcomes by listening to the `onStateChange` port, all without needing a real browser or UI.
+
+This architecture is the key to maintaining the project's integrity while allowing for independent, "pipeline-based" development.
+
+### Visual Diagram
+
+Below is a small diagram illustrating the Hexagonal Architecture mapping used by AcoustSee. The Application Core (the hexagon center) exposes ports; Adapters connect the outside world to those ports.
+
+![Hexagonal Architecture diagram](./docs/hexagonal-architecture.svg)
+
+
+
 ## 3. Development Process
 
 To prevent rework and ensure clarity, this project follows a lightweight development process based on documented tasks and architectural decisions.

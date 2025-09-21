@@ -197,7 +197,7 @@ export async function init() {
         try {
           const devPanelInitializer = getComponent('dev-panel');
           if (typeof devPanelInitializer === 'function') {
-            devPanelInitializer(engine, DOM, { importMetaUrl: import.meta.url, settings });
+            devPanelInitializer(engine, DOM, { importMetaUrl: import.meta.url, settings, basePath });
             structuredLog('INFO', 'Dev Panel initialized via registry.');
           } else {
             structuredLog('ERROR', 'Dev Panel module loaded but did not register an initializer.');
