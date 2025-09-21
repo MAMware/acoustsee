@@ -115,59 +115,44 @@ export function initializeDevPanel(arg1, arg2) {
 
     // 3) Load stylesheet and call wireUpUI once loaded (or immediately if already present)
     try {
-      const cssId = 'acoustsee-dev-panel-css';
-      if (document.getElementById(cssId)) {
-        wireUpUI();
-        return;
-      }
-      // Construct a prioritized href list. Prefer an explicit basePath provided
-      // via _config.basePath or _config.workerBaseUrl, then fall back to
-      // importMetaUrl and packaged relative paths.
-      const candidates = [];
-      try {
-        const explicitBase = (_config && (_config.basePath || _config.workerBaseUrl || _config.importMetaUrl));
-        if (explicitBase) {
-          // If the provided base looks like it points to a directory containing
-          // the `video/` directory or the app root, attempt to build a path to
-          // the UI asset relative to it.
-          try { candidates.push(new URL('./ui/dev-panel/dev-panel.css', explicitBase).href); } catch (e) {}
-        }
-      } catch (e) {}
-      // Also try the common packaged locations
-      candidates.push('/ui/dev-panel/dev-panel.css');
-      candidates.push('./ui/dev-panel/dev-panel.css');
-
-      const link = document.createElement('link');
-      link.id = cssId;
-      link.rel = 'stylesheet';
-
-      let loaded = false;
-      const tryNext = (idx) => {
-        if (idx >= candidates.length) {
-          console.warn('dev-panel: all stylesheet candidates failed, proceeding without styles');
+      // Replace brittle candidate fallback logic with a single, deterministic loader
+      function loadCss() {
+        const cssId = 'acoustsee-dev-panel-css';
+        if (document.getElementById(cssId)) {
           wireUpUI();
           return;
         }
-        const href = candidates[idx];
+
+        const base = (
+          (_config && _config.basePath) ||
+          ((_config && _config.importMetaUrl) ? new URL('.', _config.importMetaUrl).href : null) ||
+          (typeof document !== 'undefined' ? document.baseURI : './')
+        );
+
+        const href = new URL('ui/dev-panel/dev-panel.css', base).href;
+
+        const link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
         link.href = href;
-        // Use a temporary onerror handler to try the next candidate
-        const onErr = (e) => {
-          console.warn('dev-panel: stylesheet candidate failed', href, e);
-          // Try next candidate by cloning a fresh link element to avoid stateful failures.
-          const newLink = document.createElement('link');
-          newLink.id = cssId;
-          newLink.rel = 'stylesheet';
-          document.head.removeChild(link);
-          document.head.appendChild(newLink);
-          // Replace reference
-          link = newLink; // eslint-disable-line no-param-reassign
-          tryNext(idx + 1);
+        try { console.debug && console.debug('Dev Panel: attempting to load CSS from', link.href); } catch (e) {}
+
+        link.onload = () => {
+          try { console.debug && console.debug('Dev Panel CSS loaded:', link.href); } catch (e) {}
+          wireUpUI();
         };
-        link.onload = () => { loaded = true; wireUpUI(); };
-        link.onerror = onErr;
+
+        link.onerror = (e) => {
+          try { console.error && console.error('Dev Panel: stylesheet failed to load', { path: link.href, error: e }); } catch (err) {}
+          // attempt to wire up unstyled UI so functionality remains available
+          wireUpUI();
+        };
+
         document.head.appendChild(link);
-      };
-      tryNext(0);
+      }
+
+      // Invoke the loader
+      loadCss();
     } catch (e) {
       console.warn('Exception loading dev-panel stylesheet', e);
       try { wireUpUI(); } catch (_) {}
