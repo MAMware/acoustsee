@@ -1,140 +1,128 @@
 /*
   File: /workspaces/acoustsee/future/web/ui/dev-panel/dev-panel.css
-  Description: A complete stylesheet for the developer panel, restoring
-  the detailed styles for layout, controls, and the log viewer.
+  Description: The full-featured dark theme stylesheet, updated with the
+  correct selectors to match the refactored dev-panel.js.
 */
 
 #acoustsee-dev-panel {
   display: flex;
   flex-direction: column;
-  background: #fdfdfd;
-  color: #1a1a1a;
-  padding: 12px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  font-size: 14px;
-  border-radius: 8px;
-  overflow: hidden; /* Ensures child elements respect the border radius */
+  background-color: #2c3e50;
+  color: #ecf0f1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+  box-sizing: border-box;
   z-index: 10000;
 }
 
-#acoustsee-dev-panel h2 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 10px 0;
-  color: #34495e;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-#audio-version-badge {
-  font-size: 11px;
-  font-weight: normal;
-  background: #ecf0f1;
-  color: #7f8c8d;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
 .devpanel-section {
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 12px;
+  border-bottom: 1px solid #34495e;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
+
 .devpanel-section:last-child {
   border-bottom: none;
-  margin-bottom: 0;
-  padding-bottom: 0;
 }
 
-/* State Inspector */
+.devpanel-section h2 {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  color: #3498db;
+  border-bottom: 1px solid #4a5b6b;
+  padding-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.state-section {
+  flex-shrink: 0;
+}
+
 #devpanel-state-view {
-  background-color: #f4f6f8;
-  border: 1px solid #dfe4e8;
-  border-radius: 4px;
+  background: #212830;
   padding: 8px;
-  font-family: "SF Mono", "Fira Code", "Consolas", menlo, monospace;
-  font-size: 12px;
-  max-height: 200px;
-  overflow: auto;
+  border-radius: 4px;
   white-space: pre-wrap;
   word-break: break-all;
-  color: #333;
+  overflow-y: auto;
+  max-height: 200px;
+  font-family: "SF Mono", "Fira Code", "Consolas", menlo, monospace;
+  font-size: 12px;
 }
 
-/* Controls Section */
+.controls-section {
+  flex-shrink: 0;
+}
+
+/* Updated styles for the new .controls-grid */
 .controls-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
+  grid-template-columns: 130px 1fr auto;
+  gap: 10px 8px;
   align-items: center;
 }
-.controls-grid label {
+.controls-grid .control-row > label {
   font-weight: 500;
+  color: #bdc3c7;
 }
+.controls-grid select,
 .controls-grid input[type="range"] {
+  background: #34495e;
+  color: #ecf0f1;
+  border: 1px solid #7f8c8d;
+  border-radius: 3px;
+  padding: 5px;
+  box-sizing: border-box;
   width: 100%;
 }
-.controls-grid select {
-  width: 100%;
-  padding: 4px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+.controls-grid span { /* For slider values */
+  min-width: 25px;
+  text-align: right;
+  font-family: monospace;
+  color: #95a5a6;
 }
-.control-row {
-  display: contents; /* Allows children to participate directly in the grid */
+/* Ensure mode selector spans correctly */
+.controls-grid .mode-selector {
+  grid-column: 1 / -1; /* Span all columns */
+  display: contents;
+}
+.mode-selector > .segmented-control {
+  grid-column: 2 / -1; /* Span from second column to end */
 }
 
-/* Segmented button control for Mode */
-.segmented-control {
-  display: flex;
-  grid-column: 2 / 3; /* Span the second column */
-}
-.segmented-control button {
-  flex: 1;
-  padding: 5px 8px;
-  border: 1px solid #bdc3c7;
-  background: #fff;
+/* Button styles */
+.devpanel-actions-grid button,
+.log-controls button {
+  background: #3b4b5a;
+  color: #ecf0f1;
+  border: 1px solid #556;
+  padding: 5px 10px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  font-size: 12px;
 }
-.segmented-control button:first-child {
-  border-radius: 4px 0 0 4px;
-  border-right-width: 0.5px;
-}
-.segmented-control button:last-child {
-  border-radius: 0 4px 4px 0;
-  border-left-width: 0.5px;
-}
+.devpanel-actions-grid button:hover,
+.log-controls button:hover { background: #4a5b6b; }
+
 .segmented-control button.active {
   background-color: #3498db;
   color: white;
   border-color: #3498db;
 }
-
-.devpanel-actions-grid {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.devpanel-actions-grid button,
-.log-controls button {
-  padding: 5px 10px;
-  border-radius: 5px;
-  border: 1px solid #bdc3c7;
-  background-color: #ecf0f1;
-  cursor: pointer;
-  font-size: 13px;
-}
-.devpanel-actions-grid button:hover,
-.log-controls button:hover {
-  background-color: #dce4e8;
-  border-color: #95a5a6;
+.segmented-control button:not(.active) {
+   background: #34495e;
+   color: #bdc3c7;
+   border-color: #7f8c8d;
 }
 
-/* Log Viewer */
+/* Logs Section */
+.logs-section {
+  flex-grow: 1; /* Allow log section to fill remaining space */
+}
+
 .log-controls {
   display: flex;
   gap: 8px;
@@ -142,38 +130,51 @@
 }
 
 #devpanel-log-view {
-  background-color: #2c3e50;
-  color: #ecf0f1;
-  font-family: "SF Mono", "Fira Code", "Consolas", menlo, monospace;
-  font-size: 12px;
-  height: 200px;
-  overflow-y: scroll;
+  flex: 1;
+  min-height: 150px;
+  overflow-y: auto;
+  background: #212830;
   padding: 8px;
   border-radius: 4px;
+  font-family: "SF Mono", "Fira Code", "Consolas", menlo, monospace;
+  font-size: 12px;
 }
-
 .log-entry {
   display: flex;
-  margin-bottom: 4px;
-  line-height: 1.4;
+  padding-bottom: 3px;
+  margin-bottom: 3px;
 }
-.log-timestamp {
-  color: #95a5a6;
-  margin-right: 8px;
-  flex-shrink: 0;
+.log-timestamp { color: #95a5a6; margin-right: 8px; }
+.log-badge { padding: 1px 6px; border-radius: 4px; margin-right: 8px; font-weight: 600; }
+.log-badge.error { background: #e74c3c; color: #fff; }
+.log-badge.warn { background: #f1c40f; color: #2c3e50; }
+.log-badge.info { background: #3498db; color: #fff; }
+.log-badge.debug { background: #9b59b6; color: #fff; }
+.log-text { color: #ddd; white-space: pre-wrap; word-break: break-all; }
+
+/* Worker Explorer Chart Styles */
+
+#worker-explorer-container {
+  margin-top: 10px;
+  padding: 10px;
+  background: #212830;
+  border-radius: 4px;
+  border: 1px solid #34495e;
+  flex-shrink: 0; /* Important: Prevents this container from being squashed */
 }
-.log-badge {
-  margin-right: 8px;
-  font-weight: bold;
-  padding: 0 5px;
+
+#worker-explorer-legend {
+  margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+}
+
+#worker-explorer-canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 1;
+  background-color: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
-  flex-shrink: 0;
-}
-.log-badge.info { background: #3498db; color: white; }
-.log-badge.debug { background: #9b59b6; color: white; }
-.log-badge.warn { background: #f1c40f; color: #333; }
-.log-badge.error { background: #e74c3c; color: white; }
-.log-text {
-  white-space: pre-wrap;
-  word-break: break-word;
 }
