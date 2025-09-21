@@ -178,3 +178,62 @@
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
 }
+
+/* --- ADD THIS TO THE END of dev-panel.css --- */
+/* Final Layout, Header, and Collapse Styles */
+
+.devpanel-header {
+  padding: 12px;
+  border-bottom: 1px solid #34495e;
+  flex-shrink: 0;
+}
+
+.devpanel-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: #ecf0f1;
+}
+
+#devpanel-subtitle {
+  font-size: 11px;
+  color: #95a5a6;
+  font-family: monospace;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 10px 0 !important; /* Override other h2 styles */
+}
+
+.collapse-btn {
+  background: #34495e;
+  color: #bdc3c7;
+  border: 1px solid #7f8c8d;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  padding: 0;
+  transition: background-color 0.2s, transform 0.2s;
+}
+.collapse-btn:hover {
+  background: #4a5b6b;
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* The collapsing magic */
+.devpanel-section.collapsed > .section-content {
+  display: none;
+}
+.devpanel-section.collapsed {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}

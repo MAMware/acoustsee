@@ -57,46 +57,65 @@ export function initializeDevPanel(arg1, arg2) {
     // 1) Render HTML structure
     try {
       panel.innerHTML = `
-      <div class="devpanel-section state-section">
-        <h2>State Inspector
-          <span id="audio-version-badge" title="Build Version"></span>
-        </h2>
-        <pre id="devpanel-state-view">Loading state...</pre>
-        <div id="version-footer"></div>
-      </div>
-      <div class="devpanel-section controls-section">
-        <h2>Controls</h2>
-        <div class="controls-grid">
-          <div class="control-row mode-selector">
-            <label>Mode:</label>
-            <div class="segmented-control">
-              <button data-action="setMode" data-mode="flow" class="mode-btn active">Flow</button>
-              <button data-action="setMode" data-mode="focus" class="mode-btn">Focus</button>
+        <div class="devpanel-header">
+          <h1>Developer Panel</h1>
+          <div id="devpanel-subtitle">Versions: Loading...</div>
+        </div>
+
+        <div class="devpanel-section state-section">
+          <h2 class="section-header">
+            <span>State Inspector</span>
+            <button id="state-toggle-btn" class="collapse-btn" aria-expanded="true" title="Collapse Inspector">-</button>
+          </h2>
+          <div class="section-content">
+            <pre id="devpanel-state-view">Loading state...</pre>
+          </div>
+        </div>
+
+        <div id="worker-explorer-container" class="devpanel-section" style="display: none;">
+          <h2 class="section-header">
+            <span>Worker Stats</span>
+          </h2>
+          <div class="section-content">
+            <div id="worker-explorer-legend"></div>
+            <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
+          </div>
+        </div>
+
+        <div class="devpanel-section controls-section">
+          <h2 class="section-header"><span>Controls</span></h2>
+          <div class="section-content">
+            <div class="controls-grid">
+              <div class="control-row mode-selector">
+                <label>Mode:</label>
+                <div class="segmented-control">
+                  <button data-action="setMode" data-mode="flow" class="mode-btn active">Flow</button>
+                  <button data-action="setMode" data-mode="focus" class="mode-btn">Focus</button>
+                </div>
+              </div>
+              <div class="control-row"><label>Grid Type</label><select id="grid-type-select"></select></div>
+              <div class="control-row"><label>Synth Engine</label><select id="synth-engine-select"></select></div>
+              <div class="control-row"><label>Max Notes</label><input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span></div>
+              <div class="control-row"><label>Motion Threshold</label><input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span></div>
+            </div>
+            <div class="devpanel-actions-grid">
+              <button data-action="toggleWorkerExplorer" type="button">Toggle Worker Chart</button>
             </div>
           </div>
-          <div class="control-row"><label>Grid Type<select id="grid-type-select"></select></label></div>
-          <div class="control-row"><label>Synth Engine<select id="synth-engine-select"></select></label></div>
-          <div class="control-row"><label>Max Notes<input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span></label></div>
-          <div class="control-row"><label>Motion Threshold<input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span></label></div>
         </div>
-        <div class="devpanel-actions-grid">
-          <button data-action="toggleWorkerExplorer" type="button">Worker Stats</button>
+
+        <div class="devpanel-section logs-section">
+          <h2 class="section-header"><span>Live Logs</span></h2>
+          <div class="section-content">
+            <div class="log-controls">
+              <button id="log-pause-btn" type="button">Pause</button>
+              <button id="log-clear-btn" type="button">Clear</button>
+              <button id="log-export-btn" type="button">Export</button>
+            </div>
+            <div id="devpanel-log-view"></div>
+          </div>
         </div>
-        <div id="worker-explorer-container" style="display:none; margin-top:8px;">
-          <div id="worker-explorer-legend"></div>
-          <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
-        </div>
-      </div>
-      <div class="devpanel-section logs-section">
-        <h2>Live Logs</h2>
-        <div class="log-controls">
-          <button id="log-pause-btn" type="button">Pause</button>
-          <button id="log-clear-btn" type="button">Clear</button>
-          <button id="log-export-btn" type="button">Export</button>
-        </div>
-        <div id="devpanel-log-view"></div>
-      </div>
-    `;
+      `;
     } catch (e) {
       panel.textContent = 'Error: Dev panel could not be rendered.';
       console.error('Dev Panel innerHTML rendering failed', e);
@@ -160,76 +179,43 @@ export function initializeDevPanel(arg1, arg2) {
   };
 
   function setupUI() {
-    // Reuse previous behavior code (copied and adapted)
-    // Delegate panel behavior to the shared module to avoid duplicate inline logic.
-    try {
-      // applyLayoutAndBehaviors controls layout and z-index, and wires resize/orientation handlers.
-      applyLayoutAndBehaviors({ panel, DOM });
-    } catch (e) {
-      // Best-effort: if the behavior module fails, fall back to a minimal responsive layout.
-      try {
-        const applyResponsiveLayout = () => {
-          const isLandscape = window.innerWidth > window.innerHeight;
-          if (isLandscape) {
-            Object.assign(panel.style, { position: 'fixed', right: '0', top: '0', width: '400px', height: '100vh', borderLeft: '2px solid #34495e' });
-          } else {
-            Object.assign(panel.style, { position: 'fixed', left: '8px', right: '8px', bottom: '8px', top: 'auto', width: 'calc(100% - 16px)', height: '42vh', borderTop: '2px solid #34495e', borderRadius: '8px' });
-          }
-        };
-        applyResponsiveLayout();
-        window.addEventListener('resize', applyResponsiveLayout, { passive: true });
-      } catch (e2) { /* ignore */ }
-    }
+    applyLayoutAndBehaviors({ panel, DOM });
 
+    // --- Wire Collapse Button ---
     try {
-      // Cache frequently-updated DOM elements to avoid repeated querySelector calls
-      const gridTypeSelect = panel.querySelector('#grid-type-select');
-      const synthEngineSelect = panel.querySelector('#synth-engine-select');
-      const maxNotesSlider = panel.querySelector('#max-notes-slider');
-      const maxNotesValue = panel.querySelector('#max-notes-value');
-      const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
-      const motionThresholdValue = panel.querySelector('#motion-threshold-value');
-      const autoFpsCheckbox = panel.querySelector('#auto-fps-checkbox');
-      const enableFrameWorkerCheckbox = panel.querySelector('#enable-frame-worker-checkbox');
-      const versionBadge = panel.querySelector('#audio-version-badge');
-      const versionFooter = panel.querySelector('#version-footer');
-  const metaVer = (typeof document !== 'undefined' && document.querySelector) ? document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content') : null;
-  const ver = metaVer || (typeof window !== 'undefined' && (window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION)) || BUILD_VERSION;
-      if (versionBadge) versionBadge.textContent = `v${ver}`;
-      if (versionFooter) versionFooter.textContent = `Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || ver}`;
+      const stateSection = panel.querySelector('.state-section');
+      const toggleBtn = panel.querySelector('#state-toggle-btn');
+      toggleBtn.addEventListener('click', () => {
+        const isNowCollapsed = stateSection.classList.toggle('collapsed');
+        toggleBtn.textContent = isNowCollapsed ? '+' : '-';
+        toggleBtn.setAttribute('aria-expanded', String(!isNowCollapsed));
+        toggleBtn.setAttribute('title', isNowCollapsed ? 'Expand Inspector' : 'Collapse Inspector');
+      });
+    } catch (e) { console.error('Failed to wire collapse button', e); }
+
+    // --- Populate Version Subtitle ---
+    try {
+      const subtitle = panel.querySelector('#devpanel-subtitle');
+      const metaVer = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
+      const ver = metaVer || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || BUILD_VERSION;
+      subtitle.textContent = `Build: ${ver} | Audio: ${AUDIO_VERSION || 'n/a'} | UI: ${UI_VERSION || 'n/a'}`;
     } catch (e) {}
 
-  // worker explorer and video preview wiring replicated here (omitted for brevity) R190925 omitted? why? 
-
+    // --- Wire Action Buttons & Renderer ---
+    // This correctly uses the existing architecture. No extra listeners needed here.
     try {
-      // Instrumentation: snapshot pre-action wiring
-      try {
-        console.log('dev-panel: setupUI starting. nodes:', {
-          stateView: !!panel.querySelector('#devpanel-state-view'),
-          logView: !!panel.querySelector('#devpanel-log-view'),
-          actionsGrid: !!panel.querySelector('.devpanel-actions-grid')
-        });
-      } catch (_) {}
-
       const actionsModule = createAndWireActions(panel, engine, DOM, skipDiagnostics);
-      console.log('dev-panel: createAndWireActions returned', !!actionsModule);
       if (actionsModule && typeof actionsModule.dispose === 'function') {
         panel.__devActionsDispose = actionsModule.dispose;
       }
-      try {
-        // Initialize dev-panel overlay renderer if present
-        initializeDevPanelRenderer(engine, DOM);
-      } catch (e) { /* ignore */ }
+      initializeDevPanelRenderer(engine, DOM);
     } catch (e) {
-      console.error('initializeDevPanel: createAndWireActions failed', e);
-      // expose failure in the DOM for quick visual detection
-      try { const cs = panel.querySelector('.controls-section'); if (cs) cs.textContent = 'Actions failed: see console'; } catch(_) {}
+      console.error('initializeDevPanel: createAndWireActions/Renderer failed', e);
     }
 
-  const stateView = panel.querySelector('#devpanel-state-view');
-  const logView = panel.querySelector('#devpanel-log-view');
-  setLogView(logView);
-
+    // --- Wire Log Viewer ---
+    const logView = panel.querySelector('#devpanel-log-view');
+    setLogView(logView);
     panel.querySelector('#log-pause-btn').addEventListener('click', (e) => {
         const isPaused = e.target.textContent === 'Pause';
         setPaused(!isPaused);
@@ -243,23 +229,28 @@ export function initializeDevPanel(arg1, arg2) {
         const a = document.createElement('a'); a.href = url; a.download = 'acoustsee-logs.json'; a.click();
         URL.revokeObjectURL(url);
     });
-    // This callback synchronizes the Dev Panel's UI controls (sliders, dropdowns,
-    // checkboxes) with the engine state whenever it changes, ensuring the panel
-    // reflects the current application settings and provides live feedback.
-  engine.onStateChange(state => {
-    try {
-      const diags = getAudioDiagnostics();
-      if (stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
-      if (gridTypeSelect) gridTypeSelect.value = state.gridType;
-      if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
-      if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
-      if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
-      if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
-      if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
-      if (autoFpsCheckbox) autoFpsCheckbox.checked = state.autoFPS;
-      if (enableFrameWorkerCheckbox) enableFrameWorkerCheckbox.checked = (_config.settings && _config.settings.enableFrameWorker) || false;
-    } catch(e) {}
-  });
+
+    // --- Engine State Synchronization ---
+    const stateView = panel.querySelector('#devpanel-state-view');
+    const gridTypeSelect = panel.querySelector('#grid-type-select');
+    const synthEngineSelect = panel.querySelector('#synth-engine-select');
+    const maxNotesSlider = panel.querySelector('#max-notes-slider');
+    const maxNotesValue = panel.querySelector('#max-notes-value');
+    const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
+    const motionThresholdValue = panel.querySelector('#motion-threshold-value');
+
+    engine.onStateChange(state => {
+      try {
+        const diags = getAudioDiagnostics();
+        if (stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
+        if (gridTypeSelect) gridTypeSelect.value = state.gridType;
+        if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
+        if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
+        if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
+        if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
+        if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
+      } catch(e) {}
+    });
 
     setOutputCallback((level, text) => debugLog(level, text));
   }
