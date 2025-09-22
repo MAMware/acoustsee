@@ -1,8 +1,114 @@
 /*
   File: /workspaces/acoustsee/future/web/ui/dev-panel/dev-panel.css
-  Description: The full-featured dark theme stylesheet, updated with the
-  correct selectors to match the refactored dev-panel.js.
+  Description: Full-screen Developer Panel stylesheet.
 */
+
+#acoustsee-dev-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10000;
+  background-color: rgba(30, 40, 50, 0.98);
+  color: #ecf0f1;
+  backdrop-filter: blur(5px);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+}
+
+.devpanel-main-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.devpanel-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #34495e;
+  margin-bottom: 12px;
+}
+.devpanel-header h1 {
+  font-size: 22px;
+  margin: 0 0 4px 0;
+}
+#devpanel-subtitle {
+  font-size: 12px;
+  color: #95a5a6;
+  font-family: monospace;
+}
+
+.devpanel-section {
+  background: rgba(0,0,0,0.15);
+  border: 1px solid #34495e;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  padding: 12px;
+  transition: all 0.2s ease-in-out;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  margin: 0 !important;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #34495e;
+}
+.section-content {
+  padding-top: 12px;
+}
+.devpanel-section.collapsed > .section-header {
+  border-bottom: none;
+}
+.devpanel-section.collapsed > .section-content {
+  display: none;
+}
+
+/* Controls Section Layout */
+.devpanel-actions-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.controls-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px 24px;
+}
+.control-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.control-column label {
+  font-weight: 500;
+  color: #bdc3c7;
+}
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.slider-container input { flex-grow: 1; }
+
+/* Video Preview */
+#devpanel-video-preview {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 4px;
+  display: block;
+}
+.perf-note {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin: 8px 0 0 0;
+}
+
 
 #acoustsee-dev-panel {
   display: flex;
@@ -179,8 +285,7 @@
   border-radius: 3px;
 }
 
-/* --- ADD THIS TO THE END of dev-panel.css --- */
-/* Final Layout, Header, and Collapse Styles */
+/* Layout, Header, and Collapse Styles */
 
 .devpanel-header {
   padding: 12px;

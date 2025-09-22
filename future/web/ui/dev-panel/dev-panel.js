@@ -57,62 +57,84 @@ export function initializeDevPanel(arg1, arg2) {
     // 1) Render HTML structure
     try {
       panel.innerHTML = `
-        <div class="devpanel-header">
-          <h1>Developer Panel</h1>
-          <div id="devpanel-subtitle">Versions: Loading...</div>
-        </div>
-
-        <div class="devpanel-section state-section">
-          <h2 class="section-header">
-            <span>State Inspector</span>
-            <button id="state-toggle-btn" class="collapse-btn" aria-expanded="true" title="Collapse Inspector">-</button>
-          </h2>
-          <div class="section-content">
-            <pre id="devpanel-state-view">Loading state...</pre>
+        <div class="devpanel-main-content">
+          <div class="devpanel-header">
+            <h1>Developer Panel</h1>
+            <div id="devpanel-subtitle">Versions: Loading...</div>
           </div>
-        </div>
 
-        <div id="worker-explorer-container" class="devpanel-section" style="display: none;">
-          <h2 class="section-header">
-            <span>Worker Stats</span>
-          </h2>
-          <div class="section-content">
-            <div id="worker-explorer-legend"></div>
-            <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
+          <div class="devpanel-section state-section">
+            <h2 class="section-header">
+              <span>State Inspector</span>
+              <button class="collapse-btn" data-target="state-content" aria-expanded="true" title="Collapse Inspector">-</button>
+            </h2>
+            <div id="state-content" class="section-content">
+              <pre id="devpanel-state-view">Loading state...</pre>
+            </div>
           </div>
-        </div>
 
-        <div class="devpanel-section controls-section">
-          <h2 class="section-header"><span>Controls</span></h2>
-          <div class="section-content">
-            <div class="controls-grid">
-              <div class="control-row mode-selector">
-                <label>Mode:</label>
-                <div class="segmented-control">
-                  <button data-action="setMode" data-mode="flow" class="mode-btn active">Flow</button>
-                  <button data-action="setMode" data-mode="focus" class="mode-btn">Focus</button>
+          <div class="devpanel-section worker-section">
+            <h2 class="section-header">
+              <span>Worker Performance</span>
+              <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
+            </h2>
+            <div id="worker-content" class="section-content">
+              <div id="worker-explorer-legend"></div>
+              <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
+            </div>
+          </div>
+
+          <div class="devpanel-section video-section">
+            <h2 class="section-header">
+              <span>Live Video Preview</span>
+              <button class="collapse-btn" data-target="video-content" aria-expanded="false" title="Expand Video Preview">+</button>
+            </h2>
+            <div id="video-content" class="section-content">
+              <video id="devpanel-video-preview" muted autoplay playsinline></video>
+              <p class="perf-note">Note: This preview uses the existing camera stream with minimal overhead and does not interfere with processing.</p>
+            </div>
+          </div>
+
+          <div class="devpanel-section controls-section">
+            <h2 class="section-header"><span>Controls</span></h2>
+            <div class="section-content">
+              <div class="devpanel-actions-grid">
+                <button data-action="toggleProcessing" type="button">Start / Stop</button>
+                <button data-action="resumeAudio" type="button">Resume Audio</button>
+                <button data-action="saveSettings" type="button">Save Settings</button>
+                <button data-action="loadSettings" type="button">Load Settings</button>
+              </div>
+              <div class="controls-grid-2col">
+                <div class="control-column">
+                  <label>Grid Type</label>
+                  <select id="grid-type-select"></select>
+                  <label>Motion Threshold</label>
+                  <div class="slider-container">
+                    <input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span>
+                  </div>
+                </div>
+                <div class="control-column">
+                  <label>Synth Engine</label>
+                  <select id="synth-engine-select"></select>
+                  <label>Max Notes</label>
+                  <div class="slider-container">
+                    <input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span>
+                  </div>
                 </div>
               </div>
-              <div class="control-row"><label>Grid Type</label><select id="grid-type-select"></select></div>
-              <div class="control-row"><label>Synth Engine</label><select id="synth-engine-select"></select></div>
-              <div class="control-row"><label>Max Notes</label><input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span></div>
-              <div class="control-row"><label>Motion Threshold</label><input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span></div>
-            </div>
-            <div class="devpanel-actions-grid">
-              <button data-action="toggleWorkerExplorer" type="button">Toggle Worker Chart</button>
             </div>
           </div>
-        </div>
 
-        <div class="devpanel-section logs-section">
-          <h2 class="section-header"><span>Live Logs</span></h2>
-          <div class="section-content">
-            <div class="log-controls">
-              <button id="log-pause-btn" type="button">Pause</button>
-              <button id="log-clear-btn" type="button">Clear</button>
-              <button id="log-export-btn" type="button">Export</button>
+          <div class="devpanel-section logs-section">
+            <h2 class="section-header"><span>Live Logs</span></h2>
+            <div class="section-content">
+              <div class="log-controls">
+                <button id="log-pause-btn" type="button">Pause</button>
+                <button id="log-clear-btn" type="button">Clear</button>
+                <button id="log-export-btn" type="button">Export</button>
+              </div>
+              <div id="devpanel-log-view"></div>
             </div>
-            <div id="devpanel-log-view"></div>
           </div>
         </div>
       `;
@@ -123,9 +145,9 @@ export function initializeDevPanel(arg1, arg2) {
     }
 
     // 2) Define wiring function which will be called after CSS is loaded
-    const wireUpUI = () => {
+    const wireUpUI = async () => {
       try {
-        setupUI(); // setupUI is declared below
+        await setupUI(); // setupUI is declared below
         panel.style.display = 'flex';
       } catch (e) {
         console.error('Dev Panel setupUI failed during wiring', e);
@@ -178,31 +200,96 @@ export function initializeDevPanel(arg1, arg2) {
     }
   };
 
-  function setupUI() {
-    applyLayoutAndBehaviors({ panel, DOM });
+  async function setupUI() {
+    // This panel is now full-screen by default via its CSS.
+    // We no longer need the old applyLayoutAndBehaviors() function.
 
-    // --- Wire Collapse Button ---
+    // --- Wire All Collapsible Sections (with special logic for worker chart) ---
+    let workerChartInterval = null;
     try {
-      const stateSection = panel.querySelector('.state-section');
-      const toggleBtn = panel.querySelector('#state-toggle-btn');
-      toggleBtn.addEventListener('click', () => {
-        const isNowCollapsed = stateSection.classList.toggle('collapsed');
-        toggleBtn.textContent = isNowCollapsed ? '+' : '-';
-        toggleBtn.setAttribute('aria-expanded', String(!isNowCollapsed));
-        toggleBtn.setAttribute('title', isNowCollapsed ? 'Expand Inspector' : 'Collapse Inspector');
+      // Prepare the chart rendering function once for efficiency.
+      const workerCanvas = panel.querySelector('#worker-explorer-canvas');
+      const legendEl = panel.querySelector('#worker-explorer-legend');
+      const { RingBuffer, scaleCanvasForDPR, drawMultiSparkline } = (await import('./worker-charts.js'));
+      const workerDataBuffers = new Map();
+      scaleCanvasForDPR(workerCanvas);
+
+      const renderCharts = () => {
+        if (!window.__acoustseeDevPanelGetWorkerStats) return;
+        const stats = window.__acoustseeDevPanelGetWorkerStats();
+        const seriesMap = new Map();
+        let legendHTML = '';
+        stats.forEach((workerStat, i) => {
+          if (!workerDataBuffers.has(workerStat.id)) {
+            workerDataBuffers.set(workerStat.id, new RingBuffer(64));
+          }
+          const buffer = workerDataBuffers.get(workerStat.id);
+          buffer.push(workerStat.last ? workerStat.last.util : 0);
+          seriesMap.set(workerStat.id, buffer.toArray());
+          const color = `hsl(${(i * 137) % 360}, 72%, 58%)`;
+          legendHTML += `<span style="color: ${color}; margin-right: 10px;">■ ${workerStat.name || workerStat.id}</span>`;
+        });
+        if (legendEl) legendEl.innerHTML = legendHTML;
+        drawMultiSparkline(workerCanvas, seriesMap);
+      };
+
+      // Set up click handlers for all collapsible section headers
+      panel.querySelectorAll('.section-header').forEach(headerEl => {
+        const sectionEl = headerEl.closest('.devpanel-section');
+        const btn = headerEl.querySelector('.collapse-btn');
+        
+        if (btn.getAttribute('aria-expanded') === 'false') {
+          sectionEl.classList.add('collapsed');
+        }
+
+        headerEl.addEventListener('click', () => {
+          const isNowCollapsed = sectionEl.classList.toggle('collapsed');
+          btn.textContent = isNowCollapsed ? '+' : '-';
+          btn.setAttribute('aria-expanded', String(!isNowCollapsed));
+          
+          // R22925 IMPLEMENTATION: Special logic for the worker chart
+          if (sectionEl.classList.contains('worker-section')) {
+            if (isNowCollapsed) {
+              // It's now hidden, so STOP the interval.
+              if (workerChartInterval) {
+                clearInterval(workerChartInterval);
+                workerChartInterval = null;
+              }
+            } else {
+              // It's now visible, so START the interval.
+              renderCharts(); // Render once immediately for better UX
+              workerChartInterval = setInterval(renderCharts, 250);
+            }
+          }
+        });
       });
-    } catch (e) { console.error('Failed to wire collapse button', e); }
+
+      // Starts the worker chart if it's visible on initial load.
+      const workerSection = panel.querySelector('.worker-section');
+      if (workerSection && !workerSection.classList.contains('collapsed')) {
+        renderCharts();
+        workerChartInterval = setInterval(renderCharts, 250);
+      }
+
+    } catch (e) { console.error('Failed to wire collapse buttons or worker chart', e); }
 
     // --- Populate Version Subtitle ---
     try {
       const subtitle = panel.querySelector('#devpanel-subtitle');
       const metaVer = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
       const ver = metaVer || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || BUILD_VERSION;
-      subtitle.textContent = `Build: ${ver} | Audio: ${AUDIO_VERSION || 'n/a'} | UI: ${UI_VERSION || 'n/a'}`;
+      subtitle.textContent = `Build: ${ver} | Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || 'n/a'}`;
     } catch (e) {}
 
-    // --- Wire Action Buttons & Renderer ---
-    // This correctly uses the existing architecture. No extra listeners needed here.
+    // --- Cost-Effective Video Preview Wiring ---
+    try {
+      const previewEl = panel.querySelector('#devpanel-video-preview');
+      if (previewEl && DOM && DOM.videoFeed && DOM.videoFeed.srcObject) {
+        previewEl.srcObject = DOM.videoFeed.srcObject;
+      }
+    } catch (e) { console.error('Failed to wire video preview', e); }
+
+    // --- Wire Core Action Buttons & Renderer ---
     try {
       const actionsModule = createAndWireActions(panel, engine, DOM, skipDiagnostics);
       if (actionsModule && typeof actionsModule.dispose === 'function') {
@@ -213,7 +300,7 @@ export function initializeDevPanel(arg1, arg2) {
       console.error('initializeDevPanel: createAndWireActions/Renderer failed', e);
     }
 
-    // --- Wire Log Viewer ---
+    // --- Wire Log Viewer Controls ---
     const logView = panel.querySelector('#devpanel-log-view');
     setLogView(logView);
     panel.querySelector('#log-pause-btn').addEventListener('click', (e) => {
@@ -230,7 +317,7 @@ export function initializeDevPanel(arg1, arg2) {
         URL.revokeObjectURL(url);
     });
 
-    // --- Engine State Synchronization ---
+    // --- Engine State Synchronization for UI Controls ---
     const stateView = panel.querySelector('#devpanel-state-view');
     const gridTypeSelect = panel.querySelector('#grid-type-select');
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
