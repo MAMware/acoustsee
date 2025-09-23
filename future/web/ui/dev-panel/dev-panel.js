@@ -202,12 +202,11 @@ export function initializeDevPanel(arg1, arg2) {
 
   async function setupUI() {
     // This panel is now full-screen by default via its CSS.
-    // We no longer need the old applyLayoutAndBehaviors() function.
 
-    // --- Wire All Collapsible Sections (with special logic for worker chart) ---
-    let workerChartInterval = null;
+    // --- State-of-the-Art Collapsible Sections & Worker Chart Rendering ---
+    let workerChartRenderLoopId = null;
     try {
-      // Prepare the chart rendering function once for efficiency.
+      // Prepare the chart rendering function once.
       const workerCanvas = panel.querySelector('#worker-explorer-canvas');
       const legendEl = panel.querySelector('#worker-explorer-legend');
       const { RingBuffer, scaleCanvasForDPR, drawMultiSparkline } = (await import('./worker-charts.js'));
@@ -233,43 +232,63 @@ export function initializeDevPanel(arg1, arg2) {
         drawMultiSparkline(workerCanvas, seriesMap);
       };
 
+      // Create a rendering loop using requestAnimationFrame
+      let lastRenderTime = 0;
+      const renderLoop = (timestamp) => {
+        // Limit rendering to ~4 FPS (once every 250ms)
+        if (timestamp - lastRenderTime >= 250) {
+          lastRenderTime = timestamp;
+          renderCharts();
+        }
+        // Continue the loop
+        workerChartRenderLoopId = requestAnimationFrame(renderLoop);
+      };
+
+      const startChart = () => {
+        if (workerChartRenderLoopId === null) {
+          lastRenderTime = performance.now();
+          workerChartRenderLoopId = requestAnimationFrame(renderLoop);
+        }
+      };
+      const stopChart = () => {
+        if (workerChartRenderLoopId !== null) {
+          cancelAnimationFrame(workerChartRenderLoopId);
+          workerChartRenderLoopId = null;
+        }
+      };
+
       // Set up click handlers for all collapsible section headers
       panel.querySelectorAll('.section-header').forEach(headerEl => {
         const sectionEl = headerEl.closest('.devpanel-section');
         const btn = headerEl.querySelector('.collapse-btn');
-        
-        if (btn.getAttribute('aria-expanded') === 'false') {
-          sectionEl.classList.add('collapsed');
-        }
+        if (!btn) return;
+        if (btn.getAttribute('aria-expanded') === 'false') sectionEl.classList.add('collapsed');
 
         headerEl.addEventListener('click', () => {
           const isNowCollapsed = sectionEl.classList.toggle('collapsed');
           btn.textContent = isNowCollapsed ? '+' : '-';
           btn.setAttribute('aria-expanded', String(!isNowCollapsed));
-          
-          // R22925 IMPLEMENTATION: Special logic for the worker chart
           if (sectionEl.classList.contains('worker-section')) {
-            if (isNowCollapsed) {
-              // It's now hidden, so STOP the interval.
-              if (workerChartInterval) {
-                clearInterval(workerChartInterval);
-                workerChartInterval = null;
-              }
-            } else {
-              // It's now visible, so START the interval.
-              renderCharts(); // Render once immediately for better UX
-              workerChartInterval = setInterval(renderCharts, 250);
-            }
+            isNowCollapsed ? stopChart() : startChart();
           }
         });
       });
-
+      
       // Starts the worker chart if it's visible on initial load.
       const workerSection = panel.querySelector('.worker-section');
       if (workerSection && !workerSection.classList.contains('collapsed')) {
-        renderCharts();
-        workerChartInterval = setInterval(renderCharts, 250);
+        startChart();
       }
+
+      // Also use Page Visibility API to globally pause the chart
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          stopChart();
+        } else if (!panel.querySelector('.worker-section').classList.contains('collapsed')) {
+          // Only restart if it was supposed to be running
+          startChart();
+        }
+      });
 
     } catch (e) { console.error('Failed to wire collapse buttons or worker chart', e); }
 
@@ -317,7 +336,7 @@ export function initializeDevPanel(arg1, arg2) {
         URL.revokeObjectURL(url);
     });
 
-    // --- Engine State Synchronization for UI Controls ---
+    // --- State-of-the-Art Engine State Synchronization ---
     const stateView = panel.querySelector('#devpanel-state-view');
     const gridTypeSelect = panel.querySelector('#grid-type-select');
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
@@ -325,18 +344,26 @@ export function initializeDevPanel(arg1, arg2) {
     const maxNotesValue = panel.querySelector('#max-notes-value');
     const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
     const motionThresholdValue = panel.querySelector('#motion-threshold-value');
+    let stateUpdateScheduled = false;
 
     engine.onStateChange(state => {
-      try {
-        const diags = getAudioDiagnostics();
-        if (stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
-        if (gridTypeSelect) gridTypeSelect.value = state.gridType;
-        if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
-        if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
-        if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
-        if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
-        if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
-      } catch(e) {}
+      // Debounce DOM updates using requestAnimationFrame
+      if (stateUpdateScheduled) return;
+      stateUpdateScheduled = true;
+
+      requestAnimationFrame(() => {
+        try {
+          const diags = getAudioDiagnostics();
+          if (stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
+          if (gridTypeSelect) gridTypeSelect.value = state.gridType;
+          if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
+          if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
+          if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
+          if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
+          if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
+        } catch(e) {}
+        stateUpdateScheduled = false; // Allow the next update to be scheduled
+      });
     });
 
     setOutputCallback((level, text) => debugLog(level, text));
