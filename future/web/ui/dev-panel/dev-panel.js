@@ -203,7 +203,7 @@ export function initializeDevPanel(arg1, arg2) {
   async function setupUI() {
     // This panel is now full-screen by default via its CSS.
 
-    // --- State-of-the-Art Collapsible Sections & Worker Chart Rendering ---
+    // --- Wire All Collapsible Sections (with special logic for worker chart) ---
     let workerChartRenderLoopId = null;
     try {
       // Prepare the chart rendering function once.
@@ -336,7 +336,7 @@ export function initializeDevPanel(arg1, arg2) {
         URL.revokeObjectURL(url);
     });
 
-    // --- State-of-the-Art Engine State Synchronization ---
+    // --- High-Performance State Synchronization using a Web Worker ---
     const stateView = panel.querySelector('#devpanel-state-view');
     const gridTypeSelect = panel.querySelector('#grid-type-select');
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
@@ -344,26 +344,78 @@ export function initializeDevPanel(arg1, arg2) {
     const maxNotesValue = panel.querySelector('#max-notes-value');
     const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
     const motionThresholdValue = panel.querySelector('#motion-threshold-value');
-    let stateUpdateScheduled = false;
+
+    // Create a dedicated worker for JSON.stringify to avoid blocking the main thread.
+    let stateStringifyWorker = null;
+    try {
+      const workerCode = `
+        function stringifySafe(obj, indent = 2) {
+          const seen = new WeakSet();
+          const replacer = (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+              if (seen.has(value)) {
+                return '[Circular]';
+              }
+              seen.add(value);
+            }
+            // Skip functions, symbols, and undefined (JSON.stringify does this by default, but we make it explicit)
+            if (typeof value === 'function' || typeof value === 'symbol' || value === undefined) {
+              return '[Non-serializable: ' + typeof value + ']';
+            }
+            return value;
+          };
+          try {
+            return JSON.stringify(obj, replacer, indent);
+          } catch (e) {
+            return 'Error during safe stringification: ' + e.message;
+          }
+        }
+
+        self.onmessage = (event) => {
+          try {
+            const prettyString = stringifySafe(event.data);
+            self.postMessage(prettyString);
+          } catch (e) {
+            self.postMessage('Error stringifying state: ' + e.message);
+          }
+        };
+      `;
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      stateStringifyWorker = new Worker(URL.createObjectURL(blob));
+
+      // When the worker sends the string back, update the DOM. This is very fast.
+      stateStringifyWorker.onmessage = (event) => {
+        if (stateView) stateView.textContent = event.data;
+      };
+    } catch (e) {
+      console.error("Failed to create state stringify worker. State inspector will be disabled.", e);
+    }
+
+    let lastStateUpdate = 0;
+    const STATE_UPDATE_INTERVAL = 400; // Update state view max ~2.5 times/sec
 
     engine.onStateChange(state => {
-      // Debounce DOM updates using requestAnimationFrame
-      if (stateUpdateScheduled) return;
-      stateUpdateScheduled = true;
+      // First, update the fast/responsive controls immediately.
+      try {
+        if (gridTypeSelect) gridTypeSelect.value = state.gridType;
+        if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
+        if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
+        if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
+        if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
+        if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
+      } catch(e) {}
 
-      requestAnimationFrame(() => {
-        try {
-          const diags = getAudioDiagnostics();
-          if (stateView) stateView.textContent = JSON.stringify({ ...state, audio: diags }, null, 2);
-          if (gridTypeSelect) gridTypeSelect.value = state.gridType;
-          if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
-          if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
-          if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
-          if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
-          if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
-        } catch(e) {}
-        stateUpdateScheduled = false; // Allow the next update to be scheduled
-      });
+      // Then, handle the slow state view update.
+      if (!stateStringifyWorker) return; // Don't proceed if worker failed to create
+
+      const now = performance.now();
+      if (now - lastStateUpdate > STATE_UPDATE_INTERVAL) {
+        lastStateUpdate = now;
+        // Offload the expensive stringify operation to the worker.
+        const diags = getAudioDiagnostics();
+        const stateClone = { ...state, audio: diags };
+        stateStringifyWorker.postMessage(stateClone);
+      }
     });
 
     setOutputCallback((level, text) => debugLog(level, text));
