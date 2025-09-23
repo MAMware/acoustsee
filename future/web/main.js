@@ -359,7 +359,7 @@ export async function init() {
     
     // Initialize video module with dependency injection and expose its processFrame to the engine
     try {
-      const videoApi = initializeVideo({ engineDispatch: engine.dispatch, motionThreshold: settings.motionThreshold, workerTransferEnabled: settings.workerTransferEnabled, dualModeWIP: settings.dualModeWIP });
+      const videoApi = initializeVideo({ engineDispatch: engine.dispatch, motionThreshold: settings.motionThreshold, workerTransferEnabled: settings.workerTransferEnabled, dualModeWIP: settings.dualModeWIP, videoElement: DOM.videoFeed });
       settings._frameProcessor = (videoApi && videoApi.processFrame) ? videoApi.processFrame : processFrameWithState;
     } catch (e) {
       structuredLog('WARN', 'initializeVideo failed; falling back to direct function', { error: e?.message || String(e) });

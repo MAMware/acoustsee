@@ -216,6 +216,10 @@ export function initializeDevPanel(arg1, arg2) {
       const renderCharts = () => {
         if (!window.__acoustseeDevPanelGetWorkerStats) return;
         const stats = window.__acoustseeDevPanelGetWorkerStats();
+        // Include aggregated stats from video worker
+        if (window.__acoustseeWorkerStats) {
+          window.__acoustseeWorkerStats.forEach((stat, id) => stats.push(stat));
+        }
         const seriesMap = new Map();
         let legendHTML = '';
         stats.forEach((workerStat, i) => {

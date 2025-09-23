@@ -13,6 +13,7 @@ import { structuredLog } from '../utils/logging.js';
 import { getCurrentGrid as defaultGetCurrentGrid } from '../core/grid-manager.js';
 import { registerWorker as defaultRegisterWorker, unregisterWorker as defaultUnregisterWorker } from '../ui/dev-panel/worker-monitor.js';
 import { extractYFromVideoFrame, rgbaToY } from './videoframe-helper.js';  //R4925: feels slopy and much of the same 
+import { getDispatchEvent } from '../core/context.js';
 
 let frameWorker = null;
 let motionWorker = null;
@@ -25,6 +26,8 @@ let _motionInFlight = false; // R4925: lets explain how we achieve this
 let _getCurrentGrid = defaultGetCurrentGrid;
 let _registerWorker = defaultRegisterWorker;
 let _unregisterWorker = defaultUnregisterWorker;
+
+let frameProviderWorker = null;
 
 // --- Worker Lifecycle Management ---
 function startFrameWorker() {
@@ -313,115 +316,54 @@ function processFrameViaWorker(frameBuffer, width, height) {
  * @returns {Promise<Object>} A promise that resolves to an object containing the processing
  *   results, primarily `{ cues: Array<Object>, movingRegions: Array<Object> }`.
  */
-export async function processFrameWithState(frameData, width, height) {
-  // If we're in WIP/simulated dual-mode, return a tiny, deterministic simulated
-  // processing result so the rest of the pipeline (grids -> audio) can exercise
-  // without loading models or spawning workers.
-  try {
-    if (_config && _config.dualModeWIP) {
-      const grid = (_getCurrentGrid ? _getCurrentGrid() : null);
-      if (!grid || typeof grid.mapFunction !== 'function') {
-        structuredLog('WARN', 'Simulated frame processing skipped: No grid or mapFunction available.');
-        return { cues: [], movingRegions: [], simulated: true };
-      }
-
-      // Lightweight simulated moving region centered in the frame
-      const simRegion = [{ x: Math.floor((width || 1) / 2), y: Math.floor((height || 1) / 2), intensity: 0.6 }];
-      // Allow grids to map these simulated regions into cues so downstream flows are exercised
-      const out = grid.mapFunction(frameData, width, height, _prevFrameData, { movingRegions: simRegion }) || {};
-      const cues = out.cues || [];
-      return { cues, movingRegions: simRegion, simulated: true };
-    }
-  } catch (e) {
-    structuredLog('ERROR', 'Simulated frame processing failed', { error: e && e.message ? e.message : String(e) });
-    return { cues: [], movingRegions: [], simulated: true };
-  }
-
-  // If the worker isn't available, fall back to a synchronous CPU path so
-  // tests (and environments without workers) can still exercise frame
-  // processing. This keeps behavior consistent and avoids early returns.
-  if (!workerEnabled || !frameWorker) {
-    try {
-      const grid = (_getCurrentGrid ? _getCurrentGrid() : null);
-      // The check should look for `mapFunction`, which is the standardized property name.
-      if (!grid || typeof grid.mapFunction !== 'function') {
-        structuredLog('WARN', 'Frame processing skipped: No grid or mapFunction available.');
-        return { cues: [], movingRegions: [] };
-      }
-      // Call the standardized mapFunction directly.
-      let out = grid.mapFunction(frameData, width, height, _prevFrameData) || {};
-      // Store current frame for next invocation
-      try { _prevFrameData = new Uint8ClampedArray(frameData); } catch (e) { _prevFrameData = frameData; }
-      let cues = out.cues || [];
-      const movingRegions = out.movingRegions || [];
-      // In test environments, some fixtures expect at least one cue to be
-      // produced. If the grid produced none, synthesize a tiny cue so the
-      // integration test can assert the audio pipeline was invoked.
-      if ((process && process.env && process.env.NODE_ENV === 'test') && Array.isArray(cues) && cues.length === 0) {
-        cues = [{ objectType: 'default_motion', intensity: 0.5, position: { x: 0, y: 0, z: 0 } }];
-      }
-      return { cues, movingRegions };
-    } catch (err) {
-      structuredLog('ERROR', 'Fallback frame processing failed.', { error: err && err.message ? err.message : String(err) });
-      return { cues: [], movingRegions: [] };
-    }
-  }
-
-  try {
-    const res = await processFrameViaWorker(frameData, width, height);
-    const movingRegions = (res && res.movingRegions) ? res.movingRegions : [];
-    
-    // Use unified logic: let grid handle cue mapping instead of legacy mapRegionsToCues
-    const grid = (_getCurrentGrid ? _getCurrentGrid() : null);
-    // Use the standardized property name used by available-grids.js
-    if (!grid || typeof grid.mapFunction !== 'function') {
-      structuredLog('WARN', 'Worker frame processing: No grid or mapFunction available.');
-      return { cues: [], movingRegions };
-    }
-
-    const out = grid.mapFunction(frameData, width, height, _prevFrameData, { movingRegions }) || {};
-    const cues = out.cues || [];
-    return { cues, movingRegions };
-  } catch (err) {
-    structuredLog('ERROR', 'Worker frame processing failed.', { error: err && err.message ? err.message : String(err) });
-    return { cues: [], movingRegions: [] };
-  }
+export async function processFrameWithState() {
+  structuredLog('WARN', 'processFrameWithState is deprecated and should not be called.');
+  return { cues: [] };
 }
 
-// Test helper: allow tests to set previous frame data used by the synchronous
-// fallback processing path. Accepts two buffers to support older tests that
-// provided split-left/right frames; we prefer the first one if present.
-export function __setPrevFrameDataForTest(left, right) {
-  if (left) {
-    // If both left and right halves provided, concatenate into a full frame.
-    if (left && right && left.length === right.length) {
-      try {
-        const combined = new Uint8ClampedArray(left.length + right.length);
-        combined.set(left, 0);
-        combined.set(right, left.length);
-        _prevFrameData = combined;
-      } catch (e) {
-        _prevFrameData = left;
+// Helper function to wrap worker communication in a Promise
+function processWithMotionWorker(frameData, width, height) {
+  return new Promise(resolve => {
+    if (!motionWorker) return resolve({ movingRegions: [] });
+
+    const messageHandler = (event) => {
+      if (event.data.type === 'motion') {
+        motionWorker.removeEventListener('message', messageHandler);
+        // Reconstruct the regions from the worker's compact format
+        const { coordsBuffer, intensBuffer, count } = event.data;
+        const coords = new Uint16Array(coordsBuffer);
+        const intens = new Uint8Array(intensBuffer);
+        const movingRegions = [];
+        for (let i = 0; i < count; i++) {
+          movingRegions.push({ x: coords[i * 2], y: coords[i * 2 + 1], intensity: intens[i] });
+        }
+        resolve({ movingRegions });
       }
-    } else {
-      try { _prevFrameData = new Uint8ClampedArray(left); } catch (e) { _prevFrameData = left; }
-    }
-  } else if (right) {
-    try { _prevFrameData = new Uint8ClampedArray(right); } catch (e) { _prevFrameData = right; }
-  } else {
-    _prevFrameData = null;
-  }
+    };
+    motionWorker.addEventListener('message', messageHandler);
+
+    // Your existing `motion-worker.js` expects a Y-plane buffer. We can create it here.
+    const yBuf = rgbaToY(frameData, width, height);
+    motionWorker.postMessage({
+      type: 'frame',
+      yBuffer: yBuf.buffer,
+      w: width, h: height,
+      threshold: _config.motionThreshold
+    }, [yBuf.buffer]);
+  });
 }
 
-// mapRegionsToCues removed: grids now expose a standardized `mapFunction`
-// which the frame processing pipeline calls directly to translate regions into cues.
-// R17925: lets explain in detail how grids now expose a standardized `mapFunction` reasoning behind this change
+// Deprecate processFrameWithState - it will no longer be called by the engine.
+// export async function processFrameWithState() {
+//   structuredLog('WARN', 'processFrameWithState is deprecated and should not be called.');
+//   return { cues: [] };
+// }
 
 /**
  * Initialize the video module with injected configuration.
- * @param {Object} config - { engineDispatch, motionThreshold, workerTransferEnabled, dualModeWIP, workerFactory }
+ * @param {Object} config - { engineDispatch, motionThreshold, workerTransferEnabled, dualModeWIP, workerFactory, videoElement, getEngineState, engineOnStateChange }
  */
-export function initializeVideo(config = {}) {
+export async function initializeVideo(config = {}) {
   _config = Object.assign({}, _config, config || {});
   // Allow tests to pass a Worker constructor or a base URL for worker files
   if (config && config.workerBaseUrl) _config.workerBaseUrl = config.workerBaseUrl;
@@ -435,10 +377,95 @@ export function initializeVideo(config = {}) {
   if (_config.workerFactory) {
     // workerFactory support can be implemented to override worker creation where needed.
   }
+
+  // Start all potential specialist workers so they are ready.
+  // Your existing logic for startMotionWorker() etc. is perfect here.
+  startMotionWorker(); 
+  // startDepthWorker(); // When ready
+  // startObjectSegmentationWorker(); // When ready
+
+  // --- Initialize the Frame Provider ---
+  try {
+    const videoElement = config.videoElement; // Assuming videoElement is passed in config
+    if (!('transferControlToOffscreen' in HTMLCanvasElement.prototype)) {
+      throw new Error('OffscreenCanvas not supported.');
+    }
+    
+    frameProviderWorker = new Worker(new URL('./workers/frame-provider-worker.js', import.meta.url), { type: 'module' });
+    if (_registerWorker) _registerWorker(frameProviderWorker, 'FrameProvider');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+    const offscreenCanvas = canvas.transferControlToOffscreen();
+    
+    const [track] = videoElement.srcObject.getVideoTracks();
+    const trackProcessor = new MediaStreamTrackProcessor({ track });
+    const streamReader = trackProcessor.readable;
+
+    frameProviderWorker.postMessage({
+      type: 'init',
+      payload: { canvas: offscreenCanvas, streamReader }
+    }, [offscreenCanvas, streamReader]);
+
+    // This is the new core logic loop.
+    frameProviderWorker.onmessage = async (event) => {
+      const { type, payload } = event.data;
+      if (type === 'frame') {
+        // We have a clean, transferable frame!
+        // Now, orchestrate the work based on the current mode.
+        const dispatch = getDispatchEvent();
+        let state = {};
+        if (dispatch) {
+          // Assuming a way to query state; adjust if needed
+          dispatch('getState', (s) => { state = s; });
+        }
+        const frameData = new Uint8ClampedArray(payload.imageDataBuffer);
+
+        let results = {};
+        if (state.currentMode === 'flow') {
+          // In flow mode, we only need motion.
+          results = await processWithMotionWorker(frameData, payload.width, payload.height);
+        } else if (state.currentMode === 'focus') {
+          // In focus mode, we might want motion, depth, and objects.
+          const [motion, depth] = await Promise.all([
+             processWithMotionWorker(frameData, payload.width, payload.height),
+             // processWithDepthWorker(frameData, payload.width, payload.height) // Future
+          ]);
+          results = { ...motion, ...depth };
+        }
+        
+        // Final step: Use the grid to map results to audio cues.
+        const grid = _getCurrentGrid();
+        if (grid && grid.mapFunction) {
+          const { cues } = grid.mapFunction(frameData, payload.width, payload.height, null, results);
+          if (cues && cues.length > 0) {
+            if (dispatch) dispatch('audioCuesReady', { cues });
+          }
+        }
+      }
+    };
+
+    // Hook into the engine's processing state to start/stop the provider
+    const dispatch = getDispatchEvent();
+    if (dispatch) {
+      dispatch('onStateChange', (state) => {
+        if (state.isProcessing) {
+          frameProviderWorker.postMessage({ type: 'start' });
+        } else {
+          frameProviderWorker.postMessage({ type: 'stop' });
+        }
+      });
+    }
+
+  } catch (e) {
+    structuredLog('ERROR', 'Failed to initialize Frame Provider pipeline.', { error: e });
+  }
+
   return {
     processFrame: processFrameWithState,
     setGrid: (gridId) => { /* engine should call core/grid-manager to update grid */ },
     setMotionThreshold: (v) => { _config.motionThreshold = v; },
-    teardown: () => { stopFrameWorker(); stopMotionWorker(); }
+    teardown: () => { stopFrameWorker(); stopMotionWorker(); if (frameProviderWorker) frameProviderWorker.terminate(); }
   };
 }
