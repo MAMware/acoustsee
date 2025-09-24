@@ -10,6 +10,7 @@ import { startMic, stopMic } from '../microphone-controller.js';
 import { setMicStream } from '../state.js'; //R260905: lets talk more about this pattern
 import { allocateFrameBuffer } from '../state.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
+import { initializeVideo } from '../../video/frame-processor.js';
 
 // These variables will be managed by the command handlers, keeping them out of the main engine. 
 let _videoElForScheduler = null;
@@ -39,6 +40,20 @@ export function registerMediaCommands(engine) {
 
       _videoElForScheduler = videoEl;
       _canvasElForScheduler = canvasEl;
+
+      // Initialize video pipeline AFTER stream is ready
+      try {
+        await initializeVideo({
+          videoElement: videoEl,
+          engine: engine,
+          motionThreshold: s.motionThreshold,
+          workerTransferEnabled: s.workerTransferEnabled,
+          dualModeWIP: s.dualModeWIP
+        });
+      } catch (e) {
+        structuredLog('ERROR', 'initializeVideo failed in startProcessing', { error: e?.message || String(e) });
+        // Continue anyway - the app can still run without video processing
+      }
 
       // Proactively allocate a reusable frame buffer for zero-copy transfers
       try {

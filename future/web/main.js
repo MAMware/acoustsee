@@ -17,7 +17,6 @@ import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLan
 import { initializeAudio } from './audio/audio-processor.js'; //R12925: duplicated file source
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js'; //R12925: duplicated file source
-import { initializeVideo } from './video/frame-processor.js'; //R12925: duplicated file source
 import { enableFrameWorker } from './video/frame-processor.js'; //R12925: duplicated file source
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
@@ -357,14 +356,8 @@ export async function init() {
       // ... (This function remains unchanged, no need to copy it again) ...
     })();
     
-    // Initialize video module with dependency injection and expose its processFrame to the engine
-    try {
-      const videoApi = initializeVideo({ engineDispatch: engine.dispatch, motionThreshold: settings.motionThreshold, workerTransferEnabled: settings.workerTransferEnabled, dualModeWIP: settings.dualModeWIP, videoElement: DOM.videoFeed });
-      settings._frameProcessor = (videoApi && videoApi.processFrame) ? videoApi.processFrame : processFrameWithState;
-    } catch (e) {
-      structuredLog('WARN', 'initializeVideo failed; falling back to direct function', { error: e?.message || String(e) });
-      settings._frameProcessor = processFrameWithState;
-    }
+    // Video pipeline initialization moved to startProcessing command handler
+    // to ensure MediaStream is available before initializing
 
     structuredLog('INFO', 'init: UI setup complete');
     const stopHealthChecker = startHealthChecker({

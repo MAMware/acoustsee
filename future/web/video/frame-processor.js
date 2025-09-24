@@ -452,10 +452,5 @@ export async function initializeVideo(config = {}) {
     structuredLog('ERROR', 'Failed to initialize Frame Provider pipeline.', { error: e });
   }
 
-  return {
-    processFrame: processFrameWithState,
-    setGrid: (gridId) => { /* engine should call core/grid-manager to update grid */ },
-    setMotionThreshold: (v) => { _config.motionThreshold = v; },
-    teardown: () => { stopFrameWorker(); stopMotionWorker(); if (frameProviderWorker) frameProviderWorker.terminate(); }
-  };
+  // Modern architecture is event-driven - no return API needed
 }
