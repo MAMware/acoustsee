@@ -5,6 +5,7 @@ let canvas = null;
 let ctx = null;
 let videoStreamReader = null;
 let isRunning = false;
+let frameCounter = 0; 
 const { instrumentSync } = installWorkerMonitor('FrameProvider');
 
 // The main loop: grab a frame, get its data, and send it back.
@@ -18,6 +19,8 @@ const provideFrame = instrumentSync(() => {
     self.postMessage({
       type: 'frame',
       payload: {
+        frameId: frameCounter++, 
+        startTime: performance.now(), 
         imageDataBuffer: imageData.data.buffer,
         width: imageData.width,
         height: imageData.height

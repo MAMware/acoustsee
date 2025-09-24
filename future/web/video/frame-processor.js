@@ -425,12 +425,16 @@ export async function initializeVideo(config = {}) {
           results = { ...motion, ...depth };
         }
         
+        // Add the timing info to the results object before passing to the grid.
+        results.frameId = payload.frameId; 
+        results.startTime = payload.startTime;
+        
         // Final step: Use the grid to map results to audio cues.
         const grid = _getCurrentGrid();
         if (grid && grid.mapFunction) {
           const { cues } = grid.mapFunction(frameData, payload.width, payload.height, null, results);
           if (cues && cues.length > 0) {
-            if (dispatch) dispatch('audioCuesReady', { cues });
+            if (dispatch) dispatch('audioCuesReady', { cues, frameId: payload.frameId, startTime: payload.startTime });
           }
         }
       }

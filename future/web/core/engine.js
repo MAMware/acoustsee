@@ -6,17 +6,19 @@ import { structuredLog } from '../utils/logging.js';
 import logger from '../utils/logging.js';
 import { getText, speakText, announceMessage } from '../utils/utils.js'; // <-- REDUCED IMPORTS
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './media-controller.js';
-import { startMic, stopMic } from './microphone-controller.js';
+import { startMic, stopMic } from './microphone-controller.js'; //R24925 TODO:REDUCTION
 import { setMicStream, setAutoFpsBenchmark, allocateFrameBuffer } from './state.js';
 import { getPreferredIntervalMs } from '../utils/performance.js';
 import * as audioProcessor from '../audio/audio-processor.js';
-import { registerTouchGestureCommands } from './commands/touch-gesture-commands.js'; // <-- NEW IMPORT
-import { registerMediaCommands } from './commands/media-commands.js'; // <-- NEW IMPORT
+import { registerTouchGestureCommands } from './commands/touch-gesture-commands.js'; 
+import { registerMediaCommands } from './commands/media-commands.js'; /
 import { registerSettingsCommands } from './commands/settings-commands.js';
 import { registerDebugCommands } from './commands/debug-commands.js';
 import { registerUICommands } from './commands/ui-commands.js';
 import { registerPerformanceCommands } from './commands/performance-commands.js';
-import { registerSonificationCommands } from './commands/sonification-commands.js'; // <-- NEW IMPORT
+import { registerSonificationCommands } from './commands/sonification-commands.js'; 
+import { initializeScheduler } from './scheduler.js'; 
+import { registerDiagnosticsCommands } from './commands/diagnostics-commands.js'; 
 
 function _resolveStateModule() {
   // In Jest tests we rely on runtime require to pick up per-test mocks. In
@@ -254,9 +256,12 @@ export function createEngine() {
   engineInstance.on = on;
   engineInstance.emit = emit;
 
+  // Initialize the application's main scheduler.
+  initializeScheduler(engineInstance);
+
   // Register handlers from external modules
-  registerTouchGestureCommands(engineInstance); // <-- NEW REGISTRATION CALL
-  registerSonificationCommands(engineInstance); // <-- NEW REGISTRATION CALL
+  registerTouchGestureCommands(engineInstance); 
+  registerSonificationCommands(engineInstance); 
   // Register audio command handlers in a dedicated module
   // Try dynamic import first (works in modern browsers). Fall back to require() for test environments.
   import('./commands/audio-commands.js').then(mod => {
@@ -285,6 +290,7 @@ export function createEngine() {
   registerDebugCommands(engineInstance);
   registerUICommands(engineInstance);
   registerPerformanceCommands(engineInstance);
+  registerDiagnosticsCommands(engineInstance);
 
   return engineInstance;
 }
