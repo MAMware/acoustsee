@@ -1,4 +1,5 @@
 // File: web/core/engine.js
+// R24925: A cleanup is observerd as needed 
 // Minimal headless engine: owns state and exposes a dispatch API for commands.
 import { settings } from './state.js';
 import { structuredLog } from '../utils/logging.js';
@@ -8,7 +9,6 @@ import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCamer
 import { startMic, stopMic } from './microphone-controller.js';
 import { setMicStream, setAutoFpsBenchmark, allocateFrameBuffer } from './state.js';
 import { getPreferredIntervalMs } from '../utils/performance.js';
-import { processFrameWithState } from '../video/frame-processor.js';
 import * as audioProcessor from '../audio/audio-processor.js';
 import { registerTouchGestureCommands } from './commands/touch-gesture-commands.js'; // <-- NEW IMPORT
 import { registerMediaCommands } from './commands/media-commands.js'; // <-- NEW IMPORT
