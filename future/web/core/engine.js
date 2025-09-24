@@ -11,7 +11,7 @@ import { setMicStream, setAutoFpsBenchmark, allocateFrameBuffer } from './state.
 import { getPreferredIntervalMs } from '../utils/performance.js';
 import * as audioProcessor from '../audio/audio-processor.js';
 import { registerTouchGestureCommands } from './commands/touch-gesture-commands.js'; 
-import { registerMediaCommands } from './commands/media-commands.js'; /
+import { registerMediaCommands } from './commands/media-commands.js';
 import { registerSettingsCommands } from './commands/settings-commands.js';
 import { registerDebugCommands } from './commands/debug-commands.js';
 import { registerUICommands } from './commands/ui-commands.js';
