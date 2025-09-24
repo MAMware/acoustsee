@@ -16,6 +16,7 @@ import { registerSettingsCommands } from './commands/settings-commands.js';
 import { registerDebugCommands } from './commands/debug-commands.js';
 import { registerUICommands } from './commands/ui-commands.js';
 import { registerPerformanceCommands } from './commands/performance-commands.js';
+import { registerSonificationCommands } from './commands/sonification-commands.js'; // <-- NEW IMPORT
 
 function _resolveStateModule() {
   // In Jest tests we rely on runtime require to pick up per-test mocks. In
@@ -255,6 +256,7 @@ export function createEngine() {
 
   // Register handlers from external modules
   registerTouchGestureCommands(engineInstance); // <-- NEW REGISTRATION CALL
+  registerSonificationCommands(engineInstance); // <-- NEW REGISTRATION CALL
   // Register audio command handlers in a dedicated module
   // Try dynamic import first (works in modern browsers). Fall back to require() for test environments.
   import('./commands/audio-commands.js').then(mod => {
