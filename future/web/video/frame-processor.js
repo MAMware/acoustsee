@@ -316,10 +316,6 @@ function processFrameViaWorker(frameBuffer, width, height) {
  * @returns {Promise<Object>} A promise that resolves to an object containing the processing
  *   results, primarily `{ cues: Array<Object>, movingRegions: Array<Object> }`.
  */
-export async function processFrameWithState() {
-  structuredLog('WARN', 'processFrameWithState is deprecated and should not be called.');
-  return { cues: [] };
-}
 
 // Helper function to wrap worker communication in a Promise
 function processWithMotionWorker(frameData, width, height) {
@@ -352,12 +348,6 @@ function processWithMotionWorker(frameData, width, height) {
     }, [yBuf.buffer]);
   });
 }
-
-// Deprecate processFrameWithState - it will no longer be called by the engine.
-// export async function processFrameWithState() {
-//   structuredLog('WARN', 'processFrameWithState is deprecated and should not be called.');
-//   return { cues: [] };
-// }
 
 /**
  * Initialize the video module with injected configuration.

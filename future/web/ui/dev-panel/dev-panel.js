@@ -417,7 +417,9 @@ export function initializeDevPanel(arg1, arg2) {
         lastStateUpdate = now;
         // Offload the expensive stringify operation to the worker.
         const diags = getAudioDiagnostics();
-        const stateClone = { ...state, audio: diags };
+        // Create a serializable clone of state, excluding arrays that contain functions
+        const { availableGrids, availableEngines, availableLanguages, ...serializableState } = state;
+        const stateClone = { ...serializableState, audio: diags };
         stateStringifyWorker.postMessage(stateClone);
       }
     });
