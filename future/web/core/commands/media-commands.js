@@ -15,6 +15,7 @@ import * as audioProcessor from '../../audio/audio-processor.js';
 // These variables will be managed by the command handlers, keeping them out of the main engine. 
 let _videoElForScheduler = null;
 let _canvasElForScheduler = null;
+let _activeMediaStream = null; // Isolate the MediaStream here to prevent state cloning errors
 
 export function registerMediaCommands(engine) {
   const { registerCommandHandler } = engine;
@@ -31,7 +32,11 @@ export function registerMediaCommands(engine) {
         try { if (engine && typeof engine.dispatch === 'function') engine.dispatch('announceMessage', { message: 'Camera failed to start.' }); } catch (_) {}
         throw cameraError;
       }
-      if (videoEl && videoEl.srcObject) s.stream = videoEl.srcObject;
+      
+      // Store MediaStream in isolated variable, NOT in shared state (prevents cloning errors)
+      if (videoEl && videoEl.srcObject) {
+        _activeMediaStream = videoEl.srcObject;
+      }
 
       _videoElForScheduler = videoEl;
       _canvasElForScheduler = canvasEl;
@@ -70,7 +75,11 @@ export function registerMediaCommands(engine) {
   s.isProcessing = false;
 
       mediaStopCamera(videoEl);
-      s.stream = null;
+      // Clean up the isolated MediaStream
+      if (_activeMediaStream) {
+        _activeMediaStream.getTracks().forEach(track => track.stop());
+        _activeMediaStream = null;
+      }
       _videoElForScheduler = null;
       _canvasElForScheduler = null;
       return { stopped: true };
@@ -80,7 +89,10 @@ export function registerMediaCommands(engine) {
     }
   });
 
-  // Actual frame processing handler: draw video -> read pixels -> call frame-processor. R250905: is this the legacy fallback? what about avoiding the video draw, could that be possible?
+  // DEPRECATED: processFrame command handler - replaced by FrameProvider architecture
+  // This zombie handler was causing deprecated warnings and is no longer needed.
+  // The new video pipeline uses initializeVideo() and FrameProvider worker.
+  /*
   registerCommandHandler('processFrame', async ({ state: s, payload }) => {
     try {
       // The payload here will be provided by the engine's internal scheduler
@@ -143,6 +155,7 @@ export function registerMediaCommands(engine) {
       return null;
     }
   });
+  */
 
   // Toggle camera: start or stop camera depending on state
   registerCommandHandler('toggleCamera', async ({ state: s, payload }) => {
