@@ -17,7 +17,7 @@ import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLan
 import { initializeAudio } from './audio/audio-processor.js'; //R12925: duplicated file source
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js'; //R12925: duplicated file source
-import { processFrameWithState, initializeVideo } from './video/frame-processor.js'; //R12925: duplicated file source
+import { initializeVideo } from './video/frame-processor.js'; //R12925: duplicated file source
 import { enableFrameWorker } from './video/frame-processor.js'; //R12925: duplicated file source
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
