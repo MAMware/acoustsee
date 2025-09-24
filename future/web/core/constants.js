@@ -11,8 +11,9 @@ export const LOG_LEVELS = {
 };
 
 // Version constants for different modules
-export const BUILD_VERSION = '0.8.2-modularUI';
+export const BUILD_VERSION = '0.8.3-performanceDiagnostics';
 export const AUDIO_VERSION = '0.7-AcousticCues';
 export const VIDEO_VERSION = '0.4-grids';
-export const UI_VERSION = '0.5.8-debugUIMonoExplorer';
+export const UI_VERSION = '0.6.0-developerTools';
 export const LANGUAGES_VERSION = '0.2-spaEng';
+export const UTILS_VERSION = '0.8-performanceDiagnostics';
