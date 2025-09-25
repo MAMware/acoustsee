@@ -227,6 +227,10 @@
 /* Logs Section */
 .logs-section {
   flex-grow: 1; /* Allow log section to fill remaining space */
+  display: flex;
+  flex-direction: column;
+  height: 40vh; /* Allow it to take up to 40% of the viewport height */
+  max-height: 400px; /* But cap it at 400px on very tall screens */
 }
 
 .log-controls {
@@ -244,6 +248,8 @@
   border-radius: 4px;
   font-family: "SF Mono", "Fira Code", "Consolas", menlo, monospace;
   font-size: 12px;
+  flex-grow: 1;
+  height: auto; /* Remove any previous fixed height */
 }
 .log-entry {
   display: flex;
@@ -341,4 +347,43 @@
 .devpanel-section.collapsed {
   padding-top: 10px;
   padding-bottom: 10px;
+}
+
+/* Responsive 3-Column Layout for State Inspector in Landscape Mode */
+
+@media (orientation: landscape) and (min-width: 600px) {
+  #devpanel-state-view {
+    /* Automatically flow the text into 3 balanced columns */
+    column-count: 3;
+    /* Add some space between the columns for readability */
+    column-gap: 24px;
+    /* Allow it to use more vertical space in landscape */
+    max-height: 40vh; 
+  }
+}
+
+@media (orientation: landscape) and (max-width: 599px) {
+  #devpanel-state-view {
+    /* On very small landscape screens (like a phone), 2 columns is better */
+    column-count: 2;
+    column-gap: 20px;
+    max-height: 40vh;
+  }
+}
+
+/* Responsive Side-by-Side Layout for Portrait Mode */
+
+@media (orientation: portrait) {
+  .devpanel-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px; /* This creates space between the two columns */
+    align-items: stretch; /* Makes the two sections have equal height */
+  }
+
+  .devpanel-row > .devpanel-section {
+    flex: 1; /* Each section takes up 50% of the available width */
+    margin-bottom: 0; /* The container's gap now handles the spacing */
+    min-height: 220px; /* Prevents the sections from becoming too short */
+  }
 }

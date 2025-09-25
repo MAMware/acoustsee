@@ -8,7 +8,7 @@ import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-v
 import { createAndWireActions } from './dev-panel.actions.js';
 import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
-import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION } from '../../core/constants.js';
+import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION, UTILS_VERSION } from '../../core/constants.js';
 import { registerComponent } from '../ui-registry.js';
 
 // Log available version constants and fallbacks to help detect missing values early.
@@ -17,11 +17,12 @@ console.log('dev-panel module loaded. Versions:', {
   AUDIO_VERSION,
   VIDEO_VERSION,
   UI_VERSION,
-  LANGUAGES_VERSION
+  LANGUAGES_VERSION,
+  UTILS_VERSION
 });
 
 export function initializeDevPanel(arg1, arg2) {
-  // Support two call patterns for migration:
+  // R24925 Support two call patterns for migration:
   //  - initializeDevPanel(engine, DOM)  (legacy)
   //  - initializeDevPanel({ engine, engineDispatch, dom, getEngineState }) (DI)
   let engine = null;
@@ -73,27 +74,31 @@ export function initializeDevPanel(arg1, arg2) {
             </div>
           </div>
 
-          <div class="devpanel-section worker-section">
-            <h2 class="section-header">
-              <span>Worker Performance</span>
-              <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
-            </h2>
-            <div id="worker-content" class="section-content">
-              <div id="worker-explorer-legend"></div>
-              <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
+          <!-- NEW WRAPPER for side-by-side layout in portrait mode -->
+          <div class="devpanel-row">
+            <div id="worker-explorer-container" class="devpanel-section">
+              <h2 class="section-header">
+                <span>Worker Performance</span>
+                <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
+              </h2>
+              <div id="worker-content" class="section-content">
+                <div id="worker-explorer-legend"></div>
+                <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
+              </div>
             </div>
-          </div>
 
-          <div class="devpanel-section video-section">
-            <h2 class="section-header">
-              <span>Live Video Preview</span>
-              <button class="collapse-btn" data-target="video-content" aria-expanded="false" title="Expand Video Preview">+</button>
-            </h2>
-            <div id="video-content" class="section-content">
-              <video id="devpanel-video-preview" muted autoplay playsinline></video>
-              <p class="perf-note">Note: This preview uses the existing camera stream with minimal overhead and does not interfere with processing.</p>
+            <div class="devpanel-section video-section">
+              <h2 class="section-header">
+                <span>Live Video Preview</span>
+                <button class="collapse-btn" data-target="video-content" aria-expanded="false" title="Expand Video Preview">+</button>
+              </h2>
+              <div id="video-content" class="section-content">
+                <video id="devpanel-video-preview" muted autoplay playsinline></video>
+                <p class="perf-note">Note: This preview uses the existing camera stream with minimal overhead.</p>
+              </div>
             </div>
           </div>
+          <!-- END WRAPPER -->
 
           <div class="devpanel-section controls-section">
             <h2 class="section-header"><span>Controls</span></h2>
@@ -301,7 +306,7 @@ export function initializeDevPanel(arg1, arg2) {
       const subtitle = panel.querySelector('#devpanel-subtitle');
       const metaVer = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
       const ver = metaVer || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || BUILD_VERSION;
-      subtitle.textContent = `Build: ${ver} | Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || 'n/a'}`;
+      subtitle.textContent = `Build: ${ver} | Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || 'n/a'} | Utils: ${UTILS_VERSION || 'n/a'}`;
     } catch (e) {}
 
     // --- Cost-Effective Video Preview Wiring ---
@@ -339,6 +344,47 @@ export function initializeDevPanel(arg1, arg2) {
         const a = document.createElement('a'); a.href = url; a.download = 'acoustsee-logs.json'; a.click();
         URL.revokeObjectURL(url);
     });
+
+    // --- Dynamically Populate Grid and Synth Dropdowns from Central State ---
+    try {
+      const state = engine.getState(); // Get the current application state
+
+      // Populate Grid Type Select
+      const gridSelect = panel.querySelector('#grid-type-select');
+      if (gridSelect && Array.isArray(state.availableGrids)) {
+        gridSelect.innerHTML = ''; // Clear any existing options
+        state.availableGrids.forEach(grid => {
+          const option = document.createElement('option');
+          option.value = grid.id;
+          // Use the user-friendly name from meta if available, otherwise use the ID
+          option.textContent = (grid.meta && grid.meta.name) || grid.id;
+          gridSelect.appendChild(option);
+        });
+        // Set the initial value from the state
+        if (state.gridType) {
+          gridSelect.value = state.gridType;
+        }
+      }
+
+      // Populate Synth Engine Select
+      const synthSelect = panel.querySelector('#synth-engine-select');
+      if (synthSelect && Array.isArray(state.availableEngines)) {
+        synthSelect.innerHTML = ''; // Clear any existing options
+        state.availableEngines.forEach(engineMeta => {
+          const option = document.createElement('option');
+          option.value = engineMeta.id;
+          // The structure from available-synths.js is slightly different
+          option.textContent = (engineMeta.meta && engineMeta.meta.name) || engineMeta.id;
+          synthSelect.appendChild(option);
+        });
+        // Set the initial value from the state
+        if (state.synthesisEngine) {
+          synthSelect.value = state.synthesisEngine;
+        }
+      }
+    } catch (e) {
+      structuredLog('ERROR', 'Failed to dynamically populate dropdowns from state', { error: e.message });
+    }
 
     // --- High-Performance State Synchronization using a Web Worker ---
     const stateView = panel.querySelector('#devpanel-state-view');
