@@ -291,9 +291,13 @@ export function initializeDevPanel(arg1, arg2) {
 
       // Also use Page Visibility API to globally pause the chart
       document.addEventListener('visibilitychange', () => {
+        // Find the worker section element safely.
+        const workerSection = panel.querySelector('#worker-explorer-container'); // <-- CORRECT SELECTOR
+        if (!workerSection) return; // Defensive check
+
         if (document.hidden) {
           stopChart();
-        } else if (!panel.querySelector('.worker-section').classList.contains('collapsed')) {
+        } else if (!workerSection.classList.contains('collapsed')) { 
           // Only restart if it was supposed to be running
           startChart();
         }
