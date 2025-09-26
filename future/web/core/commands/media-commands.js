@@ -20,7 +20,8 @@ let _activeMediaStream = null; // Isolate the MediaStream here to prevent state 
 export function registerMediaCommands(engine) {
   const { registerCommandHandler } = engine;
 
-  // Toggle processing: simple handler that dispatches start or stop based on current state
+  // 1. The "Dumb" Toggle Handler
+  // Its ONLY job is to delegate. It does not change state.
   registerCommandHandler('toggleProcessing', ({ state: s, payload }) => {
     structuredLog('DEBUG', 'COMMAND: toggleProcessing received.', { isCurrentlyProcessing: s.isProcessing });
     if (s.isProcessing) {
@@ -30,96 +31,61 @@ export function registerMediaCommands(engine) {
     }
   });
 
-  // Start processing: start camera, allocate buffer, and initiate the processing loop.
+  // 2. The "Smart" Start Handler
+  // It is the SOLE OWNER of setting isProcessing to TRUE.
   registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
     structuredLog('INFO', 'COMMAND: startProcessing begins.');
     if (_activeMediaStream) {
       structuredLog('WARN', 'COMMAND: startProcessing aborted, stream already active.');
       return;
     }
-
+    
     try {
       // Set state to true BEFORE the async operation.
       // This immediately prevents the toggle from being triggered again.
       s.isProcessing = true;
       structuredLog('DEBUG', 'COMMAND: State set to isProcessing: true.');
 
-      const { videoEl, canvasEl } = payload || {};
-      structuredLog('DEBUG', 'COMMAND: Requesting user media...');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       _activeMediaStream = stream;
-      structuredLog('DEBUG', 'COMMAND: Media stream acquired.');
 
-      const videoElement = videoEl || (typeof window !== 'undefined' ? window.DOM?.videoFeed : null);
-      if (videoElement) {
-        videoElement.srcObject = _activeMediaStream;
+      const videoEl = payload.videoEl || window.DOM.videoFeed;
+      videoEl.srcObject = _activeMediaStream;
+      await videoEl.play();
 
-        structuredLog('DEBUG', 'COMMAND: Awaiting video.play()...');
-        await videoElement.play();
-        structuredLog('INFO', 'COMMAND: video.play() resolved. Metadata is ready.');
-      }
-
-      _videoElForScheduler = videoElement;
-      _canvasElForScheduler = canvasEl;
-
-      structuredLog('DEBUG', 'COMMAND: Initializing video pipeline...');
       await initializeVideo({
-        videoElement: videoElement,
+        videoElement: videoEl,
         engine: engine,
-        motionThreshold: s.motionThreshold,
-        workerTransferEnabled: s.workerTransferEnabled,
-        dualModeWIP: s.dualModeWIP
+        getEngineState: () => engine.getState(),
+        engineDispatch: (evt, p) => engine.dispatch(evt, p),
+        engineOnStateChange: (cb) => engine.onStateChange(cb),
+        getCurrentGrid: () => engine.getState().currentGrid,
+        registerWorker: window.__acoustseeDevPanelRegisterWorker,
+        unregisterWorker: window.__acoustseeDevPanelUnregisterWorker
       });
-      structuredLog('INFO', 'COMMAND: Video pipeline initialized successfully.');
-
-      // Proactively allocate a reusable frame buffer for zero-copy transfers
-      try {
-        const w = (videoElement && videoElement.videoWidth) || (canvasEl && canvasEl.width) || 0;
-        const h = (videoElement && videoElement.videoHeight) || (canvasEl && canvasEl.height) || 0;
-        if (w > 0 && h > 0 && s.workerTransferEnabled) {
-          allocateFrameBuffer(w, h);
-        }
-      } catch (e) {
-        structuredLog('WARN', 'startProcessing: allocateFrameBuffer failed', { error: e?.message });
-      }
-
       structuredLog('INFO', 'COMMAND: startProcessing COMPLETED successfully.');
-
-      // We return the payload so the engine's scheduler can access it.
-      return { videoEl: _videoElForScheduler, canvasEl: _canvasElForScheduler };
 
     } catch (err) {
       structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
-      // Cleanup on failure
+      // On failure, clean up and set state back to false.
       if (_activeMediaStream) {
         _activeMediaStream.getTracks().forEach(track => track.stop());
         _activeMediaStream = null;
       }
       s.isProcessing = false;
-      throw err;
     }
   });
 
-  // Stop processing: stop camera, clear timer, reset flags.
-  registerCommandHandler('stopProcessing', async ({ state: s, payload }) => {
+  // 3. The "Smart" Stop Handler
+  // It is the SOLE OWNER of setting isProcessing to FALSE.
+  registerCommandHandler('stopProcessing', ({ state: s }) => {
     structuredLog('INFO', 'COMMAND: stopProcessing begins.');
-    try {
-      const { videoEl } = payload || {};
-      s.isProcessing = false;
-
-      if (_activeMediaStream) {
-        _activeMediaStream.getTracks().forEach(track => track.stop());
-        _activeMediaStream = null;
-      }
-      _videoElForScheduler = null;
-      _canvasElForScheduler = null;
-      structuredLog('INFO', 'COMMAND: stopProcessing COMPLETED.');
-      return { stopped: true };
-    } catch (e) {
-      structuredLog('ERROR', 'command.stopProcessing failed', { error: e?.message || String(e) });
-      logger.logError?.(e);
-      throw e;
+    if (_activeMediaStream) {
+      _activeMediaStream.getTracks().forEach(track => track.stop());
+      _activeMediaStream = null;
     }
+    s.isProcessing = false;
+    structuredLog('INFO', 'COMMAND: stopProcessing COMPLETED.');
   });
  
   // Toggle camera: start or stop camera depending on state
