@@ -1,25 +1,25 @@
 // File: web/main.js
-// Main entry point for the web application.
-// Initializes the UI, audio, video processing, and core engine.
-// Handles configuration loading, error reporting, and user interactions.
-// Extensive use of async/await to ensure proper sequencing of initialization steps.
-// REQUIRES: modern browser with ES6+ support, Fetch API, Web Audio API, Web Workers.
-// Note: This file can be quite large due to the comprehensive initialization logic.
-// REVIEW: 2025-09-12=R12925: Check the claims from the comment above are still accurate.
-// R12925:Wouldnt the imports look better by not duplicating when they come from the same file?
+// Main application entry point, called by boot.js.
+// This module orchestrates the initialization of all major subsystems:
+// the core engine, UI, audio pipeline, and video pipeline. It loads initial
+// configurations and wires up the primary user interaction (the power-on button).
+//
+// Architecture:
+// - Uses modern browser features (async/await, Web Workers, Web Audio).
+// - Follows a modular, event-driven pattern managed by the core engine.
 
 import { createEngine } from './core/engine.js';
 import { settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
 import { setDOM, setDispatchEvent } from './core/context.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
-import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js'; //R12925: looks like we do much of the same here
-import { initializeAudio } from './audio/audio-processor.js'; //R12925: duplicated file source
+import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
 import AudioManager from './audio/audio-manager.js';
-import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js'; //R12925: duplicated file source
+import { initializeAudio, bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { getComponent } from './ui/ui-registry.js';
+
 // UI modules are loaded dynamically below to ensure only one UI initializes
 // at runtime (debug vs accessible). Dynamic import prevents duplicate IDs
 // and avoids initializing both UIs in the same session.
