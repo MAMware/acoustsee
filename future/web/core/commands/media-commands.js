@@ -20,6 +20,15 @@ let _activeMediaStream = null; // Isolate the MediaStream here to prevent state 
 export function registerMediaCommands(engine) {
   const { registerCommandHandler } = engine;
 
+  // Toggle processing: simple handler that dispatches start or stop based on current state
+  registerCommandHandler('toggleProcessing', ({ state: s, payload }) => {
+    if (s.isProcessing) {
+      engine.dispatch('stopProcessing', payload);
+    } else {
+      engine.dispatch('startProcessing', payload);
+    }
+  });
+
   // Start processing: start camera, allocate buffer, and initiate the processing loop.
   registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
     try {
@@ -37,6 +46,10 @@ export function registerMediaCommands(engine) {
       if (videoEl && videoEl.srcObject) {
         _activeMediaStream = videoEl.srcObject;
       }
+
+      // Fix race condition: await video play to ensure metadata is loaded
+      videoEl.srcObject = _activeMediaStream;
+      await videoEl.play(); // This is the critical fix.
 
       _videoElForScheduler = videoEl;
       _canvasElForScheduler = canvasEl;
