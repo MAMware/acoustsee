@@ -22,6 +22,7 @@ export function registerMediaCommands(engine) {
 
   // Toggle processing: simple handler that dispatches start or stop based on current state
   registerCommandHandler('toggleProcessing', ({ state: s, payload }) => {
+    structuredLog('DEBUG', 'COMMAND: toggleProcessing received.', { isCurrentlyProcessing: s.isProcessing });
     if (s.isProcessing) {
       engine.dispatch('stopProcessing', payload);
     } else {
@@ -31,47 +32,45 @@ export function registerMediaCommands(engine) {
 
   // Start processing: start camera, allocate buffer, and initiate the processing loop.
   registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
+    structuredLog('INFO', 'COMMAND: startProcessing begins.');
+    if (_activeMediaStream) {
+      structuredLog('WARN', 'COMMAND: startProcessing aborted, stream already active.');
+      return;
+    }
+
     try {
       const { videoEl, canvasEl } = payload || {};
-      try {
-        await mediaStartCamera(videoEl, { facingMode: 'environment' });
-      } catch (cameraError) {
-        structuredLog('ERROR', 'command.startProcessing: mediaStartCamera failed', { error: cameraError?.message || String(cameraError) });
-        // Attempt best-effort user notification if engine dispatch is available
-        try { if (engine && typeof engine.dispatch === 'function') engine.dispatch('announceMessage', { message: 'Camera failed to start.' }); } catch (_) {}
-        throw cameraError;
-      }
-      
-      // Store MediaStream in isolated variable, NOT in shared state (prevents cloning errors)
-      if (videoEl && videoEl.srcObject) {
-        _activeMediaStream = videoEl.srcObject;
+      structuredLog('DEBUG', 'COMMAND: Requesting user media...');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      _activeMediaStream = stream;
+      structuredLog('DEBUG', 'COMMAND: Media stream acquired.');
+
+      const videoElement = videoEl || (typeof window !== 'undefined' ? window.DOM?.videoFeed : null);
+      if (videoElement) {
+        videoElement.srcObject = _activeMediaStream;
+
+        structuredLog('DEBUG', 'COMMAND: Awaiting video.play()...');
+        await videoElement.play();
+        structuredLog('INFO', 'COMMAND: video.play() resolved. Metadata is ready.');
       }
 
-      // Fix race condition: await video play to ensure metadata is loaded
-      videoEl.srcObject = _activeMediaStream;
-      await videoEl.play(); // This is the critical fix.
-
-      _videoElForScheduler = videoEl;
+      _videoElForScheduler = videoElement;
       _canvasElForScheduler = canvasEl;
 
-      // Initialize video pipeline AFTER stream is ready
-      try {
-        await initializeVideo({
-          videoElement: videoEl,
-          engine: engine,
-          motionThreshold: s.motionThreshold,
-          workerTransferEnabled: s.workerTransferEnabled,
-          dualModeWIP: s.dualModeWIP
-        });
-      } catch (e) {
-        structuredLog('ERROR', 'initializeVideo failed in startProcessing', { error: e?.message || String(e) });
-        // Continue anyway - the app can still run without video processing
-      }
+      structuredLog('DEBUG', 'COMMAND: Initializing video pipeline...');
+      await initializeVideo({
+        videoElement: videoElement,
+        engine: engine,
+        motionThreshold: s.motionThreshold,
+        workerTransferEnabled: s.workerTransferEnabled,
+        dualModeWIP: s.dualModeWIP
+      });
+      structuredLog('INFO', 'COMMAND: Video pipeline initialized successfully.');
 
       // Proactively allocate a reusable frame buffer for zero-copy transfers
       try {
-        const w = (videoEl && videoEl.videoWidth) || (canvasEl && canvasEl.width) || 0;
-        const h = (videoEl && videoEl.videoHeight) || (canvasEl && canvasEl.height) || 0;
+        const w = (videoElement && videoElement.videoWidth) || (canvasEl && canvasEl.width) || 0;
+        const h = (videoElement && videoElement.videoHeight) || (canvasEl && canvasEl.height) || 0;
         if (w > 0 && h > 0 && s.workerTransferEnabled) {
           allocateFrameBuffer(w, h);
         }
@@ -79,39 +78,43 @@ export function registerMediaCommands(engine) {
         structuredLog('WARN', 'startProcessing: allocateFrameBuffer failed', { error: e?.message });
       }
 
+      structuredLog('DEBUG', 'COMMAND: Setting state to isProcessing: true.');
       s.isProcessing = true;
-      // Note: The scheduler itself will remain in engine.js for now, as it's a core process,
-      // but this command is what turns it on. The engine's _runScheduled function will
-      // now use the _videoElForScheduler and _canvasElForScheduler variables from this module.
-      // A future refactor could move the scheduler out as well. R250906: could the canvas used for a future grid testing/feature that is touch reactive ?
+      structuredLog('INFO', 'COMMAND: startProcessing COMPLETED successfully.');
 
       // We return the payload so the engine's scheduler can access it.
       return { videoEl: _videoElForScheduler, canvasEl: _canvasElForScheduler };
 
-    } catch (e) {
-      structuredLog('ERROR', 'command.startProcessing failed', { error: e?.message || String(e) });
-      logger.logError?.(e);
-      throw e;
+    } catch (err) {
+      structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
+      // Cleanup on failure
+      if (_activeMediaStream) {
+        _activeMediaStream.getTracks().forEach(track => track.stop());
+        _activeMediaStream = null;
+      }
+      s.isProcessing = false;
+      throw err;
     }
   });
 
   // Stop processing: stop camera, clear timer, reset flags.
   registerCommandHandler('stopProcessing', async ({ state: s, payload }) => {
+    structuredLog('INFO', 'COMMAND: stopProcessing begins.');
     try {
       const { videoEl } = payload || {};
-  s.isProcessing = false;
+      s.isProcessing = false;
 
-      mediaStopCamera(videoEl);
-      // Clean up the isolated MediaStream
       if (_activeMediaStream) {
         _activeMediaStream.getTracks().forEach(track => track.stop());
         _activeMediaStream = null;
       }
       _videoElForScheduler = null;
       _canvasElForScheduler = null;
+      structuredLog('INFO', 'COMMAND: stopProcessing COMPLETED.');
       return { stopped: true };
     } catch (e) {
-      structuredLog('WARN', 'command.stopProcessing failed', { error: e?.message || String(e) });
+      structuredLog('ERROR', 'command.stopProcessing failed', { error: e?.message || String(e) });
+      logger.logError?.(e);
       throw e;
     }
   });
