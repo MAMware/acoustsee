@@ -39,6 +39,11 @@ export function registerMediaCommands(engine) {
     }
 
     try {
+      // Set state to true BEFORE the async operation.
+      // This immediately prevents the toggle from being triggered again.
+      s.isProcessing = true;
+      structuredLog('DEBUG', 'COMMAND: State set to isProcessing: true.');
+
       const { videoEl, canvasEl } = payload || {};
       structuredLog('DEBUG', 'COMMAND: Requesting user media...');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -78,8 +83,6 @@ export function registerMediaCommands(engine) {
         structuredLog('WARN', 'startProcessing: allocateFrameBuffer failed', { error: e?.message });
       }
 
-      structuredLog('DEBUG', 'COMMAND: Setting state to isProcessing: true.');
-      s.isProcessing = true;
       structuredLog('INFO', 'COMMAND: startProcessing COMPLETED successfully.');
 
       // We return the payload so the engine's scheduler can access it.
