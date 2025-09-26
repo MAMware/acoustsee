@@ -23,6 +23,24 @@ export function registerMediaCommands(engine) {
   // Add a debug log to confirm registration
   structuredLog('INFO', 'MEDIA-COMMANDS: Registering command handlers...');
 
+  // Wrap async handlers to catch and log errors properly
+  const wrapAsyncHandler = (handlerName, handler) => {
+    return async (args) => {
+      structuredLog('DEBUG', `ASYNC-HANDLER: ${handlerName} starting`, args);
+      try {
+        const result = await handler(args);
+        structuredLog('DEBUG', `ASYNC-HANDLER: ${handlerName} completed`, { result });
+        return result;
+      } catch (error) {
+        structuredLog('ERROR', `ASYNC-HANDLER: ${handlerName} failed`, { 
+          error: error.message, 
+          stack: error.stack 
+        });
+        throw error;
+      }
+    };
+  };
+
   // The "Dumb" Toggle Handler - Its ONLY job is to delegate.
   registerCommandHandler('toggleProcessing', ({ state: s, payload }) => {
     structuredLog('DEBUG', 'COMMAND: toggleProcessing received', { isProcessing: s.isProcessing });
@@ -34,7 +52,7 @@ export function registerMediaCommands(engine) {
   });
 
     // The "Smart" Start Handler - SOLE OWNER of starting the processing lifecycle.
-  registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
+  registerCommandHandler('startProcessing', wrapAsyncHandler('startProcessing', async ({ state: s, payload }) => {
     structuredLog('DEBUG', 'COMMAND: startProcessing handler called', { isProcessing: s.isProcessing, payload });
     
     if (s.isProcessing) {
@@ -91,7 +109,7 @@ export function registerMediaCommands(engine) {
       s.isProcessing = false;
       throw err; // Re-throw to help with debugging
     }
-  });
+  }));
 
   // The "Smart" Stop Handler - SOLE OWNER of stopping the processing lifecycle.
   registerCommandHandler('stopProcessing', ({ state: s }) => {
