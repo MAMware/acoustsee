@@ -17,7 +17,6 @@ import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLan
 import { initializeAudio } from './audio/audio-processor.js'; //R12925: duplicated file source
 import AudioManager from './audio/audio-manager.js';
 import { bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js'; //R12925: duplicated file source
-import { enableFrameWorker } from './video/frame-processor.js'; //R12925: duplicated file source
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { getComponent } from './ui/ui-registry.js';
@@ -54,43 +53,19 @@ const DOM = {
 setDOM(DOM);
 
 /*
-  Runtime basePath detection
+  Runtime Base Path Detection
 
-  Why this exists:
-  - When the app is hosted in a subdirectory (for example on GitHub Pages
-    under https://<org>.github.io/acoustsee/), simple root-relative paths
-    like `/ui/dev-panel/dev-panel.css` will not include the deeper
-    repository path segment (for example `/acoustsee/future/web/`) and will
-    therefore 404. This has historically caused worker and stylesheet MIME
-    errors because the server returned HTML instead of the expected file.
+  PROBLEM: When this application is hosted in a subdirectory (e.g., on GitHub Pages),
+  simple root-relative paths like '/video/workers/motion-worker.js' will fail
+  because they don't include the repository path segment, leading to 404 errors.
 
-  - To make the app resilient to being deployed under different base paths
-    (root, repo subpath, or other nested folders), we compute a `basePath`
-    at runtime from the script element that loaded the bootloader (usually
-    `boot.js`) and use it as the anchor for constructing dynamic asset URLs
-    (workers, dynamically-loaded CSS, etc.).
+  SOLUTION: This code determines the application's true root path at runtime
+  by finding the <script> tag that loaded `boot.js` and extracting its
+  directory. This gives us a reliable `basePath`.
 
-  How it works:
-  - We inspect the DOM to find the <script> element which loaded `boot.js`.
-    The script's `src` contains the actual URL used to fetch the app bundle
-    and therefore reveals the app's hosting path (for example
-    `https://.../acoustsee/future/web/boot.js`). We extract the directory
-    portion and use it as `basePath`.
-
-  - Callers that load assets dynamically should accept a `basePath` or
-    allow the initializer to pass a `workerBaseUrl` / `basePath` through
-    their config. Example: `enableFrameWorker(true, { workerBaseUrl: basePath + 'video/' })`.
-
-  - This logic intentionally prefers the boot script's location because the
-    boot script is the most reliable anchor for the app's deployment root
-    and works for variations such as `/past/web/`, `/present/web/`, and
-    `/future/web/`.
-
-  NOTE: This is a runtime compatibility shim — build-time bundlers that
-  produce absolute import.meta URLs may still provide import.meta.url to
-  modules, but relying on import.meta alone is not safe for all test or
-  runtime environments (some test runners strip it). The boot-script
-  derived basePath is robust across those environments.
+  USAGE: This `basePath` is passed during initialization to modules that need to
+  load other files dynamically. It serves as a robust fallback when modern
+  features like `import.meta.url` are unavailable in certain environments.
 */
 
 let basePath = './';
@@ -216,22 +191,6 @@ export async function init() {
       } catch (e) { structuredLog('WARN', 'Failed to load accessible UI', { error: e?.message || String(e) }); }
     }
     
-    // --- Start frame worker if configured to run by default ---
-    try {
-      if (settings.enableFrameWorker) {
-        // Pass a workerBaseUrl derived from the basePath so the frame-processor
-        // can resolve the correct worker URL regardless of hosting location.
-        try {
-          enableFrameWorker(true, { workerBaseUrl: basePath + 'video/' });
-        } catch (e) {
-          // Fallback to previous call if anything unexpected happens
-          enableFrameWorker(true);
-        }
-      }
-    } catch (e) {
-      structuredLog('WARN', 'enableFrameWorker failed', { error: e?.message || String(e) });
-    }
- 
     // Console overrides
     function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
       const tempLog = console.log;
