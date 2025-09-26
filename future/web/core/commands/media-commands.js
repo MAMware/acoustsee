@@ -31,20 +31,42 @@ export function registerMediaCommands(engine) {
 
     // The "Smart" Start Handler - SOLE OWNER of starting the processing lifecycle.
   registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
-    if (s.isProcessing) return; // Prevent re-entry
+    structuredLog('DEBUG', 'COMMAND: startProcessing handler called', { isProcessing: s.isProcessing, payload });
+    
+    if (s.isProcessing) {
+      structuredLog('WARN', 'COMMAND: startProcessing aborted - already processing');
+      return; // Prevent re-entry
+    }
     
     try {
       s.isProcessing = true;
       structuredLog('INFO', 'COMMAND: Start processing initiated.');
 
+      structuredLog('DEBUG', 'COMMAND: Requesting camera permissions...');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       _activeMediaStream = stream;
+      structuredLog('DEBUG', 'COMMAND: Camera stream acquired successfully.');
 
-      const videoEl = payload.videoEl || window.DOM.videoFeed;
+      // Better DOM element resolution with fallback
+      let videoEl = payload?.videoEl;
+      if (!videoEl && typeof window !== 'undefined' && window.DOM?.videoFeed) {
+        videoEl = window.DOM.videoFeed;
+        structuredLog('DEBUG', 'COMMAND: Using DOM.videoFeed element');
+      } else if (!videoEl) {
+        // Create a temporary video element if none provided
+        videoEl = document.createElement('video');
+        videoEl.setAttribute('playsinline', 'true');
+        videoEl.setAttribute('muted', 'true');
+        structuredLog('DEBUG', 'COMMAND: Created temporary video element');
+      }
+
       videoEl.srcObject = _activeMediaStream;
+      structuredLog('DEBUG', 'COMMAND: Stream assigned to video element, waiting for play...');
+      
       await videoEl.play();
       structuredLog('INFO', 'COMMAND: Video stream is active and metadata loaded.');
 
+      structuredLog('DEBUG', 'COMMAND: Initializing video pipeline...');
       await initializeVideo({
         videoElement: videoEl,
         engine: engine,
@@ -63,6 +85,7 @@ export function registerMediaCommands(engine) {
         _activeMediaStream = null;
       }
       s.isProcessing = false;
+      throw err; // Re-throw to help with debugging
     }
   });
 
@@ -74,7 +97,7 @@ export function registerMediaCommands(engine) {
       _activeMediaStream = null;
     }
     // Any necessary teardown for video/audio pipelines can be dispatched from here.
-    engine.setState({ isProcessing: false, processingStatus: 'idle' });
+    s.isProcessing = false;
     structuredLog('INFO', 'COMMAND: stopProcessing COMPLETED.');
   });
  

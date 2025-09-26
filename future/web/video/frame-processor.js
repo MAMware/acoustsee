@@ -59,6 +59,8 @@ function processWithMotionWorker(frameData, width, height) {
  */
 export async function initializeVideo(config) {
   _config = { ..._config, ...config };
+  
+  structuredLog('DEBUG', 'initializeVideo: Starting video pipeline initialization', config);
 
   startMotionWorker();
   // startDepthWorker(); // etc.
@@ -69,21 +71,49 @@ export async function initializeVideo(config) {
       throw new Error("Video element or srcObject is not available.");
     }
     
-    if (!('transferControlToOffscreen' in HTMLCanvasElement.prototype) || typeof MediaStreamTrackProcessor === 'undefined') {
-      throw new Error('Required browser APIs (OffscreenCanvas, MediaStreamTrackProcessor) are not supported.');
+    structuredLog('DEBUG', 'initializeVideo: Video element validated', { 
+      hasVideoElement: !!videoElement, 
+      hasSrcObject: !!videoElement.srcObject,
+      videoWidth: videoElement.videoWidth,
+      videoHeight: videoElement.videoHeight 
+    });
+    
+    // Check for required APIs with better fallback handling
+    const hasOffscreenCanvas = 'transferControlToOffscreen' in HTMLCanvasElement.prototype;
+    const hasMediaStreamTrackProcessor = typeof MediaStreamTrackProcessor !== 'undefined';
+    
+    if (!hasOffscreenCanvas) {
+      structuredLog('WARN', 'OffscreenCanvas not supported, video processing may be limited');
+      // For now, we'll still throw since our current architecture requires it
+      throw new Error('OffscreenCanvas is required but not supported in this browser');
     }
     
+    if (!hasMediaStreamTrackProcessor) {
+      structuredLog('WARN', 'MediaStreamTrackProcessor not supported, trying alternative approach');
+      // We could implement a Canvas2D fallback here, but for now let's see if this is the issue
+      throw new Error('MediaStreamTrackProcessor is required but not supported in this browser');
+    }
+    
+    structuredLog('DEBUG', 'initializeVideo: Starting frame provider worker...');
     frameProviderWorker = new Worker(new URL('./workers/frame-provider-worker.js', import.meta.url), { type: 'module' });
     if (_config.registerWorker) _config.registerWorker(frameProviderWorker, 'FrameProvider');
 
     const canvas = document.createElement('canvas');
-    canvas.width = videoElement.videoWidth;
-    canvas.height = videoElement.videoHeight;
+    canvas.width = videoElement.videoWidth || 640;
+    canvas.height = videoElement.videoHeight || 480;
+    structuredLog('DEBUG', 'initializeVideo: Canvas created', { width: canvas.width, height: canvas.height });
+    
     const offscreenCanvas = canvas.transferControlToOffscreen();
     
     const [track] = videoElement.srcObject.getVideoTracks();
+    if (!track) {
+      throw new Error('No video track found in MediaStream');
+    }
+    
     const trackProcessor = new MediaStreamTrackProcessor({ track });
     const streamReader = trackProcessor.readable;
+    
+    structuredLog('DEBUG', 'initializeVideo: Sending init message to frame provider worker...');
 
     frameProviderWorker.postMessage(
       { type: 'init', payload: { canvas: offscreenCanvas, streamReader } },
@@ -122,6 +152,8 @@ export async function initializeVideo(config) {
             });
           }
         }
+      } else if (type === 'ready') {
+        structuredLog('INFO', 'Frame provider worker is ready');
       }
     };
 
@@ -133,9 +165,11 @@ export async function initializeVideo(config) {
         frameProviderWorker.postMessage({ type: 'stop' });
       }
     });
+    
+    structuredLog('INFO', 'initializeVideo: Video pipeline initialization completed successfully');
 
   } catch (e) {
-    structuredLog('ERROR', 'Failed to initialize video pipeline.', { error: e });
+    structuredLog('ERROR', 'Failed to initialize video pipeline.', { error: e.message, stack: e.stack });
     throw e;
   }
 }
