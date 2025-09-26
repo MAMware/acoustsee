@@ -29,41 +29,40 @@ export function registerMediaCommands(engine) {
     }
   });
 
-  // The "Smart" Start Handler - SOLE OWNER of starting the processing lifecycle.
+    // The "Smart" Start Handler - SOLE OWNER of starting the processing lifecycle.
   registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
     if (s.isProcessing) return; // Prevent re-entry
-
+    
     try {
-      // 1. Set state immediately to prevent race conditions.
-      engine.setState({ isProcessing: true });
+      s.isProcessing = true;
       structuredLog('INFO', 'COMMAND: Start processing initiated.');
 
-      // 2. Acquire camera stream.
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       _activeMediaStream = stream;
 
-      // 3. Attach stream and wait for metadata.
       const videoEl = payload.videoEl || window.DOM.videoFeed;
       videoEl.srcObject = _activeMediaStream;
       await videoEl.play();
       structuredLog('INFO', 'COMMAND: Video stream is active and metadata loaded.');
 
-      // 4. CRITICAL FIX: Call the correct, modern initialization function.
-      await initializeVideoProcessing({
+      await initializeVideo({
         videoElement: videoEl,
-        engine: engine
+        engine: engine,
+        getEngineState: () => engine.getState(),
+        getCurrentGrid: () => engine.getState().currentGrid,
+        registerWorker: window.__acoustseeDevPanelRegisterWorker,
+        motionThreshold: s.motionThreshold,
       });
       
       structuredLog('INFO', 'COMMAND: startProcessing COMPLETED successfully.');
 
     } catch (err) {
       structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
-      // Cleanup on failure
       if (_activeMediaStream) {
         _activeMediaStream.getTracks().forEach(track => track.stop());
         _activeMediaStream = null;
       }
-      engine.setState({ isProcessing: false });
+      s.isProcessing = false;
     }
   });
 
