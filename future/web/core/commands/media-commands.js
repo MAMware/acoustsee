@@ -19,9 +19,13 @@ let _activeMediaStream = null; // Isolate the MediaStream here to prevent state 
 
 export function registerMediaCommands(engine) {
   const { registerCommandHandler } = engine;
+  
+  // Add a debug log to confirm registration
+  structuredLog('INFO', 'MEDIA-COMMANDS: Registering command handlers...');
 
   // The "Dumb" Toggle Handler - Its ONLY job is to delegate.
   registerCommandHandler('toggleProcessing', ({ state: s, payload }) => {
+    structuredLog('DEBUG', 'COMMAND: toggleProcessing received', { isProcessing: s.isProcessing });
     if (s.isProcessing) {
       engine.dispatch('stopProcessing', payload);
     } else {
@@ -140,4 +144,6 @@ export function registerMediaCommands(engine) {
       return { ok: false };
     }
   });
+  
+  structuredLog('INFO', 'MEDIA-COMMANDS: All command handlers registered successfully.');
 }

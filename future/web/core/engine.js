@@ -216,39 +216,54 @@ export function createEngine() {
   
   // --- MEDIA WRAPPER HANDLERS ---
   // These wrappers delegate to the media module which registers its handlers under
-  // namespaced keys (see registration below). Wrappers manage the engine scheduler
-  // state and timer.
+  // namespaced keys (see registration below). The media handlers now manage their own
+  // state, so these wrappers just handle the scheduler coordination.
   registerCommandHandler('startProcessing', async (context) => {
     const mediaHandler = handlers['__media_startProcessing'];
     if (!mediaHandler) throw new Error('media startProcessing handler not registered');
+    
+    // Call the media handler - it will set state.isProcessing = true on success
     const result = await mediaHandler(context);
-    _videoElForScheduler = result?.videoEl || null;
-    _canvasElForScheduler = result?.canvasEl || null;
-    state.isProcessing = true;
+    
+    // Only start scheduler if media handler succeeded and state is now processing
+    if (context.state.isProcessing) {
+      _videoElForScheduler = result?.videoEl || null;
+      _canvasElForScheduler = result?.canvasEl || null;
 
-    if (_schedulerTimerId != null) clearTimeout(_schedulerTimerId);
-    _schedulerTimerId = setTimeout(_runScheduled, 0);
-    state.processingTimerId = _schedulerTimerId;
+      if (_schedulerTimerId != null) clearTimeout(_schedulerTimerId);
+      _schedulerTimerId = setTimeout(_runScheduled, 0);
+      state.processingTimerId = _schedulerTimerId;
+      structuredLog('INFO', 'Scheduler started.');
+    }
+    
     return { timerId: _schedulerTimerId };
   });
 
   registerCommandHandler('stopProcessing', async (context) => {
     const mediaHandler = handlers['__media_stopProcessing'];
     if (!mediaHandler) throw new Error('media stopProcessing handler not registered');
+    
+    // Call the media handler - it will set state.isProcessing = false
     const result = await mediaHandler(context);
 
     if (_schedulerTimerId != null) {
       clearTimeout(_schedulerTimerId);
       _schedulerTimerId = null;
+      structuredLog('INFO', 'Scheduler stopped.');
     }
     _processingLock = false;
     _pending = false;
     state.processingTimerId = null;
-    state.isProcessing = false;
     _videoElForScheduler = null;
     _canvasElForScheduler = null;
 
     return result;
+  });
+
+  registerCommandHandler('toggleProcessing', async (context) => {
+    const mediaHandler = handlers['__media_toggleProcessing'];
+    if (!mediaHandler) throw new Error('media toggleProcessing handler not registered');
+    return await mediaHandler(context);
   });
 
   // --- INITIALIZE ALL COMMAND HANDLERS ---
