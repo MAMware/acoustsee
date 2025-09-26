@@ -10,7 +10,7 @@ import { startMic, stopMic } from '../microphone-controller.js';
 import { setMicStream } from '../state.js'; //R260905: lets talk more about this pattern
 import { allocateFrameBuffer } from '../state.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
-import { initializeVideoProcessing } from '../../video/frame-processor.js';
+import { initializeVideo } from '../../video/frame-processor.js';
 
 // These variables will be managed by the command handlers, keeping them out of the main engine. 
 let _videoElForScheduler = null;
