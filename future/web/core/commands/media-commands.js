@@ -20,10 +20,8 @@ let _activeMediaStream = null; // Isolate the MediaStream here to prevent state 
 export function registerMediaCommands(engine) {
   const { registerCommandHandler } = engine;
 
-  // 1. The "Dumb" Toggle Handler
-  // Its ONLY job is to delegate. It does not change state.
+  // The "Dumb" Toggle Handler - Its ONLY job is to delegate.
   registerCommandHandler('toggleProcessing', ({ state: s, payload }) => {
-    structuredLog('DEBUG', 'COMMAND: toggleProcessing received.', { isCurrentlyProcessing: s.isProcessing });
     if (s.isProcessing) {
       engine.dispatch('stopProcessing', payload);
     } else {
@@ -31,28 +29,30 @@ export function registerMediaCommands(engine) {
     }
   });
 
-  // 2. The "Smart" Start Handler
-  // It is the SOLE OWNER of setting isProcessing to TRUE.
+  // The "Smart" Start Handler - SOLE OWNER of starting the processing lifecycle.
   registerCommandHandler('startProcessing', async ({ state: s, payload }) => {
-    structuredLog('INFO', 'COMMAND: startProcessing begins.');
-    if (_activeMediaStream) {
-      structuredLog('WARN', 'COMMAND: startProcessing aborted, stream already active.');
-      return;
-    }
-    
-    try {
-      // Set state to true BEFORE the async operation.
-      // This immediately prevents the toggle from being triggered again.
-      s.isProcessing = true;
-      structuredLog('DEBUG', 'COMMAND: State set to isProcessing: true.');
+    if (s.isProcessing) return; // Prevent re-entry
 
+    try {
+      // 1. Immediately set state to "starting" to prevent race conditions.
+      // This is a more robust pattern than just setting `isProcessing: true`.
+      engine.setState({ isProcessing: true, processingStatus: 'starting' });
+      structuredLog('INFO', 'COMMAND: Processing status set to STARTING.');
+
+      // 2. Acquire resources (camera).
+      structuredLog('DEBUG', 'COMMAND: Requesting user media...');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       _activeMediaStream = stream;
+      structuredLog('DEBUG', 'COMMAND: Media stream acquired.');
 
+      // 3. Prepare the DOM and wait for metadata.
       const videoEl = payload.videoEl || window.DOM.videoFeed;
       videoEl.srcObject = _activeMediaStream;
       await videoEl.play();
+      structuredLog('INFO', 'COMMAND: video.play() resolved.');
 
+      // 4. Initialize the sub-pipelines.
+      structuredLog('DEBUG', 'COMMAND: Initializing video pipeline...');
       await initializeVideo({
         videoElement: videoEl,
         engine: engine,
@@ -63,7 +63,11 @@ export function registerMediaCommands(engine) {
         registerWorker: window.__acoustseeDevPanelRegisterWorker,
         unregisterWorker: window.__acoustseeDevPanelUnregisterWorker
       });
-      structuredLog('INFO', 'COMMAND: startProcessing COMPLETED successfully.');
+      structuredLog('INFO', 'COMMAND: Video pipeline initialized successfully.');
+
+      // 5. Final state update to "running".
+      engine.setState({ processingStatus: 'running' });
+      structuredLog('INFO', 'COMMAND: startProcessing COMPLETED. Status is RUNNING.');
 
     } catch (err) {
       structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
@@ -72,19 +76,19 @@ export function registerMediaCommands(engine) {
         _activeMediaStream.getTracks().forEach(track => track.stop());
         _activeMediaStream = null;
       }
-      s.isProcessing = false;
+      engine.setState({ isProcessing: false, processingStatus: 'idle' });
     }
   });
 
-  // 3. The "Smart" Stop Handler
-  // It is the SOLE OWNER of setting isProcessing to FALSE.
+  // The "Smart" Stop Handler - SOLE OWNER of stopping the processing lifecycle.
   registerCommandHandler('stopProcessing', ({ state: s }) => {
     structuredLog('INFO', 'COMMAND: stopProcessing begins.');
     if (_activeMediaStream) {
       _activeMediaStream.getTracks().forEach(track => track.stop());
       _activeMediaStream = null;
     }
-    s.isProcessing = false;
+    // Any necessary teardown for video/audio pipelines can be dispatched from here.
+    engine.setState({ isProcessing: false, processingStatus: 'idle' });
     structuredLog('INFO', 'COMMAND: stopProcessing COMPLETED.');
   });
  

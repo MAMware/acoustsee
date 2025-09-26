@@ -78,6 +78,18 @@ export function createEngine() {
     return () => listeners.delete(fn);
   }
 
+  function setState(newState) {
+    // --- TEMPORARY DEBUGGING LOG ---
+    if ('isProcessing' in newState) {
+      console.log(`ENGINE: setState called to set isProcessing=${newState.isProcessing}`);
+      console.trace("Stack trace for isProcessing change:");
+    }
+    // --- END DEBUGGING LOG ---
+
+    Object.assign(state, newState);
+    notifyListeners();
+  }
+
   function getState() {
     // return a shallow copy to encourage immutability at the boundary
     try { return { ...state }; } catch (e) { return state; }
