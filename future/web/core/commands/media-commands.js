@@ -10,7 +10,7 @@ import { startMic, stopMic } from '../microphone-controller.js';
 import { setMicStream } from '../state.js'; //R260905: lets talk more about this pattern
 import { allocateFrameBuffer } from '../state.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
-import { initializeVideo } from '../../video/frame-processor.js';
+import { initializeVideoProcessing } from '../../video/frame-processor.js';
 
 // These variables will be managed by the command handlers, keeping them out of the main engine. 
 let _videoElForScheduler = null;
@@ -34,49 +34,36 @@ export function registerMediaCommands(engine) {
     if (s.isProcessing) return; // Prevent re-entry
 
     try {
-      // 1. Immediately set state to "starting" to prevent race conditions.
-      // This is a more robust pattern than just setting `isProcessing: true`.
-      engine.setState({ isProcessing: true, processingStatus: 'starting' });
-      structuredLog('INFO', 'COMMAND: Processing status set to STARTING.');
+      // 1. Set state immediately to prevent race conditions.
+      engine.setState({ isProcessing: true });
+      structuredLog('INFO', 'COMMAND: Start processing initiated.');
 
-      // 2. Acquire resources (camera).
-      structuredLog('DEBUG', 'COMMAND: Requesting user media...');
+      // 2. Acquire camera stream.
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       _activeMediaStream = stream;
-      structuredLog('DEBUG', 'COMMAND: Media stream acquired.');
 
-      // 3. Prepare the DOM and wait for metadata.
+      // 3. Attach stream and wait for metadata.
       const videoEl = payload.videoEl || window.DOM.videoFeed;
       videoEl.srcObject = _activeMediaStream;
       await videoEl.play();
-      structuredLog('INFO', 'COMMAND: video.play() resolved.');
+      structuredLog('INFO', 'COMMAND: Video stream is active and metadata loaded.');
 
-      // 4. Initialize the sub-pipelines.
-      structuredLog('DEBUG', 'COMMAND: Initializing video pipeline...');
-      await initializeVideo({
+      // 4. CRITICAL FIX: Call the correct, modern initialization function.
+      await initializeVideoProcessing({
         videoElement: videoEl,
-        engine: engine,
-        getEngineState: () => engine.getState(),
-        engineDispatch: (evt, p) => engine.dispatch(evt, p),
-        engineOnStateChange: (cb) => engine.onStateChange(cb),
-        getCurrentGrid: () => engine.getState().currentGrid,
-        registerWorker: window.__acoustseeDevPanelRegisterWorker,
-        unregisterWorker: window.__acoustseeDevPanelUnregisterWorker
+        engine: engine
       });
-      structuredLog('INFO', 'COMMAND: Video pipeline initialized successfully.');
-
-      // 5. Final state update to "running".
-      engine.setState({ processingStatus: 'running' });
-      structuredLog('INFO', 'COMMAND: startProcessing COMPLETED. Status is RUNNING.');
+      
+      structuredLog('INFO', 'COMMAND: startProcessing COMPLETED successfully.');
 
     } catch (err) {
       structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
-      // On failure, clean up and set state back to false.
+      // Cleanup on failure
       if (_activeMediaStream) {
         _activeMediaStream.getTracks().forEach(track => track.stop());
         _activeMediaStream = null;
       }
-      engine.setState({ isProcessing: false, processingStatus: 'idle' });
+      engine.setState({ isProcessing: false });
     }
   });
 
