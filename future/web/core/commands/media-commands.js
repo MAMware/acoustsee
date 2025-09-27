@@ -14,8 +14,13 @@ import { initializeVideo } from '../../video/frame-processor.js';
 
 // Dual logging helper to avoid duplication
 const dualLog = (level, message, data = null) => {
-  structuredLog(level.toUpperCase(), message, data);
-  coreLoggerOutput(level.toLowerCase(), data ? `${message} - ${JSON.stringify(data)}` : message);
+  // For structuredLog, always provide a proper data object
+  const telemetryData = data && typeof data === 'object' ? data : {};
+  structuredLog(level.toUpperCase(), message, telemetryData);
+  
+  // For core logger, format the message appropriately
+  const consoleMessage = data ? `${message} - ${JSON.stringify(data)}` : message;
+  coreLoggerOutput(level.toLowerCase(), consoleMessage);
 };
 
 // These variables will be managed by the command handlers, keeping them out of the main engine. 

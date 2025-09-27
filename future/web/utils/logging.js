@@ -82,12 +82,26 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
   inStructuredLog = true;
   try {
     const timestamp = new Date().toISOString();
-    const logEntry = { timestamp, level: level.toUpperCase(), message, data };
+    
+    // Ensure data is always a proper object with default telemetry fields
+    const safeData = data && typeof data === 'object' ? data : {};
+    const telemetryData = {
+      source: 'client',
+      filename: '',
+      lineno: 0,
+      colno: 0,
+      stack: null,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      url: typeof location !== 'undefined' ? location.href : '',
+      ...safeData // Merge in provided data, allowing overrides
+    };
+    
+    const logEntry = { timestamp, level: level.toUpperCase(), message, data: telemetryData };
   // Use core-logger to output formatted message
     let payload = '';
-    if (Object.keys(data).length) {
+    if (Object.keys(telemetryData).length) {
       try {
-        payload = ' ' + safeStringify(data);
+        payload = ' ' + safeStringify(telemetryData);
       } catch (e) {
         payload = ' [Unserializable data]';
       }
@@ -110,8 +124,19 @@ const defaultAdapter = {
       // If payload is a string, map to message; if object, extract message
       const message = typeof payload === 'string' ? payload : (payload && payload.message) || String(payload || '');
       const data = (payload && payload.data) || (typeof payload === 'object' ? payload : {});
+      
+      // Ensure we have complete telemetry data
+      const telemetryData = {
+        source: 'client',
+        filename: payload?.filename || '',
+        lineno: payload?.lineno || 0,
+        colno: payload?.colno || 0,
+        stack: payload?.stack || null,
+        ...data
+      };
+      
       // structuredLog is synchronous; do not await a non-Promise to avoid misleading callers
-      structuredLog(level, message, data, true, true);
+      structuredLog(level, message, telemetryData, true, true);
     } catch (err) {
       // Best-effort: avoid throwing from logger
       try { console.warn('logging.defaultAdapter.log failed', err); } catch (e) {}
@@ -120,7 +145,13 @@ const defaultAdapter = {
   async logError(err) {
     try {
       const message = err && err.message ? err.message : String(err || 'Error');
-      const data = { stack: err && err.stack };
+      const data = { 
+        stack: err && err.stack,
+        source: 'client',
+        filename: '',
+        lineno: 0,
+        colno: 0
+      };
       // structuredLog is synchronous; do not await a non-Promise to avoid misleading callers
       structuredLog('ERROR', message, data, true, false);
     } catch (e) {
