@@ -206,6 +206,17 @@ export function createEngine() {
 
   async function dispatch(commandName, payload = {}) {
     const handler = handlers[commandName];
+    
+    // TEMPORARY DEBUG: Log which actual handler function is being called
+    if (commandName === 'toggleProcessing' || commandName === 'startProcessing') {
+      console.log(`=== DISPATCH DEBUG ===`);
+      console.log(`Command: ${commandName}`);
+      console.log(`Handler exists: ${!!handler}`);
+      console.log(`Handler name: ${handler?.name || 'anonymous'}`);
+      console.log(`All handlers:`, Object.keys(handlers));
+      console.log(`=== END DEBUG ===`);
+    }
+    
     if (!handler) {
       structuredLog('WARN', `Engine: no handler for command ${commandName}`);
       return { ok: false, error: `no handler: ${commandName}` };
