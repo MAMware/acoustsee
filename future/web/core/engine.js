@@ -211,9 +211,17 @@ export function createEngine() {
       return { ok: false, error: `no handler: ${commandName}` };
     }
     try {
+      // Debug logging to see which handler is being called
+      const handlerInfo = {
+        command: commandName,
+        handlerExists: !!handler,
+        isMediaWrapper: ['toggleProcessing', 'startProcessing', 'stopProcessing'].includes(commandName),
+        availableHandlers: Object.keys(handlers).filter(k => k.includes(commandName) || k.includes('media'))
+      };
+      
       // Only log noisy commands like processFrame if verbose debug logging is enabled.
       if (commandName !== 'processFrame') {
-        structuredLog('DEBUG', `Engine dispatch ${commandName}`, { payload });
+        dualLog('debug', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });
       }
     const result = await handler({ state, payload, dispatch, emit });
       // notify after handler runs in case it mutated shared state
