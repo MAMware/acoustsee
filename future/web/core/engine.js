@@ -234,10 +234,66 @@ export function createEngine() {
     }
   }
   
+  // --- INITIALIZE ALL COMMAND HANDLERS ---
+  const engineInstance = {
+    dispatch,
+    registerCommandHandler,
+    onStateChange,
+    getState,
+    onBenchmarkRequired,
+  // Expose telemetry for testing/inspecting fallback counters
+  getTelemetry: () => ({ ..._telemetry }),
+  // Allow external modules to query benchmark listeners for performance tuning R240619: tell me more about this
+  getBenchmarkListeners: () => Array.from(benchmarkListeners)
+  };
+
+  // Expose event bus methods
+  engineInstance.on = on;
+  engineInstance.emit = emit;
+
+  // Initialize the application's main scheduler.
+  initializeScheduler(engineInstance);
+
+  // Register handlers from external modules
+  registerTouchGestureCommands(engineInstance); 
+  registerSonificationCommands(engineInstance); 
+  // Register audio command handlers in a dedicated module
+  // Try dynamic import first (works in modern browsers). Fall back to require() for test environments.
+  import('./commands/audio-commands.js').then(mod => {
+    try { mod.registerAudioCommands && mod.registerAudioCommands(engineInstance); } catch (e) { structuredLog('WARN', 'registerAudioCommands failed', { error: e?.message || String(e) }); }
+  }).catch((e) => {
+    try {
+      // eslint-disable-next-line no-undef
+      const req = typeof require !== 'undefined' ? require('./commands/audio-commands.js') : null;
+      if (req && req.registerAudioCommands) req.registerAudioCommands(engineInstance);
+    } catch (err) {
+      structuredLog('WARN', 'Failed to register audio commands', { error: err?.message || String(err) });
+    }
+  });
+
+  // Register media-related command handlers under a namespaced key to avoid
+  // colliding with the engine's public wrapper handlers. Media module will
+  // register `startProcessing`, `stopProcessing`, `processFrame` which we
+  // expose as `__media_startProcessing`, etc.
+  registerMediaCommands({
+    registerCommandHandler: (name, fn) => { handlers[`__media_${name}`] = fn; },
+    dispatch: engineInstance.dispatch,
+  });
+
+  // Register settings and debug command modules
+  registerSettingsCommands(engineInstance);
+  registerDebugCommands(engineInstance);
+  registerUICommands(engineInstance);
+  registerPerformanceCommands(engineInstance);
+  registerDiagnosticsCommands(engineInstance);
+
   // --- MEDIA WRAPPER HANDLERS ---
+  // IMPORTANT: These must be registered AFTER all external modules to ensure they
+  // override any conflicting handlers registered by other modules.
   // These wrappers delegate to the media module which registers its handlers under
-  // namespaced keys (see registration below). The media handlers now manage their own
-  // state, so these wrappers just handle the scheduler coordination.
+  // namespaced keys (__media_*). The media handlers manage their own state, 
+  // and these wrappers handle scheduler coordination.
+  
   registerCommandHandler('startProcessing', async (context) => {
     dualLog('debug', 'Engine wrapper: startProcessing called', { 
       hasMediaHandler: !!handlers['__media_startProcessing'],
@@ -328,59 +384,6 @@ export function createEngine() {
       throw error;
     }
   });
-
-  // --- INITIALIZE ALL COMMAND HANDLERS ---
-  const engineInstance = {
-    dispatch,
-    registerCommandHandler,
-    onStateChange,
-    getState,
-    onBenchmarkRequired,
-  // Expose telemetry for testing/inspecting fallback counters
-  getTelemetry: () => ({ ..._telemetry }),
-  // Allow external modules to query benchmark listeners for performance tuning R240619: tell me more about this
-  getBenchmarkListeners: () => Array.from(benchmarkListeners)
-  };
-
-  // Expose event bus methods
-  engineInstance.on = on;
-  engineInstance.emit = emit;
-
-  // Initialize the application's main scheduler.
-  initializeScheduler(engineInstance);
-
-  // Register handlers from external modules
-  registerTouchGestureCommands(engineInstance); 
-  registerSonificationCommands(engineInstance); 
-  // Register audio command handlers in a dedicated module
-  // Try dynamic import first (works in modern browsers). Fall back to require() for test environments.
-  import('./commands/audio-commands.js').then(mod => {
-    try { mod.registerAudioCommands && mod.registerAudioCommands(engineInstance); } catch (e) { structuredLog('WARN', 'registerAudioCommands failed', { error: e?.message || String(e) }); }
-  }).catch((e) => {
-    try {
-      // eslint-disable-next-line no-undef
-      const req = typeof require !== 'undefined' ? require('./commands/audio-commands.js') : null;
-      if (req && req.registerAudioCommands) req.registerAudioCommands(engineInstance);
-    } catch (err) {
-      structuredLog('WARN', 'Failed to register audio commands', { error: err?.message || String(err) });
-    }
-  });
-
-  // Register media-related command handlers under a namespaced key to avoid
-  // colliding with the engine's public wrapper handlers. Media module will
-  // register `startProcessing`, `stopProcessing`, `processFrame` which we
-  // expose as `__media_startProcessing`, etc.
-  registerMediaCommands({
-    registerCommandHandler: (name, fn) => { handlers[`__media_${name}`] = fn; },
-    dispatch: engineInstance.dispatch,
-  });
-
-  // Register settings and debug command modules
-  registerSettingsCommands(engineInstance);
-  registerDebugCommands(engineInstance);
-  registerUICommands(engineInstance);
-  registerPerformanceCommands(engineInstance);
-  registerDiagnosticsCommands(engineInstance);
 
   return engineInstance;
 }
