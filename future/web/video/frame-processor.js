@@ -97,6 +97,9 @@ export async function initializeVideo(config) {
     structuredLog('DEBUG', 'initializeVideo: Starting frame provider worker...');
     frameProviderWorker = new Worker(new URL('./workers/frame-provider-worker.js', import.meta.url), { type: 'module' });
     if (_config.registerWorker) _config.registerWorker(frameProviderWorker, 'FrameProvider');
+    
+    // Expose worker globally for dev panel throttling controls
+    window.frameProviderWorker = frameProviderWorker;
 
     const canvas = document.createElement('canvas');
     canvas.width = videoElement.videoWidth || 640;

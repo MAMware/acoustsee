@@ -27,16 +27,27 @@ export function registerDiagnosticsCommands(engine) {
     }
   });
 
+  // New handler to send throttle commands to the worker
+  engine.registerCommandHandler('setFrameProviderThrottle', (payload) => {
+    // Note: window.frameProviderWorker is a deliberate shortcut for the dev panel.
+    const worker = window.frameProviderWorker;
+    if (!worker) return;
+
+    if (payload.skipRate) {
+      worker.postMessage({ type: 'setFrameSkipRate', payload: { skipRate: payload.skipRate } });
+    }
+    if (payload.scale) {
+      worker.postMessage({ type: 'setResolutionScale', payload: { scale: payload.scale } });
+    }
+  });
+
   engine.registerCommandHandler('diagnosticTick', () => {
     const state = engine.getState();
     const settings = state.settings || {};
 
-    // Respect user preference: if not in auto mode, do nothing.
-    if (settings.fpsMode !== 'auto') {
-      return;
+    if (settings.fpsMode !== 'auto' || benchmarkHistory.count() < 15) {
+      return; // Respect user preference and wait for samples
     }
-
-    if (benchmarkHistory.count() < 15) return; // Wait for enough samples.
 
     const currentInterval = state.updateInterval;
     const frameBudget = currentInterval * 0.85; // Target 85% of budget for safety.
@@ -44,20 +55,43 @@ export function registerDiagnosticsCommands(engine) {
     // Use a high percentile to be robust against outliers.
     const p90_duration = benchmarkHistory.percentile(0.9);
 
-    if (p90_duration > frameBudget) {
-      // Performance is struggling. Slow down (increase interval).
-      const newInterval = Math.min(250, currentInterval + 20); // Slower, max 4 FPS
-      if (newInterval !== currentInterval) {
-        structuredLog('INFO', 'AutoFPS: Performance struggling, slowing down.', { p90_duration, frameBudget, newInterval });
-        engine.dispatch('setUpdateInterval', { interval: newInterval });
+    // Throttling decision logic
+    let throttleAction = null;
+    const currentThrottle = state.frameProviderThrottle || { skipRate: 1, scale: 1.0 };
+    const isUnderperforming = p90_duration > frameBudget;
+    const isOverperforming = p90_duration < frameBudget * 0.4;
+
+    if (isUnderperforming) {
+      // Performance is struggling. Increase throttling.
+      let newSkipRate = currentThrottle.skipRate;
+      let newScale = currentThrottle.scale;
+      // First, try reducing resolution.
+      if (newScale > 0.5) newScale = Math.max(0.5, newScale - 0.25);
+      // If that's not enough, start skipping frames.
+      else newSkipRate = Math.min(4, newSkipRate + 1);
+      
+      if (newSkipRate !== currentThrottle.skipRate || newScale !== currentThrottle.scale) {
+        throttleAction = { skipRate: newSkipRate, scale: newScale };
+        structuredLog('INFO', 'AutoFPS: Increasing throttling.', throttleAction);
       }
-    } else if (p90_duration < frameBudget * 0.4) {
-      // Performance is excellent. Speed up (decrease interval).
-      const newInterval = Math.max(33, currentInterval - 20); // Faster, min 30 FPS
-      if (newInterval !== currentInterval) {
-        structuredLog('INFO', 'AutoFPS: Performance good, speeding up.', { p90_duration, frameBudget, newInterval });
-        engine.dispatch('setUpdateInterval', { interval: newInterval });
+    } else if (isOverperforming) {
+      // Performance is excellent. Decrease throttling.
+      let newSkipRate = currentThrottle.skipRate;
+      let newScale = currentThrottle.scale;
+      // First, stop skipping frames.
+      if (newSkipRate > 1) newSkipRate = Math.max(1, newSkipRate - 1);
+      // If that's stable, increase resolution.
+      else newScale = Math.min(1.0, newScale + 0.25);
+
+      if (newSkipRate !== currentThrottle.skipRate || newScale !== currentThrottle.scale) {
+        throttleAction = { skipRate: newSkipRate, scale: newScale };
+        structuredLog('INFO', 'AutoFPS: Decreasing throttling.', throttleAction);
       }
+    }
+
+    if (throttleAction) {
+      engine.dispatch('setFrameProviderThrottle', throttleAction);
+      engine.setState({ frameProviderThrottle: throttleAction });
     }
   });
 

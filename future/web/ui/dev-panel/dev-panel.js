@@ -130,6 +130,42 @@ export function initializeDevPanel(arg1, arg2) {
             </div>
           </div>
 
+          <div class="devpanel-section performance-section">
+            <h2 class="section-header"><span>Performance Controls</span></h2>
+            <div class="section-content">
+              <div class="performance-grid">
+                <div class="control-column">
+                  <label>FPS Mode</label>
+                  <select id="fps-mode-select">
+                    <option value="auto">Auto (Adaptive)</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                  <label>Target FPS (Manual)</label>
+                  <div class="slider-container">
+                    <input id="target-fps-slider" type="range" min="4" max="30" step="1" value="15">
+                    <span id="target-fps-value">15</span>
+                  </div>
+                </div>
+                <div class="control-column">
+                  <label>Frame Skip Rate</label>
+                  <div class="slider-container">
+                    <input id="frame-skip-slider" type="range" min="1" max="4" step="1" value="1">
+                    <span id="frame-skip-value">1</span>
+                  </div>
+                  <label>Resolution Scale</label>
+                  <div class="slider-container">
+                    <input id="resolution-scale-slider" type="range" min="0.25" max="1.0" step="0.25" value="1.0">
+                    <span id="resolution-scale-value">1.0</span>
+                  </div>
+                </div>
+              </div>
+              <div class="performance-actions">
+                <button data-action="resetThrottling" type="button">Reset Throttling</button>
+                <button data-action="applyThrottling" type="button">Apply Manual Throttling</button>
+              </div>
+            </div>
+          </div>
+
           <div class="devpanel-section logs-section">
             <h2 class="section-header"><span>Live Logs</span></h2>
             <div class="section-content">

@@ -48,6 +48,21 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       case 'loadSettings':
         engine.dispatch && engine.dispatch('loadSettings');
         break;
+      case 'resetThrottling':
+        engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate: 1, scale: 1.0 });
+        // Update UI to reflect reset values
+        const skipSlider = panel.querySelector('#frame-skip-slider');
+        const scaleSlider = panel.querySelector('#resolution-scale-slider');
+        const skipValue = panel.querySelector('#frame-skip-value');
+        const scaleValue = panel.querySelector('#resolution-scale-value');
+        if (skipSlider) { skipSlider.value = '1'; if (skipValue) skipValue.textContent = '1'; }
+        if (scaleSlider) { scaleSlider.value = '1.0'; if (scaleValue) scaleValue.textContent = '1.0'; }
+        break;
+      case 'applyThrottling':
+        const skipRate = panel.querySelector('#frame-skip-slider')?.value || 1;
+        const scale = panel.querySelector('#resolution-scale-slider')?.value || 1.0;
+        engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate: parseInt(skipRate), scale: parseFloat(scale) });
+        break;
       case 'toggleWorkerExplorer':
         try {
           isExplorerVisible = !isExplorerVisible;
@@ -145,6 +160,55 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       const onFW = (e) => { if (typeof window.enableFrameWorker === 'function') window.enableFrameWorker(e.target.checked); else engine.dispatch && engine.dispatch('setFrameWorkerEnabled', { enabled: e.target.checked }); };
       enableFrameWorker.addEventListener('change', onFW);
       attachedHandlers.push({ el: enableFrameWorker, type: 'change', fn: onFW });
+    }
+
+  // Performance controls wiring
+  const fpsModeSel = panel.querySelector('#fps-mode-select');
+    if (fpsModeSel) {
+      const onFpsMode = (e) => {
+        const mode = e.target.value;
+        const targetFpsSlider = panel.querySelector('#target-fps-slider');
+        const interval = targetFpsSlider ? Math.round(1000 / parseInt(targetFpsSlider.value)) : 66;
+        engine.dispatch && engine.dispatch('setFpsMode', { mode, interval: mode === 'manual' ? interval : undefined });
+      };
+      fpsModeSel.addEventListener('change', onFpsMode);
+      attachedHandlers.push({ el: fpsModeSel, type: 'change', fn: onFpsMode });
+    }
+
+  const targetFpsEl = panel.querySelector('#target-fps-slider');
+    const targetFpsValueEl = panel.querySelector('#target-fps-value');
+    if (targetFpsEl) {
+      const onTargetFps = (e) => {
+        const fps = parseInt(e.target.value);
+        const interval = Math.round(1000 / fps);
+        if (targetFpsValueEl) targetFpsValueEl.textContent = fps.toString();
+        const fpsMode = panel.querySelector('#fps-mode-select')?.value;
+        if (fpsMode === 'manual') {
+          engine.dispatch && engine.dispatch('setFpsMode', { mode: 'manual', interval });
+        }
+      };
+      targetFpsEl.addEventListener('input', onTargetFps);
+      attachedHandlers.push({ el: targetFpsEl, type: 'input', fn: onTargetFps });
+    }
+
+  const frameSkipEl = panel.querySelector('#frame-skip-slider');
+    const frameSkipValueEl = panel.querySelector('#frame-skip-value');
+    if (frameSkipEl) {
+      const onFrameSkip = (e) => {
+        if (frameSkipValueEl) frameSkipValueEl.textContent = e.target.value;
+      };
+      frameSkipEl.addEventListener('input', onFrameSkip);
+      attachedHandlers.push({ el: frameSkipEl, type: 'input', fn: onFrameSkip });
+    }
+
+  const resScaleEl = panel.querySelector('#resolution-scale-slider');
+    const resScaleValueEl = panel.querySelector('#resolution-scale-value');
+    if (resScaleEl) {
+      const onResScale = (e) => {
+        if (resScaleValueEl) resScaleValueEl.textContent = e.target.value;
+      };
+      resScaleEl.addEventListener('input', onResScale);
+      attachedHandlers.push({ el: resScaleEl, type: 'input', fn: onResScale });
     }
   } catch (e) {
     console.error('createAndWireActions: error wiring controls', e);
