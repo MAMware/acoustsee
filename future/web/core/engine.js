@@ -1,6 +1,8 @@
 // File: web/core/engine.js
 // R24925: A cleanup is observerd as needed 
+// R29925: too much leftovers, clean ASAP
 // Minimal headless engine: owns state and exposes a dispatch API for commands.
+
 import { settings } from './state.js';
 import { structuredLog } from '../utils/logging.js';
 import { output as coreLoggerOutput } from '../utils/core-logger.js';
@@ -135,94 +137,19 @@ export function createEngine() {
     }
   }
 
-  // --- Scheduler internals (single-run lock + one-pending-frame) ---
-  // These live in the engine closure and are manipulated by start/stopProcessing
-  let _processingLock = false;
-  let _pending = false;
-  let _lastRunTs = 0;
-  let _schedulerTimerId = null;
+  // --- Legacy video element references (kept for backward compatibility) ---
   let _videoElForScheduler = null;
   let _canvasElForScheduler = null;
 
-  async function _runScheduled() {
-    try {
-      // If not processing anymore, bail out
-      if (!state.isProcessing) {
-        _schedulerTimerId = null;
-        return;
-      }
-
-      // If a frame is already running, mark pending and return
-      if (_processingLock) {
-        _pending = true;
-        return;
-      }
-
-      _processingLock = true;
-      _pending = false;
-
-      const now = Date.now();
-      // determine preferred interval (ms) - respects autoFPS and persisted benchmarks
-      let targetMs = 0;
-      try { targetMs = await getPreferredIntervalMs(); } catch (e) { targetMs = Math.max(8, Math.round(1000 / Math.max(1, Number(state.updateInterval) || 15))); }
-
-      // Enforce minimum spacing since last run
-      const since = Math.max(0, now - (_lastRunTs || 0));
-      if (since < targetMs) {
-        // schedule for remaining time
-        const delay = Math.max(1, Math.round(targetMs - since));
-        _processingLock = false;
-        _schedulerTimerId = setTimeout(_runScheduled, delay);
-        state.processingTimerId = _schedulerTimerId;
-        return;
-      }
-
-      _lastRunTs = Date.now();
-      // Await the dispatch to ensure the processing lock is held for the entire duration
-      // of the frame analysis (prevents concurrent processing of frames).
-      try {
-        await dispatch('processFrame', { videoEl: _videoElForScheduler, canvasEl: _canvasElForScheduler });
-      } catch (e) { structuredLog('WARN', 'scheduler dispatch processFrame failed', { error: e?.message }); }
-
-      _processingLock = false;
-
-      // If a pending frame was requested while we were running, schedule next immediately
-      if (_pending) {
-        _pending = false;
-        _schedulerTimerId = setTimeout(_runScheduled, 0);
-      } else {
-        // otherwise schedule next respecting targetMs
-        _schedulerTimerId = setTimeout(_runScheduled, targetMs);
-      }
-      state.processingTimerId = _schedulerTimerId;
-    } catch (e) {
-  structuredLog('WARN', 'scheduler run failed', { error: e?.message || String(e) });
-  try { logger.logError && logger.logError(e); } catch (er) {}
-      _processingLock = false;
-      _schedulerTimerId = setTimeout(_runScheduled, Math.max(8, Math.round(1000 / Math.max(1, Number(state.updateInterval) || 15))));
-      state.processingTimerId = _schedulerTimerId;
-    }
-  }
-
   async function dispatch(commandName, payload = {}) {
     const handler = handlers[commandName];
-    
-    // TEMPORARY DEBUG: Log which actual handler function is being called
-    if (commandName === 'toggleProcessing' || commandName === 'startProcessing') {
-      console.log(`=== DISPATCH DEBUG ===`);
-      console.log(`Command: ${commandName}`);
-      console.log(`Handler exists: ${!!handler}`);
-      console.log(`Handler name: ${handler?.name || 'anonymous'}`);
-      console.log(`All handlers:`, Object.keys(handlers));
-      console.log(`=== END DEBUG ===`);
-    }
     
     if (!handler) {
       structuredLog('WARN', `Engine: no handler for command ${commandName}`);
       return { ok: false, error: `no handler: ${commandName}` };
     }
     try {
-      // Debug logging to see which handler is being called
+      // Enhanced debug logging for command dispatch
       const handlerInfo = {
         command: commandName,
         handlerExists: !!handler,
@@ -230,10 +157,7 @@ export function createEngine() {
         availableHandlers: Object.keys(handlers).filter(k => k.includes(commandName) || k.includes('media'))
       };
       
-      // Only log noisy commands like processFrame if verbose debug logging is enabled.
-      if (commandName !== 'processFrame') {
-        dualLog('debug', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });
-      }
+      dualLog('debug', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });
     const result = await handler({ state, payload, dispatch, emit });
       // notify after handler runs in case it mutated shared state
       notifyListeners();
@@ -327,16 +251,14 @@ export function createEngine() {
       if (context.state.isProcessing) {
         _videoElForScheduler = result?.videoEl || null;
         _canvasElForScheduler = result?.canvasEl || null;
-
-        if (_schedulerTimerId != null) clearTimeout(_schedulerTimerId);
-        _schedulerTimerId = setTimeout(_runScheduled, 0);
-        state.processingTimerId = _schedulerTimerId;
-        dualLog('info', 'Scheduler started.');
+        // Note: The modern scheduler (scheduler.js) is automatically initialized
+        // and handles diagnosticTick dispatches. No manual scheduler start needed.
+        dualLog('info', 'Video processing started - modern scheduler is handling diagnostics.');
       } else {
         dualLog('warn', 'Scheduler not started - media handler did not set isProcessing=true');
       }
       
-      return { timerId: _schedulerTimerId };
+      return { videoEl: _videoElForScheduler, canvasEl: _canvasElForScheduler };
     } catch (error) {
       dualLog('error', 'Engine wrapper: startProcessing failed', { 
         error: error.message, 
@@ -358,16 +280,11 @@ export function createEngine() {
       // Call the media handler - it will set state.isProcessing = false
       const result = await mediaHandler(context);
 
-      if (_schedulerTimerId != null) {
-        clearTimeout(_schedulerTimerId);
-        _schedulerTimerId = null;
-        dualLog('info', 'Scheduler stopped.');
-      }
-      _processingLock = false;
-      _pending = false;
-      state.processingTimerId = null;
+      // Clean up video element references
       _videoElForScheduler = null;
       _canvasElForScheduler = null;
+      // Note: The modern scheduler (scheduler.js) automatically handles stopping
+      dualLog('info', 'Video processing stopped.');
 
       return result;
     } catch (error) {
