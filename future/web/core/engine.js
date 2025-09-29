@@ -289,6 +289,8 @@ export function createEngine() {
   registerMediaCommands({
     registerCommandHandler: (name, fn) => { handlers[`__media_${name}`] = fn; },
     dispatch: engineInstance.dispatch,
+    onStateChange: engineInstance.onStateChange,
+    getState: engineInstance.getState,
   });
 
   // Register settings and debug command modules
