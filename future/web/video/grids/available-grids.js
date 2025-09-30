@@ -12,6 +12,7 @@
 // new grid modules can be discovered without editing this file.
 
 const GRID_MODULES = [
+  'linear-pitch',    // NEW DEFAULT - Simple vertical position to pitch mapping
   'circle-of-fifths',
   'hex-tonnetz'
   // add more module basenames here as they are implemented R4925: we should try to automate this somehow.

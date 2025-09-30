@@ -234,13 +234,23 @@ function releaseOscillator(oscillator) {
  *   should have `objectType`, `pitch`, `intensity`, and `position`.
  */
 export async function playCues(cues) {
+  // Add debugging to track audio processing
+  console.log('Audio processor playCues called:', { 
+    cuesCount: cues?.length, 
+    audioContextState: audioManager?.context?.state,
+    firstCue: cues?.[0] 
+  });
+  
   // If an external audio API was registered, prefer it. This allows DI migration.
   if (_audioApi && typeof _audioApi.playCues === 'function') {
     return _audioApi.playCues(cues);
   }
 
   const context = audioManager?.context;
-  if (!context || context.state !== 'running') return;
+  if (!context || context.state !== 'running') {
+    console.log('Audio context not ready:', { hasContext: !!context, state: context?.state });
+    return;
+  }
 
   // 1. Group the incoming cues by the synthesizer function that needs to play them.
   const notesBySynth = new Map();
@@ -251,6 +261,14 @@ export async function playCues(cues) {
 
   for (const cue of cuesToProcess) {
     const profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
+    console.log('Processing cue:', { 
+      objectType: cue.objectType, 
+      hasProfile: !!profile, 
+      hasPlayFunction: profile && typeof profile.playFunction === 'function',
+      pitch: cue.pitch,
+      intensity: cue.intensity 
+    });
+    
     if (!profile || typeof profile.playFunction !== 'function') continue;
 
     if (!notesBySynth.has(profile.playFunction)) {

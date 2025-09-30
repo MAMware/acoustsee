@@ -28,6 +28,13 @@ export function registerSonificationCommands(engine) {
     // --- END BENCHMARK ---
 
     if (payload && Array.isArray(payload.cues)) {
+      // Add debug logging to see what cues we're getting
+      structuredLog('DEBUG', 'Sonification: Processing cues', { 
+        cuesCount: payload.cues.length, 
+        firstCue: payload.cues[0],
+        frameId: payload.frameId 
+      });
+      
       // This is the bridge: call the audio API with the data from video.
       playCues(payload.cues);
     } else {

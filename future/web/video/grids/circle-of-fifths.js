@@ -1,4 +1,16 @@
+// filepath: future/web/video/grids/circle-of-fifths.js
+// This grid's sole responsibility is to map radial motion to the circle of fifths.
+
+export const meta = {
+  id: 'circle-of-fifths',
+  name: 'Circle of Fifths',
+  description: 'Maps the angle of motion around the center of the screen to a 12-note scale based on the circle of fifths.'
+};
+
+const circleOfFifthsScale = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5]; // MIDI note offsets from root
+
 // Lightweight, local motion detector (coarse, fast). Replace with real detector later.
+// DEPRECATED: Kept for backward compatibility only
 function detectMotion(frameData, prevFrameData, width, height, opts = {}) {
    const step = opts.step || 6; // sample spacing (higher -> cheaper)
    const threshold = opts.threshold || 24; // per-channel diff threshold to count movement
@@ -24,7 +36,7 @@ function detectMotion(frameData, prevFrameData, width, height, opts = {}) {
 }
 
 export function mapFrameToCues(frameData, width, height, prevFrameData, opts = {}) {
-    // opts may include precomputed movingRegions or a luma plane: { movingRegions, yPlane }
+    // DEPRECATED: Use mapFunction instead for proper separation of concerns
     let movingRegions = opts.movingRegions;
     if (!movingRegions) {
        if (opts.yPlane) {
@@ -125,17 +137,44 @@ export function mapFrameToCircleOfFifths(frameData, width, height, prevFrameData
 // contract used by available-grids.js. This adapter delegates to existing
 // legacy mappers while preserving their original exports for external users.
 export const mapFunction = function(frameData, width, height, prevFrameData, opts = {}) {
-   // Some mappers (like this file) expose multiple mapping utilities; choose
-   // the most appropriate legacy function based on opts.mode.
-   if (opts && opts.mode === 'circle') {
-      return mapFrameToCircleOfFifths(frameData, width, height, prevFrameData, opts.panValue || 0);
-   }
-   // Default to returning cue-style output when used as a generic mapFunction.
-   // Many consumers expect either { cues } or { bins } depending on the mapper.
-   // Here we prefer the cues variant when asked.
-   if (typeof mapFrameToCues === 'function') {
-      return mapFrameToCues(frameData, width, height, prevFrameData, opts);
-   }
-   // Fallback to circle-of-fifths bin mapper if cues are not available.
-   return mapFrameToCircleOfFifths(frameData, width, height, prevFrameData, opts.panValue || 0);
+  const movingRegions = opts.movingRegions || [];
+  const cues = [];
+  const maxNotes = 12;
+
+  // Center of the screen
+  const cx = width / 2;
+  const cy = height / 2;
+  const rootMidiNote = 60; // Middle C
+
+  for (const region of movingRegions.slice(0, maxNotes)) {
+    const { x, y, intensity } = region;
+    
+    // Calculate the angle of the motion relative to the center
+    const dx = x - cx;
+    const dy = y - cy;
+    const angle = Math.atan2(dy, dx); // Angle in radians from -PI to PI
+    
+    // Normalize angle to a 0-1 range
+    const normalizedAngle = (angle + Math.PI) / (2 * Math.PI);
+    
+    // Map the angle to one of the 12 bins
+    const bin = Math.floor(normalizedAngle * 12) % 12;
+    const midiNote = rootMidiNote + circleOfFifthsScale[bin];
+    
+    // Convert MIDI note number to frequency (Hz)
+    const pitch = 440 * Math.pow(2, (midiNote - 69) / 12);
+
+    cues.push({
+      objectType: 'default_motion', // This grid still produces a generic motion type
+      pitch,
+      intensity: Math.min(1.0, intensity / 100),
+      position: {
+        x: (x / width) * 2 - 1,
+        y: -((y / height) * 2 - 1),
+        z: 0.0
+      }
+    });
+  }
+  
+  return { cues };
 };

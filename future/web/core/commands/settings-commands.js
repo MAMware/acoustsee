@@ -13,18 +13,20 @@ export function registerSettingsCommands(engine) {
   const { registerCommandHandler, dispatch } = engine;
 
   // --- Handlers for Debug UI Controls ---  
-  registerCommandHandler('setGridType', async ({ state: s, payload }) => {
+  registerCommandHandler('setGridType', (payload) => {
     const newGridId = payload.gridType;
-    if (s.availableGrids.find(g => g.id === newGridId)) {
-      s.gridType = newGridId;
+    const currentState = engine.getState();
+    if (currentState.availableGrids && currentState.availableGrids.find(g => g.id === newGridId)) {
+      engine.setState({ gridType: newGridId });
       structuredLog('INFO', 'DebugUI: Grid type set', { gridType: newGridId });
     }
   });
 
-  registerCommandHandler('setSynthEngine', async ({ state: s, payload }) => {
+  registerCommandHandler('setSynthEngine', (payload) => {
     const newEngineId = payload.synthEngine;
-    if (s.availableEngines.find(e => e.id === newEngineId)) {
-      s.synthesisEngine = newEngineId;
+    const currentState = engine.getState();
+    if (currentState.availableEngines && currentState.availableEngines.find(e => e.id === newEngineId)) {
+      engine.setState({ synthesisEngine: newEngineId });
       structuredLog('INFO', 'DebugUI: Synth engine set', { synthEngine: newEngineId });
     }
   });
