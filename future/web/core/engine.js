@@ -20,6 +20,7 @@ import { registerDebugCommands } from './commands/debug-commands.js';
 import { registerUICommands } from './commands/ui-commands.js';
 import { registerPerformanceCommands } from './commands/performance-commands.js';
 import { registerSonificationCommands } from './commands/sonification-commands.js'; 
+import { registerModeCommands } from './commands/mode-commands.js';
 import { initializeScheduler } from './scheduler.js'; 
 import { registerDiagnosticsCommands } from './commands/diagnostics-commands.js'; 
 
@@ -223,6 +224,7 @@ export function createEngine() {
   registerUICommands(engineInstance);
   registerPerformanceCommands(engineInstance);
   registerDiagnosticsCommands(engineInstance);
+  registerModeCommands(engineInstance);
 
   // --- MEDIA WRAPPER HANDLERS ---
   // IMPORTANT: These must be registered AFTER all external modules to ensure they

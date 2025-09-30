@@ -162,6 +162,17 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       attachedHandlers.push({ el: enableFrameWorker, type: 'change', fn: onFW });
     }
 
+  // Mode select wiring
+  const modeSelect = panel.querySelector('#mode-select');
+    if (modeSelect) {
+      const onModeChange = (e) => {
+        const mode = e.target.value;
+        engine.dispatch && engine.dispatch('setMode', { mode });
+      };
+      modeSelect.addEventListener('change', onModeChange);
+      attachedHandlers.push({ el: modeSelect, type: 'change', fn: onModeChange });
+    }
+
   // Performance controls wiring
   const fpsModeSel = panel.querySelector('#fps-mode-select');
     if (fpsModeSel) {

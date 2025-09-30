@@ -111,6 +111,11 @@ export function initializeDevPanel(arg1, arg2) {
               </div>
               <div class="controls-grid-2col">
                 <div class="control-column">
+                  <label>Operating Mode</label>
+                  <select id="mode-select">
+                    <option value="flow">Flow (Navigation)</option>
+                    <option value="focus">Focus (Identification)</option>
+                  </select>
                   <label>Grid Type</label>
                   <select id="grid-type-select"></select>
                   <label>Motion Threshold</label>
@@ -320,9 +325,12 @@ export function initializeDevPanel(arg1, arg2) {
       });
       
       // Starts the worker chart if it's visible on initial load.
-      const workerSection = panel.querySelector('.worker-section');
+      const workerSection = panel.querySelector('#worker-explorer-container');
       if (workerSection && !workerSection.classList.contains('collapsed')) {
-        startChart();
+        // Add a small delay to ensure workers are registered and data is available
+        setTimeout(() => {
+          startChart();
+        }, 500);
       }
 
       // Also use Page Visibility API to globally pause the chart
@@ -339,6 +347,20 @@ export function initializeDevPanel(arg1, arg2) {
         }
       });
 
+      // Start chart when processing begins (workers become active)
+      engine.onStateChange && engine.onStateChange(state => {
+        const workerSection = panel.querySelector('#worker-explorer-container');
+        if (workerSection && !workerSection.classList.contains('collapsed')) {
+          if (state.isProcessing && workerChartRenderLoopId === null) {
+            // Processing started and chart isn't running - start it
+            startChart();
+          } else if (!state.isProcessing && workerChartRenderLoopId !== null) {
+            // Processing stopped - optionally keep chart running to show final data
+            stopChart(); // Uncomment if you want chart to stop when processing stops
+          }
+        }
+      });
+
     } catch (e) { console.error('Failed to wire collapse buttons or worker chart', e); }
 
     // --- Populate Version Subtitle ---
@@ -352,9 +374,22 @@ export function initializeDevPanel(arg1, arg2) {
     // --- Cost-Effective Video Preview Wiring ---
     try {
       const previewEl = panel.querySelector('#devpanel-video-preview');
-      if (previewEl && DOM && DOM.videoFeed && DOM.videoFeed.srcObject) {
-        previewEl.srcObject = DOM.videoFeed.srcObject;
-      }
+      
+      // Wire up the video preview to show the camera stream
+      const updateVideoPreview = (state) => {
+        if (previewEl && state && state.stream) {
+          previewEl.srcObject = state.stream;
+        } else if (previewEl && DOM && DOM.videoFeed && DOM.videoFeed.srcObject) {
+          previewEl.srcObject = DOM.videoFeed.srcObject;
+        }
+      };
+      
+      // Update on state changes
+      engine.onStateChange(updateVideoPreview);
+      
+      // Also update immediately with current state
+      updateVideoPreview(engine.getState());
+      
     } catch (e) { console.error('Failed to wire video preview', e); }
 
     // --- Wire Core Action Buttons & Renderer ---
@@ -430,6 +465,7 @@ export function initializeDevPanel(arg1, arg2) {
     const stateView = panel.querySelector('#devpanel-state-view');
     const gridTypeSelect = panel.querySelector('#grid-type-select');
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
+    const modeSelect = panel.querySelector('#mode-select');
     const maxNotesSlider = panel.querySelector('#max-notes-slider');
     const maxNotesValue = panel.querySelector('#max-notes-value');
     const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
@@ -489,6 +525,7 @@ export function initializeDevPanel(arg1, arg2) {
       try {
         if (gridTypeSelect) gridTypeSelect.value = state.gridType;
         if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
+        if (modeSelect) modeSelect.value = state.currentMode;
         if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
         if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
         if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
