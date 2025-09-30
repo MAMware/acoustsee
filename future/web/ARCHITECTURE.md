@@ -186,23 +186,16 @@ The video subsystem captures and analyzes camera input using an intelligent, per
 
 ### Core Architecture: FrameProvider + Orchestrator + Specialists
 
-*   **FrameProvider Worker:** A dedicated worker that isolates camera access. It runs its own `requestAnimationFrame` loop to provide a clean, steady stream of video frames to the main application, tagging each with timing metadata for performance measurement.
-*   **Orchestrator (`frame-processor.js`):** The central brain of the video pipeline. It receives frames from the `FrameProvider` and, based on the application's current mode (`flow` vs. `focus`), delegates the analysis work to the appropriate specialist workers.
-*   **Specialist Workers (`motion-worker.js`, etc.):** Each specialist is an expert in a single, computationally expensive task (e.g., motion detection, depth estimation). They run in parallel to keep the main UI thread responsive and are independently monitorable in the dev panel.
+*   **FrameProvider Worker:** A dedicated worker that isolates camera access. It runs its own `requestAnimationFrame` loop to provide a clean, steady stream of video frames, tagging each with timing metadata for performance measurement.
+*   **Orchestrator (`frame-processor.js`):** The central brain of the video pipeline. It receives frames from the `FrameProvider` and, based on the application's current mode (`flow` vs. `focus`), delegates analysis tasks to the appropriate specialist workers.
+*   **Specialist Workers (`motion-worker.js`, etc.):** Each specialist is an expert in a single, computationally expensive task (e.g., motion detection, object recognition, shape analysis). They return structured, semantic data.
+*   **Grids (`grids/`):** Pluggable **"Sonic Sculptor"** modules. Their role changes based on the mode:
+    *   **In `Flow` Mode:** They translate unstructured spatial data (like raw motion) into a musical concept, creating an ambient soundscape. Example: `linear-pitch.js`.
+    *   **In `Focus` Mode:** They translate structured semantic data from the specialists (like a detected object's shape or form) into a specific sonic signature, like a melody or arpeggio, effectively "drawing" the object's form with sound.
 
-### Mode-Adaptive Processing
+### Data Flow & Output Contract
 
-*   **In Flow Mode:** The Orchestrator primarily uses lightweight, high-performance algorithms (e.g., `motion-worker`) optimized for low latency and battery efficiency.
-*   **In Focus Mode:** The Orchestrator will engage advanced ML models for object segmentation and depth estimation, producing semantically rich cues.
-
-### Performance Feedback Integration (AutoFPS)
-
-The video pipeline is a key part of the application-wide AutoFPS feedback loop:
-- **Measurement:** Frame processing times are measured end-to-end, from the `FrameProvider` to the `Sonification Handler`, and reported via `logFrameBenchmark` events.
-- **Analysis:** The `Diagnostics Handler` collects these real-world timings and analyzes them periodically.
-- **Adaptation:** The system adjusts the application's target `updateInterval` to find a sustainable balance between processing speed and device capabilities. (Future work will allow this system to also directly throttle the `FrameProvider` by adjusting resolution or frame skip rates for even finer control).
-
-*   **Output Contract:** The final output of the pipeline is always an array of `cues`, with the content and richness of these cues adapting to the current operating mode.
+The Orchestrator coordinates the specialists and the active Grid to produce the final output: an array of `cues`. This array is then dispatched in an `'audioCuesReady'` event. The content and richness of these cues adapt to both the operating mode and real-time performance constraints.
 
 ## 9. Audio Subsystem: The Adaptive Conductor
 

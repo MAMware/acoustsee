@@ -2,6 +2,34 @@
 import { structuredLog } from '../utils/logging.js';
 import { rgbaToY } from './videoframe-helper.js';
 
+// --- ADD THESE SIMULATED WORKER FUNCTIONS at the top of the file, after the imports ---
+async function simulateObjectDetection(motionResults) {
+  // If there is significant motion, pretend we detected a "bottle".
+  if (motionResults.movingRegions.length > 0) {
+    const mainRegion = motionResults.movingRegions[0];
+    return {
+      detectedObjects: [{
+        label: 'bottle',
+        confidence: 0.95,
+        // The position of the object is the position of the most intense motion
+        position: { x: mainRegion.x, y: mainRegion.y } 
+      }]
+    };
+  }
+  return { detectedObjects: [] };
+}
+
+async function simulateShapeAnalysis(object) {
+  // Pretend all detected objects are "tall and thin".
+  if (object) {
+    return {
+      shape: { verticality: 0.9, horizontality: 0.2, complexity: 0.3 }
+    };
+  }
+  return { shape: {} };
+}
+// --- END SIMULATED WORKERS ---
+
 // --- Module State ---
 let _config = {};
 let frameProviderWorker = null;
@@ -126,37 +154,63 @@ export async function initializeVideo(config) {
     // This onmessage handler IS the Orchestrator.
     frameProviderWorker.onmessage = async (event) => {
       const { type, payload } = event.data;
-      if (type === 'frame') {
-        const state = engine.getState();
-        const frameData = new Uint8ClampedArray(payload.imageDataBuffer);
-        let results = {};
+      if (type !== 'frame') return;
 
-        if (state.currentMode === 'flow') {
-          results = await processWithMotionWorker(frameData, payload.width, payload.height);
-        } else if (state.currentMode === 'focus') {
-          const [motion] = await Promise.all([
-             processWithMotionWorker(frameData, payload.width, payload.height),
-             // processWithDepthWorker(...) when ready
-          ]);
-          results = { ...motion };
-        }
+      const state = engine.getState();
+      const frameData = new Uint8ClampedArray(payload.imageDataBuffer);
+      const grid = _config.getCurrentGrid();
+      let dispatchPayload = null;
+
+      if (state.currentMode === 'flow') {
+        const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height);
         
-        results.frameId = payload.frameId;
-        results.startTime = payload.startTime;
-        
-        const grid = _config.getCurrentGrid();
         if (grid && grid.mapFunction) {
-          const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, results);
+          const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
           if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
-            engine.dispatch('audioCuesReady', {
-              cues: gridOutput.cues,
-              frameId: payload.frameId,
-              startTime: payload.startTime
-            });
+            // In Flow mode, the payload is the simple cues array
+            dispatchPayload = gridOutput.cues;
           }
         }
-      } else if (type === 'ready') {
-        structuredLog('INFO', 'Frame provider worker is ready');
+
+      } else if (state.currentMode === 'focus') {
+        // In Focus mode, run specialists and generate a rich payload
+        const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height);
+        const objectResults = await simulateObjectDetection(motionResults);
+
+        if (objectResults.detectedObjects.length > 0) {
+          const mainObject = objectResults.detectedObjects[0];
+          const shapeResults = await simulateShapeAnalysis(mainObject);
+
+          // Part A: Create the Primary "Identity" Cue
+          const primaryCue = {
+            objectType: mainObject.label, // 'bottle' from our simulation
+            intensity: mainObject.confidence,
+            position: mainObject.position
+          };
+
+          // Part B: Use the Grid as a "Sonic Sculptor" to create the "sheet music"
+          let secondaryCues = [];
+          if (grid && grid.mapFunction) {
+             const gridOutput = grid.mapFunction(null, payload.width, payload.height, null, shapeResults);
+             secondaryCues = (gridOutput && gridOutput.cues) || [];
+          }
+
+          // If the grid didn't produce any "form" cues, create a simple default one.
+          if (secondaryCues.length === 0) {
+            secondaryCues.push({ pitch: 440, intensity: 0.8, position: mainObject.position });
+          }
+          
+          // In Focus mode, the payload is a complex object
+          dispatchPayload = { primaryCue, secondaryCues };
+        }
+      }
+      
+      if (dispatchPayload) {
+        engine.dispatch('audioCuesReady', {
+          ...dispatchPayload, // This will spread either the cues array or the {primary, secondary} object
+          frameId: payload.frameId,
+          startTime: payload.startTime
+        });
       }
     };
 

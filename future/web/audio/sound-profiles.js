@@ -44,5 +44,14 @@ export const soundProfileManifest = {
       decay: 0.99,
       duration: 1.0
     }
+  },
+
+  'bottle': {
+    playFunction: playStrings, // The Karplus-Strong synth is great for a "plucked" plastic sound
+    params: {
+      decay: 0.97,
+      duration: 0.8
+      // Pitch and intensity will be provided by the Grid's "sonic sculpture"
+    }
   }
 };

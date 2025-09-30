@@ -233,48 +233,38 @@ function releaseOscillator(oscillator) {
  * @param {Array<Object>} cues - An array of cue objects from the frame processor. Each cue
  *   should have `objectType`, `pitch`, `intensity`, and `position`.
  */
-export async function playCues(cues) {
-  // Add debugging to track audio processing
-  console.log('Audio processor playCues called:', { 
-    cuesCount: cues?.length, 
-    audioContextState: audioManager?.context?.state,
-    firstCue: cues?.[0] 
-  });
-  
-  // If an external audio API was registered, prefer it. This allows DI migration.
-  if (_audioApi && typeof _audioApi.playCues === 'function') {
-    return _audioApi.playCues(cues);
-  }
-
+export async function playCues(payload) {
   const context = audioManager?.context;
-  if (!context || context.state !== 'running') {
-    console.log('Audio context not ready:', { hasContext: !!context, state: context?.state });
-    return;
+  if (!context || context.state !== 'running') return;
+
+  // The new payload can be a simple array (for Flow mode) or a complex object (for Focus mode)
+  const isFocusMode = payload.primaryCue && payload.secondaryCues;
+  
+  let primaryProfile, cuesToProcess;
+
+  if (isFocusMode) {
+    // In Focus Mode, the primary cue determines the instrument (timbre).
+    primaryProfile = soundProfileManifest[payload.primaryCue.objectType];
+    // The secondary cues are the "sheet music" that describes the object's form.
+    cuesToProcess = payload.secondaryCues;
+  } else {
+    // In Flow Mode, the payload is just a simple array of cues.
+    cuesToProcess = Array.isArray(payload) ? payload : [];
   }
 
-  // 1. Group the incoming cues by the synthesizer function that needs to play them.
   const notesBySynth = new Map();
+  const maxNotes = Number(_config.maxNotes) || 12;
 
-  // Use maxNotes from the injected config, fall back to a safe default.
-  const maxNotes = Number(_config.maxNotes) || 8;
-  const cuesToProcess = Array.isArray(cues) ? cues.slice(0, maxNotes) : [];
-
-  for (const cue of cuesToProcess) {
-    const profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
-    console.log('Processing cue:', { 
-      objectType: cue.objectType, 
-      hasProfile: !!profile, 
-      hasPlayFunction: profile && typeof profile.playFunction === 'function',
-      pitch: cue.pitch,
-      intensity: cue.intensity 
-    });
-    
+  for (const cue of cuesToProcess.slice(0, maxNotes)) {
+    // If in Focus mode, we force the synth from the primary object's profile.
+    // Otherwise, in Flow mode, we look up the profile for each individual cue.
+    const profile = isFocusMode ? primaryProfile : (soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion']);
     if (!profile || typeof profile.playFunction !== 'function') continue;
 
     if (!notesBySynth.has(profile.playFunction)) {
       notesBySynth.set(profile.playFunction, []);
     }
-    // Create a "note" object by combining static profile params with dynamic cue properties.
+
     const note = {
       ...profile.params,
       pitch: cue.pitch,
@@ -284,23 +274,13 @@ export async function playCues(cues) {
     notesBySynth.get(profile.playFunction).push(note);
   }
 
-  // 2. Call each synth function ONCE with the array of notes it's responsible for.
+  // The rest of the function remains the same, executing the synths.
   for (const [playFunction, notes] of notesBySynth.entries()) {
     try {
-      const synthContext = {
-        audioContext: context,
-        getOscillator,
-        releaseOscillator,
-        oscillatorPool,
-        masterGain,
-        // Pass along optional settings object from initializer config so synths
-        // can be pure and receive their settings via ctx.settings instead of
-        // reading global `settings`.
-        settings: _config.settings || undefined
-      };
+      const synthContext = { audioContext: context, getOscillator, releaseOscillator, masterGain, settings: _config.settings };
       playFunction(notes, synthContext);
     } catch (e) {
-      structuredLog('ERROR', `Synth function '${playFunction.name}' failed`, { error: e?.message || String(e) });
+      structuredLog('ERROR', `Synth function '${playFunction.name}' failed`, { error: e?.message });
     }
   }
 }
