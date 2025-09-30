@@ -110,6 +110,13 @@ export async function init() {
     // Validate DOM early
     validateDOM();
 
+    // STEP 0: Create the engine first (required by all command handlers)
+    const engine = createEngine();
+    setDispatchEvent(engine.dispatch);
+    
+    // Make engine globally available for UI components
+    window.engine = engine;
+
     // STEP 1: Load all asynchronous resources 
     try {
       const grids = await loadAvailableGrids();
@@ -154,10 +161,6 @@ export async function init() {
       if (settings.ttsEnabled) speakText(msg);
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
-
-    // --- Headless engine: instantiate and wire up ---
-    const engine = createEngine();
-    setDispatchEvent(engine.dispatch);
 
     // --- UI LOADER LOGIC (dynamic import to avoid duplicate initialization) ---
     const urlParams = new URLSearchParams(window.location.search);
