@@ -226,30 +226,32 @@
 
 /* Logs Section */
 .logs-section {
-  flex-grow: 1; /* Allow log section to fill remaining space */
+  flex-shrink: 0; /* Prevent section from shrinking */
   display: flex;
   flex-direction: column;
-  height: 40vh; /* Allow it to take up to 40% of the viewport height */
-  max-height: 400px; /* But cap it at 400px on very tall screens */
+  height: 300px; /* Fixed height to prevent constant resizing */
 }
 
 .log-controls {
   display: flex;
   gap: 8px;
   margin-bottom: 8px;
+  flex-shrink: 0; /* Controls stay at fixed size */
 }
 
 #devpanel-log-view {
   flex: 1;
-  min-height: 150px;
-  overflow-y: auto;
+  min-height: 250px;
+  max-height: 250px; /* Fixed maximum height */
+  overflow-y: auto; /* Enable scrolling */
+  overflow-x: hidden; /* Prevent horizontal scroll */
   background: #212830;
   padding: 8px;
   border-radius: 4px;
   font-family: "SF Mono", "Fira Code", "Consolas", menlo, monospace;
   font-size: 12px;
-  flex-grow: 1;
-  height: auto; /* Remove any previous fixed height */
+  height: 250px; /* Fixed height to prevent expansion */
+  scroll-behavior: smooth; /* Smooth scrolling for better UX */
 }
 .log-entry {
   display: flex;
