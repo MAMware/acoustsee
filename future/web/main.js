@@ -19,6 +19,7 @@ import { initializeAudio, bindAudioManager as bindAudioProcessor } from './audio
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { getComponent } from './ui/ui-registry.js';
+import { createIngestInterceptor, setupIngestErrorTracking } from './utils/ingest.js';
 
 // UI modules are loaded dynamically below to ensure only one UI initializes
 // at runtime (debug vs accessible). Dynamic import prevents duplicate IDs
@@ -111,11 +112,18 @@ export async function init() {
     validateDOM();
 
     // STEP 0: Create the engine first (required by all command handlers)
-    const engine = createEngine();
+    const baseEngine = createEngine();
+    
+    // Wrap engine with smart ingest interceptor that leverages existing performance data
+    const engine = createIngestInterceptor(baseEngine);
+    
     setDispatchEvent(engine.dispatch);
     
     // Make engine globally available for UI components
     window.engine = engine;
+
+    // Setup ingest error tracking
+    setupIngestErrorTracking();
 
     // STEP 1: Load all asynchronous resources 
     try {

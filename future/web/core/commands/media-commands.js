@@ -146,7 +146,7 @@ export function registerMediaCommands(engine) {
         return { cameraActive: true };
       }
     } catch (e) {
-      dualLog('warn', 'toggleCamera failed', { error: e?.message || String(e) });
+      structuredLog('WARN', 'toggleCamera failed', { error: e?.message || String(e) });
       return { ok: false };
     }
   });
@@ -169,10 +169,10 @@ export function registerMediaCommands(engine) {
         return { micActive: false };
       }
     } catch (e) {
-      dualLog('warn', 'toggleMicrophone failed', { error: e?.message || String(e) });
+      structuredLog('WARN', 'toggleMicrophone failed', { error: e?.message || String(e) });
       return { ok: false };
     }
   });
   
-  dualLog('info', 'MEDIA-COMMANDS: All command handlers registered successfully.');
+  structuredLog('INFO', 'MEDIA-COMMANDS: All command handlers registered successfully.');
 }

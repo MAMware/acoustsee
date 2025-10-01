@@ -152,10 +152,19 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
       }
     }
   output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${message}${payload}`);
+    
+    // Enhanced IndexedDB persistence for important logs
     if (persist) {
-      addIdbLog(logEntry).catch(err => {
-        console.warn('Failed to persist log to IndexedDB:', err.message);
-      });
+      // Always persist WARN+ level logs and performance_ingest data
+      const shouldPersist = numericLevel >= LOG_LEVELS.WARN || 
+                           message === 'performance_ingest' || 
+                           message.includes('error_ingest');
+      
+      if (shouldPersist) {
+        addIdbLog(logEntry).catch(err => {
+          console.warn('Failed to persist log to IndexedDB:', err.message);
+        });
+      }
     }
   } finally {
     inStructuredLog = false;
