@@ -213,8 +213,8 @@ function getOscillator() {
 
   if (oscillatorPool.length > 0) {
     const osc = oscillatorPool.pop();
-    // Only log occasionally to avoid flooding console in debug mode
-    if (Math.random() < 0.1) { // Log ~10% of calls
+    // Aggressive sampling to reduce dev panel spam - only log ~2% of calls
+    if (Math.random() < 0.02) {
       structuredLog('DEBUG', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
     }
     return osc;
@@ -231,8 +231,8 @@ function releaseOscillator(oscillator) {
   if (context) {
     const newOsc = context.createOscillator();
     oscillatorPool.push(newOsc);
-    // Only log occasionally to avoid flooding console in debug mode
-    if (Math.random() < 0.1) { // Log ~10% of calls
+    // Aggressive sampling to reduce dev panel spam - only log ~2% of calls
+    if (Math.random() < 0.02) {
       structuredLog('DEBUG', 'releaseOscillator: Returned oscillator to pool', { poolSize: oscillatorPool.length });
     }
   }

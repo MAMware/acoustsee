@@ -148,9 +148,19 @@ export function createEngine() {
         availableHandlers: Object.keys(handlers).filter(k => k.includes(commandName) || k.includes('media'))
       };
       
-      // Reduce logging frequency for high-frequency commands to improve performance
+      // Aggressive sampling for DEBUG logs to reduce dev panel spam
       const isHighFrequencyCommand = ['audioCuesReady', 'logFrameBenchmark'].includes(commandName);
-      const shouldLog = !isHighFrequencyCommand || (Date.now() % 1000 < 100); // Log ~10% of high-frequency commands
+      const isPerformanceCommand = ['startProcessing', 'stopProcessing', 'switchMode', 'setFrameProviderThrottle'].includes(commandName);
+      
+      // Performance commands are now handled by ingest system, so reduce their direct logging
+      let shouldLog = false;
+      if (isPerformanceCommand) {
+        shouldLog = Math.random() < 0.05; // Only 5% chance for performance commands (ingest handles them)
+      } else if (isHighFrequencyCommand) {
+        shouldLog = Math.random() < 0.02; // Only 2% chance for high-frequency commands
+      } else {
+        shouldLog = Math.random() < 0.1; // 10% chance for other commands
+      }
       
       if (shouldLog) {
         structuredLog('DEBUG', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });

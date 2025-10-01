@@ -21,13 +21,24 @@ export function createIngestInterceptor(engine) {
   const originalDispatch = engine.dispatch;
   
   engine.dispatch = function(command, ...args) {
+    // Check if event should be tracked BEFORE executing
+    const eventConfig = PERFORMANCE_EVENTS[command];
+    
+    // Execute original command first
     const result = originalDispatch.call(this, command, ...args);
     
-    // Only track performance-relevant events
-    const eventConfig = PERFORMANCE_EVENTS[command];
+    // Track performance event AFTER successful execution
     if (eventConfig) {
-      const payload = createPerformancePayload(command, eventConfig, engine);
-      structuredLog(eventConfig.level, 'performance_ingest', command, payload);
+      try {
+        const payload = createPerformancePayload(command, eventConfig, engine);
+        structuredLog(eventConfig.level, 'performance_ingest', command, payload);
+      } catch (error) {
+        // Don't break the original command if ingest fails
+        structuredLog('WARN', 'ingest_error', 'Failed to create performance payload', { 
+          command, 
+          error: error.message 
+        });
+      }
     }
     
     return result;
@@ -68,22 +79,26 @@ function createPerformanceContext(command, state) {
   
   // Use existing deviceSummary() for device capabilities
   if (command === 'startProcessing') {
-    const device = deviceSummary();
-    context.device_capabilities = {
-      cores: device.hardwareConcurrency,
-      memory: device.deviceMemory,
-      platform: device.platform,
-      is_mobile: device.isMobile,
-      user_agent_summary: device.userAgent // Already sanitized in performance.js
-    };
-    
-    // Current performance configuration
-    context.performance_config = {
-      update_interval: state.updateInterval,
-      fps_mode: state.settings?.fpsMode,
-      auto_fps_enabled: state.settings?.autoFPS,
-      current_mode: state.currentMode
-    };
+    try {
+      const device = deviceSummary();
+      context.device_capabilities = {
+        cores: device.hardwareConcurrency,
+        memory: device.deviceMemory,
+        platform: device.platform,
+        is_mobile: device.isMobile,
+        user_agent_summary: device.userAgent
+      };
+      
+      // Current performance configuration
+      context.performance_config = {
+        update_interval: state.updateInterval,
+        fps_mode: state.settings?.fpsMode,
+        auto_fps_enabled: state.settings?.autoFPS,
+        current_mode: state.currentMode
+      };
+    } catch (error) {
+      context.device_error = 'Failed to gather device summary';
+    }
   }
   
   // AutoFPS decisions for optimization insights
@@ -91,7 +106,7 @@ function createPerformanceContext(command, state) {
     context.auto_optimization = {
       throttle_level: state.frameProviderThrottle,
       benchmark_interval: state.autoFpsBenchmark?.intervalMs,
-      performance_health: state.sessionHealth // If available from performance.js
+      performance_health: state.sessionHealth
     };
   }
   
