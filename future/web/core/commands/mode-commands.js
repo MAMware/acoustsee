@@ -6,7 +6,10 @@ import { structuredLog } from '../../utils/logging.js';
  * Register mode-related commands with the engine.
  */
 export function registerModeCommands(engine) {
-  engine.registerCommand('setMode', ({ mode }) => {
+  const { registerCommandHandler } = engine;
+  
+  registerCommandHandler('setMode', ({ payload }) => {
+    const { mode } = payload;
     const validModes = ['flow', 'focus'];
     if (!validModes.includes(mode)) {
       structuredLog('WARN', 'Invalid mode requested', { mode, validModes });
