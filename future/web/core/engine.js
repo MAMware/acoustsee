@@ -176,6 +176,7 @@ export function createEngine() {
     registerCommandHandler,
     onStateChange,
     getState,
+    setState,
     onBenchmarkRequired,
   // Expose telemetry for testing/inspecting fallback counters
   getTelemetry: () => ({ ..._telemetry }),

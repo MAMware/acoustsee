@@ -235,7 +235,21 @@ function releaseOscillator(oscillator) {
  */
 export async function playCues(payload) {
   const context = audioManager?.context;
-  if (!context || context.state !== 'running') return;
+  
+  structuredLog('DEBUG', 'playCues called', { 
+    hasContext: !!context, 
+    contextState: context?.state,
+    payloadType: Array.isArray(payload) ? 'array' : 'object',
+    payload: payload 
+  });
+  
+  if (!context || context.state !== 'running') {
+    structuredLog('WARN', 'playCues: AudioContext not running', { 
+      hasContext: !!context, 
+      state: context?.state 
+    });
+    return;
+  }
 
   // The new payload can be a simple array (for Flow mode) or a complex object (for Focus mode)
   const isFocusMode = payload.primaryCue && payload.secondaryCues;
