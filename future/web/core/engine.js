@@ -5,7 +5,6 @@
 
 import { settings } from './state.js';
 import { structuredLog } from '../utils/logging.js';
-import { output as coreLoggerOutput } from '../utils/core-logger.js';
 import logger from '../utils/logging.js';
 import { getText, speakText, announceMessage } from '../utils/utils.js'; // <-- REDUCED IMPORTS
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './media-controller.js';
@@ -24,16 +23,7 @@ import { registerModeCommands } from './commands/mode-commands.js';
 import { initializeScheduler } from './scheduler.js'; 
 import { registerDiagnosticsCommands } from './commands/diagnostics-commands.js'; 
 
-// Dual logging helper to avoid duplication
-const dualLog = (level, message, data = null) => {
-  // For structuredLog, always provide a proper data object
-  const telemetryData = data && typeof data === 'object' ? data : {};
-  structuredLog(level.toUpperCase(), message, telemetryData);
-  
-  // For core logger, format the message appropriately
-  const consoleMessage = data ? `${message} - ${JSON.stringify(data)}` : message;
-  coreLoggerOutput(level.toLowerCase(), consoleMessage);
-};
+// Core engine state and functionality
 
 function _resolveStateModule() {
   // In Jest tests we rely on runtime require to pick up per-test mocks. In
@@ -163,7 +153,7 @@ export function createEngine() {
       const shouldLog = !isHighFrequencyCommand || (Date.now() % 1000 < 100); // Log ~10% of high-frequency commands
       
       if (shouldLog) {
-        dualLog('debug', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });
+        structuredLog('DEBUG', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });
       }
     const result = await handler({ state, payload, dispatch, emit });
       // notify after handler runs in case it mutated shared state
@@ -241,14 +231,14 @@ export function createEngine() {
   // and these wrappers handle scheduler coordination.
   
   registerCommandHandler('startProcessing', async (context) => {
-    dualLog('debug', 'Engine wrapper: startProcessing called', { 
+    structuredLog('DEBUG', 'Engine wrapper: startProcessing called', { 
       hasMediaHandler: !!handlers['__media_startProcessing'],
       allHandlers: Object.keys(handlers).filter(k => k.includes('media'))
     });
     
     const mediaHandler = handlers['__media_startProcessing'];
     if (!mediaHandler) {
-      dualLog('error', 'media startProcessing handler not registered');
+      structuredLog('ERROR', 'media startProcessing handler not registered');
       throw new Error('media startProcessing handler not registered');
     }
     
@@ -262,14 +252,14 @@ export function createEngine() {
         _canvasElForScheduler = result?.canvasEl || null;
         // Note: The modern scheduler (scheduler.js) is automatically initialized
         // and handles diagnosticTick dispatches. No manual scheduler start needed.
-        dualLog('info', 'Video processing started - modern scheduler is handling diagnostics.');
+        structuredLog('INFO', 'Video processing started - modern scheduler is handling diagnostics.');
       } else {
-        dualLog('warn', 'Scheduler not started - media handler did not set isProcessing=true');
+        structuredLog('WARN', 'Scheduler not started - media handler did not set isProcessing=true');
       }
       
       return { videoEl: _videoElForScheduler, canvasEl: _canvasElForScheduler };
     } catch (error) {
-      dualLog('error', 'Engine wrapper: startProcessing failed', { 
+      structuredLog('ERROR', 'Engine wrapper: startProcessing failed', { 
         error: error.message, 
         stack: error.stack 
       });
@@ -278,10 +268,10 @@ export function createEngine() {
   });
 
   registerCommandHandler('stopProcessing', async (context) => {
-    dualLog('debug', 'Engine wrapper: stopProcessing called');
+    structuredLog('DEBUG', 'Engine wrapper: stopProcessing called');
     const mediaHandler = handlers['__media_stopProcessing'];
     if (!mediaHandler) {
-      dualLog('error', 'media stopProcessing handler not registered');
+      structuredLog('ERROR', 'media stopProcessing handler not registered');
       throw new Error('media stopProcessing handler not registered');
     }
     
@@ -293,11 +283,11 @@ export function createEngine() {
       _videoElForScheduler = null;
       _canvasElForScheduler = null;
       // Note: The modern scheduler (scheduler.js) automatically handles stopping
-      dualLog('info', 'Video processing stopped.');
+      structuredLog('INFO', 'Video processing stopped.');
 
       return result;
     } catch (error) {
-      dualLog('error', 'Engine wrapper: stopProcessing failed', { 
+      structuredLog('ERROR', 'Engine wrapper: stopProcessing failed', { 
         error: error.message, 
         stack: error.stack 
       });
@@ -306,17 +296,17 @@ export function createEngine() {
   });
 
   registerCommandHandler('toggleProcessing', async (context) => {
-    dualLog('debug', 'Engine wrapper: toggleProcessing called');
+    structuredLog('DEBUG', 'Engine wrapper: toggleProcessing called');
     const mediaHandler = handlers['__media_toggleProcessing'];
     if (!mediaHandler) {
-      dualLog('error', 'media toggleProcessing handler not registered');
+      structuredLog('ERROR', 'media toggleProcessing handler not registered');
       throw new Error('media toggleProcessing handler not registered');
     }
     
     try {
       return await mediaHandler(context);
     } catch (error) {
-      dualLog('error', 'Engine wrapper: toggleProcessing failed', { 
+      structuredLog('ERROR', 'Engine wrapper: toggleProcessing failed', { 
         error: error.message, 
         stack: error.stack 
       });

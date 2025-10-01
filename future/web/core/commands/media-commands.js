@@ -2,26 +2,14 @@
 // Handles commands related to starting, stopping, and processing media streams.
 // MAMware review R250905: microphone-controller.js seems better consolidated into media-controller.js
 
-import { settings } from '../state.js';
+import { settings, setMicStream, allocateFrameBuffer } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
-import { output as coreLoggerOutput } from '../../utils/core-logger.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from '../media-controller.js';
 import { startMic, stopMic } from '../microphone-controller.js';
-import { setMicStream } from '../state.js'; //R260905: lets talk more about this pattern
-import { allocateFrameBuffer } from '../state.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
 import { initializeVideo } from '../../video/frame-processor.js';
 
-// Dual logging helper to avoid duplication
-const dualLog = (level, message, data = null) => {
-  // For structuredLog, always provide a proper data object
-  const telemetryData = data && typeof data === 'object' ? data : {};
-  structuredLog(level.toUpperCase(), message, telemetryData);
-  
-  // For core logger, format the message appropriately
-  const consoleMessage = data ? `${message} - ${JSON.stringify(data)}` : message;
-  coreLoggerOutput(level.toLowerCase(), consoleMessage);
-};
+// Core media command functionality
 
 // These variables will be managed by the command handlers, keeping them out of the main engine. 
 let _videoElForScheduler = null;
@@ -31,18 +19,18 @@ let _activeMediaStream = null; // Isolate the MediaStream here to prevent state 
 export function registerMediaCommands(engine) {
   const { registerCommandHandler } = engine;
   
-  dualLog('info', 'MEDIA-COMMANDS: Registering command handlers...');
+  structuredLog('INFO', 'MEDIA-COMMANDS: Registering command handlers...');
 
   // Wrap async handlers to catch and log errors properly
   const wrapAsyncHandler = (handlerName, handler) => {
     return async (args) => {
-      dualLog('debug', `ASYNC-HANDLER: ${handlerName} starting`, args);
+      structuredLog('DEBUG', `ASYNC-HANDLER: ${handlerName} starting`, args);
       try {
         const result = await handler(args);
-        dualLog('debug', `ASYNC-HANDLER: ${handlerName} completed`, { result });
+        structuredLog('DEBUG', `ASYNC-HANDLER: ${handlerName} completed`, { result });
         return result;
       } catch (error) {
-        dualLog('error', `ASYNC-HANDLER: ${handlerName} failed`, { 
+        structuredLog('ERROR', `ASYNC-HANDLER: ${handlerName} failed`, { 
           error: error.message, 
           stack: error.stack 
         });
@@ -53,7 +41,7 @@ export function registerMediaCommands(engine) {
 
   // The "Dumb" Toggle Handler - Its ONLY job is to delegate.
   registerCommandHandler('toggleProcessing', ({ state: s, payload }) => {
-    dualLog('debug', 'COMMAND: toggleProcessing received', { isProcessing: s.isProcessing });
+    structuredLog('DEBUG', 'COMMAND: toggleProcessing received', { isProcessing: s.isProcessing });
     if (s.isProcessing) {
       engine.dispatch('stopProcessing', payload);
     } else {
@@ -63,42 +51,42 @@ export function registerMediaCommands(engine) {
 
     // The "Smart" Start Handler - SOLE OWNER of starting the processing lifecycle.
   registerCommandHandler('startProcessing', wrapAsyncHandler('startProcessing', async ({ state: s, payload }) => {
-    dualLog('debug', 'COMMAND: startProcessing handler called', { isProcessing: s.isProcessing, payload });
+    structuredLog('DEBUG', 'COMMAND: startProcessing handler called', { isProcessing: s.isProcessing, payload });
     
     if (s.isProcessing) {
-      dualLog('warn', 'COMMAND: startProcessing aborted - already processing');
+      structuredLog('WARN', 'COMMAND: startProcessing aborted - already processing');
       return; // Prevent re-entry
     }
     
     try {
       s.isProcessing = true;
-      dualLog('info', 'COMMAND: Start processing initiated.');
+      structuredLog('INFO', 'COMMAND: Start processing initiated.');
 
-      dualLog('debug', 'COMMAND: Requesting camera permissions...');
+      structuredLog('DEBUG', 'COMMAND: Requesting camera permissions...');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       _activeMediaStream = stream;
-      dualLog('debug', 'COMMAND: Camera stream acquired successfully.');
+      structuredLog('DEBUG', 'COMMAND: Camera stream acquired successfully.');
 
       // Better DOM element resolution with fallback
       let videoEl = payload?.videoEl;
       if (!videoEl && typeof window !== 'undefined' && window.DOM?.videoFeed) {
         videoEl = window.DOM.videoFeed;
-        dualLog('debug', 'COMMAND: Using DOM.videoFeed element');
+        structuredLog('DEBUG', 'COMMAND: Using DOM.videoFeed element');
       } else if (!videoEl) {
         // Create a temporary video element if none provided
         videoEl = document.createElement('video');
         videoEl.setAttribute('playsinline', 'true');
         videoEl.setAttribute('muted', 'true');
-        dualLog('debug', 'COMMAND: Created temporary video element');
+        structuredLog('DEBUG', 'COMMAND: Created temporary video element');
       }
 
       videoEl.srcObject = _activeMediaStream;
-      dualLog('debug', 'COMMAND: Stream assigned to video element, waiting for play...');
+      structuredLog('DEBUG', 'COMMAND: Stream assigned to video element, waiting for play...');
       
       await videoEl.play();
-      dualLog('info', 'COMMAND: Video stream is active and metadata loaded.');
+      structuredLog('INFO', 'COMMAND: Video stream is active and metadata loaded.');
 
-      dualLog('debug', 'COMMAND: Initializing video pipeline...');
+      structuredLog('DEBUG', 'COMMAND: Initializing video pipeline...');
       await initializeVideo({
         videoElement: videoEl,
         engine: engine,
@@ -106,13 +94,13 @@ export function registerMediaCommands(engine) {
         getCurrentGrid: () => {
           const state = engine.getState();
           if (!state.availableGrids || state.availableGrids.length === 0) {
-            dualLog('WARN', 'No grids available for getCurrentGrid');
+            structuredLog('WARN', 'No grids available for getCurrentGrid');
             return null;
           }
           // Find the grid with the current gridType
           const currentGrid = state.availableGrids.find(grid => grid.id === state.gridType);
           if (!currentGrid) {
-            dualLog('WARN', 'Current grid not found', { gridType: state.gridType, availableGrids: state.availableGrids.map(g => g.id) });
+            structuredLog('WARN', 'Current grid not found', { gridType: state.gridType, availableGrids: state.availableGrids.map(g => g.id) });
             return state.availableGrids[0]; // Fallback to first available grid
           }
           return currentGrid;
@@ -121,10 +109,10 @@ export function registerMediaCommands(engine) {
         motionThreshold: s.motionThreshold,
       });
       
-      dualLog('info', 'COMMAND: startProcessing COMPLETED successfully.');
+      structuredLog('INFO', 'COMMAND: startProcessing COMPLETED successfully.');
 
     } catch (err) {
-      dualLog('error', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
+      structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
       if (_activeMediaStream) {
         _activeMediaStream.getTracks().forEach(track => track.stop());
         _activeMediaStream = null;
@@ -136,14 +124,14 @@ export function registerMediaCommands(engine) {
 
   // The "Smart" Stop Handler - SOLE OWNER of stopping the processing lifecycle.
   registerCommandHandler('stopProcessing', ({ state: s }) => {
-    dualLog('info', 'COMMAND: stopProcessing begins.');
+    structuredLog('INFO', 'COMMAND: stopProcessing begins.');
     if (_activeMediaStream) {
       _activeMediaStream.getTracks().forEach(track => track.stop());
       _activeMediaStream = null;
     }
     // Any necessary teardown for video/audio pipelines can be dispatched from here.
     s.isProcessing = false;
-    dualLog('info', 'COMMAND: stopProcessing COMPLETED.');
+    structuredLog('INFO', 'COMMAND: stopProcessing COMPLETED.');
   });
  
   // Toggle camera: start or stop camera depending on state

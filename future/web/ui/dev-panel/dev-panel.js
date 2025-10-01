@@ -90,7 +90,7 @@ export function initializeDevPanel(arg1, arg2) {
             <div class="devpanel-section video-section">
               <h2 class="section-header">
                 <span>Live Video Preview</span>
-                <button class="collapse-btn" data-target="video-content" aria-expanded="false" title="Expand Video Preview">+</button>
+                <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
               </h2>
               <div id="video-content" class="section-content">
                 <video id="devpanel-video-preview" muted autoplay playsinline></video>
@@ -374,13 +374,23 @@ export function initializeDevPanel(arg1, arg2) {
     // --- Cost-Effective Video Preview Wiring ---
     try {
       const previewEl = panel.querySelector('#devpanel-video-preview');
+      let lastStreamId = null; // Track stream ID to avoid unnecessary updates
       
       // Wire up the video preview to show the camera stream
       const updateVideoPreview = (state) => {
-        if (previewEl && state && state.stream) {
-          previewEl.srcObject = state.stream;
-        } else if (previewEl && DOM && DOM.videoFeed && DOM.videoFeed.srcObject) {
-          previewEl.srcObject = DOM.videoFeed.srcObject;
+        if (!previewEl) return;
+        
+        let newStream = null;
+        if (state && state.stream) {
+          newStream = state.stream;
+        } else if (DOM && DOM.videoFeed && DOM.videoFeed.srcObject) {
+          newStream = DOM.videoFeed.srcObject;
+        }
+        
+        // Only update if the stream actually changed
+        if (newStream && newStream.id !== lastStreamId) {
+          previewEl.srcObject = newStream;
+          lastStreamId = newStream.id;
         }
       };
       

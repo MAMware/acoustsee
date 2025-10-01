@@ -213,8 +213,10 @@ function getOscillator() {
 
   if (oscillatorPool.length > 0) {
     const osc = oscillatorPool.pop();
-    // --- LOG LEVEL CHANGED TO DEBUG ---
-    structuredLog('DEBUG', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
+    // Only log occasionally to avoid flooding console in debug mode
+    if (Math.random() < 0.1) { // Log ~10% of calls
+      structuredLog('DEBUG', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
+    }
     return osc;
   }
   
@@ -229,8 +231,10 @@ function releaseOscillator(oscillator) {
   if (context) {
     const newOsc = context.createOscillator();
     oscillatorPool.push(newOsc);
-    // --- LOG LEVEL CHANGED TO DEBUG ---
-    structuredLog('DEBUG', 'releaseOscillator: Returned oscillator to pool', { poolSize: oscillatorPool.length });
+    // Only log occasionally to avoid flooding console in debug mode
+    if (Math.random() < 0.1) { // Log ~10% of calls
+      structuredLog('DEBUG', 'releaseOscillator: Returned oscillator to pool', { poolSize: oscillatorPool.length });
+    }
   }
 }
 
@@ -252,12 +256,15 @@ function releaseOscillator(oscillator) {
 export async function playCues(payload) {
   const context = audioManager?.context;
   
-  structuredLog('DEBUG', 'playCues called', { 
-    hasContext: !!context, 
-    contextState: context?.state,
-    payloadType: Array.isArray(payload) ? 'array' : 'object',
-    payload: payload 
-  });
+  // Only log every 30th call to avoid flooding console in debug mode
+  if (Math.random() < 0.033) { // ~3.3% chance = ~1 in 30 calls
+    structuredLog('DEBUG', 'playCues called', { 
+      hasContext: !!context, 
+      contextState: context?.state,
+      payloadType: Array.isArray(payload) ? 'array' : 'object',
+      payload: payload 
+    });
+  }
   
   if (!context || context.state !== 'running') {
     structuredLog('WARN', 'playCues: AudioContext not running', { 
