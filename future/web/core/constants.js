@@ -11,9 +11,9 @@ export const LOG_LEVELS = {
 };
 
 // Version constants for different modules
-export const BUILD_VERSION = '0.8.4-soundAmbience';
+export const BUILD_VERSION = '0.8.4-smartIngest';
 export const AUDIO_VERSION = '0.8-soundAmbience';
 export const VIDEO_VERSION = '0.5-sonicSculpture';
 export const UI_VERSION = '0.6.1-developerTools';
 export const LANGUAGES_VERSION = '0.2-spaEng';
-export const UTILS_VERSION = '0.8.1-performanceDiagnostics';
+export const UTILS_VERSION = '0.9.1-smartIngest';

@@ -86,7 +86,8 @@ export function registerMediaCommands(engine) {
       await videoEl.play();
       structuredLog('INFO', 'COMMAND: Video stream is active and metadata loaded.');
 
-      structuredLog('DEBUG', 'COMMAND: Initializing video pipeline...');
+      // Change to INFO level since this is important initialization information
+      structuredLog('INFO', 'COMMAND: Initializing video pipeline...');
       await initializeVideo({
         videoElement: videoEl,
         engine: engine,

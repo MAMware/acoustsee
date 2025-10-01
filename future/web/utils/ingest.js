@@ -8,8 +8,8 @@ import { BUILD_VERSION } from '../core/constants.js';
 
 // Only track events that provide performance optimization insights
 const PERFORMANCE_EVENTS = {
-  'startProcessing': { level: 'INFO', source: 'user_workflow' },
-  'stopProcessing': { level: 'INFO', source: 'user_workflow' },
+  '__media_startProcessing': { level: 'INFO', source: 'user_workflow' },
+  '__media_stopProcessing': { level: 'INFO', source: 'user_workflow' },
   'switchMode': { level: 'INFO', source: 'user_workflow' },
   'setFrameProviderThrottle': { level: 'INFO', source: 'auto_optimization' }
 };

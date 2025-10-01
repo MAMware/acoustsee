@@ -213,8 +213,8 @@ function getOscillator() {
 
   if (oscillatorPool.length > 0) {
     const osc = oscillatorPool.pop();
-    // Aggressive sampling to reduce dev panel spam - only log ~2% of calls
-    if (Math.random() < 0.02) {
+    // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
+    if (Math.random() < 0.01) {
       structuredLog('DEBUG', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
     }
     return osc;
@@ -231,8 +231,8 @@ function releaseOscillator(oscillator) {
   if (context) {
     const newOsc = context.createOscillator();
     oscillatorPool.push(newOsc);
-    // Aggressive sampling to reduce dev panel spam - only log ~2% of calls
-    if (Math.random() < 0.02) {
+    // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
+    if (Math.random() < 0.01) {
       structuredLog('DEBUG', 'releaseOscillator: Returned oscillator to pool', { poolSize: oscillatorPool.length });
     }
   }
@@ -256,8 +256,8 @@ function releaseOscillator(oscillator) {
 export async function playCues(payload) {
   const context = audioManager?.context;
   
-  // Only log every 30th call to avoid flooding console in debug mode
-  if (Math.random() < 0.033) { // ~3.3% chance = ~1 in 30 calls
+  // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
+  if (Math.random() < 0.01) {
     structuredLog('DEBUG', 'playCues called', { 
       hasContext: !!context, 
       contextState: context?.state,

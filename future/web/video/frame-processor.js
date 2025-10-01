@@ -99,12 +99,15 @@ export async function initializeVideo(config) {
       throw new Error("Video element or srcObject is not available.");
     }
     
-    structuredLog('DEBUG', 'initializeVideo: Video element validated', { 
-      hasVideoElement: !!videoElement, 
-      hasSrcObject: !!videoElement.srcObject,
-      videoWidth: videoElement.videoWidth,
-      videoHeight: videoElement.videoHeight 
-    });
+    // Only log video validation occasionally to reduce dev panel spam
+    if (Math.random() < 0.1) {
+      structuredLog('DEBUG', 'initializeVideo: Video element validated', { 
+        hasVideoElement: !!videoElement, 
+        hasSrcObject: !!videoElement.srcObject,
+        videoWidth: videoElement.videoWidth,
+        videoHeight: videoElement.videoHeight 
+      });
+    }
     
     // Check for required APIs with better fallback handling
     const hasOffscreenCanvas = 'transferControlToOffscreen' in HTMLCanvasElement.prototype;
@@ -173,8 +176,8 @@ export async function initializeVideo(config) {
       if (state.currentMode === 'flow') {
         const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height);
         
-        // Only log every 30th frame to avoid flooding console
-        if (payload.frameId && payload.frameId % 30 === 0) {
+        // Very aggressive sampling - only log every 100th frame to reduce dev panel spam
+        if (payload.frameId && payload.frameId % 100 === 0) {
           structuredLog('DEBUG', 'Frame processor: Motion results', { 
             movingRegions: motionResults.movingRegions.length 
           });
