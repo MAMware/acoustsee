@@ -44,6 +44,22 @@ export async function initializeAudio(config = {}) {
 
   try {
     structuredLog('DEBUG', 'initializeAudio: starting', { state: context.state });
+    
+    // Add audio context state change monitoring
+    if (context.addEventListener) {
+      context.addEventListener('statechange', () => {
+        structuredLog('INFO', 'AudioContext state changed', { 
+          newState: context.state,
+          timestamp: Date.now()
+        });
+        
+        // If context gets suspended, log warning
+        if (context.state === 'suspended') {
+          structuredLog('WARN', 'AudioContext was suspended - audio may stop playing');
+        }
+      });
+    }
+    
     // Attempt to collect available media device info for diagnostics
     if (typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
       try {
@@ -248,7 +264,21 @@ export async function playCues(payload) {
       hasContext: !!context, 
       state: context?.state 
     });
-    return;
+    
+    // Try to resume the context if it's suspended
+    if (context && context.state === 'suspended') {
+      structuredLog('INFO', 'playCues: Attempting to resume suspended AudioContext');
+      try {
+        await context.resume();
+        structuredLog('INFO', 'playCues: AudioContext resumed successfully', { state: context.state });
+        // Continue with audio processing after successful resume
+      } catch (error) {
+        structuredLog('ERROR', 'playCues: Failed to resume AudioContext', { error: error.message });
+        return;
+      }
+    } else {
+      return;
+    }
   }
 
   // The new payload can be a simple array (for Flow mode) or a complex object (for Focus mode)

@@ -40,18 +40,24 @@ export function registerSonificationCommands(engine) {
     if (Array.isArray(actualPayload.cues)) {
       // Flow mode: simple cues array
       cuesToProcess = actualPayload.cues;
-      structuredLog('DEBUG', 'Sonification: Processing Flow mode cues', { 
-        cuesCount: actualPayload.cues.length, 
-        frameId: actualPayload.frameId 
-      });
+      // Reduced logging frequency - only log every 30th frame to reduce performance impact
+      if (actualPayload.frameId % 30 === 0) {
+        structuredLog('DEBUG', 'Sonification: Processing Flow mode cues', { 
+          cuesCount: actualPayload.cues.length, 
+          frameId: actualPayload.frameId 
+        });
+      }
     } else if (actualPayload.primaryCue && actualPayload.secondaryCues) {
       // Focus mode: complex payload with primary and secondary cues
       cuesToProcess = { primaryCue: actualPayload.primaryCue, secondaryCues: actualPayload.secondaryCues };
-      structuredLog('DEBUG', 'Sonification: Processing Focus mode cues', { 
-        primaryCue: actualPayload.primaryCue,
-        secondaryCuesCount: actualPayload.secondaryCues.length,
-        frameId: actualPayload.frameId 
-      });
+      // Reduced logging frequency - only log every 30th frame to reduce performance impact
+      if (actualPayload.frameId % 30 === 0) {
+        structuredLog('DEBUG', 'Sonification: Processing Focus mode cues', { 
+          primaryCue: actualPayload.primaryCue,
+          secondaryCuesCount: actualPayload.secondaryCues.length,
+          frameId: actualPayload.frameId 
+        });
+      }
     } else {
       structuredLog('WARN', 'sonification-handler: received audioCuesReady with invalid payload structure.', { 
         payload: actualPayload,

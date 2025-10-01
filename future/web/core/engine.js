@@ -158,7 +158,13 @@ export function createEngine() {
         availableHandlers: Object.keys(handlers).filter(k => k.includes(commandName) || k.includes('media'))
       };
       
-      dualLog('debug', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });
+      // Reduce logging frequency for high-frequency commands to improve performance
+      const isHighFrequencyCommand = ['audioCuesReady', 'logFrameBenchmark'].includes(commandName);
+      const shouldLog = !isHighFrequencyCommand || (Date.now() % 1000 < 100); // Log ~10% of high-frequency commands
+      
+      if (shouldLog) {
+        dualLog('debug', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });
+      }
     const result = await handler({ state, payload, dispatch, emit });
       // notify after handler runs in case it mutated shared state
       notifyListeners();

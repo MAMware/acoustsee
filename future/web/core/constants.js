@@ -2,7 +2,7 @@
 export const TTS_COOLDOWN_MS = 3000;
 export const DEFAULT_FPS = 20;
 export const FALLBACK_LANGUAGE = 'en-US';
-export const DEFAULT_LOG_LEVEL = 'DEBUG';
+export const DEFAULT_LOG_LEVEL = 'INFO'; // Changed from DEBUG to INFO to reduce log volume
 export const LOG_LEVELS = {
   DEBUG: 0,
   INFO: 1,
@@ -11,9 +11,9 @@ export const LOG_LEVELS = {
 };
 
 // Version constants for different modules
-export const BUILD_VERSION = '0.8.3-performanceDiagnostics';
-export const AUDIO_VERSION = '0.7-AcousticCues';
-export const VIDEO_VERSION = '0.4-grids';
-export const UI_VERSION = '0.6.0-developerTools';
+export const BUILD_VERSION = '0.8.4-soundAmbience';
+export const AUDIO_VERSION = '0.8-soundAmbience';
+export const VIDEO_VERSION = '0.5-sonicSculpture';
+export const UI_VERSION = '0.6.1-developerTools';
 export const LANGUAGES_VERSION = '0.2-spaEng';
-export const UTILS_VERSION = '0.8-performanceDiagnostics';
+export const UTILS_VERSION = '0.8.1-performanceDiagnostics';
