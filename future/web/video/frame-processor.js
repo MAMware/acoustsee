@@ -177,8 +177,8 @@ export async function initializeVideo(config) {
         if (grid && grid.mapFunction) {
           const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
           if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
-            // In Flow mode, the payload is the simple cues array
-            dispatchPayload = gridOutput.cues;
+            // In Flow mode, the payload includes the cues array
+            dispatchPayload = { cues: gridOutput.cues };
             structuredLog('DEBUG', 'Frame processor: Generated cues for Flow mode', { 
               cuesCount: gridOutput.cues.length 
             });
