@@ -70,13 +70,58 @@ export function setSampleRate(rate) {
  */
 
 let inStructuredLog = false;
+
+// Rate limiting for log flooding prevention
+const logThrottleMap = new Map();
+const THROTTLE_WINDOW_MS = 1000; // 1 second window
+const MAX_LOGS_PER_MESSAGE = 5; // Max 5 identical messages per second
+
+function shouldThrottle(level, message) {
+  // Don't throttle ERROR level logs
+  if (level.toUpperCase() === 'ERROR') return false;
+  
+  const key = `${level}:${message}`;
+  const now = Date.now();
+  
+  if (!logThrottleMap.has(key)) {
+    logThrottleMap.set(key, { count: 1, firstTime: now, lastTime: now });
+    return false;
+  }
+  
+  const entry = logThrottleMap.get(key);
+  
+  // If outside the throttle window, reset
+  if (now - entry.firstTime > THROTTLE_WINDOW_MS) {
+    entry.count = 1;
+    entry.firstTime = now;
+    entry.lastTime = now;
+    return false;
+  }
+  
+  // If we've hit the limit, throttle
+  if (entry.count >= MAX_LOGS_PER_MESSAGE) {
+    entry.lastTime = now;
+    return true;
+  }
+  
+  // Still within limits
+  entry.count++;
+  entry.lastTime = now;
+  return false;
+}
+
 /**
- * Logs a structured message synchronously with recursion guard.
+ * Logs a structured message synchronously with recursion guard and rate limiting.
  */
 export function structuredLog(level, message, data = {}, persist = true, sample = true) {
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
   if (numericLevel < currentLogLevel) return;
   if (sample && level.toUpperCase() === 'DEBUG' && Math.random() > sampleRate) return;
+  
+  // Rate limiting check
+  if (shouldThrottle(level, message)) {
+    return;
+  }
 
   if (inStructuredLog) return;
   inStructuredLog = true;

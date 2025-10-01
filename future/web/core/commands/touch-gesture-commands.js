@@ -87,13 +87,13 @@ export function registerTouchGestureCommands(engine) {
         const grids = s.availableGrids.map(g => g.id);
         const currentGridIndex = grids.indexOf(s.gridType);
         const nextGridIndex = (currentGridIndex + direction + grids.length) % grids.length;
-        s.gridType = grids[nextGridIndex];
+        engine.setState({ gridType: grids[nextGridIndex] });
         break;
       case 'synth':
         const synths = s.availableEngines.map(e => e.id);
         const currentSynthIndex = synths.indexOf(s.synthesisEngine);
         const nextSynthIndex = (currentSynthIndex + direction + synths.length) % synths.length;
-        s.synthesisEngine = synths[nextSynthIndex];
+        engine.setState({ synthesisEngine: synths[nextSynthIndex] });
         break;
       case 'language':
         const langs = s.availableLanguages.map(l => l.id);
@@ -101,19 +101,19 @@ export function registerTouchGestureCommands(engine) {
         const nextLangIndex = (currentLangIndex + direction + langs.length) % langs.length;
         const newLang = langs[nextLangIndex];
         await setLanguage(newLang); // This also saves it
-        s.language = newLang;
+        engine.setState({ language: newLang });
         try { await translatePage(document); } catch (e) { /* best-effort */ }
         break;
       case 'maxNotes':
         const current = Number(s.maxNotes) || 0;
         const next = Math.max(1, current + (direction > 0 ? 1 : -1));
-        s.maxNotes = next;
-        try { audioProcessor.resizeOscillatorPool(s.maxNotes); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
+        engine.setState({ maxNotes: next });
+        try { audioProcessor.resizeOscillatorPool(next); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
         break;
       case 'motionThreshold':
         let newThreshold = (Number(s.motionThreshold) || 20) + (direction * 20);
         newThreshold = Math.max(20, Math.min(120, newThreshold));
-        s.motionThreshold = newThreshold;
+        engine.setState({ motionThreshold: newThreshold });
         break;
     }
     await dispatch('announceCurrentSettingValue');

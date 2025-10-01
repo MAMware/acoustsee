@@ -17,11 +17,18 @@ export function registerSonificationCommands(engine) {
   engine.registerCommandHandler('audioCuesReady', (payload) => {
     // --- BENCHMARK CALCULATION ---
     const endTime = performance.now();
-    if (payload.startTime) {
-      const totalDuration = endTime - payload.startTime;
+    
+    // Extract the actual payload from nested structure if needed
+    let actualPayload = payload;
+    if (payload.payload && !payload.cues) {
+      actualPayload = payload.payload;
+    }
+    
+    if (actualPayload.startTime) {
+      const totalDuration = endTime - actualPayload.startTime;
       // Dispatch a new event with the measurement for the diagnostics system.
       engine.dispatch('logFrameBenchmark', {
-        frameId: payload.frameId,
+        frameId: actualPayload.frameId,
         duration: totalDuration
       });
     }
@@ -30,24 +37,26 @@ export function registerSonificationCommands(engine) {
     // Handle both Flow mode (simple cues array) and Focus mode (complex payload)
     let cuesToProcess = null;
     
-    if (Array.isArray(payload.cues)) {
+    if (Array.isArray(actualPayload.cues)) {
       // Flow mode: simple cues array
-      cuesToProcess = payload.cues;
+      cuesToProcess = actualPayload.cues;
       structuredLog('DEBUG', 'Sonification: Processing Flow mode cues', { 
-        cuesCount: payload.cues.length, 
-        firstCue: payload.cues[0],
-        frameId: payload.frameId 
+        cuesCount: actualPayload.cues.length, 
+        frameId: actualPayload.frameId 
       });
-    } else if (payload.primaryCue && payload.secondaryCues) {
+    } else if (actualPayload.primaryCue && actualPayload.secondaryCues) {
       // Focus mode: complex payload with primary and secondary cues
-      cuesToProcess = { primaryCue: payload.primaryCue, secondaryCues: payload.secondaryCues };
+      cuesToProcess = { primaryCue: actualPayload.primaryCue, secondaryCues: actualPayload.secondaryCues };
       structuredLog('DEBUG', 'Sonification: Processing Focus mode cues', { 
-        primaryCue: payload.primaryCue,
-        secondaryCuesCount: payload.secondaryCues.length,
-        frameId: payload.frameId 
+        primaryCue: actualPayload.primaryCue,
+        secondaryCuesCount: actualPayload.secondaryCues.length,
+        frameId: actualPayload.frameId 
       });
     } else {
-      structuredLog('WARN', 'sonification-handler: received audioCuesReady with invalid payload structure.', { payload });
+      structuredLog('WARN', 'sonification-handler: received audioCuesReady with invalid payload structure.', { 
+        payload: actualPayload,
+        originalPayload: payload 
+      });
       return;
     }
 
