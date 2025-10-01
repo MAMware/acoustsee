@@ -161,14 +161,27 @@ export async function initializeVideo(config) {
       const grid = _config.getCurrentGrid();
       let dispatchPayload = null;
 
+      structuredLog('DEBUG', 'Frame processor: Received frame', { 
+        mode: state.currentMode, 
+        hasGrid: !!grid, 
+        gridId: grid?.id 
+      });
+
       if (state.currentMode === 'flow') {
         const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height);
+        
+        structuredLog('DEBUG', 'Frame processor: Motion results', { 
+          movingRegions: motionResults.movingRegions.length 
+        });
         
         if (grid && grid.mapFunction) {
           const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
           if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
             // In Flow mode, the payload is the simple cues array
             dispatchPayload = gridOutput.cues;
+            structuredLog('DEBUG', 'Frame processor: Generated cues for Flow mode', { 
+              cuesCount: gridOutput.cues.length 
+            });
           }
         }
 

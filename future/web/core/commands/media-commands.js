@@ -103,7 +103,20 @@ export function registerMediaCommands(engine) {
         videoElement: videoEl,
         engine: engine,
         getEngineState: () => engine.getState(),
-        getCurrentGrid: () => engine.getState().currentGrid,
+        getCurrentGrid: () => {
+          const state = engine.getState();
+          if (!state.availableGrids || state.availableGrids.length === 0) {
+            dualLog('WARN', 'No grids available for getCurrentGrid');
+            return null;
+          }
+          // Find the grid with the current gridType
+          const currentGrid = state.availableGrids.find(grid => grid.id === state.gridType);
+          if (!currentGrid) {
+            dualLog('WARN', 'Current grid not found', { gridType: state.gridType, availableGrids: state.availableGrids.map(g => g.id) });
+            return state.availableGrids[0]; // Fallback to first available grid
+          }
+          return currentGrid;
+        },
         registerWorker: window.__acoustseeDevPanelRegisterWorker,
         motionThreshold: s.motionThreshold,
       });

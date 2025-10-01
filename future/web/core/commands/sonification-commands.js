@@ -27,18 +27,33 @@ export function registerSonificationCommands(engine) {
     }
     // --- END BENCHMARK ---
 
-    if (payload && Array.isArray(payload.cues)) {
-      // Add debug logging to see what cues we're getting
-      structuredLog('DEBUG', 'Sonification: Processing cues', { 
+    // Handle both Flow mode (simple cues array) and Focus mode (complex payload)
+    let cuesToProcess = null;
+    
+    if (Array.isArray(payload.cues)) {
+      // Flow mode: simple cues array
+      cuesToProcess = payload.cues;
+      structuredLog('DEBUG', 'Sonification: Processing Flow mode cues', { 
         cuesCount: payload.cues.length, 
         firstCue: payload.cues[0],
         frameId: payload.frameId 
       });
-      
-      // This is the bridge: call the audio API with the data from video.
-      playCues(payload.cues);
+    } else if (payload.primaryCue && payload.secondaryCues) {
+      // Focus mode: complex payload with primary and secondary cues
+      cuesToProcess = { primaryCue: payload.primaryCue, secondaryCues: payload.secondaryCues };
+      structuredLog('DEBUG', 'Sonification: Processing Focus mode cues', { 
+        primaryCue: payload.primaryCue,
+        secondaryCuesCount: payload.secondaryCues.length,
+        frameId: payload.frameId 
+      });
     } else {
-      structuredLog('WARN', 'sonification-handler: received audioCuesReady with invalid cues payload.', { payload });
+      structuredLog('WARN', 'sonification-handler: received audioCuesReady with invalid payload structure.', { payload });
+      return;
+    }
+
+    if (cuesToProcess) {
+      // This is the bridge: call the audio API with the data from video.
+      playCues(cuesToProcess);
     }
   });
 }
