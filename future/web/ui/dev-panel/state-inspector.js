@@ -3,10 +3,11 @@
 // Following AcoustSee's event-driven, modular architecture
 
 import { structuredLog } from '../../utils/logging.js';
+import { executeNonCriticalOperation, createMinimalFallback } from '../../utils/error-handling.js';
 
 export class StateInspector {
   constructor(container, engine) {
-    try {
+    return executeNonCriticalOperation('state-inspector', () => {
       this.container = container;
       this.engine = engine;
       this.stateElements = new Map(); // Cache DOM elements for performance
@@ -18,22 +19,45 @@ export class StateInspector {
       this.pendingUpdate = null;
       
       this.initialize();
-    } catch (error) {
-      // Log error but don't throw - allow graceful degradation
-      structuredLog('ERROR', 'state-inspector', 'Failed to initialize StateInspector', {
-        error: error.message,
-        stack: error.stack
-      });
+      return this;
+    }, (error) => {
+      // Use minimal fallback for developer tool
+      const fallback = createMinimalFallback('state-inspector', error);
       
-      // Set up minimal fallback
-      if (container) {
-        container.innerHTML = '<div class="state-inspector-error" style="color: #e74c3c; padding: 16px; text-align: center;">State Inspector failed to load. Using fallback display.</div>';
-      }
-    }
+      // Add simple state display
+      const stateDisplay = document.createElement('div');
+      stateDisplay.innerHTML = `
+        <div id="fallback-state" style="
+          font-family: monospace; 
+          font-size: 11px; 
+          background: #f8f9fa; 
+          padding: 8px; 
+          margin-top: 8px; 
+          border-radius: 4px;
+          max-height: 200px;
+          overflow: auto;
+          white-space: pre-wrap;
+        ">No state data</div>
+      `;
+      
+      fallback.appendChild(stateDisplay);
+      container.appendChild(fallback);
+      
+      // Return minimal interface for compatibility
+      return {
+        container,
+        scheduleUpdate: (state) => {
+          const fallbackEl = container.querySelector('#fallback-state');
+          if (fallbackEl && state) {
+            fallbackEl.textContent = JSON.stringify(state, null, 2);
+          }
+        }
+      };
+    });
   }
   
   initialize() {
-    try {
+    return executeNonCriticalOperation('state-inspector', () => {
       // Clear container and add base structure
       this.container.innerHTML = `
         <div class="state-inspector-root">
@@ -61,15 +85,10 @@ export class StateInspector {
       } else {
         structuredLog('WARN', 'state-inspector', 'Engine missing onStateChange method');
       }
-    } catch (error) {
-      structuredLog('ERROR', 'state-inspector', 'Failed to initialize UI', {
-        error: error.message,
-        stack: error.stack
-      });
-      
-      // Minimal fallback
-      this.container.innerHTML = '<div style="color: #e74c3c; padding: 8px;">Failed to initialize state inspector UI</div>';
-    }
+    }, () => {
+      // Fallback already handled in constructor
+      structuredLog('WARN', 'state-inspector', 'Failed to initialize UI, fallback active');
+    });
   }
   
   scheduleUpdate(state) {

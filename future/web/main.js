@@ -11,6 +11,11 @@
 import { createEngine } from './core/engine.js';
 import { settings } from './core/state.js';
 import { structuredLog } from './utils/logging.js';
+import { 
+  AccessibilityError, 
+  showCriticalError, 
+  isCriticalSystem 
+} from './utils/error-handling.js';
 import { setDOM, setDispatchEvent } from './core/context.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
 import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
@@ -268,8 +273,23 @@ export async function init() {
           const audioApi = await initializeAudio({ audioManager, maxNotes: settings.maxNotes, engineDispatch: engine.dispatch });
           try { const { setAudioApi } = await import('./audio/audio-processor.js'); setAudioApi(audioApi); } catch(e) {}
         } catch (initErr) {
-          structuredLog('ERROR', 'initializeAudio failed', { error: initErr?.message || String(initErr) });
-          throw initErr;
+          // Handle critical audio system failures appropriately
+          if (initErr instanceof AccessibilityError) {
+            showCriticalError(
+              'Audio System Failed',
+              initErr.message,
+              { 
+                error: initErr.message,
+                code: initErr.code,
+                context: initErr.context,
+                troubleshooting: 'Audio is required for visual-to-audio conversion'
+              }
+            );
+            throw initErr; // Re-throw to prevent incomplete initialization
+          } else {
+            structuredLog('ERROR', 'initializeAudio failed', { error: initErr?.message || String(initErr) });
+            throw initErr;
+          }
         }
       }
 
@@ -338,6 +358,36 @@ export async function init() {
     });
     
   } catch (err) {
+    // Handle critical accessibility errors with appropriate UI
+    if (err instanceof AccessibilityError) {
+      emergencyTrack('accessibility-system-failure', {
+        code: err.code,
+        message: err.message,
+        context: err.context || {}
+      });
+      
+      showCriticalError(
+        'AcoustSee Initialization Failed',
+        err.message,
+        {
+          error: err.message,
+          code: err.code,
+          context: err.context,
+          troubleshooting: 'Core accessibility systems failed to start'
+        }
+      );
+      
+      structuredLog('ERROR', 'CRITICAL: Accessibility system failed', {
+        code: err.code,
+        message: err.message,
+        context: err.context,
+        stack: err.stack
+      });
+      
+      return; // Don't proceed with normal error handling
+    }
+    
+    // Handle other initialization errors
     emergencyTrack('init-failure', {
       message: err.message,
       stack: err.stack,
@@ -363,6 +413,71 @@ export async function init() {
     }
   }
 }
+
+// Global error handler for unhandled AccessibilityErrors
+window.addEventListener('error', (event) => {
+  const error = event.error;
+  if (error instanceof AccessibilityError) {
+    event.preventDefault(); // Prevent default error handling
+    
+    showCriticalError(
+      'Accessibility System Error',
+      error.message,
+      {
+        error: error.message,
+        code: error.code,
+        context: error.context,
+        location: `${event.filename}:${event.lineno}:${event.colno}`
+      }
+    );
+    
+    structuredLog('ERROR', 'CRITICAL: Unhandled accessibility error', {
+      code: error.code,
+      message: error.message,
+      context: error.context,
+      location: `${event.filename}:${event.lineno}:${event.colno}`,
+      stack: error.stack
+    });
+    
+    emergencyTrack('unhandled-accessibility-error', {
+      code: error.code,
+      message: error.message,
+      context: error.context || {}
+    });
+  }
+});
+
+// Global promise rejection handler for unhandled AccessibilityErrors
+window.addEventListener('unhandledrejection', (event) => {
+  const error = event.reason;
+  if (error instanceof AccessibilityError) {
+    event.preventDefault(); // Prevent default promise rejection handling
+    
+    showCriticalError(
+      'Accessibility System Promise Failure',
+      error.message,
+      {
+        error: error.message,
+        code: error.code,
+        context: error.context,
+        type: 'Promise Rejection'
+      }
+    );
+    
+    structuredLog('ERROR', 'CRITICAL: Unhandled accessibility promise rejection', {
+      code: error.code,
+      message: error.message,
+      context: error.context,
+      stack: error.stack
+    });
+    
+    emergencyTrack('unhandled-accessibility-promise-rejection', {
+      code: error.code,
+      message: error.message,
+      context: error.context || {}
+    });
+  }
+});
 
 // NOTE: init() is exported. Bootloader will import and call init() so startup errors
 // are caught and reported by the centralized boot error handlers.

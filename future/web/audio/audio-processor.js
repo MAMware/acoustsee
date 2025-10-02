@@ -2,6 +2,12 @@
 
 import { structuredLog } from '../utils/logging.js';
 import { soundProfileManifest } from './sound-profiles.js'; // <-- NEW IMPORT
+import { 
+  executeCriticalOperation, 
+  AccessibilityError, 
+  showCriticalError,
+  showAudioFailureIndicator
+} from '../utils/error-handling.js';
 
 let audioManager = null;
 let _config = {};
@@ -38,12 +44,30 @@ export async function initializeAudio(config = {}) {
   const context = audioManager?.context || _config.context;
 
   if (!context) {
-    structuredLog('ERROR', 'initializeAudio: AudioContext (or audioManager) not provided.');
-    throw new Error('initializeAudio requires { audioManager } or { context } in config');
+    throw new AccessibilityError(
+      'Audio system is required for visual-to-audio conversion',
+      'AUDIO_CONTEXT_UNAVAILABLE',
+      { providedAudioManager: !!_config.audioManager, providedContext: !!_config.context }
+    );
   }
 
-  try {
+  return await executeCriticalOperation('audio-synthesis', async () => {
     structuredLog('DEBUG', 'initializeAudio: starting', { state: context.state });
+    
+    // Check if audio context is in a usable state
+    if (context.state === 'suspended') {
+      // Try to resume the context
+      try {
+        await context.resume();
+        structuredLog('INFO', 'Successfully resumed suspended AudioContext');
+      } catch (resumeError) {
+        throw new AccessibilityError(
+          'Audio system is suspended and cannot be resumed. Try clicking on the page or reloading.',
+          'AUDIO_CONTEXT_SUSPENDED',
+          { contextState: context.state, resumeError: resumeError.message }
+        );
+      }
+    }
     
     // Add audio context state change monitoring
     if (context.addEventListener) {
@@ -53,9 +77,10 @@ export async function initializeAudio(config = {}) {
           timestamp: Date.now()
         });
         
-        // If context gets suspended, log warning
+        // If context gets suspended, show audio failure indicator
         if (context.state === 'suspended') {
           structuredLog('WARN', 'AudioContext was suspended - audio may stop playing');
+          showAudioFailureIndicator('Audio Suspended - Click to Resume');
         }
       });
     }
@@ -68,38 +93,41 @@ export async function initializeAudio(config = {}) {
         const devInfo = devices.map(d => ({ kind: d.kind, label: d.label || '(hidden)', deviceId: d.deviceId }));
         structuredLog('DEBUG', 'initializeAudio: enumerateDevices result', { devices: devInfo });
       } catch (e) {
+        // Non-fatal diagnostic failure
         structuredLog('WARN', 'initializeAudio: enumerateDevices failed', { error: e?.message || String(e) });
       }
     }
-  } catch (e) {
-    // Non-fatal diagnostic failure
-    structuredLog('WARN', 'initializeAudio: diagnostic probe failed', { error: e?.message || String(e) });
-  }
-  masterGain = context.createGain();
-  // Use a safe default volume. Previously this was 2.0 which can be
-  // unexpectedly loud or cause clipped signals in some environments.
-  masterGain.gain.value = 1.0;
-  masterGain.connect(context.destination);
-  // create mic gain node ready for pass-through routing
-  micGainNode = context.createGain();
-  micGainNode.gain.value = 1.0;
-  // Use injected maxNotes, fall back to a safe default of 8
-  resizeOscillatorPool(Number(_config.maxNotes) || 8);
+    
+    masterGain = context.createGain();
+    // Use a safe default volume. Previously this was 2.0 which can be
+    // unexpectedly loud or cause clipped signals in some environments.
+    masterGain.gain.value = 1.0;
+    masterGain.connect(context.destination);
+    // create mic gain node ready for pass-through routing
+    micGainNode = context.createGain();
+    micGainNode.gain.value = 1.0;
+    // Use injected maxNotes, fall back to a safe default of 8
+    resizeOscillatorPool(Number(_config.maxNotes) || 8);
 
-  // If a mic stream was queued before audio initialization, connect it now
-  if (queuedMicStream) {
-    try {
-      structuredLog('INFO', 'Connecting previously queued microphone stream.');
+    // If a mic stream was queued before audio initialization, connect it now
+    if (queuedMicStream) {
       try {
+        structuredLog('INFO', 'Connecting previously queued microphone stream.');
         const tracks = queuedMicStream.getAudioTracks ? queuedMicStream.getAudioTracks().map(t => t.label || '(hidden)') : [];
         structuredLog('DEBUG', 'initializeAudio: queuedMicStream info', { trackCount: tracks.length, trackLabels: tracks });
-      } catch (e) { /* best-effort */ }
-      connectMicrophone(queuedMicStream);
-      queuedMicStream = null;
-    } catch (e) {
-      structuredLog('WARN', 'Failed to connect queued mic stream', { error: e?.message || String(e) });
+        connectMicrophone(queuedMicStream);
+        queuedMicStream = null;
+      } catch (e) {
+        structuredLog('WARN', 'Failed to connect queued mic stream', { error: e?.message || String(e) });
+      }
     }
-  }
+    
+    structuredLog('INFO', 'Audio system initialized successfully');
+    return true; // Success indicator
+  }, {
+    contextState: context?.state,
+    hasAudioManager: !!audioManager
+  });
 }
 
 // --- Microphone Pass-through Feature ---

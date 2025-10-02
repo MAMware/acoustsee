@@ -6,6 +6,7 @@ import { setOutputCallback } from '../../utils/core-logger.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { structuredLog } from '../../utils/logging.js';
+import { executeNonCriticalOperation, createMinimalFallback } from '../../utils/error-handling.js';
 import { createAndWireActions } from './dev-panel.actions.js';
 import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
@@ -238,9 +239,40 @@ export function initializeDevPanel(arg1, arg2) {
         </div>
       `;
     } catch (e) {
-      panel.textContent = 'Error: Dev panel could not be rendered.';
-      console.error('Dev Panel innerHTML rendering failed', e);
-      return; // Abort activation on critical failure
+      return executeNonCriticalOperation('dev-panel', () => {
+        throw e; // Re-throw to trigger fallback
+      }, (error) => {
+        const fallback = createMinimalFallback('dev-panel', error);
+        
+        // Add basic controls for core accessibility functions
+        const basicControls = document.createElement('div');
+        basicControls.innerHTML = `
+          <div style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-radius: 4px;">
+            <h4 style="margin: 0 0 8px 0;">Basic Controls (Core Accessibility Unaffected)</h4>
+            <button onclick="location.reload()" style="
+              background: #007bff; 
+              color: white; 
+              border: none; 
+              padding: 8px 16px; 
+              border-radius: 4px; 
+              margin-right: 8px;
+              cursor: pointer;
+            ">Reload App</button>
+            <button onclick="console.log('Engine state:', window.engine?.getState())" style="
+              background: #6c757d; 
+              color: white; 
+              border: none; 
+              padding: 8px 16px; 
+              border-radius: 4px;
+              cursor: pointer;
+            ">Log State</button>
+          </div>
+        `;
+        
+        fallback.appendChild(basicControls);
+        panel.appendChild(fallback);
+        return; // Don't continue initialization
+      });
     }
 
     // 2) Define wiring function which will be called after CSS is loaded

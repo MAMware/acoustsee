@@ -4,6 +4,11 @@
 
 import { settings, setMicStream, allocateFrameBuffer } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
+import { 
+  executeCriticalOperation, 
+  AccessibilityError, 
+  showCriticalError 
+} from '../../utils/error-handling.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from '../media-controller.js';
 import { startMic, stopMic } from '../microphone-controller.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
@@ -137,19 +142,34 @@ export function registerMediaCommands(engine) {
  
   // Toggle camera: start or stop camera depending on state
   registerCommandHandler('toggleCamera', async ({ state: s, payload }) => {
-    try {
+    return await executeCriticalOperation('media-controller', async () => {
       const videoEl = payload?.videoEl;
       if (isCameraActive(videoEl || null) || s.isProcessing) {
         await mediaStopCamera(videoEl);
         return { cameraActive: false };
       } else {
-        await mediaStartCamera(videoEl, { facingMode: 'environment' }); //is this the right approach? R250905
+        await mediaStartCamera(videoEl, { facingMode: 'environment' });
         return { cameraActive: true };
       }
-    } catch (e) {
-      structuredLog('WARN', 'toggleCamera failed', { error: e?.message || String(e) });
-      return { ok: false };
-    }
+    }, {
+      hasVideoElement: !!payload?.videoEl,
+      currentlyProcessing: !!s.isProcessing,
+      cameraCurrentlyActive: isCameraActive(payload?.videoEl || null)
+    }).catch(error => {
+      // If camera fails, show critical error since visual-to-audio needs camera
+      if (error.isAccessibilityError) {
+        showCriticalError(
+          'Camera Access Failed',
+          'AcoustSee requires camera access to convert visual information to audio. Please allow camera permissions and try again.',
+          { 
+            error: error.message,
+            code: error.code,
+            troubleshooting: 'Check camera permissions in browser settings'
+          }
+        );
+      }
+      return { ok: false, error: error.message };
+    });
   });
 
   // Toggle microphone: start or stop mic and update state //R250905: this logic seems entangled between have start and stopMic, the toggle and stream, seems overcomplicated 

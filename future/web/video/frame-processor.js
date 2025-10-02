@@ -1,6 +1,11 @@
 // filepath: future/web/video/frame-processor.js
 import { structuredLog } from '../utils/logging.js';
 import { rgbaToY } from './videoframe-helper.js';
+import { 
+  executeCriticalOperation, 
+  AccessibilityError, 
+  showCriticalError 
+} from '../utils/error-handling.js';
 
 // --- ADD THESE SIMULATED WORKER FUNCTIONS at the top of the file, after the imports ---
 async function simulateObjectDetection(motionResults) {
@@ -93,10 +98,14 @@ export async function initializeVideo(config) {
   startMotionWorker();
   // startDepthWorker(); // etc.
 
-  try {
+  return await executeCriticalOperation('video-processing', async () => {
     const { videoElement, engine } = config;
     if (!videoElement || !videoElement.srcObject) {
-      throw new Error("Video element or srcObject is not available.");
+      throw new AccessibilityError(
+        "Camera access is required for visual-to-audio conversion",
+        'VIDEO_SOURCE_UNAVAILABLE',
+        { hasVideoElement: !!videoElement, hasSrcObject: !!videoElement?.srcObject }
+      );
     }
     
     // Only log video validation occasionally to reduce dev panel spam
@@ -249,9 +258,9 @@ export async function initializeVideo(config) {
     });
     
     structuredLog('INFO', 'initializeVideo: Video pipeline initialization completed successfully');
-
-  } catch (e) {
-    structuredLog('ERROR', 'Failed to initialize video pipeline.', { error: e.message, stack: e.stack });
-    throw e;
-  }
+    return true; // Success indicator
+  }, { 
+    videoElement: config?.videoElement, 
+    hasCamera: !!config?.videoElement?.srcObject 
+  });
 }
