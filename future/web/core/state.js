@@ -45,6 +45,27 @@ export let settings = {
   audioResumeDelayMs: 100,
   ttsEnabled: false,
   ingestEnabled: true,
+  // Performance-optimized ingest preferences (JSON serializable)
+  ingestPreferences: {
+    useIdleCallback: true,
+    maxEventsPerSecond: 10,
+    enableOnLowPerformance: true,
+    enableOnMobile: true,
+    // Configurable optimization thresholds
+    performanceThresholds: {
+      lowCpuCores: 2,         // Optimize if CPU cores <= 2
+      lowMemoryGB: 2,         // Optimize if RAM <= 2GB
+      slowConnectionTypes: ['slow-2g', '2g'], // Connection types that trigger optimization
+      mobileOptimization: true // Enable mobile-specific optimizations
+    }
+  },
+  // Developer-friendly dynamic categorization for pipeline optimization events
+  ingestCategories: {
+    user_workflow: ['startProcessing', 'stopProcessing', 'toggleProcessing', 'setMode'],
+    performance_critical: ['audioCuesReady', 'setFrameProviderThrottle', 'logFrameBenchmark'],
+    auto_optimization: ['setFrameInterval', 'diagnosticTick'],
+    performance_settings: ['setMaxNotes', 'setMotionThreshold', 'setAutoFPS']
+  },
   dayNightMode: 'day',
   resetStateOnError: true,
   // --- WIP: ARCH-3 ---
@@ -86,10 +107,12 @@ function validateSettingsSchema(settingsObj) {
     audioResumeAttempts: 'number',
     audioResumeDelayMs: 'number',
     ttsEnabled: 'boolean',
+    ingestEnabled: 'boolean',
+    ingestPreferences: 'object',
+    ingestCategories: 'object',
     dayNightMode: 'string',
     resetStateOnError: 'boolean',
-    motionThreshold: 'number'
-    ,
+    motionThreshold: 'number',
     currentMode: 'string'
   };
 

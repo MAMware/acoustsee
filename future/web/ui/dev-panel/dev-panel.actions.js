@@ -108,6 +108,75 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
           }
         } catch (e) { /* ignore */ }
         break;
+      case 'updateIngestSettings':
+        try {
+          const ingestEnabled = panel.querySelector('#ingest-enabled-checkbox')?.checked;
+          const batteryOptimization = panel.querySelector('#battery-optimization-checkbox')?.checked;
+          const maxEventsPerSecond = parseInt(panel.querySelector('#ingest-rate-select')?.value || '10');
+          const categoryFilter = Array.from(panel.querySelectorAll('.category-toggle input[type="checkbox"]:checked'))
+            .map(checkbox => checkbox.dataset.category);
+
+          // Update engine state
+          const state = engine.getState && engine.getState();
+          if (state) {
+            state.ingestEnabled = ingestEnabled;
+            state.ingestPreferences = {
+              ...state.ingestPreferences,
+              useIdleCallback: batteryOptimization,
+              maxEventsPerSecond
+            };
+            
+            // Update category filter - enable only selected categories
+            const allCategories = state.ingestCategories || {};
+            const newCategories = {};
+            for (const [category, commands] of Object.entries(allCategories)) {
+              if (categoryFilter.includes(category)) {
+                newCategories[category] = commands;
+              }
+            }
+            state.ingestCategories = newCategories;
+          }
+
+          // Import and call the ingest API
+          import('../../utils/ingest.js').then(ingestModule => {
+            if (ingestModule.updateOptimizationSettings) {
+              ingestModule.updateOptimizationSettings(engine, {
+                useIdleCallback: batteryOptimization,
+                maxEventsPerSecond
+              });
+            }
+            if (ingestModule.updateIngestCategories) {
+              ingestModule.updateIngestCategories(engine, newCategories);
+            }
+          });
+
+          console.log('Ingest settings updated:', { ingestEnabled, batteryOptimization, maxEventsPerSecond, categoryFilter });
+        } catch (e) { 
+          console.warn('updateIngestSettings failed', e); 
+        }
+        break;
+      case 'exportIngestLogs':
+        try {
+          // Export performance_ingest logs
+          import('../../utils/idb-logger.js').then(idbModule => {
+            if (idbModule.getAllIdbLogs) {
+              idbModule.getAllIdbLogs().then(logs => {
+                const ingestLogs = logs.filter(log => log.category === 'performance_ingest');
+                const blob = new Blob([JSON.stringify(ingestLogs, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `acoustsee-analytics-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                console.log('Exported', ingestLogs.length, 'analytics events');
+              });
+            }
+          });
+        } catch (e) { 
+          console.warn('exportIngestLogs failed', e); 
+        }
+        break;
       default:
         break;
     }

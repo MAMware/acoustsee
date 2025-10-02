@@ -171,6 +171,57 @@ export function initializeDevPanel(arg1, arg2) {
             </div>
           </div>
 
+          <div class="devpanel-section ingest-section">
+            <h2 class="section-header">
+              <span>Performance Analytics</span>
+              <button class="collapse-btn" data-target="ingest-content" aria-expanded="true" title="Collapse Analytics">-</button>
+            </h2>
+            <div id="ingest-content" class="section-content">
+              <div class="ingest-grid">
+                <div class="control-column">
+                  <label>Analytics Enabled</label>
+                  <input id="ingest-enabled-checkbox" type="checkbox" checked>
+                  <label>Battery Optimization</label>
+                  <input id="battery-optimization-checkbox" type="checkbox" checked>
+                  <label>Max Events/Second</label>
+                  <select id="ingest-rate-select">
+                    <option value="1">Minimal (1/sec)</option>
+                    <option value="2">Low Battery (2/sec)</option>
+                    <option value="5">Low (5/sec)</option>
+                    <option value="10" selected>Normal (10/sec)</option>
+                    <option value="30">High (30/sec)</option>
+                    <option value="60">Debug (60/sec)</option>
+                  </select>
+                </div>
+                <div class="control-column">
+                  <label>Event Categories</label>
+                  <div class="category-toggles">
+                    <label class="category-toggle">
+                      <input type="checkbox" data-category="user_workflow" checked>
+                      <span class="toggle-label">User Workflow</span>
+                    </label>
+                    <label class="category-toggle">
+                      <input type="checkbox" data-category="auto_optimization" checked>
+                      <span class="toggle-label">Auto Optimization</span>
+                    </label>
+                    <label class="category-toggle">
+                      <input type="checkbox" data-category="performance_critical">
+                      <span class="toggle-label">Performance Critical</span>
+                    </label>
+                    <label class="category-toggle">
+                      <input type="checkbox" data-category="performance_settings">
+                      <span class="toggle-label">Performance Settings</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="ingest-actions">
+                <button data-action="updateIngestSettings" type="button">Apply Settings</button>
+                <button data-action="exportIngestLogs" type="button">Export Analytics</button>
+              </div>
+            </div>
+          </div>
+
           <div class="devpanel-section logs-section">
             <h2 class="section-header"><span>Live Logs</span></h2>
             <div class="section-content">
@@ -480,6 +531,10 @@ export function initializeDevPanel(arg1, arg2) {
     const maxNotesValue = panel.querySelector('#max-notes-value');
     const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
     const motionThresholdValue = panel.querySelector('#motion-threshold-value');
+    const ingestRateSelect = panel.querySelector('#ingest-rate-select');
+    const ingestEnabledCheckbox = panel.querySelector('#ingest-enabled-checkbox');
+    const batteryOptimizationCheckbox = panel.querySelector('#battery-optimization-checkbox');
+    const ingestCategoryToggles = panel.querySelectorAll('.category-toggle input[type="checkbox"]');
 
     // Create a dedicated worker for JSON.stringify to avoid blocking the main thread.
     let stateStringifyWorker = null;
@@ -540,6 +595,19 @@ export function initializeDevPanel(arg1, arg2) {
         if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
         if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
         if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
+        
+        // Update ingest controls
+        if (ingestEnabledCheckbox) ingestEnabledCheckbox.checked = state.ingestEnabled;
+        if (batteryOptimizationCheckbox) batteryOptimizationCheckbox.checked = state.ingestPreferences?.useIdleCallback || false;
+        if (ingestRateSelect) ingestRateSelect.value = state.ingestPreferences?.maxEventsPerSecond || 10;
+        
+        // Update category toggle selection
+        if (ingestCategoryToggles && state.ingestCategories) {
+          const enabledCategories = Object.keys(state.ingestCategories);
+          ingestCategoryToggles.forEach(toggle => {
+            toggle.checked = enabledCategories.includes(toggle.dataset.category);
+          });
+        }
       } catch(e) {}
 
       // Then, handle the slow state view update.
