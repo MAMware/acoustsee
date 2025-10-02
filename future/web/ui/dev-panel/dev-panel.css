@@ -439,3 +439,220 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* State Inspector Styles */
+.state-inspector-root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.state-search {
+  margin-bottom: 12px;
+}
+
+.state-search input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #34495e;
+  border-radius: 4px;
+  font-size: 14px;
+  background: rgba(52, 73, 94, 0.3);
+  color: #ecf0f1;
+}
+
+.state-search input::placeholder {
+  color: #95a5a6;
+}
+
+.state-search input:focus {
+  outline: none;
+  border-color: #3498db;
+  background: rgba(52, 73, 94, 0.5);
+}
+
+.state-groups {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.state-group {
+  margin-bottom: 12px;
+  border: 1px solid #34495e;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.state-group.collapsed .state-group-content {
+  display: none;
+}
+
+.state-group-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(52, 73, 94, 0.3);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid #34495e;
+}
+
+.state-group-header:hover {
+  background: rgba(52, 73, 94, 0.5);
+}
+
+.group-title {
+  font-weight: 600;
+  color: #ecf0f1;
+  flex: 1;
+}
+
+.group-count {
+  font-size: 12px;
+  color: #95a5a6;
+  margin-left: 8px;
+}
+
+.group-toggle {
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  color: #95a5a6;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-toggle:hover {
+  color: #ecf0f1;
+}
+
+.state-group-content {
+  padding: 8px;
+}
+
+.state-property {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  margin: 2px 0;
+  border-radius: 3px;
+  min-height: 24px;
+}
+
+.state-property:hover {
+  background: rgba(52, 73, 94, 0.3);
+}
+
+.property-key {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  color: #3498db;
+  margin-right: 12px;
+  min-width: 120px;
+  font-weight: 500;
+}
+
+.property-value {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  color: #ecf0f1;
+}
+
+/* Boolean Values */
+.value-boolean-true .boolean-indicator {
+  color: #27ae60;
+  font-size: 16px;
+  margin-right: 6px;
+}
+
+.value-boolean-false .boolean-indicator {
+  color: #e74c3c;
+  font-size: 16px;
+  margin-right: 6px;
+}
+
+.value-boolean-true {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.value-boolean-false {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+/* Number Values */
+.value-number {
+  color: #9b59b6;
+  font-weight: 500;
+}
+
+/* String Values */
+.value-string {
+  color: #e67e22;
+}
+
+/* Null/Undefined */
+.value-null,
+.value-undefined {
+  color: #95a5a6;
+  font-style: italic;
+}
+
+/* Arrays */
+.value-array {
+  color: #f39c12;
+}
+
+.array-indicator {
+  color: #95a5a6;
+  font-weight: normal;
+}
+
+/* Objects */
+.value-object {
+  color: #1abc9c;
+}
+
+.object-indicator {
+  color: #95a5a6;
+  font-weight: normal;
+}
+
+/* Other types */
+.value-other {
+  color: #95a5a6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .property-key {
+    min-width: 100px;
+    font-size: 12px;
+  }
+  
+  .property-value {
+    font-size: 12px;
+  }
+  
+  .state-property {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .property-key {
+    margin-bottom: 4px;
+    margin-right: 0;
+  }
+}

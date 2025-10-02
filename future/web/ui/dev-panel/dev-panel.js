@@ -8,6 +8,7 @@ import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-v
 import { createAndWireActions } from './dev-panel.actions.js';
 import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
+import { StateInspector } from './state-inspector.js';
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION, UTILS_VERSION } from '../../core/constants.js';
 import { registerComponent } from '../ui-registry.js';
 
@@ -70,7 +71,7 @@ export function initializeDevPanel(arg1, arg2) {
               <button class="collapse-btn" data-target="state-content" aria-expanded="true" title="Collapse Inspector">-</button>
             </h2>
             <div id="state-content" class="section-content">
-              <pre id="devpanel-state-view">Loading state...</pre>
+              <!-- StateInspector component will be rendered here -->
             </div>
           </div>
 
@@ -522,8 +523,28 @@ export function initializeDevPanel(arg1, arg2) {
       structuredLog('ERROR', 'Failed to dynamically populate dropdowns from state', { error: e.message });
     }
 
-    // --- High-Performance State Synchronization using a Web Worker ---
-    const stateView = panel.querySelector('#devpanel-state-view');
+    // --- Initialize Visual State Inspector ---
+    try {
+      const stateSection = panel.querySelector('#state-content');
+      if (stateSection) {
+        // Create new visual state inspector
+        const stateInspector = new StateInspector(stateSection, engine);
+        
+        // Store reference for cleanup
+        panel.__stateInspector = stateInspector;
+        
+        structuredLog('INFO', 'dev-panel', 'Visual state inspector initialized');
+      }
+    } catch (e) {
+      structuredLog('ERROR', 'dev-panel', 'Failed to initialize state inspector', { error: e.message });
+      // Fallback to simple text display
+      const stateSection = panel.querySelector('#state-content');
+      if (stateSection) {
+        stateSection.innerHTML = '<div style="color: #e74c3c; padding: 8px;">State inspector failed to load. Check console for details.</div>';
+      }
+    }
+
+    // --- Control Synchronization ---
     const gridTypeSelect = panel.querySelector('#grid-type-select');
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
     const modeSelect = panel.querySelector('#mode-select');
@@ -536,57 +557,8 @@ export function initializeDevPanel(arg1, arg2) {
     const batteryOptimizationCheckbox = panel.querySelector('#battery-optimization-checkbox');
     const ingestCategoryToggles = panel.querySelectorAll('.category-toggle input[type="checkbox"]');
 
-    // Create a dedicated worker for JSON.stringify to avoid blocking the main thread.
-    let stateStringifyWorker = null;
-    try {
-      const workerCode = `
-        function stringifySafe(obj, indent = 2) {
-          const seen = new WeakSet();
-          const replacer = (key, value) => {
-            if (typeof value === 'object' && value !== null) {
-              if (seen.has(value)) {
-                return '[Circular]';
-              }
-              seen.add(value);
-            }
-            // Skip functions, symbols, and undefined (JSON.stringify does this by default, but we make it explicit)
-            if (typeof value === 'function' || typeof value === 'symbol' || value === undefined) {
-              return '[Non-serializable: ' + typeof value + ']';
-            }
-            return value;
-          };
-          try {
-            return JSON.stringify(obj, replacer, indent);
-          } catch (e) {
-            return 'Error during safe stringification: ' + e.message;
-          }
-        }
-
-        self.onmessage = (event) => {
-          try {
-            const prettyString = stringifySafe(event.data);
-            self.postMessage(prettyString);
-          } catch (e) {
-            self.postMessage('Error stringifying state: ' + e.message);
-          }
-        };
-      `;
-      const blob = new Blob([workerCode], { type: 'application/javascript' });
-      stateStringifyWorker = new Worker(URL.createObjectURL(blob));
-
-      // When the worker sends the string back, update the DOM. This is very fast.
-      stateStringifyWorker.onmessage = (event) => {
-        if (stateView) stateView.textContent = event.data;
-      };
-    } catch (e) {
-      console.error("Failed to create state stringify worker. State inspector will be disabled.", e);
-    }
-
-    let lastStateUpdate = 0;
-    const STATE_UPDATE_INTERVAL = 400; // Update state view max ~2.5 times/sec
-
+    // Sync controls with state changes
     engine.onStateChange(state => {
-      // First, update the fast/responsive controls immediately.
       try {
         if (gridTypeSelect) gridTypeSelect.value = state.gridType;
         if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
@@ -609,20 +581,6 @@ export function initializeDevPanel(arg1, arg2) {
           });
         }
       } catch(e) {}
-
-      // Then, handle the slow state view update.
-      if (!stateStringifyWorker) return; // Don't proceed if worker failed to create
-
-      const now = performance.now();
-      if (now - lastStateUpdate > STATE_UPDATE_INTERVAL) {
-        lastStateUpdate = now;
-        // Offload the expensive stringify operation to the worker.
-        const diags = getAudioDiagnostics();
-        // Create a serializable clone of state, excluding arrays that contain functions
-        const { availableGrids, availableEngines, availableLanguages, ...serializableState } = state;
-        const stateClone = { ...serializableState, audio: diags };
-        stateStringifyWorker.postMessage(stateClone);
-      }
     });
 
     setOutputCallback((level, text) => debugLog(level, text));
@@ -661,6 +619,15 @@ export function initializeDevPanel(arg1, arg2) {
       console.error('Failed to display error in dev panel DOM', e);
     }
   }
+
+  // Add cleanup handler for state inspector
+  const originalRemove = panel.remove;
+  panel.remove = function() {
+    if (this.__stateInspector && typeof this.__stateInspector.dispose === 'function') {
+      this.__stateInspector.dispose();
+    }
+    originalRemove.call(this);
+  };
 }
 
 // Register initializer in the ui-registry for other modules to access later under the canonical name
