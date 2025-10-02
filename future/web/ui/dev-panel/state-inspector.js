@@ -6,41 +6,70 @@ import { structuredLog } from '../../utils/logging.js';
 
 export class StateInspector {
   constructor(container, engine) {
-    this.container = container;
-    this.engine = engine;
-    this.stateElements = new Map(); // Cache DOM elements for performance
-    this.lastStateHash = '';
-    
-    // Performance optimization - limit updates
-    this.updateThrottleMs = 200;
-    this.lastUpdate = 0;
-    this.pendingUpdate = null;
-    
-    this.initialize();
+    try {
+      this.container = container;
+      this.engine = engine;
+      this.stateElements = new Map(); // Cache DOM elements for performance
+      this.lastStateHash = '';
+      
+      // Performance optimization - limit updates
+      this.updateThrottleMs = 200;
+      this.lastUpdate = 0;
+      this.pendingUpdate = null;
+      
+      this.initialize();
+    } catch (error) {
+      // Log error but don't throw - allow graceful degradation
+      structuredLog('ERROR', 'state-inspector', 'Failed to initialize StateInspector', {
+        error: error.message,
+        stack: error.stack
+      });
+      
+      // Set up minimal fallback
+      if (container) {
+        container.innerHTML = '<div class="state-inspector-error" style="color: #e74c3c; padding: 16px; text-align: center;">State Inspector failed to load. Using fallback display.</div>';
+      }
+    }
   }
   
   initialize() {
-    // Clear container and add base structure
-    this.container.innerHTML = `
-      <div class="state-inspector-root">
-        <div class="state-search">
-          <input type="text" placeholder="Filter state properties..." id="state-filter">
+    try {
+      // Clear container and add base structure
+      this.container.innerHTML = `
+        <div class="state-inspector-root">
+          <div class="state-search">
+            <input type="text" placeholder="Filter state properties..." id="state-filter">
+          </div>
+          <div class="state-groups" id="state-content"></div>
         </div>
-        <div class="state-groups" id="state-content"></div>
-      </div>
-    `;
-    
-    // Wire up search filter
-    const filterInput = this.container.querySelector('#state-filter');
-    filterInput.addEventListener('input', (e) => {
-      this.filterState(e.target.value.toLowerCase());
-    });
-    
-    // Listen to state changes with throttling
-    this.engine.onStateChange(state => this.scheduleUpdate(state));
-    
-    // Initial render
-    this.scheduleUpdate(this.engine.getState());
+      `;
+      
+      // Wire up search filter
+      const filterInput = this.container.querySelector('#state-filter');
+      if (filterInput) {
+        filterInput.addEventListener('input', (e) => {
+          this.filterState(e.target.value.toLowerCase());
+        });
+      }
+      
+      // Listen to state changes with throttling
+      if (this.engine && typeof this.engine.onStateChange === 'function') {
+        this.engine.onStateChange(state => this.scheduleUpdate(state));
+        
+        // Initial render
+        this.scheduleUpdate(this.engine.getState());
+      } else {
+        structuredLog('WARN', 'state-inspector', 'Engine missing onStateChange method');
+      }
+    } catch (error) {
+      structuredLog('ERROR', 'state-inspector', 'Failed to initialize UI', {
+        error: error.message,
+        stack: error.stack
+      });
+      
+      // Minimal fallback
+      this.container.innerHTML = '<div style="color: #e74c3c; padding: 8px;">Failed to initialize state inspector UI</div>';
+    }
   }
   
   scheduleUpdate(state) {

@@ -5,6 +5,7 @@ let _config = {};
 import { setOutputCallback } from '../../utils/core-logger.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
+import { structuredLog } from '../../utils/logging.js';
 import { createAndWireActions } from './dev-panel.actions.js';
 import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
