@@ -78,9 +78,9 @@ export function initializeDevPanel(arg1, arg2) {
             </div>
           </div>
 
-          <!-- NEW WRAPPER for side-by-side layout in portrait mode -->
-          <div class="devpanel-row">
-            <div id="worker-explorer-container" class="devpanel-section">
+          <!-- Side-by-side Worker and Video Preview, always aligned -->
+          <div class="devpanel-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+            <div id="worker-explorer-container" class="devpanel-section" style="flex: 1 1 340px; min-width: 280px; max-width: 480px;">
               <h2 class="section-header">
                 <span>Worker Performance</span>
                 <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
@@ -91,18 +91,17 @@ export function initializeDevPanel(arg1, arg2) {
               </div>
             </div>
 
-            <div class="devpanel-section video-section">
+            <div class="devpanel-section video-section" style="flex: 1 1 340px; min-width: 280px; max-width: 480px; display: flex; flex-direction: column; align-items: center;">
               <h2 class="section-header">
                 <span>Live Video Preview</span>
                 <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
               </h2>
-              <div id="video-content" class="section-content">
-                <video id="devpanel-video-preview" muted autoplay playsinline></video>
+              <div id="video-content" class="section-content" style="display: flex; flex-direction: column; align-items: center;">
+                <video id="devpanel-video-preview" muted autoplay playsinline style="max-width: 100%; height: auto; aspect-ratio: 16/9; background: #222; border-radius: 6px; box-shadow: 0 1px 4px #0002;"></video>
                 <p class="perf-note">Note: This preview uses the existing camera stream with minimal overhead.</p>
               </div>
             </div>
           </div>
-          <!-- END WRAPPER -->
 
           <div class="devpanel-section controls-section">
             <h2 class="section-header"><span>Controls</span></h2>
@@ -132,7 +131,7 @@ export function initializeDevPanel(arg1, arg2) {
                   <select id="synth-engine-select"></select>
                   <label>Max Notes</label>
                   <div class="slider-container">
-                    <input id="max-notes-slider" type="range" min="1" max="128" value="16"><span id="max-notes-value">16</span>
+                    <input id="max-notes-slider" type="range" min="1" max="64" value="16"><span id="max-notes-value">16</span>
                   </div>
                 </div>
               </div>
@@ -400,7 +399,9 @@ export function initializeDevPanel(arg1, arg2) {
         if (!btn) return;
         if (btn.getAttribute('aria-expanded') === 'false') sectionEl.classList.add('collapsed');
 
-        headerEl.addEventListener('click', () => {
+        // Only the button toggles collapse, not the whole header
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
           const isNowCollapsed = sectionEl.classList.toggle('collapsed');
           btn.textContent = isNowCollapsed ? '+' : '-';
           btn.setAttribute('aria-expanded', String(!isNowCollapsed));
@@ -563,7 +564,22 @@ export function initializeDevPanel(arg1, arg2) {
       if (stateSection) {
         // Create new visual state inspector
         const stateInspector = new StateInspector(stateSection, engine);
-        
+        // Patch: Add video info to state inspector if available
+        const origRender = stateInspector.render.bind(stateInspector);
+        stateInspector.render = function(state) {
+          origRender(state);
+          // Add video info below if available
+          if (state && state.videoSize && stateSection) {
+            let info = document.getElementById('devpanel-video-info');
+            if (!info) {
+              info = document.createElement('div');
+              info.id = 'devpanel-video-info';
+              info.style = 'font-size: 0.95em; color: #555; margin-top: 8px;';
+              stateSection.appendChild(info);
+            }
+            info.innerHTML = `<b>Video Size:</b> ${state.videoSize.width} × ${state.videoSize.height}`;
+          }
+        };
         // Store reference for cleanup
         panel.__stateInspector = stateInspector;
         // If header filter exists, forward its input to internal filter
@@ -573,7 +589,6 @@ export function initializeDevPanel(arg1, arg2) {
             stateInspector.filterState(e.target.value.toLowerCase());
           });
         }
-        
         structuredLog('INFO', 'dev-panel', 'Visual state inspector initialized');
       }
     } catch (e) {
@@ -598,7 +613,7 @@ export function initializeDevPanel(arg1, arg2) {
     const batteryOptimizationCheckbox = panel.querySelector('#battery-optimization-checkbox');
     const ingestCategoryToggles = panel.querySelectorAll('.category-toggle input[type="checkbox"]');
 
-    // Sync controls with state changes
+    // Sync controls with state changes and update state inspector
     engine.onStateChange(state => {
       try {
         if (gridTypeSelect) gridTypeSelect.value = state.gridType;
@@ -608,18 +623,20 @@ export function initializeDevPanel(arg1, arg2) {
         if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
         if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
         if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
-        
         // Update ingest controls
         if (ingestEnabledCheckbox) ingestEnabledCheckbox.checked = state.ingestEnabled;
         if (batteryOptimizationCheckbox) batteryOptimizationCheckbox.checked = state.ingestPreferences?.useIdleCallback || false;
         if (ingestRateSelect) ingestRateSelect.value = state.ingestPreferences?.maxEventsPerSecond || 10;
-        
         // Update category toggle selection
         if (ingestCategoryToggles && state.ingestCategories) {
           const enabledCategories = Object.keys(state.ingestCategories);
           ingestCategoryToggles.forEach(toggle => {
             toggle.checked = enabledCategories.includes(toggle.dataset.category);
           });
+        }
+        // Update state inspector if present
+        if (panel.__stateInspector && typeof panel.__stateInspector.render === 'function') {
+          panel.__stateInspector.render(state);
         }
       } catch(e) {}
     });

@@ -60,8 +60,8 @@ export class StateInspector {
     return executeNonCriticalOperation('state-inspector', () => {
       // Clear container and add base structure (no internal search; external filter in header)
       this.container.innerHTML = `
-        <div class="state-inspector-root">
-          <div class="state-groups" id="state-content"></div>
+        <div class="state-inspector-root" style="display: flex; flex-direction: column; width: 100%;">
+          <div class="state-groups state-groups-grid" id="state-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;"></div>
         </div>
       `;
       
@@ -214,22 +214,26 @@ export class StateInspector {
   }
   
   createStateGroup(groupName, properties) {
-    const groupEl = document.createElement('div');
-    groupEl.className = 'state-group';
-    groupEl.dataset.group = groupName.toLowerCase().replace(/\s+/g, '-');
+  const groupEl = document.createElement('div');
+  groupEl.className = 'state-group';
+  groupEl.style = 'min-width: 0; background: #f8f9fa; border-radius: 6px; box-shadow: 0 1px 2px #0001; padding: 8px 10px 10px 10px;';
+  groupEl.dataset.group = groupName.toLowerCase().replace(/\s+/g, '-');
     
     // Group header with collapse functionality
     const headerEl = document.createElement('div');
     headerEl.className = 'state-group-header';
+    headerEl.style = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;';
     headerEl.innerHTML = `
-      <span class="group-title">${groupName}</span>
-      <span class="group-count">(${Object.keys(properties).length})</span>
-      <button class="group-toggle" aria-expanded="true">−</button>
+      <span class="group-title" style="font-weight: 600;">${groupName}</span>
+      <span style="flex:1"></span>
+      <span class="group-count" style="color: #888; font-size: 0.95em; margin-right: 8px;">(${Object.keys(properties).length})</span>
+      <button class="group-toggle" aria-expanded="true" style="font-size: 1.1em; width: 1.8em; height: 1.8em; border-radius: 50%; border: none; background: #eee; cursor: pointer;">−</button>
     `;
     
     // Properties container
-    const contentEl = document.createElement('div');
-    contentEl.className = 'state-group-content';
+  const contentEl = document.createElement('div');
+  contentEl.className = 'state-group-content';
+  contentEl.style = 'display: flex; flex-direction: column; gap: 2px;';
     
     // Create property elements
     Object.entries(properties).forEach(([key, value]) => {
@@ -253,13 +257,15 @@ export class StateInspector {
   }
   
   createPropertyElement(key, value) {
-    const propertyEl = document.createElement('div');
-    propertyEl.className = 'state-property';
-    propertyEl.dataset.key = key;
-    propertyEl.dataset.type = typeof value;
+  const propertyEl = document.createElement('div');
+  propertyEl.className = 'state-property';
+  propertyEl.style = 'display: flex; align-items: center; gap: 6px; font-size: 0.98em; padding: 1px 0;';
+  propertyEl.dataset.key = key;
+  propertyEl.dataset.type = typeof value;
     
   const keyEl = document.createElement('span');
   keyEl.className = 'property-key';
+  keyEl.style = 'min-width: 110px; color: #444; font-weight: 500;';
   keyEl.textContent = `${key}:`;
     
     const valueEl = this.createValueElement(value);
@@ -276,7 +282,7 @@ export class StateInspector {
     
     if (value === null) {
       valueEl.className += ' value-null';
-      valueEl.textContent = '';
+      valueEl.innerHTML = `<span class="boolean-indicator" style="color: #bbb;">●</span>`;
     } else if (value === undefined) {
       valueEl.className += ' value-undefined';
       valueEl.textContent = '';
