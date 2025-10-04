@@ -7,7 +7,7 @@
 import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText, setLanguage, translatePage } from '../../utils/utils.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
-import { getAudioApi } from '../../audio/audio-processor.js';
+import { getAudioApi, setSelectedSynthEngine } from '../../audio/audio-processor.js';
 
 export function registerSettingsCommands(engine) {
   const { registerCommandHandler, dispatch } = engine;
@@ -27,6 +27,7 @@ export function registerSettingsCommands(engine) {
     const currentState = engine.getState();
     if (currentState.availableEngines && currentState.availableEngines.find(e => e.id === newEngineId)) {
       engine.setState({ synthesisEngine: newEngineId });
+      try { setSelectedSynthEngine(newEngineId); } catch (_) {}
       structuredLog('INFO', 'DebugUI: Synth engine set', { synthEngine: newEngineId });
     }
   });

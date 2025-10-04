@@ -186,16 +186,14 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
 
   try {
   const gridTypeEl = panel.querySelector('#grid-type-select');
-    if (gridTypeEl && engine && engine.dispatch && Array.isArray(window?.settings?.availableGrids)) {
-      window.settings.availableGrids.forEach(g => { const opt = document.createElement('option'); opt.value = g.id; opt.textContent = g.id; gridTypeEl.appendChild(opt); });
+    if (gridTypeEl && engine && engine.dispatch) {
       const gridChange = (e) => engine.dispatch('setGridType', { gridType: e.target.value });
       gridTypeEl.addEventListener('change', gridChange);
       attachedHandlers.push({ el: gridTypeEl, type: 'change', fn: gridChange });
     }
 
   const synthEngineEl = panel.querySelector('#synth-engine-select');
-    if (synthEngineEl && engine && engine.dispatch && Array.isArray(window?.settings?.availableEngines)) {
-      window.settings.availableEngines.forEach(en => { const opt = document.createElement('option'); opt.value = en.id; opt.textContent = en.id; synthEngineEl.appendChild(opt); });
+    if (synthEngineEl && engine && engine.dispatch) {
       const synthChange = (e) => engine.dispatch('setSynthEngine', { synthEngine: e.target.value });
       synthEngineEl.addEventListener('change', synthChange);
       attachedHandlers.push({ el: synthEngineEl, type: 'change', fn: synthChange });

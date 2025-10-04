@@ -59,9 +59,10 @@ export class StateInspector {
   initialize() {
     return executeNonCriticalOperation('state-inspector', () => {
       // Clear container and add base structure (no internal search; external filter in header)
+      // Note: Use a unique internal id to avoid clashing with the outer dev-panel '#state-content'
       this.container.innerHTML = `
         <div class="state-inspector-root" style="display: flex; flex-direction: column; width: 100%;">
-          <div class="state-groups state-groups-grid" id="state-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;"></div>
+          <div class="state-groups state-groups-grid" id="state-groups-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;"></div>
         </div>
       `;
       
@@ -107,7 +108,7 @@ export class StateInspector {
       if (stateHash === this.lastStateHash) return;
       this.lastStateHash = stateHash;
       
-      const contentContainer = this.container.querySelector('#state-content');
+  const contentContainer = this.container.querySelector('#state-groups-content');
       if (!contentContainer) return;
       
       // Group state properties logically

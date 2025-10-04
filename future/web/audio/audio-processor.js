@@ -8,10 +8,12 @@ import {
   showCriticalError,
   showAudioFailureIndicator
 } from '../utils/error-handling.js';
+import { availableEnginesData } from './synths/available-synths.js';
 
 let audioManager = null;
 let _config = {};
 let _audioApi = null;
+let _selectedSynthPlayFn = null;
 
 export function setAudioApi(api) {
   _audioApi = api || null;
@@ -19,6 +21,18 @@ export function setAudioApi(api) {
 
 export function getAudioApi() {
   return _audioApi;
+}
+
+// Allow UI/commands to select a global synth engine to apply to notes
+export function setSelectedSynthEngine(engineId) {
+  try {
+    const entry = (availableEnginesData || []).find(e => e.id === engineId);
+    _selectedSynthPlayFn = entry ? entry.playFunction : null;
+    structuredLog('INFO', 'audio: selected synth engine', { engineId, hasPlayFn: !!_selectedSynthPlayFn });
+  } catch (e) {
+    structuredLog('WARN', 'audio: setSelectedSynthEngine failed', { error: e?.message || String(e) });
+    _selectedSynthPlayFn = null;
+  }
 }
 const oscillatorPool = [];
 const activeOscillators = new Map();
@@ -337,8 +351,13 @@ export async function playCues(payload) {
   for (const cue of cuesToProcess.slice(0, maxNotes)) {
     // If in Focus mode, we force the synth from the primary object's profile.
     // Otherwise, in Flow mode, we look up the profile for each individual cue.
-    const profile = isFocusMode ? primaryProfile : (soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion']);
+    let profile = isFocusMode ? primaryProfile : (soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion']);
     if (!profile || typeof profile.playFunction !== 'function') continue;
+
+    // Override with globally selected synth engine if provided
+    if (_selectedSynthPlayFn) {
+      profile = { ...profile, playFunction: _selectedSynthPlayFn };
+    }
 
     if (!notesBySynth.has(profile.playFunction)) {
       notesBySynth.set(profile.playFunction, []);

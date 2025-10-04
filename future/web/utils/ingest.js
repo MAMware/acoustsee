@@ -14,6 +14,10 @@ import { structuredLog } from './logging.js';
 import { deviceSummary } from './performance.js';
 import { BUILD_VERSION } from '../core/constants.js';
 
+// Module-scoped queue for analytics events to avoid ReferenceError from closures
+let eventQueue = [];
+let lastFlushTime = 0;
+
 // Pre-computed device context (computed once during init)
 let DEVICE_CONTEXT = null;
 
@@ -71,9 +75,7 @@ export function createIngestInterceptor(engine) {
   // Initialize performance monitoring
   initializePerformanceMonitoring(engine);
   
-  // Rate limiting for battery optimization
-  let eventQueue = [];
-  let lastFlushTime = 0;
+  // Rate limiting state handled at module scope (single-engine runtime)
   
   const originalDispatch = engine.dispatch;
   
@@ -85,7 +87,10 @@ export function createIngestInterceptor(engine) {
     const shouldTrack = shouldTrackEvent(command, engine);
     if (shouldTrack) {
       const eventData = createLightweightEvent(command, engine);
-      queueEvent(eventData, engine);
+      try { queueEvent(eventData, engine); } catch (e) {
+        // Never break app flow due to analytics; log once per type via structuredLog
+        try { structuredLog('ERROR', 'ingest_queue_error', 'Failed to queue analytics event', { error: e?.message || String(e) }); } catch(_) {}
+      }
     }
     
     return result;
