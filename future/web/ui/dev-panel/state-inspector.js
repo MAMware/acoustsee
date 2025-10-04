@@ -58,23 +58,12 @@ export class StateInspector {
   
   initialize() {
     return executeNonCriticalOperation('state-inspector', () => {
-      // Clear container and add base structure
+      // Clear container and add base structure (no internal search; external filter in header)
       this.container.innerHTML = `
         <div class="state-inspector-root">
-          <div class="state-search">
-            <input type="text" placeholder="Filter state properties..." id="state-filter">
-          </div>
           <div class="state-groups" id="state-content"></div>
         </div>
       `;
-      
-      // Wire up search filter
-      const filterInput = this.container.querySelector('#state-filter');
-      if (filterInput) {
-        filterInput.addEventListener('input', (e) => {
-          this.filterState(e.target.value.toLowerCase());
-        });
-      }
       
       // Listen to state changes with throttling
       if (this.engine && typeof this.engine.onStateChange === 'function') {
@@ -269,9 +258,9 @@ export class StateInspector {
     propertyEl.dataset.key = key;
     propertyEl.dataset.type = typeof value;
     
-    const keyEl = document.createElement('span');
-    keyEl.className = 'property-key';
-    keyEl.textContent = key;
+  const keyEl = document.createElement('span');
+  keyEl.className = 'property-key';
+  keyEl.textContent = `${key}:`;
     
     const valueEl = this.createValueElement(value);
     
@@ -287,13 +276,13 @@ export class StateInspector {
     
     if (value === null) {
       valueEl.className += ' value-null';
-      valueEl.textContent = 'null';
+      valueEl.textContent = '';
     } else if (value === undefined) {
       valueEl.className += ' value-undefined';
-      valueEl.textContent = 'undefined';
+      valueEl.textContent = '';
     } else if (typeof value === 'boolean') {
       valueEl.className += value ? ' value-boolean-true' : ' value-boolean-false';
-      valueEl.innerHTML = `<span class="boolean-indicator">${value ? '●' : '●'}</span> ${value}`;
+      valueEl.innerHTML = `<span class="boolean-indicator">●</span>`;
     } else if (typeof value === 'number') {
       valueEl.className += ' value-number';
       // Format numbers based on their magnitude
@@ -306,7 +295,7 @@ export class StateInspector {
       valueEl.className += ' value-string';
       // Truncate long strings
       const displayValue = value.length > 50 ? value.substring(0, 47) + '...' : value;
-      valueEl.textContent = `"${displayValue}"`;
+      valueEl.textContent = displayValue;
       if (value.length > 50) {
         valueEl.title = value; // Show full value on hover
       }

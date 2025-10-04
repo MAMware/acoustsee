@@ -70,6 +70,7 @@ export function initializeDevPanel(arg1, arg2) {
           <div class="devpanel-section state-section">
             <h2 class="section-header">
               <span>State Inspector</span>
+              <input type="text" placeholder="Filter" id="state-filter-external" class="header-filter" />
               <button class="collapse-btn" data-target="state-content" aria-expanded="true" title="Collapse Inspector">-</button>
             </h2>
             <div id="state-content" class="section-content">
@@ -138,89 +139,89 @@ export function initializeDevPanel(arg1, arg2) {
             </div>
           </div>
 
-          <div class="devpanel-section performance-section">
-            <h2 class="section-header"><span>Performance Controls</span></h2>
-            <div class="section-content">
-              <div class="performance-grid">
-                <div class="control-column">
-                  <label>FPS Mode</label>
-                  <select id="fps-mode-select">
-                    <option value="auto">Auto (Adaptive)</option>
-                    <option value="manual">Manual</option>
-                  </select>
-                  <label>Target FPS (Manual)</label>
-                  <div class="slider-container">
-                    <input id="target-fps-slider" type="range" min="4" max="30" step="1" value="15">
-                    <span id="target-fps-value">15</span>
+          <div class="devpanel-row two-col">
+            <div class="devpanel-section performance-section">
+              <h2 class="section-header"><span>Performance Controls</span></h2>
+              <div class="section-content">
+                <div class="performance-grid">
+                  <div class="control-column">
+                    <label>FPS Mode</label>
+                    <select id="fps-mode-select">
+                      <option value="auto">Auto (Adaptive)</option>
+                      <option value="manual">Manual</option>
+                    </select>
+                    <label>Target FPS (Manual)</label>
+                    <div class="slider-container">
+                      <input id="target-fps-slider" type="range" min="4" max="30" step="1" value="15">
+                      <span id="target-fps-value">15</span>
+                    </div>
+                  </div>
+                  <div class="control-column">
+                    <label>Frame Skip Rate</label>
+                    <div class="slider-container">
+                      <input id="frame-skip-slider" type="range" min="1" max="4" step="1" value="1">
+                      <span id="frame-skip-value">1</span>
+                    </div>
+                    <label>Resolution Scale</label>
+                    <div class="slider-container">
+                      <input id="resolution-scale-slider" type="range" min="0.25" max="1.0" step="0.25" value="1.0">
+                      <span id="resolution-scale-value">1.0</span>
+                    </div>
                   </div>
                 </div>
-                <div class="control-column">
-                  <label>Frame Skip Rate</label>
-                  <div class="slider-container">
-                    <input id="frame-skip-slider" type="range" min="1" max="4" step="1" value="1">
-                    <span id="frame-skip-value">1</span>
-                  </div>
-                  <label>Resolution Scale</label>
-                  <div class="slider-container">
-                    <input id="resolution-scale-slider" type="range" min="0.25" max="1.0" step="0.25" value="1.0">
-                    <span id="resolution-scale-value">1.0</span>
-                  </div>
+                <div class="performance-actions">
+                  <button data-action="resetThrottling" type="button">Reset Throttling</button>
+                  <button data-action="applyThrottling" type="button">Apply Manual Throttling</button>
                 </div>
-              </div>
-              <div class="performance-actions">
-                <button data-action="resetThrottling" type="button">Reset Throttling</button>
-                <button data-action="applyThrottling" type="button">Apply Manual Throttling</button>
               </div>
             </div>
-          </div>
 
-          <div class="devpanel-section ingest-section">
-            <h2 class="section-header">
-              <span>Performance Analytics</span>
-              <button class="collapse-btn" data-target="ingest-content" aria-expanded="true" title="Collapse Analytics">-</button>
-            </h2>
-            <div id="ingest-content" class="section-content">
-              <div class="ingest-grid">
-                <div class="control-column">
-                  <label>Analytics Enabled</label>
-                  <input id="ingest-enabled-checkbox" type="checkbox" checked>
-                  <label>Battery Optimization</label>
-                  <input id="battery-optimization-checkbox" type="checkbox" checked>
-                  <label>Max Events/Second</label>
-                  <select id="ingest-rate-select">
-                    <option value="1">Minimal (1/sec)</option>
-                    <option value="2">Low Battery (2/sec)</option>
-                    <option value="5">Low (5/sec)</option>
-                    <option value="10" selected>Normal (10/sec)</option>
-                    <option value="30">High (30/sec)</option>
-                    <option value="60">Debug (60/sec)</option>
-                  </select>
-                </div>
-                <div class="control-column">
-                  <label>Event Categories</label>
-                  <div class="category-toggles">
-                    <label class="category-toggle">
-                      <input type="checkbox" data-category="user_workflow" checked>
-                      <span class="toggle-label">User Workflow</span>
-                    </label>
-                    <label class="category-toggle">
-                      <input type="checkbox" data-category="auto_optimization" checked>
-                      <span class="toggle-label">Auto Optimization</span>
-                    </label>
-                    <label class="category-toggle">
-                      <input type="checkbox" data-category="performance_critical">
-                      <span class="toggle-label">Performance Critical</span>
-                    </label>
-                    <label class="category-toggle">
-                      <input type="checkbox" data-category="performance_settings">
-                      <span class="toggle-label">Performance Settings</span>
-                    </label>
+            <div class="devpanel-section ingest-section">
+              <h2 class="section-header">
+                <span>Performance Analytics</span>
+                <button class="collapse-btn" data-target="ingest-content" aria-expanded="true" title="Collapse Analytics">-</button>
+              </h2>
+              <div id="ingest-content" class="section-content">
+                <div class="ingest-grid">
+                  <div class="control-column">
+                    <label class="inline-checkbox"><input id="ingest-enabled-checkbox" type="checkbox" checked> <span>Analytics Enabled</span></label>
+                    <label class="inline-checkbox"><input id="battery-optimization-checkbox" type="checkbox" checked> <span>Battery Optimization</span></label>
+                    <label>Max Events/Second</label>
+                    <select id="ingest-rate-select">
+                      <option value="1">Minimal (1/sec)</option>
+                      <option value="2">Low Battery (2/sec)</option>
+                      <option value="5">Low (5/sec)</option>
+                      <option value="10" selected>Normal (10/sec)</option>
+                      <option value="30">High (30/sec)</option>
+                      <option value="60">Debug (60/sec)</option>
+                    </select>
+                  </div>
+                  <div class="control-column">
+                    <label>Event Categories</label>
+                    <div class="category-toggles">
+                      <label class="category-toggle">
+                        <input type="checkbox" data-category="user_workflow" checked>
+                        <span class="toggle-label">User Workflow</span>
+                      </label>
+                      <label class="category-toggle">
+                        <input type="checkbox" data-category="auto_optimization" checked>
+                        <span class="toggle-label">Auto Optimization</span>
+                      </label>
+                      <label class="category-toggle">
+                        <input type="checkbox" data-category="performance_critical">
+                        <span class="toggle-label">Performance Critical</span>
+                      </label>
+                      <label class="category-toggle">
+                        <input type="checkbox" data-category="performance_settings">
+                        <span class="toggle-label">Performance Settings</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="ingest-actions">
-                <button data-action="updateIngestSettings" type="button">Apply Settings</button>
-                <button data-action="exportIngestLogs" type="button">Export Analytics</button>
+                <div class="ingest-actions">
+                  <button data-action="updateIngestSettings" type="button">Apply Settings</button>
+                  <button data-action="exportIngestLogs" type="button">Export Analytics</button>
+                </div>
               </div>
             </div>
           </div>
@@ -565,6 +566,13 @@ export function initializeDevPanel(arg1, arg2) {
         
         // Store reference for cleanup
         panel.__stateInspector = stateInspector;
+        // If header filter exists, forward its input to internal filter
+        const externalFilter = panel.querySelector('#state-filter-external');
+        if (externalFilter && typeof stateInspector.filterState === 'function') {
+          externalFilter.addEventListener('input', (e) => {
+            stateInspector.filterState(e.target.value.toLowerCase());
+          });
+        }
         
         structuredLog('INFO', 'dev-panel', 'Visual state inspector initialized');
       }
