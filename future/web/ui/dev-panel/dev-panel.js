@@ -97,8 +97,15 @@ export function initializeDevPanel(arg1, arg2) {
                 <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
               </h2>
               <div id="video-content" class="section-content" style="display: flex; flex-direction: column; align-items: center;">
-                <video id="devpanel-video-preview" muted autoplay playsinline style="max-width: 100%; height: auto; background: #222; border-radius: 6px; box-shadow: 0 1px 4px #0002;"></video>
-                <p class="perf-note">Note: This preview uses the existing camera stream with minimal overhead.</p>
+                <!-- Replaced the <video> preview with a low-overhead processing preview canvas. -->
+                <div id="devpanel-preview-container" style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+                  <div class="preview-toggle-row" style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="devpanel-preview-toggle" aria-label="Show processing preview (low FPS)" />
+                    <label for="devpanel-preview-toggle" style="font-size:12px; user-select:none;">Processing Preview (2–5 FPS)</label>
+                  </div>
+                  <canvas id="devpanel-preview-canvas" width="320" height="240" style="width:320px; height:240px; border:1px solid rgba(0,0,0,0.12); background:#000; display:none;"></canvas>
+                  <p class="perf-note">Note: This preview samples the processing canvas at low FPS to avoid extra decoders.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -458,36 +465,85 @@ export function initializeDevPanel(arg1, arg2) {
       subtitle.textContent = `Build: ${ver} | Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || 'n/a'} | Utils: ${UTILS_VERSION || 'n/a'}`;
     } catch (e) {}
 
-    // --- Cost-Effective Video Preview Wiring ---
+    // --- Cost-Effective Processing Canvas Preview Wiring ---
     try {
-      const previewEl = panel.querySelector('#devpanel-video-preview');
-      let lastStreamId = null; // Track stream ID to avoid unnecessary updates
-      
-      // Wire up the video preview to show the camera stream
-      const updateVideoPreview = (state) => {
-        if (!previewEl) return;
-        
-        let newStream = null;
-        if (state && state.stream) {
-          newStream = state.stream;
-        } else if (DOM && DOM.videoFeed && DOM.videoFeed.srcObject) {
-          newStream = DOM.videoFeed.srcObject;
-        }
-        
-        // Only update if the stream actually changed
-        if (newStream && newStream.id !== lastStreamId) {
-          previewEl.srcObject = newStream;
-          lastStreamId = newStream.id;
-        }
+      // Helper: pick the single processing canvas (frameCanvas or similar)
+      const pickProcessingCanvas = () =>
+        (DOM && (DOM.frameCanvas || DOM.videoCanvas)) ||
+        document.querySelector('canvas#frameCanvas, canvas#frame-canvas, canvas[data-role="frame-canvas"]');
+
+      const previewCanvas = panel.querySelector('#devpanel-preview-canvas');
+      const previewToggle = panel.querySelector('#devpanel-preview-toggle');
+
+      panel.__previewInterval = null;
+      panel.__previewRO = null;
+
+      const resizePreview = (src) => {
+        try {
+          if (!src || !previewCanvas) return;
+          const sw = src.width || src.clientWidth || 320;
+          const sh = src.height || src.clientHeight || 240;
+          const maxW = 320; const maxH = 240;
+          const ratio = Math.min(maxW / sw, maxH / sh, 1);
+          const w = Math.max(1, Math.round(sw * ratio));
+          const h = Math.max(1, Math.round(sh * ratio));
+          previewCanvas.width = w;
+          previewCanvas.height = h;
+          previewCanvas.style.width = `${w}px`;
+          previewCanvas.style.height = `${h}px`;
+        } catch (_) {}
       };
-      
-      // Update on state changes
-      engine.onStateChange(updateVideoPreview);
-      
-      // Also update immediately with current state
-      updateVideoPreview(engine.getState());
-      
-    } catch (e) { console.error('Failed to wire video preview', e); }
+
+      const startPreview = (fps = 4) => {
+        if (panel.__previewInterval) return;
+        const src = pickProcessingCanvas();
+        if (!src) {
+          structuredLog('WARN', 'dev-panel', { message: 'No processing canvas found for preview' });
+          return;
+        }
+        resizePreview(src);
+        try {
+          if (panel.__previewRO) panel.__previewRO.disconnect();
+          panel.__previewRO = new ResizeObserver(() => resizePreview(src));
+          panel.__previewRO.observe(src);
+        } catch (_) {}
+
+        const ctx = previewCanvas.getContext('2d', { alpha: false });
+        const intervalMs = Math.max(1000 / fps, 200);
+        panel.__previewInterval = setInterval(() => {
+          try {
+            if (!src || !ctx) return;
+            ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            ctx.drawImage(src, 0, 0, previewCanvas.width, previewCanvas.height);
+          } catch (e) {}
+        }, intervalMs);
+        previewCanvas.style.display = 'block';
+      };
+
+      const stopPreview = () => {
+        if (panel.__previewInterval) { clearInterval(panel.__previewInterval); panel.__previewInterval = null; }
+        if (panel.__previewRO) { try { panel.__previewRO.disconnect(); } catch(_){} panel.__previewRO = null; }
+        if (previewCanvas) previewCanvas.style.display = 'none';
+      };
+
+      if (previewToggle) {
+        previewToggle.addEventListener('change', (e) => {
+          if (e.target.checked) startPreview(4); else stopPreview();
+        }, { passive: true });
+      }
+
+      // If canvas exists and toggle is already checked, start preview
+      setTimeout(() => {
+        const src = pickProcessingCanvas();
+        if (src && previewToggle && previewToggle.checked) startPreview(4);
+      }, 1000);
+
+      // Attempt to update preview binding when processing starts/stops
+      engine.onStateChange((s) => {
+        // no-op: placeholder if we later want auto-start when processing begins
+      });
+
+    } catch (e) { console.error('Failed to wire processing preview', e); }
 
     // --- Wire Core Action Buttons & Renderer ---
     try {
@@ -664,10 +720,22 @@ export function initializeDevPanel(arg1, arg2) {
   // Add cleanup handler for state inspector
   const originalRemove = panel.remove;
   panel.remove = function() {
-    if (this.__stateInspector && typeof this.__stateInspector.dispose === 'function') {
-      this.__stateInspector.dispose();
-    }
-    originalRemove.call(this);
+    try {
+      if (this.__stateInspector && typeof this.__stateInspector.dispose === 'function') {
+        this.__stateInspector.dispose();
+      }
+    } catch (_) {}
+    try {
+      if (this.__previewInterval) {
+        clearInterval(this.__previewInterval);
+        this.__previewInterval = null;
+      }
+      if (this.__previewRO) {
+        try { this.__previewRO.disconnect(); } catch (_) {}
+        this.__previewRO = null;
+      }
+    } catch (_) {}
+    return originalRemove.call(this);
   };
 }
 
