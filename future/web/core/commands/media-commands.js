@@ -91,6 +91,26 @@ export function registerMediaCommands(engine) {
       await videoEl.play();
       structuredLog('INFO', 'COMMAND: Video stream is active and metadata loaded.');
 
+      // Publish source video size into state and keep it updated
+      const updateVideoSize = () => {
+        try {
+          const w = Number(videoEl.videoWidth) || 0;
+          const h = Number(videoEl.videoHeight) || 0;
+          if (w > 0 && h > 0) {
+            const cur = engine.getState().videoSize || {};
+            if (cur.width !== w || cur.height !== h) {
+              engine.setState({ videoSize: { width: w, height: h } });
+            }
+          }
+        } catch (_) {}
+      };
+      try {
+        updateVideoSize();
+        videoEl.addEventListener('loadedmetadata', updateVideoSize, { passive: true });
+        videoEl.addEventListener('resize', updateVideoSize, { passive: true });
+        videoEl.addEventListener('playing', updateVideoSize, { passive: true });
+      } catch (_) {}
+
       // Change to INFO level since this is important initialization information
       structuredLog('INFO', 'COMMAND: Initializing video pipeline...');
       await initializeVideo({

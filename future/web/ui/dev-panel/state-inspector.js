@@ -267,7 +267,12 @@ export class StateInspector {
   const keyEl = document.createElement('span');
   keyEl.className = 'property-key';
   keyEl.style = 'min-width: 110px; color: #444; font-weight: 500;';
-  keyEl.textContent = `${key}:`;
+    // Friendly label for common fields
+    if (key === 'videoSize') {
+      keyEl.textContent = 'Video Size:';
+    } else {
+      keyEl.textContent = `${key}:`;
+    }
     
     const valueEl = this.createValueElement(value);
     
@@ -281,6 +286,13 @@ export class StateInspector {
     const valueEl = document.createElement('span');
     valueEl.className = 'property-value';
     
+    // Special friendly formatting for objects that look like sizes
+    if (value && typeof value === 'object' &&
+        typeof value.width === 'number' && typeof value.height === 'number') {
+      valueEl.textContent = `${value.width} × ${value.height}`;
+      return valueEl;
+    }
+
     if (value === null) {
       valueEl.className += ' value-null';
       valueEl.innerHTML = `<span class="boolean-indicator" style="color: #bbb;">●</span>`;
@@ -337,8 +349,10 @@ export class StateInspector {
     
     // Hide/show based on filter
     this.container.querySelectorAll('.state-property').forEach(el => {
-      const key = el.dataset.key.toLowerCase();
-      const matches = key.includes(filterText);
+      const key = (el.dataset.key || '').toLowerCase();
+      const valText = (el.querySelector('.property-value')?.textContent || '').toLowerCase();
+      const labelText = (el.querySelector('.property-key')?.textContent || '').toLowerCase();
+      const matches = key.includes(filterText) || valText.includes(filterText) || labelText.includes(filterText);
       el.style.display = matches ? '' : 'none';
     });
     

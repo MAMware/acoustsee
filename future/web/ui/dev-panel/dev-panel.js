@@ -573,59 +573,9 @@ export function initializeDevPanel(arg1, arg2) {
             stateInspector.filterState(e.target.value.toLowerCase());
           });
         }
-        // Lightweight video info updater appended to this section
-  let videoInfoEl = document.createElement('div');
-  videoInfoEl.id = 'devpanel-video-info';
-  videoInfoEl.style.cssText = 'font-size: 0.95em; color: #555; margin-top: 8px;';
-  // Append to the stable section container (inspector only clears inner groups)
-  stateSection.appendChild(videoInfoEl);
-        let videoInfoIntervalId = null;
-        const updateVideoInfo = (state) => {
-          try {
-            const s = state || engine.getState();
-            // Prefer state.videoSize if provided; otherwise infer from DOM video
-            let w, h;
-            if (s && s.videoSize && typeof s.videoSize.width === 'number' && typeof s.videoSize.height === 'number') {
-              w = s.videoSize.width; h = s.videoSize.height;
-            } else {
-              const mainVideo = DOM && DOM.videoFeed;
-              const previewVideo = panel.querySelector('#devpanel-video-preview');
-              const srcVideo = (previewVideo && previewVideo.videoWidth) ? previewVideo : mainVideo;
-              if (srcVideo && srcVideo.videoWidth) {
-                w = srcVideo.videoWidth; h = srcVideo.videoHeight;
-              }
-            }
-            if (w && h) {
-              videoInfoEl.innerHTML = `<b>Video Size:</b> ${w} × ${h}`;
-              // Reflect into engine state for inspector visibility (numbers only; safe)
-              try {
-                const cur = engine.getState().videoSize || {};
-                if (cur.width !== w || cur.height !== h) {
-                  engine.setState && engine.setState({ videoSize: { width: w, height: h } });
-                }
-              } catch(_) {}
-              if (videoInfoIntervalId) { clearInterval(videoInfoIntervalId); videoInfoIntervalId = null; }
-            } else {
-              videoInfoEl.textContent = '';
-            }
-          } catch(_) {}
-        };
-        // Update on state and when video metadata loads
-        engine.onStateChange(updateVideoInfo);
-        const preview = panel.querySelector('#devpanel-video-preview');
-        const attachMediaListeners = (el) => {
-          if (!el) return;
-          el.addEventListener('loadedmetadata', () => updateVideoInfo());
-          el.addEventListener('loadeddata', () => updateVideoInfo());
-          el.addEventListener('playing', () => updateVideoInfo());
-          el.addEventListener('resize', () => updateVideoInfo());
-        };
-        attachMediaListeners(preview);
-        if (DOM && DOM.videoFeed) attachMediaListeners(DOM.videoFeed);
-        // Fallback: short polling until dimensions become available
-        videoInfoIntervalId = setInterval(() => updateVideoInfo(), 500);
-        // Initial paint
-        updateVideoInfo(engine.getState());
+        // NOTE: removed standalone video size label. Video dimensions are now
+        // pushed to engine state by media-commands and rendered inside the
+        // State Inspector (group: Video Settings) as `videoSize`.
         structuredLog('INFO', 'dev-panel', 'Visual state inspector initialized');
       }
     } catch (e) {
