@@ -97,7 +97,7 @@ export function initializeDevPanel(arg1, arg2) {
                 <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
               </h2>
               <div id="video-content" class="section-content" style="display: flex; flex-direction: column; align-items: center;">
-                <video id="devpanel-video-preview" muted autoplay playsinline style="max-width: 100%; height: auto; aspect-ratio: 16/9; background: #222; border-radius: 6px; box-shadow: 0 1px 4px #0002;"></video>
+                <video id="devpanel-video-preview" muted autoplay playsinline style="max-width: 100%; height: auto; background: #222; border-radius: 6px; box-shadow: 0 1px 4px #0002;"></video>
                 <p class="perf-note">Note: This preview uses the existing camera stream with minimal overhead.</p>
               </div>
             </div>
@@ -564,22 +564,6 @@ export function initializeDevPanel(arg1, arg2) {
       if (stateSection) {
         // Create new visual state inspector
         const stateInspector = new StateInspector(stateSection, engine);
-        // Patch: Add video info to state inspector if available
-        const origRender = stateInspector.render.bind(stateInspector);
-        stateInspector.render = function(state) {
-          origRender(state);
-          // Add video info below if available
-          if (state && state.videoSize && stateSection) {
-            let info = document.getElementById('devpanel-video-info');
-            if (!info) {
-              info = document.createElement('div');
-              info.id = 'devpanel-video-info';
-              info.style = 'font-size: 0.95em; color: #555; margin-top: 8px;';
-              stateSection.appendChild(info);
-            }
-            info.innerHTML = `<b>Video Size:</b> ${state.videoSize.width} × ${state.videoSize.height}`;
-          }
-        };
         // Store reference for cleanup
         panel.__stateInspector = stateInspector;
         // If header filter exists, forward its input to internal filter
@@ -589,6 +573,36 @@ export function initializeDevPanel(arg1, arg2) {
             stateInspector.filterState(e.target.value.toLowerCase());
           });
         }
+        // Lightweight video info updater appended to this section
+        let videoInfoEl = document.createElement('div');
+        videoInfoEl.id = 'devpanel-video-info';
+        videoInfoEl.style.cssText = 'font-size: 0.95em; color: #555; margin-top: 8px;';
+        stateSection.appendChild(videoInfoEl);
+        const updateVideoInfo = (state) => {
+          try {
+            const s = state || engine.getState();
+            // Prefer state.videoSize if provided; otherwise infer from DOM video
+            let w, h;
+            if (s && s.videoSize && typeof s.videoSize.width === 'number' && typeof s.videoSize.height === 'number') {
+              w = s.videoSize.width; h = s.videoSize.height;
+            } else if (DOM && DOM.videoFeed && DOM.videoFeed.videoWidth) {
+              w = DOM.videoFeed.videoWidth; h = DOM.videoFeed.videoHeight;
+            }
+            if (w && h) {
+              videoInfoEl.innerHTML = `<b>Video Size:</b> ${w} × ${h}`;
+            } else {
+              videoInfoEl.textContent = '';
+            }
+          } catch(_) {}
+        };
+        // Update on state and when video metadata loads
+        engine.onStateChange(updateVideoInfo);
+        const preview = panel.querySelector('#devpanel-video-preview');
+        if (preview) {
+          preview.addEventListener('loadedmetadata', () => updateVideoInfo());
+        }
+        // Initial paint
+        updateVideoInfo(engine.getState());
         structuredLog('INFO', 'dev-panel', 'Visual state inspector initialized');
       }
     } catch (e) {
@@ -613,7 +627,7 @@ export function initializeDevPanel(arg1, arg2) {
     const batteryOptimizationCheckbox = panel.querySelector('#battery-optimization-checkbox');
     const ingestCategoryToggles = panel.querySelectorAll('.category-toggle input[type="checkbox"]');
 
-    // Sync controls with state changes and update state inspector
+    // Sync controls with state changes
     engine.onStateChange(state => {
       try {
         if (gridTypeSelect) gridTypeSelect.value = state.gridType;
@@ -633,10 +647,6 @@ export function initializeDevPanel(arg1, arg2) {
           ingestCategoryToggles.forEach(toggle => {
             toggle.checked = enabledCategories.includes(toggle.dataset.category);
           });
-        }
-        // Update state inspector if present
-        if (panel.__stateInspector && typeof panel.__stateInspector.render === 'function') {
-          panel.__stateInspector.render(state);
         }
       } catch(e) {}
     });
