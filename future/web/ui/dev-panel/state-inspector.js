@@ -12,6 +12,7 @@ export class StateInspector {
       this.engine = engine;
       this.stateElements = new Map(); // Cache DOM elements for performance
       this.lastStateHash = '';
+      this.filterText = '';
       
       // Performance optimization - limit updates
       this.updateThrottleMs = 200;
@@ -131,8 +132,14 @@ export class StateInspector {
   createStateHash(state) {
     // Create a lightweight hash for change detection
     const keys = Object.keys(state).sort();
-    const values = keys.map(key => `${key}:${typeof state[key]}:${state[key]}`);
-    return values.join('|').substring(0, 100); // Truncate for performance
+    const values = keys.map(key => {
+      const v = state[key];
+      if (key === 'videoSize' && v && typeof v.width === 'number' && typeof v.height === 'number') {
+        return `videoSize:${v.width}x${v.height}`;
+      }
+      return `${key}:${typeof v}:${String(v)}`;
+    });
+    return values.join('|').substring(0, 200); // Truncate for performance
   }
   
   groupStateProperties(state) {
@@ -149,19 +156,21 @@ export class StateInspector {
     
     // Categorize properties based on naming patterns and types
     Object.entries(state).forEach(([key, value]) => {
-      if (this.isCoreProperty(key)) {
+      if (!this.propertyMatches(key, value)) return;
+
+      if (this.isCoreProperty?.(key)) {
         groups['Core System'][key] = value;
-      } else if (this.isProcessingProperty(key)) {
+      } else if (this.isProcessingProperty?.(key)) {
         groups['Processing'][key] = value;
-      } else if (this.isPerformanceProperty(key)) {
+      } else if (this.isPerformanceProperty?.(key)) {
         groups['Performance'][key] = value;
-      } else if (this.isUIProperty(key)) {
+      } else if (this.isUIProperty?.(key)) {
         groups['User Interface'][key] = value;
-      } else if (this.isAudioProperty(key)) {
+      } else if (this.isAudioProperty?.(key)) {
         groups['Audio Settings'][key] = value;
-      } else if (this.isVideoProperty(key)) {
+      } else if (this.isVideoProperty?.(key) || key === 'videoSize') {
         groups['Video Settings'][key] = value;
-      } else if (this.isAnalyticsProperty(key)) {
+      } else if (this.isAnalyticsProperty?.(key)) {
         groups['Analytics'][key] = value;
       } else {
         groups['Other'][key] = value;
@@ -274,7 +283,7 @@ export class StateInspector {
       keyEl.textContent = `${key}:`;
     }
     
-    const valueEl = this.createValueElement(value);
+  const valueEl = this.createValueElement(key, value);
     
     propertyEl.appendChild(keyEl);
     propertyEl.appendChild(valueEl);
@@ -282,13 +291,17 @@ export class StateInspector {
     return propertyEl;
   }
   
-  createValueElement(value) {
+  createValueElement(key, value) {
     const valueEl = document.createElement('span');
     valueEl.className = 'property-value';
     
-    // Special friendly formatting for objects that look like sizes
-    if (value && typeof value === 'object' &&
-        typeof value.width === 'number' && typeof value.height === 'number') {
+    // Pretty formatting for videoSize specifically
+    if (key === 'videoSize' && value && typeof value.width === 'number' && typeof value.height === 'number') {
+      valueEl.textContent = `${value.width} × ${value.height}`;
+      return valueEl;
+    }
+    // Also accept size-like objects even if not named videoSize
+    if (value && typeof value === 'object' && typeof value.width === 'number' && typeof value.height === 'number') {
       valueEl.textContent = `${value.width} × ${value.height}`;
       return valueEl;
     }
@@ -336,31 +349,40 @@ export class StateInspector {
   }
   
   filterState(filterText) {
-    if (!filterText) {
-      // Show all elements
-      this.container.querySelectorAll('.state-property').forEach(el => {
-        el.style.display = '';
-      });
-      this.container.querySelectorAll('.state-group').forEach(el => {
-        el.style.display = '';
-      });
-      return;
+    this.filterText = String(filterText || '').trim().toLowerCase();
+    try {
+      const s = this.engine?.getState ? this.engine.getState() : null;
+      if (s) this.scheduleUpdate(s);
+    } catch (_) {}
+  }
+
+  propertyMatches(key, value) {
+    if (!this.filterText) return true;
+    const ft = this.filterText;
+
+    // Key/label match
+    const label = key === 'videoSize' ? 'Video Size' : key;
+    if (String(key).toLowerCase().includes(ft)) return true;
+    if (String(label).toLowerCase().includes(ft)) return true;
+
+    // Friendly match for size objects
+    if (key === 'videoSize' && value && typeof value.width === 'number' && typeof value.height === 'number') {
+      const combo = `${value.width} × ${value.height} video size`.toLowerCase();
+      return combo.includes(ft);
     }
-    
-    // Hide/show based on filter
-    this.container.querySelectorAll('.state-property').forEach(el => {
-      const key = (el.dataset.key || '').toLowerCase();
-      const valText = (el.querySelector('.property-value')?.textContent || '').toLowerCase();
-      const labelText = (el.querySelector('.property-key')?.textContent || '').toLowerCase();
-      const matches = key.includes(filterText) || valText.includes(filterText) || labelText.includes(filterText);
-      el.style.display = matches ? '' : 'none';
-    });
-    
-    // Hide groups with no visible properties
-    this.container.querySelectorAll('.state-group').forEach(groupEl => {
-      const visibleProps = groupEl.querySelectorAll('.state-property:not([style*="display: none"])');
-      groupEl.style.display = visibleProps.length > 0 ? '' : 'none';
-    });
+
+    // Primitive/value match
+    if (value == null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
+      return String(value).toLowerCase().includes(ft);
+    }
+
+    // Shallow object scan (cheap)
+    try {
+      const keys = Object.keys(value || {});
+      return keys.some(k => String(k).toLowerCase().includes(ft));
+    } catch (_) {
+      return false;
+    }
   }
   
   dispose() {
