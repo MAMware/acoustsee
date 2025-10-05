@@ -240,6 +240,7 @@ export async function initializeVideo(config) {
       }
       
       if (dispatchPayload) {
+        structuredLog('INFO', 'Dispatching audioCuesReady', { cueCount: dispatchPayload.cues ? dispatchPayload.cues.length : (dispatchPayload.secondaryCues ? dispatchPayload.secondaryCues.length + 1 : 0), mode: state.currentMode });
         engine.dispatch('audioCuesReady', {
           ...dispatchPayload, // This will spread either the cues array or the {primary, secondary} object
           frameId: payload.frameId,

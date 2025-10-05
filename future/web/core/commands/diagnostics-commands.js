@@ -45,8 +45,8 @@ export function registerDiagnosticsCommands(engine) {
     const state = engine.getState();
     const settings = state.settings || {};
 
-    if (settings.fpsMode !== 'auto' || benchmarkHistory.count() < 15) {
-      return; // Respect user preference and wait for samples
+    if (settings.fpsMode !== 'auto' || benchmarkHistory.count() < 15 || state.currentMode === 'flow') {
+      return; // Respect user preference, wait for samples, and disable AutoFPS in flow mode
     }
 
     const currentInterval = state.updateInterval;
