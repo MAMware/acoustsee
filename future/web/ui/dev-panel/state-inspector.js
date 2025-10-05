@@ -62,8 +62,8 @@ export class StateInspector {
       // Clear container and add base structure (no internal search; external filter in header)
       // Note: Use a unique internal id to avoid clashing with the outer dev-panel '#state-content'
       this.container.innerHTML = `
-        <div class="state-inspector-root" style="display: flex; flex-direction: column; width: 100%;">
-          <div class="state-groups state-groups-grid" id="state-groups-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px;"></div>
+        <div class="state-inspector-root">
+          <div class="state-groups state-groups-grid" id="state-groups-content"></div>
         </div>
       `;
       
@@ -243,7 +243,6 @@ export class StateInspector {
     // Properties container
   const contentEl = document.createElement('div');
   contentEl.className = 'state-group-content';
-  contentEl.style = 'display: flex; flex-direction: column; gap: 2px;';
     
     // Create property elements
     Object.entries(properties).forEach(([key, value]) => {
@@ -308,7 +307,7 @@ export class StateInspector {
 
     if (value === null) {
       valueEl.className += ' value-null';
-      valueEl.innerHTML = `<span class="boolean-indicator" style="color: #bbb;">●</span>`;
+        valueEl.innerHTML = `<span class="null-indicator">●</span>`;
     } else if (value === undefined) {
       valueEl.className += ' value-undefined';
       valueEl.textContent = '';

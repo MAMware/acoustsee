@@ -79,8 +79,8 @@ export function initializeDevPanel(arg1, arg2) {
           </div>
 
           <!-- Side-by-side Worker and Video Preview, always aligned -->
-          <div class="devpanel-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
-            <div id="worker-explorer-container" class="devpanel-section" style="flex: 1 1 340px; min-width: 280px; max-width: 480px;">
+          <div class="devpanel-row devpanel-row-balanced">
+            <div id="worker-explorer-container" class="devpanel-section worker-section">
               <h2 class="section-header">
                 <span>Worker Performance</span>
                 <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
@@ -91,19 +91,19 @@ export function initializeDevPanel(arg1, arg2) {
               </div>
             </div>
 
-            <div class="devpanel-section video-section" style="flex: 1 1 340px; min-width: 280px; max-width: 480px; display: flex; flex-direction: column; align-items: center;">
+            <div class="devpanel-section video-section">
               <h2 class="section-header">
                 <span>Live Video Preview</span>
                 <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
               </h2>
-              <div id="video-content" class="section-content" style="display: flex; flex-direction: column; align-items: center;">
+              <div id="video-content" class="section-content video-content">
                 <!-- Replaced the <video> preview with a low-overhead processing preview canvas. -->
-                <div id="devpanel-preview-container" style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
-                  <div class="preview-toggle-row" style="display:flex; align-items:center; gap:8px;">
+                <div id="devpanel-preview-container" class="preview-container">
+                  <div class="preview-toggle-row">
                     <input type="checkbox" id="devpanel-preview-toggle" aria-label="Show processing preview (low FPS)" />
-                    <label for="devpanel-preview-toggle" style="font-size:12px; user-select:none;">Processing Preview (2–5 FPS)</label>
+                    <label for="devpanel-preview-toggle">Processing Preview (2–5 FPS)</label>
                   </div>
-                  <canvas id="devpanel-preview-canvas" width="320" height="240" style="width:320px; height:240px; border:1px solid rgba(0,0,0,0.12); background:#000; display:none;"></canvas>
+                  <canvas id="devpanel-preview-canvas" width="320" height="240"></canvas>
                   <p class="perf-note">Note: This preview samples the processing canvas at low FPS to avoid extra decoders.</p>
                 </div>
               </div>
@@ -415,6 +415,15 @@ export function initializeDevPanel(arg1, arg2) {
           if (sectionEl.classList.contains('worker-section')) {
             isNowCollapsed ? stopChart() : startChart();
           }
+          if (sectionEl.classList.contains('video-section')) {
+            const previewToggle = panel.querySelector('#devpanel-preview-toggle');
+            const wantsPreview = previewToggle && previewToggle.checked;
+            if (isNowCollapsed) {
+              if (typeof panel.__stopPreview === 'function') panel.__stopPreview();
+            } else if (wantsPreview && typeof panel.__startPreview === 'function') {
+              panel.__startPreview(4);
+            }
+          }
         });
       });
       
@@ -467,7 +476,6 @@ export function initializeDevPanel(arg1, arg2) {
 
     // --- Cost-Effective Processing Canvas Preview Wiring ---
     try {
-      // Helper: pick the single processing canvas (frameCanvas or similar)
       const pickProcessingCanvas = () =>
         (DOM && (DOM.frameCanvas || DOM.videoCanvas)) ||
         document.querySelector('canvas#frameCanvas, canvas#frame-canvas, canvas[data-role="frame-canvas"]');
@@ -478,13 +486,32 @@ export function initializeDevPanel(arg1, arg2) {
       panel.__previewInterval = null;
       panel.__previewRO = null;
 
+      if (!previewCanvas || !previewToggle) {
+        return;
+      }
+
+      const previewCtx = previewCanvas.getContext('2d', { alpha: false });
+      panel.__previewCtx = previewCtx;
+      previewCanvas.style.display = 'none';
+
+      let activeSource = null;
+      let loggedMissingSource = false;
+      const MAX_WIDTH = 360;
+      const MAX_HEIGHT = 270;
+
+      const getSourceDimensions = (src) => {
+        if (!src) return { width: 0, height: 0 };
+        const width = src.videoWidth || src.width || src.clientWidth || 0;
+        const height = src.videoHeight || src.height || src.clientHeight || 0;
+        return { width, height };
+      };
+
       const resizePreview = (src) => {
         try {
           if (!src || !previewCanvas) return;
-          const sw = src.width || src.clientWidth || 320;
-          const sh = src.height || src.clientHeight || 240;
-          const maxW = 320; const maxH = 240;
-          const ratio = Math.min(maxW / sw, maxH / sh, 1);
+          const { width: sw, height: sh } = getSourceDimensions(src);
+          if (!sw || !sh) return;
+          const ratio = Math.min(MAX_WIDTH / sw, MAX_HEIGHT / sh, 1);
           const w = Math.max(1, Math.round(sw * ratio));
           const h = Math.max(1, Math.round(sh * ratio));
           previewCanvas.width = w;
@@ -494,53 +521,111 @@ export function initializeDevPanel(arg1, arg2) {
         } catch (_) {}
       };
 
+      const detachSource = () => {
+        if (panel.__previewRO) {
+          try { panel.__previewRO.disconnect(); } catch (_) {}
+        }
+        panel.__previewRO = null;
+        activeSource = null;
+      };
+
+      const resolvePreviewSource = () => {
+        const candidates = [];
+        const processingCanvas = pickProcessingCanvas();
+        if (processingCanvas) candidates.push(processingCanvas);
+        if (DOM?.videoFeed) candidates.push(DOM.videoFeed);
+        const docVideoFeed = document.querySelector('video#videoFeed');
+        if (docVideoFeed && docVideoFeed !== DOM?.videoFeed) candidates.push(docVideoFeed);
+
+        for (const candidate of candidates) {
+          const { width, height } = getSourceDimensions(candidate);
+          const ready = typeof candidate.readyState === 'number' ? candidate.readyState >= 2 : true;
+          if (ready && width > 0 && height > 0) {
+            return candidate;
+          }
+        }
+        return null;
+      };
+
+      const ensureSource = () => {
+        const src = resolvePreviewSource();
+        if (!src) {
+          if (!loggedMissingSource) {
+            structuredLog('DEBUG', 'dev-panel', { message: 'Preview source not ready yet' });
+            loggedMissingSource = true;
+          }
+          return null;
+        }
+
+        loggedMissingSource = false;
+
+        if (src !== activeSource) {
+          detachSource();
+          activeSource = src;
+          resizePreview(src);
+          try {
+            panel.__previewRO = new ResizeObserver(() => resizePreview(src));
+            panel.__previewRO.observe(src);
+          } catch (_) {}
+        }
+
+        return src;
+      };
+
+      const drawFrame = () => {
+        const src = ensureSource();
+        if (!src || !previewCtx) return;
+        const { width, height } = getSourceDimensions(src);
+        if (!width || !height) return;
+        if (previewCanvas.width === 0 || previewCanvas.height === 0) {
+          resizePreview(src);
+        }
+        try {
+          previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+          previewCtx.drawImage(src, 0, 0, previewCanvas.width, previewCanvas.height);
+        } catch (_) {}
+      };
+
       const startPreview = (fps = 4) => {
         if (panel.__previewInterval) return;
-        const src = pickProcessingCanvas();
-        if (!src) {
-          structuredLog('WARN', 'dev-panel', { message: 'No processing canvas found for preview' });
-          return;
-        }
-        resizePreview(src);
-        try {
-          if (panel.__previewRO) panel.__previewRO.disconnect();
-          panel.__previewRO = new ResizeObserver(() => resizePreview(src));
-          panel.__previewRO.observe(src);
-        } catch (_) {}
-
-        const ctx = previewCanvas.getContext('2d', { alpha: false });
-        const intervalMs = Math.max(1000 / fps, 200);
-        panel.__previewInterval = setInterval(() => {
-          try {
-            if (!src || !ctx) return;
-            ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-            ctx.drawImage(src, 0, 0, previewCanvas.width, previewCanvas.height);
-          } catch (e) {}
-        }, intervalMs);
         previewCanvas.style.display = 'block';
+        ensureSource();
+        const intervalMs = Math.max(1000 / fps, 200);
+        panel.__previewInterval = setInterval(drawFrame, intervalMs);
       };
 
       const stopPreview = () => {
-        if (panel.__previewInterval) { clearInterval(panel.__previewInterval); panel.__previewInterval = null; }
-        if (panel.__previewRO) { try { panel.__previewRO.disconnect(); } catch(_){} panel.__previewRO = null; }
-        if (previewCanvas) previewCanvas.style.display = 'none';
+        if (panel.__previewInterval) {
+          clearInterval(panel.__previewInterval);
+          panel.__previewInterval = null;
+        }
+        detachSource();
+        loggedMissingSource = false;
+        if (previewCanvas && previewCtx) {
+          previewCtx.clearRect(0, 0, previewCanvas.width || 0, previewCanvas.height || 0);
+        }
+        if (previewCanvas) {
+          previewCanvas.style.display = 'none';
+        }
       };
 
-      if (previewToggle) {
-        previewToggle.addEventListener('change', (e) => {
-          if (e.target.checked) startPreview(4); else stopPreview();
-        }, { passive: true });
-      }
+      panel.__startPreview = startPreview;
+      panel.__stopPreview = stopPreview;
 
-      // If canvas exists and toggle is already checked, start preview
+      previewToggle.addEventListener('change', (e) => {
+        if (e.target.checked) startPreview(4);
+        else stopPreview();
+      }, { passive: true });
+
       setTimeout(() => {
-        const src = pickProcessingCanvas();
-        if (src && previewToggle && previewToggle.checked) startPreview(4);
-      }, 1000);
+        if (previewToggle.checked) startPreview(4);
+      }, 600);
 
-      // Attempt to update preview binding when processing starts/stops
-      engine.onStateChange((s) => {
-        // no-op: placeholder if we later want auto-start when processing begins
+      engine.onStateChange((state) => {
+        if (!state) return;
+        if (state.isProcessing && previewToggle.checked && !panel.__previewInterval) {
+          startPreview(4);
+        }
       });
 
     } catch (e) { console.error('Failed to wire processing preview', e); }
@@ -726,13 +811,8 @@ export function initializeDevPanel(arg1, arg2) {
       }
     } catch (_) {}
     try {
-      if (this.__previewInterval) {
-        clearInterval(this.__previewInterval);
-        this.__previewInterval = null;
-      }
-      if (this.__previewRO) {
-        try { this.__previewRO.disconnect(); } catch (_) {}
-        this.__previewRO = null;
+      if (typeof this.__stopPreview === 'function') {
+        this.__stopPreview();
       }
     } catch (_) {}
     return originalRemove.call(this);
