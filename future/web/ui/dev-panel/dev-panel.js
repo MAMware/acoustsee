@@ -83,6 +83,7 @@ export function initializeDevPanel(arg1, arg2) {
             <div id="worker-explorer-container" class="devpanel-section worker-section">
               <h2 class="section-header">
                 <span>Worker Performance</span>
+                <span class="section-header-spacer"></span>
                 <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
               </h2>
               <div id="worker-content" class="section-content">
@@ -94,6 +95,7 @@ export function initializeDevPanel(arg1, arg2) {
             <div class="devpanel-section video-section">
               <h2 class="section-header">
                 <span>Live Video Preview</span>
+                <span class="section-header-spacer"></span>
                 <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
               </h2>
               <div id="video-content" class="section-content video-content">
@@ -147,8 +149,12 @@ export function initializeDevPanel(arg1, arg2) {
 
           <div class="devpanel-row two-col">
             <div class="devpanel-section performance-section">
-              <h2 class="section-header"><span>Performance Controls</span></h2>
-              <div class="section-content">
+              <h2 class="section-header">
+                <span>Performance Controls</span>
+                <span class="section-header-spacer"></span>
+                <button class="collapse-btn" data-target="performance-controls-content" aria-expanded="true" title="Collapse Performance Controls">-</button>
+              </h2>
+              <div id="performance-controls-content" class="section-content">
                 <div class="performance-grid">
                   <div class="control-column">
                     <label>FPS Mode</label>
@@ -511,7 +517,11 @@ export function initializeDevPanel(arg1, arg2) {
           if (!src || !previewCanvas) return;
           const { width: sw, height: sh } = getSourceDimensions(src);
           if (!sw || !sh) return;
-          const ratio = Math.min(MAX_WIDTH / sw, MAX_HEIGHT / sh, 1);
+          const parent = previewCanvas.parentElement;
+          const widthLimit = Math.max(1, Math.min(MAX_WIDTH, parent?.clientWidth || MAX_WIDTH));
+          const heightLimitSource = parent?.clientHeight || MAX_HEIGHT;
+          const heightLimit = Math.max(1, Math.min(MAX_HEIGHT, heightLimitSource || MAX_HEIGHT));
+          const ratio = Math.min(widthLimit / sw, heightLimit / sh, 1);
           const w = Math.max(1, Math.round(sw * ratio));
           const h = Math.max(1, Math.round(sh * ratio));
           previewCanvas.width = w;
@@ -531,11 +541,11 @@ export function initializeDevPanel(arg1, arg2) {
 
       const resolvePreviewSource = () => {
         const candidates = [];
-        const processingCanvas = pickProcessingCanvas();
-        if (processingCanvas) candidates.push(processingCanvas);
         if (DOM?.videoFeed) candidates.push(DOM.videoFeed);
         const docVideoFeed = document.querySelector('video#videoFeed');
         if (docVideoFeed && docVideoFeed !== DOM?.videoFeed) candidates.push(docVideoFeed);
+        const processingCanvas = pickProcessingCanvas();
+        if (processingCanvas) candidates.push(processingCanvas);
 
         for (const candidate of candidates) {
           const { width, height } = getSourceDimensions(candidate);
@@ -611,6 +621,27 @@ export function initializeDevPanel(arg1, arg2) {
 
       panel.__startPreview = startPreview;
       panel.__stopPreview = stopPreview;
+
+      const handleVideoReady = () => {
+        if (!DOM?.videoFeed) return;
+        if (previewToggle.checked) {
+          resizePreview(DOM.videoFeed);
+          if (!panel.__previewInterval) startPreview(4);
+        }
+      };
+
+      if (DOM?.videoFeed) {
+        try {
+          DOM.videoFeed.addEventListener('loadedmetadata', handleVideoReady, { passive: true });
+          DOM.videoFeed.addEventListener('playing', handleVideoReady, { passive: true });
+        } catch (_) {}
+        panel.__detachPreviewVideoEvents = () => {
+          try { DOM.videoFeed.removeEventListener('loadedmetadata', handleVideoReady); } catch (_) {}
+          try { DOM.videoFeed.removeEventListener('playing', handleVideoReady); } catch (_) {}
+        };
+      } else {
+        panel.__detachPreviewVideoEvents = () => {};
+      }
 
       previewToggle.addEventListener('change', (e) => {
         if (e.target.checked) startPreview(4);
@@ -813,6 +844,9 @@ export function initializeDevPanel(arg1, arg2) {
     try {
       if (typeof this.__stopPreview === 'function') {
         this.__stopPreview();
+      }
+      if (typeof this.__detachPreviewVideoEvents === 'function') {
+        this.__detachPreviewVideoEvents();
       }
     } catch (_) {}
     return originalRemove.call(this);

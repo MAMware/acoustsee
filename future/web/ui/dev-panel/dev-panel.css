@@ -62,6 +62,9 @@
   padding-bottom: 10px;
   border-bottom: 1px solid #34495e;
 }
+.section-header-spacer {
+  flex: 1 1 auto;
+}
 .section-header > span { flex: 0 0 auto; }
 .section-header .header-filter {
   margin-left: auto;
@@ -149,6 +152,7 @@
   gap: 6px;
   align-items: flex-start;
   width: 100%;
+  overflow: hidden;
 }
 
 .preview-toggle-row {
@@ -165,7 +169,8 @@
 
 #devpanel-preview-canvas {
   width: 100%;
-  max-width: 360px;
+  max-width: min(100%, 360px);
+  box-sizing: border-box;
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   background: #000;
@@ -358,6 +363,8 @@
   border-radius: 4px;
   border: 1px solid #34495e;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 #worker-explorer-legend {
@@ -370,6 +377,8 @@
 
 #worker-explorer-canvas {
   width: 100%;
+  max-width: 100%;
+  display: block;
   height: auto;
   aspect-ratio: 4 / 1;
   background-color: rgba(0, 0, 0, 0.2);
@@ -459,14 +468,14 @@
 /* Responsive Side-by-Side Layout for Portrait Mode */
 
 @media (orientation: portrait) {
-  .devpanel-row {
+  .devpanel-row:not(.two-col) {
     display: flex;
     flex-direction: row;
     gap: 16px; /* This creates space between the two columns */
     align-items: stretch; /* Makes the two sections have equal height */
   }
 
-  .devpanel-row > .devpanel-section {
+  .devpanel-row:not(.two-col) > .devpanel-section {
     flex: 1; /* Each section takes up 50% of the available width */
     margin-bottom: 0; /* The container's gap now handles the spacing */
     min-height: 220px; /* Prevents the sections from becoming too short */

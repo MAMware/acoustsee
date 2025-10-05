@@ -105,7 +105,7 @@ export class StateInspector {
   updateStateView(state) {
     try {
       // Quick hash check to avoid unnecessary re-renders
-      const stateHash = this.createStateHash(state);
+      const stateHash = `${this.filterText}|${this.createStateHash(state)}`;
       if (stateHash === this.lastStateHash) return;
       this.lastStateHash = stateHash;
       
