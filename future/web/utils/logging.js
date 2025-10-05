@@ -41,6 +41,51 @@ function safeStringify(obj) {
 let currentLogLevel = LOG_LEVELS[DEFAULT_LOG_LEVEL];
 let sampleRate = detectIsMobile() ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 
+// Config for logging behavior
+const loggingConfig = {
+  includeMetadata: true, // Enable/disable metadata
+  includeUserAgent: false, // Privacy: excluded by default. If debugging, true. true
+  includeStack: true, // Include stack traces for debugging
+  includeUrl: true, // Include current URL
+};
+
+// Export config for runtime control
+export { loggingConfig };
+
+// Auto-generate metadata from stack trace
+function generateMetadata() {
+  if (!loggingConfig.includeMetadata) return {};
+  
+  const error = new Error();
+  const stack = error.stack || '';
+  const lines = stack.split('\n');
+  const callerLine = lines[2] || ''; // Approximate caller info (skip this function and structuredLog)
+  
+  // Parse filename, lineno, colno from stack (basic parsing)
+  const match = callerLine.match(/at (.+):(\d+):(\d+)/);
+  const filename = match ? match[1] : '';
+  const lineno = match ? parseInt(match[2], 10) : 0;
+  const colno = match ? parseInt(match[3], 10) : 0;
+  
+  const metadata = {
+    source: 'client',
+    filename,
+    lineno,
+    colno,
+    stack: loggingConfig.includeStack ? stack : null,
+  };
+  
+  if (loggingConfig.includeUserAgent) {
+    metadata.userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  }
+  
+  if (loggingConfig.includeUrl) {
+    metadata.url = typeof location !== 'undefined' ? location.href : '';
+  }
+  
+  return metadata;
+}
+
 export function setLogLevel(level) {
   const upperLevel = level.toUpperCase();
   if (Object.keys(LOG_LEVELS).includes(upperLevel)) {
@@ -128,17 +173,11 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
   try {
     const timestamp = new Date().toISOString();
     
-    // Ensure data is always a proper object with default telemetry fields
-    const safeData = data && typeof data === 'object' ? data : {};
+    // Auto-generate metadata and merge with provided data
+    const metadata = generateMetadata();
     const telemetryData = {
-      source: 'client',
-      filename: '',
-      lineno: 0,
-      colno: 0,
-      stack: null,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-      url: typeof location !== 'undefined' ? location.href : '',
-      ...safeData // Merge in provided data, allowing overrides
+      ...metadata,
+      ...data, // Allow overrides or additions
     };
     
     const logEntry = { timestamp, level: level.toUpperCase(), message, data: telemetryData };
@@ -171,7 +210,6 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
   }
 }
 
-// Default adapter export for runtime consumers (boot.js expects a .log(level, payload) API)
 const defaultAdapter = {
   async log(level, payload = {}) {
     try {

@@ -10,7 +10,7 @@
 
 import { createEngine } from './core/engine.js';
 import { settings } from './core/state.js';
-import { structuredLog } from './utils/logging.js';
+import { structuredLog, loggingConfig } from './utils/logging.js';
 import { 
   AccessibilityError, 
   showCriticalError, 
@@ -179,6 +179,7 @@ export async function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const isDebugMode = urlParams.get('debug') === 'true';
     if (isDebugMode) {
+      loggingConfig.includeUserAgent = true; // Enable userAgent in debug mode for detailed logging
       document.body.classList.add('dev-panel-mode');
       try {
         // Import the module so it can register itself and listen for lifecycle events.
