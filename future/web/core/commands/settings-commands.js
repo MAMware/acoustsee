@@ -8,6 +8,7 @@ import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText, setLanguage, translatePage } from '../../utils/utils.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
 import { getAudioApi, setSelectedSynthEngine } from '../../audio/audio-processor.js';
+import { getAllIdbLogs } from '../../utils/idb-logger.js';
 
 export function registerSettingsCommands(engine) {
   const { registerCommandHandler, dispatch } = engine;
@@ -208,5 +209,26 @@ export function registerSettingsCommands(engine) {
       try { speakText(`Mode set to ${mode}`); } catch (_) {}
       return { ok: true, mode };
     } catch (e) { structuredLog('ERROR', 'setMode handler failed', { error: e?.message }); }
+  });
+
+  registerCommandHandler('exportIngestLogs', async () => {
+    try {
+      const logs = await getAllIdbLogs();
+      const dataStr = JSON.stringify(logs, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `acoustsee-logs-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      structuredLog('INFO', 'Ingest logs exported', { count: logs.length });
+      return { exported: true, count: logs.length };
+    } catch (e) {
+      structuredLog('ERROR', 'exportIngestLogs failed', { error: e.message });
+      return { exported: false, error: e.message };
+    }
   });
 }

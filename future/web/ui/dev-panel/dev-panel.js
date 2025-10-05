@@ -763,6 +763,7 @@ export function initializeDevPanel(arg1, arg2) {
     const gridTypeSelect = panel.querySelector('#grid-type-select');
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
     const modeSelect = panel.querySelector('#mode-select');
+    const fpsModeSelect = panel.querySelector('#fps-mode-select');
     const maxNotesSlider = panel.querySelector('#max-notes-slider');
     const maxNotesValue = panel.querySelector('#max-notes-value');
     const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
@@ -778,6 +779,7 @@ export function initializeDevPanel(arg1, arg2) {
         if (gridTypeSelect) gridTypeSelect.value = state.gridType;
         if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
         if (modeSelect) modeSelect.value = state.currentMode;
+        if (fpsModeSelect) fpsModeSelect.value = state.autoFPS ? 'auto' : 'manual';
         if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
         if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
         if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
@@ -795,6 +797,14 @@ export function initializeDevPanel(arg1, arg2) {
         }
       } catch(e) {}
     });
+
+    // Add change listeners for selects
+    if (fpsModeSelect) {
+      fpsModeSelect.addEventListener('change', (e) => {
+        const enabled = e.target.value === 'auto';
+        engine.dispatch('setAutoFps', { enabled });
+      });
+    }
 
     setOutputCallback((level, text) => debugLog(level, text));
   }

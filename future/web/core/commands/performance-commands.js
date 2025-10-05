@@ -15,6 +15,12 @@ export function registerPerformanceCommands(engine) {
     return { autoFPS: s.autoFPS };
   });
 
+  registerCommandHandler('setAutoFps', async ({ state: s, payload }) => {
+    const { enabled } = payload || {};
+    s.autoFPS = !!enabled;
+    return { autoFPS: s.autoFPS };
+  });
+
   // Handles the result of a UI-driven benchmark run
   registerCommandHandler('setFrameInterval', async ({ state: s, payload }) => {
     try {

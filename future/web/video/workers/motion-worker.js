@@ -14,6 +14,7 @@
 let _prevY = null;
 let _width = 0;
 let _height = 0;
+let _adaptiveThreshold = 20; // Start with default threshold
 
 function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxRegions = 64) {
   const y = new Uint8Array(yBuf);
@@ -30,7 +31,7 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
     for (let xx = 0; xx < width; xx += step) {
       const idx = yy * width + xx;
       const d = Math.abs(y[idx] - _prevY[idx]);
-      if (d >= threshold) {
+      if (d >= _adaptiveThreshold) {
         if (count < maxRegions) {
           coords[count * 2] = xx;
           coords[count * 2 + 1] = yy;
@@ -43,6 +44,17 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
 
   // store current y for next frame
   _prevY.set(y);
+
+  // Adaptive threshold adjustment
+  const oldThreshold = _adaptiveThreshold;
+  if (count < 10) {
+    _adaptiveThreshold = Math.max(5, _adaptiveThreshold * 0.95); // Lower threshold if too few detections
+  } else if (count > 50) {
+    _adaptiveThreshold = Math.min(50, _adaptiveThreshold * 1.05); // Raise threshold if too many detections
+  }
+  if (_adaptiveThreshold !== oldThreshold) {
+    console.log(`Motion threshold adjusted from ${oldThreshold} to ${_adaptiveThreshold} (count: ${count})`);
+  }
 
   // trim to maxRegions
   const returnedCount = Math.min(count, maxRegions);
