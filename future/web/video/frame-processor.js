@@ -194,6 +194,7 @@ export async function initializeVideo(config) {
         
         if (grid && grid.mapFunction) {
           const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
+          structuredLog('DEBUG', 'Grid cues generated', { cueCount: gridOutput?.cues?.length || 0, mode: state.currentMode, motionPresent: !!motionResults });
           if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
             // In Flow mode, the payload includes the cues array
             dispatchPayload = { cues: gridOutput.cues };
@@ -228,6 +229,7 @@ export async function initializeVideo(config) {
              const gridOutput = grid.mapFunction(null, payload.width, payload.height, null, shapeResults);
              secondaryCues = (gridOutput && gridOutput.cues) || [];
           }
+          structuredLog('DEBUG', 'Grid cues generated', { cueCount: secondaryCues.length, mode: state.currentMode, motionPresent: !!objectResults });
 
           // If the grid didn't produce any "form" cues, create a simple default one.
           if (secondaryCues.length === 0) {

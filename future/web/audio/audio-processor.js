@@ -268,6 +268,12 @@ function getOscillator() {
 }
 
 function releaseOscillator(oscillator) {
+  // Stop the oscillator if it's still running to prevent resource leaks
+  try {
+    oscillator.stop(audioManager.context.currentTime + 0.1); // Short stop time
+  } catch (e) {
+    // Oscillator might already be stopped
+  }
   // Re-create the oscillator to reset its state before putting it back in the pool
   const context = audioManager?.context;
   if (context) {
@@ -380,6 +386,16 @@ export async function playCues(payload) {
     } catch (e) {
       structuredLog('ERROR', `Synth function '${playFunction.name}' failed`, { error: e?.message });
     }
+  }
+
+  // Refill oscillator pool if depleted
+  if (oscillatorPool.length < maxNotes) {
+    const toAdd = maxNotes - oscillatorPool.length;
+    for (let i = 0; i < toAdd; i++) {
+      const osc = context.createOscillator();
+      oscillatorPool.push(osc);
+    }
+    structuredLog('DEBUG', 'Refilled oscillator pool', { added: toAdd, newSize: oscillatorPool.length });
   }
 }
 

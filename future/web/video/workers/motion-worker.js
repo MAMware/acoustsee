@@ -5,7 +5,11 @@
 // Outputs coords, intensity (based on flow magnitude), u (horizontal flow), and v (vertical flow) as transferable buffers.
 // REVISON 2025-10-05 - Enhanced with Lucas-Kanade optical flow based on research in motion-worker.js.md.
 
-// State to hold previous Y-plane data between frames for difference calculation
+// Simple structured logging for worker
+function structuredLog(level, message, data = {}) {
+  console.log(`[${level}] ${message}`, data);
+}
+
 let _prevY = null;
 let _width = 0;
 let _height = 0;
@@ -151,6 +155,7 @@ self.onmessage = (ev) => {
         return;
       }
       const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
+      structuredLog('DEBUG', 'Motion detection results', { count: res.count, threshold: threshold, frameDelta: res.count });
       const toSend = {
         type: 'motion',
         ts,
