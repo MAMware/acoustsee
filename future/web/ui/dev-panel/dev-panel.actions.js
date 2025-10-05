@@ -157,24 +157,27 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         break;
       case 'exportIngestLogs':
         try {
-          // Export performance_ingest logs
+          // Export all ingest logs
           import('../../utils/idb-logger.js').then(idbModule => {
             if (idbModule.getAllIdbLogs) {
               idbModule.getAllIdbLogs().then(logs => {
-                const ingestLogs = logs.filter(log => log.category === 'performance_ingest');
-                const blob = new Blob([JSON.stringify(ingestLogs, null, 2)], { type: 'application/json' });
+                const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `acoustsee-analytics-${new Date().toISOString().split('T')[0]}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
-                console.log('Exported', ingestLogs.length, 'analytics events');
+                structuredLog('INFO', 'Analytics exported', { count: logs.length });
+              }).catch(e => {
+                structuredLog('ERROR', 'Failed to get logs for export', { error: e.message });
               });
             }
+          }).catch(e => {
+            structuredLog('ERROR', 'Failed to import idb-logger for export', { error: e.message });
           });
-        } catch (e) { 
-          console.warn('exportIngestLogs failed', e); 
+        } catch (e) {
+          structuredLog('ERROR', 'exportIngestLogs failed', { error: e.message });
         }
         break;
       default:

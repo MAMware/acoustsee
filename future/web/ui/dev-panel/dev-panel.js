@@ -805,6 +805,16 @@ export function initializeDevPanel(arg1, arg2) {
         engine.dispatch('setAutoFps', { enabled });
       });
     }
+    if (gridTypeSelect) {
+      gridTypeSelect.addEventListener('change', (e) => {
+        engine.dispatch('setGridType', { gridType: e.target.value });
+      });
+    }
+    if (synthEngineSelect) {
+      synthEngineSelect.addEventListener('change', (e) => {
+        engine.dispatch('setSynthEngine', { synthesisEngine: e.target.value });
+      });
+    }
 
     setOutputCallback((level, text) => debugLog(level, text));
   }
