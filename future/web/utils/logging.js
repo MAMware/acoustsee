@@ -59,10 +59,8 @@ function generateMetadata(level = 'INFO') {
   const normalizedLevel = level.toUpperCase();
   const isHighPriority = normalizedLevel === 'WARN' || normalizedLevel === 'ERROR';
   
-  // Only generate expensive metadata for high-priority logs
-  const metadata = {
-    source: 'client',
-  };
+  // Start with empty metadata object
+  const metadata = {};
   
   // Stack traces only for WARN/ERROR
   if (loggingConfig.includeStack && isHighPriority) {

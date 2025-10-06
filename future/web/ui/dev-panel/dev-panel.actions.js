@@ -187,62 +187,11 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   actionsContainer.addEventListener('click', delegatedClick);
   attachedHandlers.push({ el: actionsContainer, type: 'click', fn: delegatedClick });
 
+  // NOTE: Grid Type, Synth Engine, Max Notes, Motion Threshold listeners
+  // are now registered ONLY in dev-panel.js to avoid duplicate event firing.
+  // This module (dev-panel.actions.js) only handles action buttons.
+
   try {
-  const gridTypeEl = panel.querySelector('#grid-type-select');
-    if (gridTypeEl && engine && engine.dispatch) {
-      const gridChange = (e) => engine.dispatch('setGridType', { gridType: e.target.value });
-      gridTypeEl.addEventListener('change', gridChange);
-      attachedHandlers.push({ el: gridTypeEl, type: 'change', fn: gridChange });
-    }
-
-  const synthEngineEl = panel.querySelector('#synth-engine-select');
-    if (synthEngineEl && engine && engine.dispatch) {
-      const synthChange = (e) => engine.dispatch('setSynthEngine', { synthEngine: e.target.value });
-      synthEngineEl.addEventListener('change', synthChange);
-      attachedHandlers.push({ el: synthEngineEl, type: 'change', fn: synthChange });
-    }
-
-  const maxNotesEl = panel.querySelector('#max-notes-slider');
-    const maxNotesValueEl = panel.querySelector('#max-notes-value');
-    if (maxNotesEl) {
-      const onMaxNotes = (e) => { engine.dispatch && engine.dispatch('setMaxNotes', { maxNotes: e.target.value }); if (maxNotesValueEl) maxNotesValueEl.textContent = e.target.value; };
-      maxNotesEl.addEventListener('input', onMaxNotes);
-      attachedHandlers.push({ el: maxNotesEl, type: 'input', fn: onMaxNotes });
-    }
-
-  const motionEl = panel.querySelector('#motion-threshold-slider');
-    const motionValueEl = panel.querySelector('#motion-threshold-value');
-    if (motionEl) {
-      const onMotion = (e) => { engine.dispatch && engine.dispatch('setMotionThreshold', { motionThreshold: e.target.value }); if (motionValueEl) motionValueEl.textContent = e.target.value; };
-      motionEl.addEventListener('input', onMotion);
-      attachedHandlers.push({ el: motionEl, type: 'input', fn: onMotion });
-    }
-
-  const autoFps = panel.querySelector('#auto-fps-checkbox');
-    if (autoFps) {
-      const onAutoFps = (e) => engine.dispatch && engine.dispatch('setAutoFPS', { enabled: e.target.checked });
-      autoFps.addEventListener('change', onAutoFps);
-      attachedHandlers.push({ el: autoFps, type: 'change', fn: onAutoFps });
-    }
-
-  const enableFrameWorker = panel.querySelector('#enable-frame-worker-checkbox');
-    if (enableFrameWorker) {
-      const onFW = (e) => { if (typeof window.enableFrameWorker === 'function') window.enableFrameWorker(e.target.checked); else engine.dispatch && engine.dispatch('setFrameWorkerEnabled', { enabled: e.target.checked }); };
-      enableFrameWorker.addEventListener('change', onFW);
-      attachedHandlers.push({ el: enableFrameWorker, type: 'change', fn: onFW });
-    }
-
-  // Mode select wiring
-  const modeSelect = panel.querySelector('#mode-select');
-    if (modeSelect) {
-      const onModeChange = (e) => {
-        const mode = e.target.value;
-        engine.dispatch && engine.dispatch('setMode', { mode });
-      };
-      modeSelect.addEventListener('change', onModeChange);
-      attachedHandlers.push({ el: modeSelect, type: 'change', fn: onModeChange });
-    }
-
   // Performance controls wiring
   const fpsModeSel = panel.querySelector('#fps-mode-select');
     if (fpsModeSel) {

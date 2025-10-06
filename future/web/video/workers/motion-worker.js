@@ -75,14 +75,14 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
 
   // Determine which threshold to use
   // UI threshold comes in as 0-1 (normalized), convert to pixel difference (0-255)
-  // Default threshold=20 from old API, but UI sends 0-1 values
+  // 0 = very insensitive (255 pixel diff required), 1 = very sensitive (0 pixel diff required)
   let effectiveThreshold;
   if (threshold >= 0 && threshold <= 1) {
-    // UI control: user is explicitly setting sensitivity (0=very sensitive, 1=very insensitive)
-    effectiveThreshold = threshold * 255;
+    // UI control: invert so 0=insensitive, 1=sensitive
+    effectiveThreshold = (1 - threshold) * 255;
     _useAdaptive = false; // Disable adaptive when user takes manual control
   } else {
-    // Legacy/default: use adaptive threshold
+    // Adaptive threshold (legacy support removed - default to mid-sensitivity)
     effectiveThreshold = _adaptiveThreshold;
     _useAdaptive = true;
   }
@@ -213,9 +213,9 @@ self.onmessage = (ev) => {
     }
   } else if (msg.type === 'handshake') {
     structuredLog('INFO', 'Motion worker initialized');
-    self.postMessage({ type: 'ready', features: ['motion', 'optical-flow', 'adaptive-threshold'] });
+    self.postMessage({ type: 'ready', features: ['motion', 'flow'] });
   } else if (msg.type === 'simulate') {
     structuredLog('INFO', 'Motion worker simulation mode');
-    self.postMessage({ type: 'ready', features: ['motion', 'optical-flow', 'adaptive-threshold'], simulated: true });
+    self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true });
   }
 };

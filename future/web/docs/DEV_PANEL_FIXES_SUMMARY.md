@@ -7,83 +7,78 @@
 **Fix:** Changed to ES6 `import { structuredLog } from '../../utils/logging.js';`  
 **Files:** `future/web/video/workers/motion-worker.js`
 
-### 2. ✅ Motion Threshold Logic Clarified
-**Problem:** Confusing dual threshold system (adaptive 5-50 vs UI 0-1)  
+### 2. ✅ Motion Threshold Logic Fixed & Simplified
+**Problem:** 
+- Confusing dual threshold system (adaptive 5-50 vs UI 0-1)
+- UI was inverted (0=sensitive, 1=insensitive)
+- Legacy code support added code smell
+
 **Fix:** 
+- **Inverted UI logic:** 0 = very insensitive, 1 = very sensitive
 - Added `_useAdaptive` flag to track mode
-- UI threshold (0-1) scales to pixel difference (0-255)
+- UI threshold (0-1) scales to pixel difference (0-255) with inversion
 - Adaptive threshold only adjusts when not in manual mode
 - Better logging shows which threshold is active
+- **Removed legacy parameter support** - clean, single-purpose code
 
 **Files:** `future/web/video/workers/motion-worker.js`
 
 ### 3. ✅ Synth Engine Control Fixed
-**Problem:** Parameter name mismatch - UI sends `synthesisEngine`, command expects `synthEngine`  
-**Fix:** Command now accepts both parameter names  
+**Problem:** Parameter name mismatch - UI sends `synthesisEngine`, command expected `synthEngine`  
+**Fix:** Standardized to `synthesisEngine` (removed fallback code smell)  
 **Files:** `future/web/core/commands/settings-commands.js`
 
-### 4. ✅ Console Log Noise Reduced
-**Problem:** Character array spam like `{"0":"t","1":"o"...}` from performance_ingest  
-**Fix:** Changed from logging individual events to batching event summaries  
-**Files:** `future/web/utils/ingest.js`
+### 4. ✅ Removed Duplicate Event Listeners
+**Problem:** Grid/Synth/MaxNotes/Motion controls registered in TWO places causing double-firing  
+**Fix:** Removed all duplicate listeners from `dev-panel.actions.js`, kept only in `dev-panel.js`  
+**Files:** `future/web/ui/dev-panel/dev-panel.actions.js`
 
-### 5. ✅ Conditional Metadata in Logs
-**Problem:** Every log had full stack traces, userAgent, URL causing massive log bloat  
-**Fix:** Stack/URL/userAgent now only included for WARN/ERROR levels  
-**Files:** `future/web/utils/logging.js`
+### 5. ✅ Console Log Noise Completely Eliminated
+**Problem:** 
+- Character array spam like `{"0":"t","1":"o"...}` from performance_ingest
+- Every log had `"source":"client"` (code smell - no value added)
 
-### 6. ✅ Worker Error Handling Added
+**Fix:** 
+- Changed from logging individual events to batching event summaries
+- **Removed hardcoded `"source":"client"`** from all logs
+- Metadata now only added for WARN/ERROR levels
+
+**Files:** `future/web/utils/ingest.js`, `future/web/utils/logging.js`
+
+### 6. ✅ Reverted Feature Name Change
+**Problem:** Changed features from `['motion', 'flow']` to `['motion', 'optical-flow', 'adaptive-threshold']` which could affect flow/focus mode selector  
+**Fix:** Kept original feature names to avoid breaking mode selector logic  
+**Files:** `future/web/video/workers/motion-worker.js`
+
+### 7. ✅ Worker Error Handling Added
 **Problem:** Motion worker crashes were silent  
 **Fix:** Added `motionWorker.onerror` handler and comprehensive try-catch with logging  
 **Files:** `future/web/video/frame-processor.js`, `future/web/video/workers/motion-worker.js`
 
 ---
 
-## Known Issues (Requires Further Investigation)
+## Testing Results
 
-### Duplicate Event Listeners
-**Problem:** Grid/Synth/MaxNotes controls have listeners in TWO places:
-- `future/web/ui/dev-panel/dev-panel.js` (lines 808-816)
-- `future/web/ui/dev-panel/dev-panel.actions.js` (lines 187-240)
-
-**Impact:** Double event firing, potential conflicts
-
-**Recommended Fix:**
-1. Remove duplicate listeners from `dev-panel.actions.js`
-2. Keep only in `dev-panel.js` for centralized control wiring
-3. Add comment explaining the separation of concerns
-
-### Performance Analytics Controls Status
-**Testing Required:** The following need manual verification:
-- ✅ Export Analytics button (wired, uses dynamic import)
-- ❓ Category checkboxes (event listeners present but need state verification)
-- ❓ "Apply Settings" button (dispatches `updateIngestSettings`)
-- ❓ Auto Optimization toggle
-- ❓ Performance Critical toggle
-
-**Files to Check:**
-- `future/web/ui/dev-panel/dev-panel.actions.js` (action handlers)
-- `future/web/core/commands/settings-commands.js` (command registration)
-- `future/web/utils/ingest.js` (ingest system logic)
-
----
-
-## Testing Checklist
-
+### ✅ Passing Tests:
 - [x] Motion worker starts without import errors
-- [x] Motion threshold slider affects detection
-- [ ] Grid Type dropdown changes active grid
-- [ ] Synth Engine dropdown changes audio engine
-- [ ] Max Notes slider updates oscillator pool
-- [ ] Export Analytics downloads JSON file
-- [ ] Category toggles in Performance Analytics work
-- [ ] Logs are cleaner (no character arrays, less metadata noise)
+- [x] Motion threshold slider affects detection (0=insensitive, 1=sensitive)
+- [x] Logs are cleaner - NO character arrays, NO "source":"client" noise
+- [x] Duplicate listeners removed
+
+### ❌ Failing Tests (Requires Investigation):
+- [ ] **Grid Type dropdown** - Not changing active grid
+- [ ] **Synth Engine dropdown** - Not changing audio engine  
+- [ ] **Export Analytics** - Not downloading JSON file
 
 ---
 
-## Next Steps
+## Remaining Issues to Debug
 
-1. **Remove Duplicate Listeners:** Clean up `dev-panel.actions.js` to avoid double-wiring
-2. **Test All Controls:** Systematically verify each Developer Panel control
-3. **Add Control Feedback:** Visual indicators when settings change
-4. **Document Control Flow:** Create diagram showing data flow from UI -> Command -> State -> UI update
+### Grid Type & Synth Engine Not Working
+
+**Hypothesis:** Event listeners are wired but commands may not be executing properly.
+
+**Debug Steps:**
+1. Open browser DevTools console
+2. Try changing Grid Type dropdown
+3. Check for:

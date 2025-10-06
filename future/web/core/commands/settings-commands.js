@@ -24,7 +24,7 @@ export function registerSettingsCommands(engine) {
   });
 
   registerCommandHandler('setSynthEngine', (payload) => {
-    const newEngineId = payload.synthesisEngine || payload.synthEngine; // Accept both parameter names
+    const newEngineId = payload.synthesisEngine; // Standardized parameter name
     const currentState = engine.getState();
     if (currentState.availableEngines && currentState.availableEngines.find(e => e.id === newEngineId)) {
       engine.setState({ synthesisEngine: newEngineId });
