@@ -807,12 +807,38 @@ export function initializeDevPanel(arg1, arg2) {
     }
     if (gridTypeSelect) {
       gridTypeSelect.addEventListener('change', (e) => {
-        engine.dispatch('setGridType', { gridType: e.target.value });
+        const selectedValue = e.target.value;
+        const optionsCount = e.target.options.length;
+        const selectedIndex = e.target.selectedIndex;
+        const selectedOption = e.target.options[selectedIndex];
+        
+        structuredLog('DEBUG', 'Grid dropdown changed', {
+          selectedValue,
+          selectedIndex,
+          optionsCount,
+          optionValue: selectedOption?.value,
+          optionText: selectedOption?.textContent
+        });
+        
+        engine.dispatch('setGridType', { gridType: selectedValue });
       });
     }
     if (synthEngineSelect) {
       synthEngineSelect.addEventListener('change', (e) => {
-        engine.dispatch('setSynthEngine', { synthesisEngine: e.target.value });
+        const selectedValue = e.target.value;
+        const optionsCount = e.target.options.length;
+        const selectedIndex = e.target.selectedIndex;
+        const selectedOption = e.target.options[selectedIndex];
+        
+        structuredLog('DEBUG', 'Synth dropdown changed', {
+          selectedValue,
+          selectedIndex,
+          optionsCount,
+          optionValue: selectedOption?.value,
+          optionText: selectedOption?.textContent
+        });
+        
+        engine.dispatch('setSynthEngine', { synthesisEngine: selectedValue });
       });
     }
 

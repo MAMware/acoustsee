@@ -20,8 +20,7 @@ export function registerSettingsCommands(engine) {
     
     // Debug: Log what we received
     structuredLog('DEBUG', 'setGridType command received', { 
-      payload: JSON.stringify(payload), 
-      newGridId: newGridId === undefined ? 'undefined' : String(newGridId)
+      gridType: newGridId === undefined ? 'undefined' : String(newGridId)
     });
     
     if (currentState.availableGrids && currentState.availableGrids.find(g => g.id === newGridId)) {
@@ -41,8 +40,7 @@ export function registerSettingsCommands(engine) {
     
     // Debug: Log what we received
     structuredLog('DEBUG', 'setSynthEngine command received', { 
-      payload: JSON.stringify(payload), 
-      newEngineId: newEngineId === undefined ? 'undefined' : String(newEngineId)
+      synthesisEngine: newEngineId === undefined ? 'undefined' : String(newEngineId)
     });
     
     if (currentState.availableEngines && currentState.availableEngines.find(e => e.id === newEngineId)) {

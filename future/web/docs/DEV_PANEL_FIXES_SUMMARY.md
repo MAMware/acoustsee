@@ -48,6 +48,28 @@
 ### 6. ✅ Reverted Feature Name Change
 **Problem:** Changed features from `['motion', 'flow']` to `['motion', 'optical-flow', 'adaptive-threshold']` which could affect flow/focus mode selector  
 **Fix:** Kept original feature names to avoid breaking mode selector logic  
+
+### 7. ✅ DEBUG Log Bloat Fixed
+**Problem:** Diagnostic logging included entire state object (~3KB of escaped JSON) in every Grid/Synth dropdown change  
+**Fix:** Removed `JSON.stringify(payload)` from DEBUG logs, only logging the essential field values  
+**Files:** `future/web/core/commands/settings-commands.js`
+
+### 8. ✅ Enhanced Dropdown Diagnostics
+**Problem:** Dropdowns sending "undefined" as string, unclear what's happening in the HTML  
+**Fix:** Added comprehensive DEBUG logging showing:
+- Selected value
+- Selected index
+- Options count
+- Option value attribute
+- Option text content
+
+**Files:** `future/web/ui/dev-panel/dev-panel.js`
+
+This will help identify whether the issue is:
+- Empty dropdown (optionsCount = 0)
+- Bad option values (optionValue doesn't match expected IDs)
+- Selection issue (selectedIndex = -1)
+
 **Files:** `future/web/video/workers/motion-worker.js`
 
 ### 7. ✅ Worker Error Handling Added
