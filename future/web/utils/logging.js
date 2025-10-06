@@ -221,9 +221,8 @@ const defaultAdapter = {
       const message = typeof payload === 'string' ? payload : (payload && payload.message) || String(payload || '');
       const data = (payload && payload.data) || (typeof payload === 'object' ? payload : {});
       
-      // Ensure we have complete telemetry data
+      // Ensure we have complete telemetry data (conditionally added based on log level)
       const telemetryData = {
-        source: 'client',
         filename: payload?.filename || '',
         lineno: payload?.lineno || 0,
         colno: payload?.colno || 0,
@@ -243,7 +242,6 @@ const defaultAdapter = {
       const message = err && err.message ? err.message : String(err || 'Error');
       const data = { 
         stack: err && err.stack,
-        source: 'client',
         filename: '',
         lineno: 0,
         colno: 0

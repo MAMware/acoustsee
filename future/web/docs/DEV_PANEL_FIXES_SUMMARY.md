@@ -25,7 +25,7 @@
 
 ### 3. ✅ Synth Engine Control Fixed
 **Problem:** Parameter name mismatch - UI sends `synthesisEngine`, command expected `synthEngine`  
-**Fix:** Standardized to `synthesisEngine` (removed fallback code smell)  
+**Fix:** Standardized to `synthesisEngine` (removed fallback code smell) + added diagnostic logging  
 **Files:** `future/web/core/commands/settings-commands.js`
 
 ### 4. ✅ Removed Duplicate Event Listeners
@@ -36,11 +36,11 @@
 ### 5. ✅ Console Log Noise Completely Eliminated
 **Problem:** 
 - Character array spam like `{"0":"t","1":"o"...}` from performance_ingest
-- Every log had `"source":"client"` (code smell - no value added)
+- Every log had `"source":"client"` in TWO places (logging.js and defaultAdapter)
 
 **Fix:** 
 - Changed from logging individual events to batching event summaries
-- **Removed hardcoded `"source":"client"`** from all logs
+- **Removed ALL hardcoded `"source":"client"`** from logs (both locations)
 - Metadata now only added for WARN/ERROR levels
 
 **Files:** `future/web/utils/ingest.js`, `future/web/utils/logging.js`
@@ -55,30 +55,66 @@
 **Fix:** Added `motionWorker.onerror` handler and comprehensive try-catch with logging  
 **Files:** `future/web/video/frame-processor.js`, `future/web/video/workers/motion-worker.js`
 
----
+### 8. ✅ Added Diagnostic Logging for UI Controls
+**Problem:** Grid Type and Synth Engine dropdowns not working, no visibility into why  
+**Fix:** Added `else` branches with WARN logging to show when grid/engine ID doesn't match availableGrids/availableEngines  
+**Files:** `future/web/core/commands/settings-commands.js`
 
-## Testing Results
-
-### ✅ Passing Tests:
-- [x] Motion worker starts without import errors
-- [x] Motion threshold slider affects detection (0=insensitive, 1=sensitive)
-- [x] Logs are cleaner - NO character arrays, NO "source":"client" noise
-- [x] Duplicate listeners removed
-
-### ❌ Failing Tests (Requires Investigation):
-- [ ] **Grid Type dropdown** - Not changing active grid
-- [ ] **Synth Engine dropdown** - Not changing audio engine  
-- [ ] **Export Analytics** - Not downloading JSON file
+### 9. ✅ Fixed Export Analytics Button
+**Problem:** Export Analytics button wasn't triggering download - listener only attached to `.devpanel-actions-grid`, but button is in `.ingest-actions`  
+**Fix:** Updated `delegatedClick` to check both containers and attached listener to `.ingest-actions`  
+**Files:** `future/web/ui/dev-panel/dev-panel.actions.js`
 
 ---
 
-## Remaining Issues to Debug
+## Testing Instructions
 
-### Grid Type & Synth Engine Not Working
+### ✅ Tests That Should Now Pass:
+1. **Motion worker starts without import errors** ✅
+2. **Motion threshold slider affects detection (0=insensitive, 1=sensitive)** ✅
+3. **Logs are cleaner - NO character arrays, NO "source":"client" noise** ✅
+4. **Duplicate listeners removed** ✅
 
-**Hypothesis:** Event listeners are wired but commands may not be executing properly.
+### 🧪 Tests That Need Verification:
 
-**Debug Steps:**
-1. Open browser DevTools console
-2. Try changing Grid Type dropdown
-3. Check for:
+#### Grid Type Dropdown Test
+**What to test:** Change Grid Type dropdown in Developer Panel  
+**Expected result:** Active grid changes immediately (visible in audio output pattern)  
+**What to check in console:**
+- Look for `"DebugUI: Grid type set"` (success) OR
+- Look for `"DebugUI: Grid type not found or invalid"` (diagnostic)
+- If you see the WARN, check what grid IDs are available vs what was sent
+
+#### Synth Engine Dropdown Test
+**What to test:** Change Synth Engine dropdown in Developer Panel  
+**Expected result:** Audio synthesis engine changes (different sound character)  
+**What to check in console:**
+- Look for `"DebugUI: Synth engine set"` (success) OR
+- Look for `"DebugUI: Synth engine not found or invalid"` (diagnostic)
+- If you see the WARN, check available engine IDs
+
+#### Export Analytics Test
+**What to test:** Click "Export Analytics" button in Performance Analytics section  
+**Expected result:** JSON file downloads with name like `acoustsee-analytics-2025-10-06.json`  
+**What to check in console:**
+- Look for `"Analytics exported"` with log count
+- If error, look for `"exportIngestLogs failed"` or `"Failed to get logs for export"`
+
+---
+
+## Known Root Causes (For Reference)
+
+### Why Grid/Synth Dropdowns Might Still Fail
+1. **Grid/Engine Not in Available List:** The command checks if the selected ID exists in `state.availableGrids` or `state.availableEngines`. If these aren't populated at startup, the command will fail silently (now with WARN log).
+2. **State Not Initialized:** If `engine.getState()` returns empty `availableGrids` or `availableEngines`, the UI will have no options to select.
+
+### Why Export Analytics Button Was Broken
+- **Wrong Event Delegation Scope:** The `.ingest-actions` container wasn't included in the click listener scope, so clicks on the Export button were never caught.
+
+---
+
+## Next Steps
+
+1. **Run the tests above** and report results
+2. **Check console for new diagnostic WARNs** - these will tell us exactly why controls aren't working (if they still fail)
+3. **Verify log cleanliness** - console should only show essential info, no "source":"client" spam

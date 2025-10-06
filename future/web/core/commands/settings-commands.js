@@ -20,6 +20,11 @@ export function registerSettingsCommands(engine) {
     if (currentState.availableGrids && currentState.availableGrids.find(g => g.id === newGridId)) {
       engine.setState({ gridType: newGridId });
       structuredLog('INFO', 'DebugUI: Grid type set', { gridType: newGridId });
+    } else {
+      structuredLog('WARN', 'DebugUI: Grid type not found or invalid', { 
+        gridType: newGridId, 
+        availableGrids: currentState.availableGrids?.map(g => g.id) || [] 
+      });
     }
   });
 
@@ -30,6 +35,11 @@ export function registerSettingsCommands(engine) {
       engine.setState({ synthesisEngine: newEngineId });
       try { setSelectedSynthEngine(newEngineId); } catch (_) {}
       structuredLog('INFO', 'DebugUI: Synth engine set', { synthesisEngine: newEngineId });
+    } else {
+      structuredLog('WARN', 'DebugUI: Synth engine not found or invalid', { 
+        synthesisEngine: newEngineId, 
+        availableEngines: currentState.availableEngines?.map(e => e.id) || [] 
+      });
     }
   });
 

@@ -8,6 +8,7 @@ import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparklin
 
 export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   const actionsContainer = panel.querySelector('.devpanel-actions-grid');
+  const ingestActions = panel.querySelector('.ingest-actions');
   if (!actionsContainer) {
     console.error('createAndWireActions: Could not find .devpanel-actions-grid container in the provided panel.');
     return { dispose() {} };
@@ -24,7 +25,11 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
 
   const delegatedClick = (ev) => {
     const btn = ev.target.closest && ev.target.closest('button[data-action]');
-    if (!btn || !actionsContainer.contains(btn)) return;
+    if (!btn) return;
+    // Check if button is in either actionsContainer or ingestActions
+    const isInActions = actionsContainer.contains(btn) || (ingestActions && ingestActions.contains(btn));
+    if (!isInActions) return;
+    
     const action = btn.getAttribute('data-action');
     switch (action) {
       case 'toggleProcessing':
@@ -186,6 +191,12 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   };
   actionsContainer.addEventListener('click', delegatedClick);
   attachedHandlers.push({ el: actionsContainer, type: 'click', fn: delegatedClick });
+  
+  // Also attach to ingestActions for Export Analytics button
+  if (ingestActions) {
+    ingestActions.addEventListener('click', delegatedClick);
+    attachedHandlers.push({ el: ingestActions, type: 'click', fn: delegatedClick });
+  }
 
   // NOTE: Grid Type, Synth Engine, Max Notes, Motion Threshold listeners
   // are now registered ONLY in dev-panel.js to avoid duplicate event firing.
