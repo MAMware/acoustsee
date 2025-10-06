@@ -5,6 +5,7 @@
 // worker-monitor.js now lives alongside the dev-panel UI and provides worker stats
 import { getWorkerStats } from './worker-monitor.js';
 import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';
+import { structuredLog } from '../../utils/logging.js';
 
 export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   const actionsContainer = panel.querySelector('.devpanel-actions-grid');
@@ -121,6 +122,9 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
           const categoryFilter = Array.from(panel.querySelectorAll('.category-toggle input[type="checkbox"]:checked'))
             .map(checkbox => checkbox.dataset.category);
 
+          // Declare newCategories in outer scope so it's accessible in the import callback
+          let newCategories = {};
+
           // Update engine state
           const state = engine.getState && engine.getState();
           if (state) {
@@ -133,7 +137,7 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
             
             // Update category filter - enable only selected categories
             const allCategories = state.ingestCategories || {};
-            const newCategories = {};
+            newCategories = {}; // Reset before populating
             for (const [category, commands] of Object.entries(allCategories)) {
               if (categoryFilter.includes(category)) {
                 newCategories[category] = commands;
@@ -153,6 +157,8 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
             if (ingestModule.updateIngestCategories) {
               ingestModule.updateIngestCategories(engine, newCategories);
             }
+          }).catch(e => {
+            structuredLog('ERROR', 'Failed to import ingest module', { error: e.message });
           });
 
           console.log('Ingest settings updated:', { ingestEnabled, batteryOptimization, maxEventsPerSecond, categoryFilter });

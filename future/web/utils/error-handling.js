@@ -207,9 +207,10 @@ export function showCriticalError(title, message, context = {}) {
   document.body.appendChild(errorPanel);
   
   // Log the critical error
-  structuredLog('ERROR', 'critical-error', 'CRITICAL: Accessibility system failure', {
+  structuredLog('ERROR', 'critical-error', {
+    message: 'CRITICAL: Accessibility system failure',
     title,
-    message,
+    errorMessage: message,
     context,
     timestamp: new Date().toISOString()
   });
@@ -274,7 +275,8 @@ export async function executeCriticalOperation(systemName, operation, context = 
       const result = await operation();
       
       if (retryCount > 0) {
-        structuredLog('INFO', systemName, 'Critical operation succeeded after retry', {
+        structuredLog('INFO', systemName, {
+          message: 'Critical operation succeeded after retry',
           retryCount,
           context
         });
@@ -299,7 +301,8 @@ export async function executeCriticalOperation(systemName, operation, context = 
           { originalError: error.message, context, retries: maxRetries }
         );
         
-        structuredLog('ERROR', systemName, 'CRITICAL: System permanently failed', {
+        structuredLog('ERROR', systemName, {
+          message: 'CRITICAL: System permanently failed',
           error: accessibilityError.message,
           code: accessibilityError.code,
           context: accessibilityError.context
@@ -325,7 +328,8 @@ export function executeNonCriticalOperation(systemName, operation, fallback = nu
   try {
     return operation();
   } catch (error) {
-    structuredLog('ERROR', systemName, 'Non-critical operation failed, using fallback', {
+    structuredLog('ERROR', systemName, {
+      message: 'Non-critical operation failed, using fallback',
       error: error.message,
       stack: error.stack,
       hasFallback: !!fallback

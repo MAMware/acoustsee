@@ -79,6 +79,28 @@
 - Added DEBUG-level logs to show the entire payload received by the command handlers  
 **Files:** `future/web/core/commands/settings-commands.js`
 
+### 12. ✅ Fixed ALL Character Array Bugs (Comprehensive Fix)
+**Problem:** Character arrays `{"0":"P","1":"r"...}` appeared in MULTIPLE places - not just `error_ingest`  
+**Root Cause:** 14 different calls to `structuredLog()` were passing a **string as the 3rd argument** (the `data` parameter), and when that string gets spread (`...data`), JavaScript creates `{"0":"char1","1":"char2"...}`  
+**Files Fixed:**
+- `future/web/utils/ingest.js` (5 instances)
+- `future/web/ui/dev-panel/dev-panel.js` (2 instances)
+- `future/web/ui/dev-panel/state-inspector.js` (3 instances)
+- `future/web/utils/error-handling.js` (4 instances)
+
+**Details:** See `/future/web/docs/LOGGING_CHARACTER_ARRAY_FIXES.md` for complete before/after examples
+
+### 13. ✅ Fixed Critical JavaScript Errors in dev-panel.actions.js
+**Problem 1:** `ReferenceError: newCategories is not defined` (line 154)  
+**Root Cause:** Variable declared inside `if (state)` block but used in async `import().then()` callback  
+**Fix:** Moved `newCategories` declaration to outer scope with `let`
+
+**Problem 2:** `ReferenceError: structuredLog is not defined` (line 178)  
+**Root Cause:** Missing import statement  
+**Fix:** Added `import { structuredLog } from '../../utils/logging.js';` at top of file
+
+**Files:** `future/web/ui/dev-panel/dev-panel.actions.js`
+
 ---
 
 ## Testing Instructions

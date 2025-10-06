@@ -74,11 +74,11 @@ export class StateInspector {
         // Initial render
         this.scheduleUpdate(this.engine.getState());
       } else {
-        structuredLog('WARN', 'state-inspector', 'Engine missing onStateChange method');
+        structuredLog('WARN', 'state-inspector', { message: 'Engine missing onStateChange method' });
       }
     }, () => {
       // Fallback already handled in constructor
-      structuredLog('WARN', 'state-inspector', 'Failed to initialize UI, fallback active');
+      structuredLog('WARN', 'state-inspector', { message: 'Failed to initialize UI, fallback active' });
     });
   }
   
@@ -125,7 +125,7 @@ export class StateInspector {
       });
       
     } catch (error) {
-      structuredLog('ERROR', 'state-inspector', 'Failed to update state view', { error: error.message });
+      structuredLog('ERROR', 'state-inspector', { message: 'Failed to update state view', error: error.message });
     }
   }
   

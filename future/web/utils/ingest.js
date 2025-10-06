@@ -89,7 +89,7 @@ export function createIngestInterceptor(engine) {
       const eventData = createLightweightEvent(command, engine);
       try { queueEvent(eventData, engine); } catch (e) {
         // Never break app flow due to analytics; log once per type via structuredLog
-        try { structuredLog('ERROR', 'ingest_queue_error', 'Failed to queue analytics event', { error: e?.message || String(e) }); } catch(_) {}
+        try { structuredLog('ERROR', 'ingest_queue_error', { error: e?.message || String(e), message: 'Failed to queue analytics event' }); } catch(_) {}
       }
     }
     
@@ -219,7 +219,8 @@ function updateOptimizationPreferences(engine) {
   // Only update if preferences changed (no JSON.stringify overhead)
   if (preferencesChanged(oldPreferences, newPreferences)) {
     state.ingestPreferences = newPreferences;
-    structuredLog('INFO', 'performance_optimization_applied', 'Auto-adjusted ingest preferences', {
+    structuredLog('INFO', 'performance_optimization_applied', {
+      message: 'Auto-adjusted ingest preferences',
       cores: performanceProfile.cores,
       memory: performanceProfile.memory,
       isMobile: performanceProfile.isMobile,
@@ -454,7 +455,8 @@ export function setupIngestErrorTracking() {
 export function updateIngestCategories(engine, categories) {
   const state = engine.getState();
   state.ingestCategories = { ...state.ingestCategories, ...categories };
-  structuredLog('INFO', 'ingest_categories_updated', 'Dynamic categorization updated', {
+  structuredLog('INFO', 'ingest_categories_updated', {
+    message: 'Dynamic categorization updated',
     newCategories: Object.keys(categories),
     totalCategories: Object.keys(state.ingestCategories || {}).length
   });
@@ -466,7 +468,7 @@ export function updateIngestCategories(engine, categories) {
 export function updateOptimizationSettings(engine, settings) {
   const state = engine.getState();
   state.ingestPreferences = { ...OPTIMIZATION_DEFAULTS, ...state.ingestPreferences, ...settings };
-  structuredLog('INFO', 'optimization_settings_updated', 'Performance optimization updated', {
+  structuredLog('INFO', 'optimization_settings_updated', {
     settings: state.ingestPreferences
   });
 }

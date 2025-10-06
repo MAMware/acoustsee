@@ -748,10 +748,10 @@ export function initializeDevPanel(arg1, arg2) {
         // NOTE: removed standalone video size label. Video dimensions are now
         // pushed to engine state by media-commands and rendered inside the
         // State Inspector (group: Video Settings) as `videoSize`.
-        structuredLog('INFO', 'dev-panel', 'Visual state inspector initialized');
+        structuredLog('INFO', 'dev-panel', { message: 'Visual state inspector initialized' });
       }
     } catch (e) {
-      structuredLog('ERROR', 'dev-panel', 'Failed to initialize state inspector', { error: e.message });
+      structuredLog('ERROR', 'dev-panel', { message: 'Failed to initialize state inspector', error: e.message });
       // Fallback to simple text display
       const stateSection = panel.querySelector('#state-content');
       if (stateSection) {
