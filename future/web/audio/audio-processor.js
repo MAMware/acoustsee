@@ -240,11 +240,30 @@ export function resizeOscillatorPool(size) {
   if (!context) return;
   
   while (oscillatorPool.length < size) {
+    // Create a properly structured oscillator object with gain and panner
     const osc = context.createOscillator();
-    oscillatorPool.push(osc);
+    const gain = context.createGain();
+    const panner = context.createStereoPanner();
+    
+    // Connect the nodes: osc -> gain -> panner -> (will connect to master in synth)
+    osc.connect(gain);
+    gain.connect(panner);
+    
+    // Start the oscillator (required before it can be used)
+    osc.start();
+    
+    // Push the structured object
+    oscillatorPool.push({ osc, gain, panner, active: false });
   }
   while (oscillatorPool.length > size) {
-    oscillatorPool.pop();
+    const oscObj = oscillatorPool.pop();
+    // Clean up the removed oscillator
+    if (oscObj && oscObj.osc) {
+      try {
+        oscObj.osc.stop();
+        oscObj.osc.disconnect();
+      } catch (e) { /* already stopped */ }
+    }
   }
   structuredLog('DEBUG', 'Resized oscillator pool', { size: oscillatorPool.length });
 }
@@ -254,35 +273,57 @@ function getOscillator() {
   if (!context) return null;
 
   if (oscillatorPool.length > 0) {
-    const osc = oscillatorPool.pop();
+    const oscObj = oscillatorPool.pop();
     // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
     if (Math.random() < 0.01) {
       structuredLog('DEBUG', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
     }
-    return osc;
+    return oscObj;
   }
   
-  // Fallback if pool is empty
-  structuredLog('WARN', 'getOscillator: Pool empty, creating new oscillator.');
-  return context.createOscillator();
+  // Fallback if pool is empty - create a properly structured oscillator object
+  structuredLog('WARN', 'getOscillator: Pool empty, creating new structured oscillator.');
+  const osc = context.createOscillator();
+  const gain = context.createGain();
+  const panner = context.createStereoPanner();
+  
+  osc.connect(gain);
+  gain.connect(panner);
+  osc.start();
+  
+  return { osc, gain, panner, active: false };
 }
 
-function releaseOscillator(oscillator) {
-  // Stop the oscillator if it's still running to prevent resource leaks
+function releaseOscillator(oscObj) {
+  const context = audioManager?.context;
+  if (!context || !oscObj) return;
+  
+  // Stop and disconnect the old oscillator
   try {
-    oscillator.stop(audioManager.context.currentTime + 0.5);
+    if (oscObj.osc) {
+      oscObj.osc.stop(context.currentTime + 0.5);
+      oscObj.osc.disconnect();
+    }
+    if (oscObj.gain) oscObj.gain.disconnect();
+    if (oscObj.panner) oscObj.panner.disconnect();
   } catch (e) {
     // Oscillator might already be stopped
   }
-  // Re-create the oscillator to reset its state before putting it back in the pool
-  const context = audioManager?.context;
-  if (context) {
-    const newOsc = context.createOscillator();
-    oscillatorPool.push(newOsc);
-    // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
-    if (Math.random() < 0.01) {
-      structuredLog('DEBUG', 'releaseOscillator: Returned oscillator to pool', { poolSize: oscillatorPool.length });
-    }
+  
+  // Create a fresh oscillator object for the pool
+  const osc = context.createOscillator();
+  const gain = context.createGain();
+  const panner = context.createStereoPanner();
+  
+  osc.connect(gain);
+  gain.connect(panner);
+  osc.start();
+  
+  oscillatorPool.push({ osc, gain, panner, active: false });
+  
+  // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
+  if (Math.random() < 0.01) {
+    structuredLog('DEBUG', 'releaseOscillator: Returned oscillator to pool', { poolSize: oscillatorPool.length });
   }
 }
 
@@ -393,7 +434,14 @@ export async function playCues(payload) {
     const toAdd = maxNotes - oscillatorPool.length;
     for (let i = 0; i < toAdd; i++) {
       const osc = context.createOscillator();
-      oscillatorPool.push(osc);
+      const gain = context.createGain();
+      const panner = context.createStereoPanner();
+      
+      osc.connect(gain);
+      gain.connect(panner);
+      osc.start();
+      
+      oscillatorPool.push({ osc, gain, panner, active: false });
     }
     structuredLog('DEBUG', 'Refilled oscillator pool', { added: toAdd, newSize: oscillatorPool.length });
   }
