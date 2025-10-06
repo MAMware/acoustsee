@@ -59,12 +59,21 @@ export function playSawtoothPad(notes = [], ctx = {}) {
     if (!oscObj.filter) {
         oscObj.filter = audioContext.createBiquadFilter();
         oscObj.filter.type = 'lowpass';
-        // Connect osc -> filter -> gain
+        // Connect osc -> filter -> gain -> panner -> masterGain
         osc.connect(oscObj.filter);
         oscObj.filter.connect(gain);
+        gain.connect(panner);
+        panner.connect(masterGain);
     }
     filter = oscObj.filter;
     filter.frequency.setValueAtTime(1200, now); // A good starting point for a pad
+    
+    // Start the oscillator
+    try {
+      osc.start(now);
+    } catch (e) {
+      // ignore if already started
+    }
     
     // --- Standard note parameters ---
   const freq = note.pitch;

@@ -17,8 +17,13 @@
 
 export function playStrings(notes = [], ctx = {}) {
   const ac = ctx.audioContext;
+  const masterGain = ctx.masterGain;
   if (!ac) {
     console.warn('strings: audioContext not available; skipping');
+    return;
+  }
+  if (!masterGain) {
+    console.warn('strings: masterGain not available; skipping');
     return;
   }
 
@@ -84,10 +89,10 @@ export function playStrings(notes = [], ctx = {}) {
     delay.connect(feedback);
     feedback.connect(filter);
 
-    // Also route delay output to output gain -> panner? -> destination
+    // Also route delay output to output gain -> panner? -> masterGain
     delay.connect(outGain);
-    if (panner) outGain.connect(panner), panner.connect(ac.destination);
-    else outGain.connect(ac.destination);
+    if (panner) outGain.connect(panner), panner.connect(masterGain);
+    else outGain.connect(masterGain);
 
     const startTime = now + (note.when || 0);
     src.start(startTime);

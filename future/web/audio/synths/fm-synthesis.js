@@ -70,6 +70,22 @@ export function playFmSynthesis(notes, ctx = {}) {
     }
     oscData.active = true;
 
+    // Connect the carrier oscillator path to output
+    try {
+      oscData.osc.connect(oscData.gain);
+      oscData.gain.connect(oscData.panner);
+      oscData.panner.connect(masterGain);
+    } catch (e) {
+      // ignore connection failures
+    }
+
+    // Start the carrier oscillator
+    try {
+      oscData.osc.start(now);
+    } catch (e) {
+      // ignore if already started
+    }
+
     // FM modulator (one per note) - reuse if possible
     let modData;
     if (modIndex < modulators.length) {
@@ -142,6 +158,22 @@ export function playFmSynthesis(notes, ctx = {}) {
         harmonicOsc.panner.pan.setTargetAtTime(azimuth, now, 0.015);
       }
       harmonicOsc.active = true;
+      
+      // Connect harmonic to output
+      try {
+        harmonicOsc.osc.connect(harmonicOsc.gain);
+        harmonicOsc.gain.connect(harmonicOsc.panner);
+        harmonicOsc.panner.connect(masterGain);
+      } catch (e) {
+        // ignore connection failures
+      }
+      
+      // Start harmonic oscillator
+      try {
+        harmonicOsc.osc.start(now);
+      } catch (e) {
+        // ignore if already started
+      }
     }
   }
 

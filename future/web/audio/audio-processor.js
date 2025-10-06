@@ -245,24 +245,25 @@ export function resizeOscillatorPool(size) {
     const gain = context.createGain();
     const panner = context.createStereoPanner();
     
-    // Connect the nodes: osc -> gain -> panner -> (will connect to master in synth)
-    osc.connect(gain);
-    gain.connect(panner);
+    // DO NOT connect or start yet - synths will do that!
+    // Just package them together for the synths to use
     
-    // Start the oscillator (required before it can be used)
-    osc.start();
-    
-    // Push the structured object
     oscillatorPool.push({ osc, gain, panner, active: false });
   }
   while (oscillatorPool.length > size) {
     const oscObj = oscillatorPool.pop();
-    // Clean up the removed oscillator
+    // Clean up the removed oscillator if it was ever used
     if (oscObj && oscObj.osc) {
       try {
-        oscObj.osc.stop();
+        if (oscObj.started) oscObj.osc.stop();
         oscObj.osc.disconnect();
       } catch (e) { /* already stopped */ }
+    }
+    if (oscObj && oscObj.gain) {
+      try { oscObj.gain.disconnect(); } catch (e) { /* ignore */ }
+    }
+    if (oscObj && oscObj.panner) {
+      try { oscObj.panner.disconnect(); } catch (e) { /* ignore */ }
     }
   }
   structuredLog('DEBUG', 'Resized oscillator pool', { size: oscillatorPool.length });
@@ -287,9 +288,7 @@ function getOscillator() {
   const gain = context.createGain();
   const panner = context.createStereoPanner();
   
-  osc.connect(gain);
-  gain.connect(panner);
-  osc.start();
+  // DO NOT connect or start - synths will do that
   
   return { osc, gain, panner, active: false };
 }
@@ -300,14 +299,15 @@ function releaseOscillator(oscObj) {
   
   // Stop and disconnect the old oscillator
   try {
-    if (oscObj.osc) {
+    if (oscObj.osc && oscObj.started) {
       oscObj.osc.stop(context.currentTime + 0.5);
-      oscObj.osc.disconnect();
     }
+    if (oscObj.osc) oscObj.osc.disconnect();
     if (oscObj.gain) oscObj.gain.disconnect();
     if (oscObj.panner) oscObj.panner.disconnect();
+    if (oscObj.filter) oscObj.filter.disconnect();
   } catch (e) {
-    // Oscillator might already be stopped
+    // Oscillator might already be stopped or disconnected
   }
   
   // Create a fresh oscillator object for the pool
@@ -315,9 +315,7 @@ function releaseOscillator(oscObj) {
   const gain = context.createGain();
   const panner = context.createStereoPanner();
   
-  osc.connect(gain);
-  gain.connect(panner);
-  osc.start();
+  // DO NOT connect or start - synths will do that
   
   oscillatorPool.push({ osc, gain, panner, active: false });
   
@@ -437,9 +435,7 @@ export async function playCues(payload) {
       const gain = context.createGain();
       const panner = context.createStereoPanner();
       
-      osc.connect(gain);
-      gain.connect(panner);
-      osc.start();
+      // DO NOT connect or start - synths will do that
       
       oscillatorPool.push({ osc, gain, panner, active: false });
     }
