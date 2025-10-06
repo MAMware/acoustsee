@@ -3,15 +3,17 @@
 // Uses vanilla JavaScript convolution and matrix solving for compatibility and performance in web workers.
 // Maintains adaptive thresholding for robustness in varying conditions.
 // Outputs coords, intensity (based on flow magnitude), u (horizontal flow), and v (vertical flow) as transferable buffers.
+// v0.5 Created by MAMware and Grok (xAI.com)
 // REVISON 2025-10-05 - Enhanced with Lucas-Kanade optical flow based on research in motion-worker.js.md.
 
 // Add this import at the top if not present
-importScripts('../utils/logging.js');
+import { structuredLog } from '../../utils/logging.js';
 
 let _prevY = null;
 let _width = 0;
 let _height = 0;
-let _adaptiveThreshold = 20; // Start with default threshold
+let _adaptiveThreshold = 20; // Internal adaptive threshold (5-50 pixel difference range)
+let _useAdaptive = true; // Whether to use adaptive thresholding
 
 function convolve2d(image, width, height, kernel) {
   const kh = kernel.length;
@@ -71,11 +73,26 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
   const w = Math.floor(windowSize / 2);
   const tau = 1e-2;
 
+  // Determine which threshold to use
+  // UI threshold comes in as 0-1 (normalized), convert to pixel difference (0-255)
+  // Default threshold=20 from old API, but UI sends 0-1 values
+  let effectiveThreshold;
+  if (threshold >= 0 && threshold <= 1) {
+    // UI control: user is explicitly setting sensitivity (0=very sensitive, 1=very insensitive)
+    effectiveThreshold = threshold * 255;
+    _useAdaptive = false; // Disable adaptive when user takes manual control
+  } else {
+    // Legacy/default: use adaptive threshold
+    effectiveThreshold = _adaptiveThreshold;
+    _useAdaptive = true;
+  }
+
   for (let yy = w; yy < height - w; yy += step) {
     for (let xx = w; xx < width - w; xx += step) {
       const idx = yy * width + xx;
       const d = Math.abs(y[idx] - _prevY[idx]);
-      if (d >= _adaptiveThreshold) {
+      
+      if (d >= effectiveThreshold) {
         // Gather window data
         let A11 = 0, A12 = 0, A22 = 0;
         let b1 = 0, b2 = 0;
@@ -128,15 +145,17 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
   // Store current y for next frame
   _prevY.set(y);
 
-  // Adaptive threshold adjustment
-  const oldThreshold = _adaptiveThreshold;
-  if (count < 10) {
-    _adaptiveThreshold = Math.max(5, _adaptiveThreshold * 0.95);
-  } else if (count > 50) {
-    _adaptiveThreshold = Math.min(50, _adaptiveThreshold * 1.05);
-  }
-  if (_adaptiveThreshold !== oldThreshold) {
-    structuredLog('INFO', 'Motion threshold adjusted', { from: oldThreshold, to: _adaptiveThreshold, count });
+  // Only adjust adaptive threshold if we're in adaptive mode
+  if (_useAdaptive) {
+    const oldThreshold = _adaptiveThreshold;
+    if (count < 10) {
+      _adaptiveThreshold = Math.max(5, _adaptiveThreshold * 0.95);
+    } else if (count > 50) {
+      _adaptiveThreshold = Math.min(50, _adaptiveThreshold * 1.05);
+    }
+    if (_adaptiveThreshold !== oldThreshold) {
+      structuredLog('DEBUG', 'Adaptive threshold adjusted', { from: oldThreshold, to: _adaptiveThreshold, count });
+    }
   }
 
   const returnedCount = Math.min(count, maxRegions);
@@ -158,7 +177,12 @@ self.onmessage = (ev) => {
       }
       
       const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
-      structuredLog('DEBUG', 'Motion detection results', { count: res.count, threshold: threshold, adaptiveThreshold: _adaptiveThreshold });
+      structuredLog('DEBUG', 'Motion detection complete', { 
+        count: res.count, 
+        threshold, 
+        adaptiveThreshold: _adaptiveThreshold,
+        usingAdaptive: _useAdaptive 
+      });
       
       const toSend = {
         type: 'motion',
@@ -188,10 +212,10 @@ self.onmessage = (ev) => {
       });
     }
   } else if (msg.type === 'handshake') {
-    structuredLog('INFO', 'Motion worker handshake received');
-    self.postMessage({ type: 'ready', features: ['motion', 'flow'] });
+    structuredLog('INFO', 'Motion worker initialized');
+    self.postMessage({ type: 'ready', features: ['motion', 'optical-flow', 'adaptive-threshold'] });
   } else if (msg.type === 'simulate') {
     structuredLog('INFO', 'Motion worker simulation mode');
-    self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true });
+    self.postMessage({ type: 'ready', features: ['motion', 'optical-flow', 'adaptive-threshold'], simulated: true });
   }
 };

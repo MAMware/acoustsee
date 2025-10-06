@@ -24,12 +24,12 @@ export function registerSettingsCommands(engine) {
   });
 
   registerCommandHandler('setSynthEngine', (payload) => {
-    const newEngineId = payload.synthEngine;
+    const newEngineId = payload.synthesisEngine || payload.synthEngine; // Accept both parameter names
     const currentState = engine.getState();
     if (currentState.availableEngines && currentState.availableEngines.find(e => e.id === newEngineId)) {
       engine.setState({ synthesisEngine: newEngineId });
       try { setSelectedSynthEngine(newEngineId); } catch (_) {}
-      structuredLog('INFO', 'DebugUI: Synth engine set', { synthEngine: newEngineId });
+      structuredLog('INFO', 'DebugUI: Synth engine set', { synthesisEngine: newEngineId });
     }
   });
 

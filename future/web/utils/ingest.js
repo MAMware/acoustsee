@@ -375,10 +375,19 @@ function flushEventQueue() {
   
   const events = eventQueue.splice(0); // Clear queue
   
-  // Batch process events
-  for (const event of events) {
-    structuredLog(event.level, 'performance_ingest', event.command, event);
-  }
+  // Batch process events - create event summary to reduce log noise
+  const eventSummary = events.reduce((acc, event) => {
+    const key = event.command || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  
+  // Log batch summary instead of individual events
+  structuredLog('DEBUG', 'Performance events flushed', { 
+    batchSize: events.length,
+    events: eventSummary,
+    source: 'ingest-system'
+  });
 }
 
 /**
