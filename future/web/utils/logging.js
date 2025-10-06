@@ -44,42 +44,48 @@ let sampleRate = detectIsMobile() ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 // Config for logging behavior
 const loggingConfig = {
   includeMetadata: true, // Enable/disable metadata
-  includeUserAgent: false, // Privacy: excluded by default. If debugging, true. true
-  includeStack: true, // Include stack traces for debugging
-  includeUrl: true, // Include current URL
+  includeUserAgent: false, // Privacy: excluded by default
+  includeStack: false, // Only include for WARN/ERROR by default
+  includeUrl: false, // Only include for WARN/ERROR by default
 };
 
 // Export config for runtime control
 export { loggingConfig };
 
-// Auto-generate metadata from stack trace
-function generateMetadata() {
+// Auto-generate metadata from stack trace (conditional based on log level)
+function generateMetadata(level = 'INFO') {
   if (!loggingConfig.includeMetadata) return {};
   
-  const error = new Error();
-  const stack = error.stack || '';
-  const lines = stack.split('\n');
-  const callerLine = lines[2] || ''; // Approximate caller info (skip this function and structuredLog)
+  const normalizedLevel = level.toUpperCase();
+  const isHighPriority = normalizedLevel === 'WARN' || normalizedLevel === 'ERROR';
   
-  // Parse filename, lineno, colno from stack (basic parsing)
-  const match = callerLine.match(/at (.+):(\d+):(\d+)/);
-  const filename = match ? match[1] : '';
-  const lineno = match ? parseInt(match[2], 10) : 0;
-  const colno = match ? parseInt(match[3], 10) : 0;
-  
+  // Only generate expensive metadata for high-priority logs
   const metadata = {
     source: 'client',
-    filename,
-    lineno,
-    colno,
-    stack: loggingConfig.includeStack ? stack : null,
   };
   
-  if (loggingConfig.includeUserAgent) {
+  // Stack traces only for WARN/ERROR
+  if (loggingConfig.includeStack && isHighPriority) {
+    const error = new Error();
+    const stack = error.stack || '';
+    const lines = stack.split('\n');
+    const callerLine = lines[2] || ''; // Approximate caller info
+    
+    // Parse filename, lineno, colno from stack (basic parsing)
+    const match = callerLine.match(/at (.+):(\d+):(\d+)/);
+    metadata.filename = match ? match[1] : '';
+    metadata.lineno = match ? parseInt(match[2], 10) : 0;
+    metadata.colno = match ? parseInt(match[3], 10) : 0;
+    metadata.stack = stack;
+  }
+  
+  // UserAgent only if explicitly enabled and for high-priority logs
+  if (loggingConfig.includeUserAgent && isHighPriority) {
     metadata.userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   }
   
-  if (loggingConfig.includeUrl) {
+  // URL only for high-priority logs
+  if (loggingConfig.includeUrl && isHighPriority) {
     metadata.url = typeof location !== 'undefined' ? location.href : '';
   }
   
@@ -173,8 +179,8 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
   try {
     const timestamp = new Date().toISOString();
     
-    // Auto-generate metadata and merge with provided data
-    const metadata = generateMetadata();
+    // Auto-generate metadata and merge with provided data (pass level for conditional metadata)
+    const metadata = generateMetadata(level);
     const telemetryData = {
       ...metadata,
       ...data, // Allow overrides or additions

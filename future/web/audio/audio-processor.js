@@ -270,7 +270,7 @@ function getOscillator() {
 function releaseOscillator(oscillator) {
   // Stop the oscillator if it's still running to prevent resource leaks
   try {
-    oscillator.stop(audioManager.context.currentTime + 0.1); // Short stop time
+    oscillator.stop(audioManager.context.currentTime + 0.5);
   } catch (e) {
     // Oscillator might already be stopped
   }

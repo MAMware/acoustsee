@@ -5,10 +5,8 @@
 // Outputs coords, intensity (based on flow magnitude), u (horizontal flow), and v (vertical flow) as transferable buffers.
 // REVISON 2025-10-05 - Enhanced with Lucas-Kanade optical flow based on research in motion-worker.js.md.
 
-// Simple structured logging for worker
-function structuredLog(level, message, data = {}) {
-  console.log(`[${level}] ${message}`, data);
-}
+// Add this import at the top if not present
+importScripts('../utils/logging.js');
 
 let _prevY = null;
 let _width = 0;
@@ -138,7 +136,7 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
     _adaptiveThreshold = Math.min(50, _adaptiveThreshold * 1.05);
   }
   if (_adaptiveThreshold !== oldThreshold) {
-    console.log(`Motion threshold adjusted from ${oldThreshold} to ${_adaptiveThreshold} (count: ${count})`);
+    structuredLog('INFO', 'Motion threshold adjusted', { from: oldThreshold, to: _adaptiveThreshold, count });
   }
 
   const returnedCount = Math.min(count, maxRegions);
@@ -150,12 +148,18 @@ self.onmessage = (ev) => {
   if (msg.type === 'frame') {
     try {
       const { ts = 0, w = 0, h = 0, yBuffer, step = 6, threshold = 20, maxRegions = 64, windowSize = 5 } = msg;
+      
+      structuredLog('DEBUG', 'Motion worker received frame', { width: w, height: h, threshold });
+      
       if (!yBuffer) {
+        structuredLog('WARN', 'Motion worker: No yBuffer received');
         self.postMessage({ type: 'motion', ts, count: 0, coordsBuffer: new Uint16Array(0).buffer, intensBuffer: new Uint8Array(0).buffer, uBuffer: new Float32Array(0).buffer, vBuffer: new Float32Array(0).buffer });
         return;
       }
+      
       const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
-      structuredLog('DEBUG', 'Motion detection results', { count: res.count, threshold: threshold, frameDelta: res.count });
+      structuredLog('DEBUG', 'Motion detection results', { count: res.count, threshold: threshold, adaptiveThreshold: _adaptiveThreshold });
+      
       const toSend = {
         type: 'motion',
         ts,
@@ -167,11 +171,27 @@ self.onmessage = (ev) => {
       };
       self.postMessage(toSend, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
     } catch (e) {
-      self.postMessage({ type: 'error', message: e && e.message ? e.message : String(e) });
+      structuredLog('ERROR', 'Motion worker exception', { 
+        message: e.message, 
+        stack: e.stack,
+        name: e.name
+      });
+      // Send empty result to keep pipeline alive
+      self.postMessage({ 
+        type: 'motion', 
+        ts: msg.ts || 0, 
+        count: 0, 
+        coordsBuffer: new Uint16Array(0).buffer, 
+        intensBuffer: new Uint8Array(0).buffer, 
+        uBuffer: new Float32Array(0).buffer, 
+        vBuffer: new Float32Array(0).buffer 
+      });
     }
   } else if (msg.type === 'handshake') {
+    structuredLog('INFO', 'Motion worker handshake received');
     self.postMessage({ type: 'ready', features: ['motion', 'flow'] });
   } else if (msg.type === 'simulate') {
+    structuredLog('INFO', 'Motion worker simulation mode');
     self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true });
   }
 };

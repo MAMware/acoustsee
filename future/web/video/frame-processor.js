@@ -47,6 +47,16 @@ function startMotionWorker() {
   try {
     motionWorker = new Worker(new URL('./workers/motion-worker.js', import.meta.url), { type: 'module' });
     if (_config.registerWorker) _config.registerWorker(motionWorker, 'MotionSpecialist');
+    
+    // Add error handler for worker crashes
+    motionWorker.onerror = (error) => {
+      structuredLog('ERROR', 'Motion worker error', { 
+        message: error.message, 
+        filename: error.filename, 
+        lineno: error.lineno 
+      });
+    };
+    
     motionWorker.onmessage = (e) => {
       // This worker now uses a custom event system for promises
       const event = new CustomEvent('motionResult', { detail: e.data });
