@@ -88,6 +88,27 @@ This will help identify whether the issue is:
 - Oscillator pool management
 - Command dispatch details
 
+### 10. ✅ Performance Analytics Controls Not Working
+**Problem:** Checkboxes and dropdown in Performance Analytics section had no event listeners - changes only took effect when "Apply Settings" button was clicked  
+**Root Cause:** Controls were only synced FROM state (read-only display) but didn't update state when changed by user  
+**Fix:**
+- Added direct event listeners for:
+  - Analytics Enabled checkbox → updates `state.ingestEnabled` immediately
+  - Battery Optimization checkbox → updates `state.ingestPreferences.useIdleCallback` immediately
+  - Max Events/Second dropdown → updates `state.ingestPreferences.maxEventsPerSecond` immediately
+  - Category toggles → logs changes (full category management still requires "Apply Settings")
+- Added comprehensive DEBUG logging showing:
+  - Button clicks with console.log markers
+  - Values read from UI controls
+  - State updates
+  - Module loading status
+
+**Files:** 
+- `future/web/ui/dev-panel/dev-panel.js` (added event listeners for all controls)
+- `future/web/ui/dev-panel/dev-panel.actions.js` (added diagnostics for "Apply Settings" and "Export Analytics" buttons)
+
+**Impact:** Performance Analytics controls now work immediately on change, with full diagnostic visibility
+
 **Files:** `future/web/video/workers/motion-worker.js`
 
 ### 7. ✅ Worker Error Handling Added

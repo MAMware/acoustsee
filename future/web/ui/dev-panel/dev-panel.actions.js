@@ -116,11 +116,21 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         break;
       case 'updateIngestSettings':
         try {
+          console.log('=== UPDATE INGEST SETTINGS BUTTON CLICKED ===');
+          
           const ingestEnabled = panel.querySelector('#ingest-enabled-checkbox')?.checked;
           const batteryOptimization = panel.querySelector('#battery-optimization-checkbox')?.checked;
           const maxEventsPerSecond = parseInt(panel.querySelector('#ingest-rate-select')?.value || '10');
           const categoryFilter = Array.from(panel.querySelectorAll('.category-toggle input[type="checkbox"]:checked'))
             .map(checkbox => checkbox.dataset.category);
+
+          structuredLog('DEBUG', 'Ingest settings READ from UI', {
+            ingestEnabled,
+            batteryOptimization,
+            maxEventsPerSecond,
+            categoryFilter,
+            categoryCount: categoryFilter.length
+          });
 
           // Declare newCategories in outer scope so it's accessible in the import callback
           let newCategories = {};
@@ -144,6 +154,13 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
               }
             }
             state.ingestCategories = newCategories;
+            
+            structuredLog('DEBUG', 'State updated with ingest settings', {
+              ingestEnabled: state.ingestEnabled,
+              useIdleCallback: state.ingestPreferences?.useIdleCallback,
+              maxEventsPerSecond: state.ingestPreferences?.maxEventsPerSecond,
+              categoryCount: Object.keys(newCategories).length
+            });
           }
 
           // Import and call the ingest API
@@ -168,8 +185,15 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         break;
       case 'exportIngestLogs':
         try {
+          console.log('=== EXPORT ANALYTICS BUTTON CLICKED ===');
+          structuredLog('DEBUG', 'Attempting to export analytics logs');
+          
           // Export all ingest logs
           import('../../utils/idb-logger.js').then(idbModule => {
+            structuredLog('DEBUG', 'idb-logger module loaded', { 
+              hasGetAllIdbLogs: typeof idbModule.getAllIdbLogs === 'function'
+            });
+            
             if (idbModule.getAllIdbLogs) {
               idbModule.getAllIdbLogs().then(logs => {
                 const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });

@@ -825,7 +825,9 @@ export function initializeDevPanel(arg1, arg2) {
           optionText: selectedOption?.textContent
         });
         
-        engine.dispatch('setGridType', { gridType: selectedValue });
+        const payloadToSend = { gridType: selectedValue };
+        structuredLog('DEBUG', 'About to dispatch setGridType', { payload: payloadToSend });
+        engine.dispatch('setGridType', payloadToSend);
       });
     }
     if (synthEngineSelect) {
@@ -844,7 +846,59 @@ export function initializeDevPanel(arg1, arg2) {
           optionText: selectedOption?.textContent
         });
         
-        engine.dispatch('setSynthEngine', { synthesisEngine: selectedValue });
+        const payloadToSend = { synthesisEngine: selectedValue };
+        structuredLog('DEBUG', 'About to dispatch setSynthEngine', { payload: payloadToSend });
+        engine.dispatch('setSynthEngine', payloadToSend);
+      });
+    }
+    
+    // Add event listeners for Performance Analytics controls
+    if (ingestEnabledCheckbox) {
+      ingestEnabledCheckbox.addEventListener('change', (e) => {
+        console.log('=== INGEST ENABLED CHECKBOX CHANGED ===');
+        structuredLog('DEBUG', 'Ingest enabled changed', { checked: e.target.checked });
+        engine.setState({ ingestEnabled: e.target.checked });
+      });
+    }
+    
+    if (batteryOptimizationCheckbox) {
+      batteryOptimizationCheckbox.addEventListener('change', (e) => {
+        console.log('=== BATTERY OPTIMIZATION CHECKBOX CHANGED ===');
+        structuredLog('DEBUG', 'Battery optimization changed', { checked: e.target.checked });
+        const currentPrefs = engine.getState()?.ingestPreferences || {};
+        engine.setState({ 
+          ingestPreferences: { ...currentPrefs, useIdleCallback: e.target.checked }
+        });
+      });
+    }
+    
+    if (ingestRateSelect) {
+      ingestRateSelect.addEventListener('change', (e) => {
+        console.log('=== INGEST RATE SELECT CHANGED ===');
+        const rate = parseInt(e.target.value);
+        structuredLog('DEBUG', 'Ingest rate changed', { 
+          selectedValue: e.target.value,
+          parsedRate: rate 
+        });
+        const currentPrefs = engine.getState()?.ingestPreferences || {};
+        engine.setState({ 
+          ingestPreferences: { ...currentPrefs, maxEventsPerSecond: rate }
+        });
+      });
+    }
+    
+    // Add listeners for category toggles
+    if (ingestCategoryToggles) {
+      ingestCategoryToggles.forEach(toggle => {
+        toggle.addEventListener('change', (e) => {
+          console.log('=== CATEGORY TOGGLE CHANGED ===');
+          const category = e.target.dataset.category;
+          const checked = e.target.checked;
+          structuredLog('DEBUG', 'Category toggle changed', { category, checked });
+          
+          // This is more complex - categories need to be managed carefully
+          // For now, just log it. The "Apply Settings" button will handle the full update
+        });
       });
     }
 
