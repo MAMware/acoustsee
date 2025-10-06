@@ -17,12 +17,19 @@ export function registerSettingsCommands(engine) {
   registerCommandHandler('setGridType', (payload) => {
     const newGridId = payload.gridType;
     const currentState = engine.getState();
+    
+    // Debug: Log what we received
+    structuredLog('DEBUG', 'setGridType command received', { 
+      payload: JSON.stringify(payload), 
+      newGridId: newGridId === undefined ? 'undefined' : String(newGridId)
+    });
+    
     if (currentState.availableGrids && currentState.availableGrids.find(g => g.id === newGridId)) {
       engine.setState({ gridType: newGridId });
       structuredLog('INFO', 'DebugUI: Grid type set', { gridType: newGridId });
     } else {
       structuredLog('WARN', 'DebugUI: Grid type not found or invalid', { 
-        gridType: newGridId, 
+        requestedGridType: newGridId === undefined ? 'undefined' : newGridId, 
         availableGrids: currentState.availableGrids?.map(g => g.id) || [] 
       });
     }
@@ -31,13 +38,20 @@ export function registerSettingsCommands(engine) {
   registerCommandHandler('setSynthEngine', (payload) => {
     const newEngineId = payload.synthesisEngine; // Standardized parameter name
     const currentState = engine.getState();
+    
+    // Debug: Log what we received
+    structuredLog('DEBUG', 'setSynthEngine command received', { 
+      payload: JSON.stringify(payload), 
+      newEngineId: newEngineId === undefined ? 'undefined' : String(newEngineId)
+    });
+    
     if (currentState.availableEngines && currentState.availableEngines.find(e => e.id === newEngineId)) {
       engine.setState({ synthesisEngine: newEngineId });
       try { setSelectedSynthEngine(newEngineId); } catch (_) {}
       structuredLog('INFO', 'DebugUI: Synth engine set', { synthesisEngine: newEngineId });
     } else {
       structuredLog('WARN', 'DebugUI: Synth engine not found or invalid', { 
-        synthesisEngine: newEngineId, 
+        requestedEngine: newEngineId === undefined ? 'undefined' : newEngineId, 
         availableEngines: currentState.availableEngines?.map(e => e.id) || [] 
       });
     }

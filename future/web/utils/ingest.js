@@ -418,7 +418,7 @@ export function setupIngestErrorTracking() {
     };
     
     // Use existing logging system (includes IndexedDB via idb-logger.js)
-    structuredLog('ERROR', 'error_ingest', 'JavaScript Error', errorPayload);
+    structuredLog('ERROR', 'error_ingest', errorPayload);
   });
   
   window.addEventListener('unhandledrejection', (event) => {
@@ -444,7 +444,7 @@ export function setupIngestErrorTracking() {
       }
     };
     
-    structuredLog('ERROR', 'error_ingest', 'Promise Rejection', errorPayload);
+    structuredLog('ERROR', 'error_ingest', errorPayload);
   });
 }
 

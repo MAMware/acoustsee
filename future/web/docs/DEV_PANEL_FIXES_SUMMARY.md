@@ -65,6 +65,20 @@
 **Fix:** Updated `delegatedClick` to check both containers and attached listener to `.ingest-actions`  
 **Files:** `future/web/ui/dev-panel/dev-panel.actions.js`
 
+### 10. ✅ Fixed Character Array Spam in error_ingest
+**Problem:** `error_ingest` logs showed `{"0":"P","1":"r","2":"o"...}` instead of proper strings  
+**Root Cause:** `structuredLog` was called with 4 arguments: `structuredLog('ERROR', 'error_ingest', 'JavaScript Error', errorPayload)` where the 3rd argument (a string) was being treated as the `data` object and spread into `...data`  
+**Fix:** Removed the extra string argument - now calls `structuredLog('ERROR', 'error_ingest', errorPayload)`  
+**Files:** `future/web/utils/ingest.js`
+
+### 11. ✅ Added Enhanced Diagnostics for Grid/Synth Dropdowns
+**Problem:** WARN logs showed `availableGrids` and `availableEngines` but NOT the requested value (because `undefined` values are dropped by JSON.stringify)  
+**Fix:** 
+- Convert `undefined` to string `'undefined'` for logging
+- Renamed fields to `requestedGridType` and `requestedEngine` for clarity
+- Added DEBUG-level logs to show the entire payload received by the command handlers  
+**Files:** `future/web/core/commands/settings-commands.js`
+
 ---
 
 ## Testing Instructions
@@ -80,18 +94,24 @@
 #### Grid Type Dropdown Test
 **What to test:** Change Grid Type dropdown in Developer Panel  
 **Expected result:** Active grid changes immediately (visible in audio output pattern)  
-**What to check in console:**
-- Look for `"DebugUI: Grid type set"` (success) OR
-- Look for `"DebugUI: Grid type not found or invalid"` (diagnostic)
-- If you see the WARN, check what grid IDs are available vs what was sent
+**What to check in console (set log level to DEBUG first):**
+1. Look for `"setGridType command received"` with the full payload
+2. Then look for either:
+   - ✅ `"DebugUI: Grid type set"` (success!)
+   - ⚠️ `"DebugUI: Grid type not found or invalid"` with `requestedGridType` field
+3. **If requestedGridType is "undefined":** The dropdown value isn't being passed correctly
+4. **If requestedGridType has a value:** That value doesn't match any available grid ID
 
 #### Synth Engine Dropdown Test
 **What to test:** Change Synth Engine dropdown in Developer Panel  
 **Expected result:** Audio synthesis engine changes (different sound character)  
-**What to check in console:**
-- Look for `"DebugUI: Synth engine set"` (success) OR
-- Look for `"DebugUI: Synth engine not found or invalid"` (diagnostic)
-- If you see the WARN, check available engine IDs
+**What to check in console (set log level to DEBUG first):**
+1. Look for `"setSynthEngine command received"` with the full payload
+2. Then look for either:
+   - ✅ `"DebugUI: Synth engine set"` (success!)
+   - ⚠️ `"DebugUI: Synth engine not found or invalid"` with `requestedEngine` field
+3. **If requestedEngine is "undefined":** The dropdown value isn't being passed correctly
+4. **If requestedEngine has a value:** That value doesn't match any available engine ID
 
 #### Export Analytics Test
 **What to test:** Click "Export Analytics" button in Performance Analytics section  
@@ -99,6 +119,7 @@
 **What to check in console:**
 - Look for `"Analytics exported"` with log count
 - If error, look for `"exportIngestLogs failed"` or `"Failed to get logs for export"`
+- **The exported logs should NO LONGER have character arrays** like `{"0":"P","1":"r"...}`
 
 ---
 
