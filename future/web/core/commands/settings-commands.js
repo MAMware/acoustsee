@@ -14,7 +14,7 @@ export function registerSettingsCommands(engine) {
   const { registerCommandHandler, dispatch } = engine;
 
   // --- Handlers for Debug UI Controls ---  
-  registerCommandHandler('setGridType', (payload) => {
+  registerCommandHandler('setGridType', ({ payload }) => {
     structuredLog('DEBUG', 'setGridType handler ENTRY', { 
       payloadType: typeof payload,
       payloadKeys: payload ? Object.keys(payload) : 'null',
@@ -40,7 +40,7 @@ export function registerSettingsCommands(engine) {
     }
   });
 
-  registerCommandHandler('setSynthEngine', (payload) => {
+  registerCommandHandler('setSynthEngine', ({ payload }) => {
     structuredLog('DEBUG', 'setSynthEngine handler ENTRY', { 
       payloadType: typeof payload,
       payloadKeys: payload ? Object.keys(payload) : 'null',

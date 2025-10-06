@@ -109,6 +109,41 @@ This will help identify whether the issue is:
 
 **Impact:** Performance Analytics controls now work immediately on change, with full diagnostic visibility
 
+### 11. ✅ **ROOT CAUSE FOUND: Dropdown Handlers Used Wrong Signature!**
+**Problem:** Grid Type and Synth Engine dropdowns were sending correct values but handlers received `undefined`  
+**Root Cause Discovered:** Command handlers were using wrong function signature
+- Other handlers: `registerCommandHandler('setMaxNotes', ({ state: s, payload }) =>` ✅
+- Dropdown handlers: `registerCommandHandler('setGridType', (payload) =>` ❌
+- The engine wraps commands in: `{ state, payload, dispatch, emit }`
+- Without destructuring, `payload` was the wrapper, not the actual data!
+- So `payload.gridType` was `undefined` instead of "hex-tonnetz"
+
+**The Fix:**
+```javascript
+// BEFORE (wrong):
+registerCommandHandler('setGridType', (payload) => {
+  const newGridId = payload.gridType;  // undefined!
+  
+// AFTER (correct):
+registerCommandHandler('setGridType', ({ payload }) => {
+  const newGridId = payload.gridType;  // "hex-tonnetz" ✅
+```
+
+**Evidence from Logs:**
+```
+DEBUG: setSynthEngine handler ENTRY {
+  "payloadKeys": ["state", "payload", "dispatch", "emit"],  ← Wrapper!
+  "payloadRaw": {
+    "state": { /* entire state */ },
+    "payload": { "synthesisEngine": "sine-wave" }  ← Real data nested!
+  }
+}
+```
+
+**Files:** `future/web/core/commands/settings-commands.js`
+
+**Impact:** Grid Type and Synth Engine dropdowns now work perfectly! 🎉
+
 **Files:** `future/web/video/workers/motion-worker.js`
 
 ### 7. ✅ Worker Error Handling Added
