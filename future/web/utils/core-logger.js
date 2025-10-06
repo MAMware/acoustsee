@@ -17,6 +17,17 @@ export function setOutputCallback(cb) {
 }
 
 /**
+ * Sets the minimum log level to output.
+ * @param {string} level - one of 'DEBUG', 'INFO', 'WARN', 'ERROR'.
+ */
+export function setLogLevel(level) {
+  const upperLevel = level.toUpperCase();
+  if (LOG_LEVELS[upperLevel] !== undefined) {
+    currentLogLevel = LOG_LEVELS[upperLevel];
+  }
+}
+
+/**
  * Output a text message using the appropriate console method.
  * Now respects log level filtering for both console and dev panel output.
  * @param {string} level - one of 'debug', 'info', 'warn', 'error'.

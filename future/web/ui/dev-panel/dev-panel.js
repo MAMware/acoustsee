@@ -2,7 +2,7 @@
 
 // Settings will be provided via initializer config to avoid implicit global coupling
 let _config = {};
-import { setOutputCallback } from '../../utils/core-logger.js';
+import { setOutputCallback, setLogLevel } from '../../utils/core-logger.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { structuredLog } from '../../utils/logging.js';
@@ -57,6 +57,10 @@ export function initializeDevPanel(arg1, arg2) {
   // Activation handler: renders HTML, loads CSS, wires UI, and shows the panel.
   const onAppPoweredOn = () => {
     console.log('Activating Dev Panel in response to app:poweredOn event.');
+    
+    // Enable DEBUG level logging for the dev panel
+    setLogLevel('DEBUG');
+    structuredLog('INFO', 'Dev Panel: Log level set to DEBUG');
 
     // 1) Render HTML structure
     try {
@@ -807,6 +811,7 @@ export function initializeDevPanel(arg1, arg2) {
     }
     if (gridTypeSelect) {
       gridTypeSelect.addEventListener('change', (e) => {
+        console.log('=== GRID DROPDOWN CHANGE EVENT FIRED ===');
         const selectedValue = e.target.value;
         const optionsCount = e.target.options.length;
         const selectedIndex = e.target.selectedIndex;
@@ -825,6 +830,7 @@ export function initializeDevPanel(arg1, arg2) {
     }
     if (synthEngineSelect) {
       synthEngineSelect.addEventListener('change', (e) => {
+        console.log('=== SYNTH DROPDOWN CHANGE EVENT FIRED ===');
         const selectedValue = e.target.value;
         const optionsCount = e.target.options.length;
         const selectedIndex = e.target.selectedIndex;

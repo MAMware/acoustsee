@@ -70,6 +70,24 @@ This will help identify whether the issue is:
 - Bad option values (optionValue doesn't match expected IDs)
 - Selection issue (selectedIndex = -1)
 
+### 9. ✅ DEBUG Logs Were Being Filtered!
+**Problem:** DEBUG level logs were not appearing in Live Logs or console  
+**Root Cause:** `DEFAULT_LOG_LEVEL` in constants.js was set to 'INFO', and core-logger.js was filtering out DEBUG logs (level 0 < INFO level 1)  
+**Fix:**
+- Added `setLogLevel()` function to core-logger.js
+- Dev Panel now calls `setLogLevel('DEBUG')` on initialization
+- This enables all DEBUG diagnostics when using `?debug=true`
+
+**Files:** 
+- `future/web/utils/core-logger.js` (added setLogLevel function)
+- `future/web/ui/dev-panel/dev-panel.js` (calls setLogLevel on activation)
+
+**Impact:** All DEBUG logs will now be visible in Dev Panel mode, including:
+- Dropdown change diagnostics
+- Grid cue generation details
+- Oscillator pool management
+- Command dispatch details
+
 **Files:** `future/web/video/workers/motion-worker.js`
 
 ### 7. ✅ Worker Error Handling Added
