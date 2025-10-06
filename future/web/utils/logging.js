@@ -58,6 +58,7 @@ function generateMetadata(level = 'INFO') {
   
   const normalizedLevel = level.toUpperCase();
   const isHighPriority = normalizedLevel === 'WARN' || normalizedLevel === 'ERROR';
+  const isError = normalizedLevel === 'ERROR';
   
   // Start with empty metadata object
   const metadata = {};
@@ -77,8 +78,8 @@ function generateMetadata(level = 'INFO') {
     metadata.stack = stack;
   }
   
-  // UserAgent only if explicitly enabled and for high-priority logs
-  if (loggingConfig.includeUserAgent && isHighPriority) {
+  // UserAgent ONLY for ERROR logs (not WARN) - reduces noise on mobile
+  if (loggingConfig.includeUserAgent && isError) {
     metadata.userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   }
   

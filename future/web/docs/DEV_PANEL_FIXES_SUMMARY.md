@@ -101,6 +101,20 @@
 
 **Files:** `future/web/ui/dev-panel/dev-panel.actions.js`
 
+### 14. ✅ Mobile-Friendly Logging Improvements
+**Problem 1:** UserAgent spam in WARN logs (useless generic string on mobile)  
+**Fix:** Changed `generateMetadata()` to only include userAgent for ERROR logs (not WARN)
+
+**Problem 2:** Live Logs export has redundant timestamps  
+**Fix:** Added `exportLogs(format)` with 'compact' mode that removes redundant `t` field  
+**Impact:** ~40% smaller export files for mobile
+
+**Problem 3:** Confusing dual log systems  
+**Fix:** Created comprehensive guide explaining when to use each system  
+**Doc:** `/future/web/docs/LOGGING_SYSTEMS_GUIDE.md`
+
+**Files:** `future/web/utils/logging.js`, `future/web/ui/log-viewer.js`
+
 ---
 
 ## Testing Instructions

@@ -116,7 +116,31 @@ export function getFilteredCount() {
 export function setOnCountChange(cb) { onCountChange = typeof cb === 'function' ? cb : null; }
 export function setFilterText(txt) { filterText = String(txt || '').trim(); if (logView) setLogView(logView, { maxEntries }); }
 export function setFilterLevel(lvl) { filterLevel = lvl ? String(lvl).toUpperCase() : null; if (logView) setLogView(logView, { maxEntries }); }
-export function exportLogs() { return JSON.stringify(buffer, null, 2); }
+
+/**
+ * Export logs in a clean, mobile-friendly format
+ * Removes redundancy: only includes formatted text (which already has timestamp)
+ */
+export function exportLogs(format = 'compact') {
+  if (format === 'compact') {
+    // Mobile-friendly: just the essential text lines
+    const compactLogs = buffer.map(entry => {
+      // Parse the text to extract just the core message (skip redundant timestamp/level)
+      const text = entry.text || '';
+      // Format: "[timestamp] LEVEL: message {data}"
+      // We'll keep the full text but in a simpler structure
+      return {
+        level: entry.level,
+        message: text
+      };
+    });
+    return JSON.stringify(compactLogs, null, 2);
+  } else {
+    // Full format: keep everything (for debugging on desktop)
+    return JSON.stringify(buffer, null, 2);
+  }
+}
+
 export function setPaused(v) { paused = !!v; }
 
 export function importLogs(entries, { dedupe = true } = {}) {
