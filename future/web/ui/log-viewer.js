@@ -119,21 +119,12 @@ export function setFilterLevel(lvl) { filterLevel = lvl ? String(lvl).toUpperCas
 
 /**
  * Export logs in a clean, mobile-friendly format
- * Removes redundancy: only includes formatted text (which already has timestamp)
+ * Removes redundancy: only includes formatted text (which already has timestamp + level)
  */
 export function exportLogs(format = 'compact') {
   if (format === 'compact') {
-    // Mobile-friendly: just the essential text lines
-    const compactLogs = buffer.map(entry => {
-      // Parse the text to extract just the core message (skip redundant timestamp/level)
-      const text = entry.text || '';
-      // Format: "[timestamp] LEVEL: message {data}"
-      // We'll keep the full text but in a simpler structure
-      return {
-        level: entry.level,
-        message: text
-      };
-    });
+    // Mobile-friendly: just the essential text lines (already formatted with timestamp and level)
+    const compactLogs = buffer.map(entry => entry.text || '');
     return JSON.stringify(compactLogs, null, 2);
   } else {
     // Full format: keep everything (for debugging on desktop)

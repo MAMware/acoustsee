@@ -420,7 +420,14 @@ export async function playCues(payload) {
   // The rest of the function remains the same, executing the synths.
   for (const [playFunction, notes] of notesBySynth.entries()) {
     try {
-      const synthContext = { audioContext: context, getOscillator, releaseOscillator, masterGain, settings: _config.settings };
+      const synthContext = { 
+        audioContext: context, 
+        getOscillator, 
+        releaseOscillator, 
+        masterGain, 
+        oscillatorPool,  // Add oscillatorPool for synths that check for it
+        settings: _config.settings 
+      };
       playFunction(notes, synthContext);
     } catch (e) {
       structuredLog('ERROR', `Synth function '${playFunction.name}' failed`, { error: e?.message });

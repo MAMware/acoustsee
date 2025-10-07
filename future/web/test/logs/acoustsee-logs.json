@@ -1,3 +1,1086 @@
 [
-  
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:20:59.182Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:01.122Z] DEBUG: COMMAND: Stream assigned to video element, waiting for play..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:01.170Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:01.172Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:01.175Z] DEBUG: initializeVideo: Starting video pipeline initialization {\"videoElement\":{},\"engine\":{},\"motionThreshold\":20}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:01.179Z] INFO: Motion Specialist worker started."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:01.183Z] DEBUG: initializeVideo: Canvas created {\"width\":480,\"height\":640}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:01.190Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:01.190Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:01.190Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:01.974Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:01.999Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:02.006Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:02.006Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:02.013Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:02.018Z] DEBUG: Refilled oscillator pool {\"added\":12,\"newSize\":12}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:02.019Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:02.199Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:16.740Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:16.741Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:16.742Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:16.752Z] DEBUG: Performance events flushed {\"batchSize\":1,\"events\":{\"toggleProcessing\":1},\"source\":\"ingest-system\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:21.094Z] DEBUG: Engine wrapper: toggleProcessing called"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:21.095Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:21.868Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:21.869Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:21.871Z] DEBUG: initializeVideo: Canvas created {\"width\":480,\"height\":640}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:21.882Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:21.882Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:21.883Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:22.036Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:22.051Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:22.072Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:22.175Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:22.230Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:22.295Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:22.494Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:23.074Z] INFO: Dispatching audioCuesReady {\"cueCount\":9,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:23.097Z] DEBUG: releaseOscillator: Returned oscillator to pool {\"poolSize\":33}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:23.131Z] INFO: Dispatching audioCuesReady {\"cueCount\":7,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:21:23.194Z] DEBUG: Grid cues generated {\"cueCount\":10,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:23.194Z] INFO: Dispatching audioCuesReady {\"cueCount\":10,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:23.255Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:21:23.321Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:17.163Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:17.164Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:17.164Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:19.456Z] INFO: Console log {\"args\":[\"=== SYNTH DROPDOWN CHANGE EVENT FIRED ===\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:19.458Z] DEBUG: About to dispatch setSynthEngine {\"payload\":{\"synthesisEngine\":\"sawtooth-pad\"}}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:19.460Z] INFO: audio: selected synth engine {\"engineId\":\"sawtooth-pad\",\"hasPlayFn\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:19.461Z] INFO: DebugUI: Synth engine set {\"synthesisEngine\":\"sawtooth-pad\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:20.835Z] DEBUG: Engine wrapper: toggleProcessing called"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:20.836Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:20.836Z] DEBUG: COMMAND: Requesting camera permissions..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.663Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.664Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.666Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.666Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.666Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.858Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:21.859Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:21.862Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.863Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:21.863Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:21.893Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.893Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:21.894Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:21.931Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:21.932Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:21.932Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:22.026Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:22.027Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:22.913Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:22.914Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:23.002Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:23.002Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:23.004Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:23.004Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:23.093Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:23.094Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:23.157Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:23.158Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:23.333Z] DEBUG: Grid cues generated {\"cueCount\":6,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:27.779Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:27.779Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:27.780Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:29.042Z] INFO: Console log {\"args\":[\"=== BATTERY OPTIMIZATION CHECKBOX CHANGED ===\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:31.780Z] INFO: Console log {\"args\":[\"=== CATEGORY TOGGLE CHANGED ===\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:34.224Z] INFO: Console log {\"args\":[\"=== UPDATE INGEST SETTINGS BUTTON CLICKED ===\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:34.226Z] INFO: Console log {\"args\":[\"Ingest settings updated:\",{\"ingestEnabled\":true,\"batteryOptimization\":false,\"maxEventsPerSecond\":10,\"categoryFilter\":[\"user_workflow\",\"performance_critical\",\"performance_settings\"]}]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:34.237Z] INFO: optimization_settings_updated {\"settings\":{\"useIdleCallback\":false,\"maxEventsPerSecond\":10,\"enableOnLowPerformance\":true,\"enableOnMobile\":true,\"performanceThresholds\":{\"lowCpuCores\":2,\"lowMemoryGB\":2,\"slowConnectionTypes\":[\"slow-2g\",\"2g\"],\"mobileOptimization\":true}}}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:34.237Z] INFO: ingest_categories_updated {\"message\":\"Dynamic categorization updated\",\"newCategories\":[\"user_workflow\",\"performance_critical\",\"performance_settings\"],\"totalCategories\":4}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:37.887Z] DEBUG: COMMAND: startProcessing handler called {\"isProcessing\":false,\"payload\":{\"videoEl\":{},\"canvasEl\":{}}}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:37.887Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:38.736Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:38.737Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:38.739Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:38.739Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:38.740Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:38.894Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:38.895Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:38.896Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:38.897Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:38.981Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:38.982Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:39.028Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:39.029Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:39.105Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:39.106Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:39.811Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:39.946Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:39.947Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:40.005Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:40.006Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:40.065Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:40.066Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:40.068Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:40.068Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:40.162Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:40.163Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:40.727Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:40.955Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:40.955Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:41.019Z] INFO: Dispatching audioCuesReady {\"cueCount\":3,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:41.020Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:41.078Z] INFO: Dispatching audioCuesReady {\"cueCount\":1,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:41.079Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:41.144Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:41.144Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:41.205Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "WARN",
+    "message": "[2025-10-07T05:22:41.205Z] WARN: Console warn {\"args\":[\"sawtooth-pad: required audio context not provided.\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:41.334Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:41.335Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:41.335Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:52.719Z] INFO: Console log {\"args\":[\"=== SYNTH DROPDOWN CHANGE EVENT FIRED ===\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:52.722Z] INFO: audio: selected synth engine {\"engineId\":\"sine-wave\",\"hasPlayFn\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:52.722Z] INFO: DebugUI: Synth engine set {\"synthesisEngine\":\"sine-wave\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:53.744Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:54.470Z] DEBUG: COMMAND: Stream assigned to video element, waiting for play..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.530Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.531Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:54.531Z] DEBUG: initializeVideo: Starting frame provider worker..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.535Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.536Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.536Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.702Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.711Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:22:54.748Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.748Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.847Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:54.899Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:57.474Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:57.475Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:57.475Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:59.264Z] INFO: Console log {\"args\":[\"=== SYNTH DROPDOWN CHANGE EVENT FIRED ===\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:59.266Z] INFO: audio: selected synth engine {\"engineId\":\"strings\",\"hasPlayFn\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:22:59.267Z] INFO: DebugUI: Synth engine set {\"synthesisEngine\":\"strings\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:00.456Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:00.456Z] DEBUG: COMMAND: Requesting camera permissions..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.209Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.210Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.213Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.213Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.213Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.422Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.439Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.465Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.499Z] INFO: Dispatching audioCuesReady {\"cueCount\":6,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:01.537Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:02.483Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:02.557Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:02.565Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:02.664Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:02.672Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:03.008Z] DEBUG: Frame processor: Received frame {\"mode\":\"flow\",\"hasGrid\":true,\"gridId\":\"linear-pitch\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:03.250Z] DEBUG: Grid cues generated {\"cueCount\":12,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:03.509Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:03.516Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:03.669Z] INFO: Dispatching audioCuesReady {\"cueCount\":1,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:03.729Z] INFO: Dispatching audioCuesReady {\"cueCount\":7,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:03.785Z] DEBUG: Grid cues generated {\"cueCount\":3,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:03.785Z] INFO: Dispatching audioCuesReady {\"cueCount\":3,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:03.995Z] DEBUG: COMMAND: toggleProcessing received {\"isProcessing\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:03.996Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:03.997Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:03.997Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:13.345Z] INFO: Console log {\"args\":[\"=== GRID DROPDOWN CHANGE EVENT FIRED ===\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:13.348Z] DEBUG: setGridType handler ENTRY {\"payloadType\":\"object\",\"payloadKeys\":[\"gridType\"],\"payloadRaw\":{\"gridType\":\"circle-of-fifths\"}}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:13.349Z] INFO: DebugUI: Grid type set {\"gridType\":\"circle-of-fifths\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:14.647Z] DEBUG: COMMAND: startProcessing handler called {\"isProcessing\":false,\"payload\":{\"videoEl\":{},\"canvasEl\":{}}}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:14.648Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.510Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.511Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.515Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.515Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.516Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.674Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.690Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.810Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.816Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:15.848Z] INFO: Dispatching audioCuesReady {\"cueCount\":12,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:16.836Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:16.838Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:16.838Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:18.381Z] INFO: Console log {\"args\":[\"=== GRID DROPDOWN CHANGE EVENT FIRED ===\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:18.383Z] INFO: DebugUI: Grid type set {\"gridType\":\"hex-tonnetz\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:19.301Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.065Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.065Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:20.066Z] DEBUG: initializeVideo: Starting video pipeline initialization {\"videoElement\":{},\"engine\":{},\"motionThreshold\":20}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.069Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.069Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:20.069Z] DEBUG: ASYNC-HANDLER: startProcessing completed {}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.069Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.236Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.240Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.273Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.359Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:20.435Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:21.024Z] DEBUG: Engine wrapper: toggleProcessing called"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:21.025Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:21.030Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:21.030Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:21.049Z] DEBUG: Grid cues generated {\"cueCount\":8,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:28.872Z] INFO: Console log {\"args\":[\"=== INGEST ENABLED CHECKBOX CHANGED ===\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:28.874Z] DEBUG: Ingest enabled changed {\"checked\":false}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:31.135Z] INFO: Console log {\"args\":[\"=== UPDATE INGEST SETTINGS BUTTON CLICKED ===\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:31.136Z] INFO: Console log {\"args\":[\"Ingest settings updated:\",{\"ingestEnabled\":false,\"batteryOptimization\":false,\"maxEventsPerSecond\":10,\"categoryFilter\":[\"user_workflow\",\"auto_optimization\",\"performance_critical\",\"performance_settings\"]}]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:31.148Z] INFO: optimization_settings_updated {\"settings\":{\"useIdleCallback\":false,\"maxEventsPerSecond\":10,\"enableOnLowPerformance\":true,\"enableOnMobile\":true,\"performanceThresholds\":{\"lowCpuCores\":2,\"lowMemoryGB\":2,\"slowConnectionTypes\":[\"slow-2g\",\"2g\"],\"mobileOptimization\":true}}}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:31.148Z] INFO: ingest_categories_updated {\"message\":\"Dynamic categorization updated\",\"newCategories\":[\"user_workflow\",\"performance_critical\",\"auto_optimization\",\"performance_settings\"],\"totalCategories\":4}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:32.978Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:33.844Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:33.845Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:33.849Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:33.849Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:33.849Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:34.000Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:34.007Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:34.081Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:34.145Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:34.203Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:34.613Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:34.614Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:34.614Z] INFO: Video processing stopped."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:38.053Z] INFO: Console log {\"args\":[\"=== SYNTH DROPDOWN CHANGE EVENT FIRED ===\"]}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:38.053Z] DEBUG: Synth dropdown changed {\"selectedValue\":\"sine-wave\",\"selectedIndex\":2,\"optionsCount\":4,\"optionValue\":\"sine-wave\",\"optionText\":\"Sine Wave\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:38.054Z] INFO: audio: selected synth engine {\"engineId\":\"sine-wave\",\"hasPlayFn\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:38.054Z] INFO: DebugUI: Synth engine set {\"synthesisEngine\":\"sine-wave\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:39.005Z] DEBUG: Engine wrapper: startProcessing called {\"hasMediaHandler\":true,\"allHandlers\":[\"__media_toggleProcessing\",\"__media_startProcessing\",\"__media_stopProcessing\",\"__media_toggleCamera\",\"__media_toggleMicrophone\"]}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:39.005Z] INFO: COMMAND: Start processing initiated."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:39.781Z] INFO: COMMAND: Video stream is active and metadata loaded."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:39.782Z] INFO: COMMAND: Initializing video pipeline..."
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:39.782Z] DEBUG: initializeVideo: Starting video pipeline initialization {\"videoElement\":{},\"engine\":{},\"motionThreshold\":20}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:39.785Z] INFO: initializeVideo: Video pipeline initialization completed successfully"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:39.786Z] INFO: COMMAND: startProcessing COMPLETED successfully."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:39.786Z] INFO: Video processing started - modern scheduler is handling diagnostics."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:39.930Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:39.938Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:40.028Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:40.103Z] INFO: Dispatching audioCuesReady {\"cueCount\":3,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:40.106Z] INFO: Dispatching audioCuesReady {\"cueCount\":3,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:40.445Z] DEBUG: Grid cues generated {\"cueCount\":8,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:40.856Z] DEBUG: Grid cues generated {\"cueCount\":0,\"mode\":\"flow\",\"motionPresent\":true}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:40.963Z] INFO: Dispatching audioCuesReady {\"cueCount\":7,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:40.965Z] INFO: Dispatching audioCuesReady {\"cueCount\":7,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:41.042Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:41.110Z] INFO: Dispatching audioCuesReady {\"cueCount\":8,\"mode\":\"flow\"}"
+  },
+  {
+    "level": "DEBUG",
+    "message": "[2025-10-07T05:23:42.034Z] DEBUG: Engine wrapper: stopProcessing called"
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:42.034Z] INFO: COMMAND: stopProcessing begins."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:42.035Z] INFO: COMMAND: stopProcessing COMPLETED."
+  },
+  {
+    "level": "INFO",
+    "message": "[2025-10-07T05:23:42.035Z] INFO: Video processing stopped."
+  }
 ]
