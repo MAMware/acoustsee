@@ -135,16 +135,9 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
           // Declare newCategories in outer scope so it's accessible in the import callback
           let newCategories = {};
 
-          // Update engine state
+          // Get current state for category filtering
           const state = engine.getState && engine.getState();
           if (state) {
-            state.ingestEnabled = ingestEnabled;
-            state.ingestPreferences = {
-              ...state.ingestPreferences,
-              useIdleCallback: batteryOptimization,
-              maxEventsPerSecond
-            };
-            
             // Update category filter - enable only selected categories
             const allCategories = state.ingestCategories || {};
             newCategories = {}; // Reset before populating
@@ -153,14 +146,23 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
                 newCategories[category] = commands;
               }
             }
-            state.ingestCategories = newCategories;
             
-            structuredLog('DEBUG', 'State updated with ingest settings', {
-              ingestEnabled: state.ingestEnabled,
-              useIdleCallback: state.ingestPreferences?.useIdleCallback,
-              maxEventsPerSecond: state.ingestPreferences?.maxEventsPerSecond,
+            structuredLog('DEBUG', 'Dispatching ingest settings updates', {
+              ingestEnabled,
+              useIdleCallback: batteryOptimization,
+              maxEventsPerSecond,
               categoryCount: Object.keys(newCategories).length
             });
+
+            // Use command pattern instead of direct state manipulation
+            engine.dispatch('setIngestEnabled', { enabled: ingestEnabled });
+            engine.dispatch('setIngestPreferences', { 
+              preferences: {
+                useIdleCallback: batteryOptimization,
+                maxEventsPerSecond
+              }
+            });
+            engine.dispatch('setIngestCategories', { categories: newCategories });
           }
 
           // Import and call the ingest API

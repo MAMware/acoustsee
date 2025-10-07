@@ -857,7 +857,7 @@ export function initializeDevPanel(arg1, arg2) {
       ingestEnabledCheckbox.addEventListener('change', (e) => {
         console.log('=== INGEST ENABLED CHECKBOX CHANGED ===');
         structuredLog('DEBUG', 'Ingest enabled changed', { checked: e.target.checked });
-        engine.setState({ ingestEnabled: e.target.checked });
+        engine.dispatch('setIngestEnabled', { enabled: e.target.checked });
       });
     }
     
@@ -865,9 +865,8 @@ export function initializeDevPanel(arg1, arg2) {
       batteryOptimizationCheckbox.addEventListener('change', (e) => {
         console.log('=== BATTERY OPTIMIZATION CHECKBOX CHANGED ===');
         structuredLog('DEBUG', 'Battery optimization changed', { checked: e.target.checked });
-        const currentPrefs = engine.getState()?.ingestPreferences || {};
-        engine.setState({ 
-          ingestPreferences: { ...currentPrefs, useIdleCallback: e.target.checked }
+        engine.dispatch('setIngestPreferences', { 
+          preferences: { useIdleCallback: e.target.checked }
         });
       });
     }
@@ -880,9 +879,8 @@ export function initializeDevPanel(arg1, arg2) {
           selectedValue: e.target.value,
           parsedRate: rate 
         });
-        const currentPrefs = engine.getState()?.ingestPreferences || {};
-        engine.setState({ 
-          ingestPreferences: { ...currentPrefs, maxEventsPerSecond: rate }
+        engine.dispatch('setIngestPreferences', { 
+          preferences: { maxEventsPerSecond: rate }
         });
       });
     }

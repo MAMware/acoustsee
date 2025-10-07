@@ -265,4 +265,32 @@ export function registerSettingsCommands(engine) {
       return { exported: false, error: e.message };
     }
   });
+
+  // --- Handlers for Performance Analytics/Ingest Settings ---
+  registerCommandHandler('setIngestEnabled', ({ state: s, payload }) => {
+    const enabled = !!payload.enabled;
+    s.ingestEnabled = enabled;
+    structuredLog('INFO', 'Ingest enabled set', { enabled });
+  });
+
+  registerCommandHandler('setIngestPreferences', ({ state: s, payload }) => {
+    const preferences = payload.preferences || {};
+    s.ingestPreferences = { 
+      ...s.ingestPreferences, 
+      ...preferences 
+    };
+    structuredLog('INFO', 'Ingest preferences updated', { 
+      updatedPreferences: preferences,
+      fullPreferences: s.ingestPreferences 
+    });
+  });
+
+  registerCommandHandler('setIngestCategories', ({ state: s, payload }) => {
+    const categories = payload.categories || {};
+    s.ingestCategories = categories;
+    structuredLog('INFO', 'Ingest categories updated', { 
+      categoryCount: Object.keys(categories).length,
+      categories: Object.keys(categories) 
+    });
+  });
 }
