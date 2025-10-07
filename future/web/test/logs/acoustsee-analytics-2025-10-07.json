@@ -1,0 +1,443 @@
+[
+  {
+    "timestamp": "2025-10-07T06:52:54.467Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:52:54.557Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:52:54.663Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:52:54.724Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:52:54.779Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:52:54.856Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:52:54.946Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:52:54.948Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:00.046Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:00.088Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:00.156Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:00.158Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:00.252Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:00.315Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:00.387Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:34.867Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:34.873Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:34.905Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:34.991Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.064Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.066Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.175Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.177Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.289Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.343Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.409Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.470Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.531Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.579Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.631Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.688Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.752Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.816Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.875Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.942Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:35.998Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.051Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.115Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.183Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.242Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.320Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.399Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.401Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.443Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.544Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.609Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.665Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.708Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  },
+  {
+    "timestamp": "2025-10-07T06:53:36.800Z",
+    "level": "ERROR",
+    "message": "Synth function 'playSawtoothPad' failed",
+    "data": {
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
+      "error": "masterGain is not defined"
+    }
+  }
+]

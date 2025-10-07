@@ -13,6 +13,7 @@ export function playFmSynthesis(notes, ctx = {}) {
   // global/window/globalThis so modules are testable and isolated.
   const audioContext = ctx.audioContext;
   const getOscillator = ctx.getOscillator;
+  const masterGain = ctx.masterGain;
   const oscillatorPool = ctx.oscillatorPool || [];
   const modulators = ctx.modulators || [];
   const modulationIndex = typeof ctx.modulationIndex === 'number' ? ctx.modulationIndex : (ctx.settings?.modulationIndex ?? 50);

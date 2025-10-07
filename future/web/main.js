@@ -179,7 +179,8 @@ export async function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const isDebugMode = urlParams.get('debug') === 'true';
     if (isDebugMode) {
-      loggingConfig.includeUserAgent = true; // Enable userAgent in debug mode for detailed logging
+      // userAgent has been disabled (commented out) even in debug mode as per MAMware request, it seem they do add any usefull info
+      // loggingConfig.includeUserAgent = true;
       document.body.classList.add('dev-panel-mode');
       try {
         // Import the module so it can register itself and listen for lifecycle events.

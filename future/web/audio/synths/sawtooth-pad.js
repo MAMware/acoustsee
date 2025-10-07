@@ -19,9 +19,9 @@ export const synthMeta = {
 };
 
 export function playSawtoothPad(notes = [], ctx = {}) {
-  const { audioContext, getOscillator, oscillatorPool } = ctx;
+  const { audioContext, getOscillator, masterGain } = ctx;
 
-  if (!audioContext || !getOscillator || !oscillatorPool) {
+  if (!audioContext || !getOscillator) {
     console.warn('sawtooth-pad: required audio context not provided.');
     return;
   }

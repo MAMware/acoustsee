@@ -42,7 +42,7 @@ export function playStrings(notes = [], ctx = {}) {
       : (typeof note.midi === 'number' ? midiToFreq(note.midi) : 440 + (idx * 20));
 
     const duration = Math.max(0.05, (typeof note.duration === 'number' ? note.duration : 1.0));
-  const amp = Math.min(1, Math.max(0, (typeof note.amplitude === 'number' ? note.amplitude : 0.25)));
+  const amp = Math.min(0.3, Math.max(0, (typeof note.intensity === 'number' ? note.intensity * 0.3 : 0.15)));
   const decay = typeof note.decay === 'number' ? note.decay : 0.98; // feedback gain multiplier
   const panVal = note.position ? note.position.x : (typeof note.pan === 'number' ? note.pan : 0);
 
