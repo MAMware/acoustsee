@@ -246,6 +246,98 @@ Our new system is a true, closed-loop feedback system made of several cooperatin
 - Avoid creating global IDs without module prefix.
 - Avoid starting polling/intervals without exposing a dispose that stops them.
 
+### Common LLM Refactoring Anti-Patterns (DO NOT DO THESE)
+
+These are common mistakes that AI coding assistants make when refactoring code. **Do not make these changes:**
+
+#### ❌ Anti-Pattern 1: "Simplifying" Context Destructuring
+```javascript
+// WRONG: LLMs often "simplify" by removing unused variables
+const { audioContext, getOscillator } = ctx;
+// But synths MUST extract ALL dependencies they use:
+const { audioContext, getOscillator, masterGain, oscillatorPool } = ctx;
+```
+
+**Rule:** Synths must explicitly destructure ALL dependencies from `ctx`. JavaScript won't error until runtime access.
+
+#### ❌ Anti-Pattern 2: "Cleaning Up" Oscillator Connections
+```javascript
+// WRONG: LLMs see "unused" masterGain and remove the connection
+panner.connect(audioContext.destination);
+
+// CORRECT: ALL synths MUST connect to masterGain for volume control
+panner.connect(masterGain);
+```
+
+**Rule:** Audio graph MUST terminate at `masterGain`, never at `audioContext.destination` directly.
+
+#### ❌ Anti-Pattern 3: "Optimizing" Karplus-Strong Feedback
+```javascript
+// WRONG: LLMs see 0.90 and "optimize" to 0.98 for "better sustain"
+const decay = 0.98; // Causes exponential resonance!
+
+// CORRECT: Feedback gain MUST be < 0.95 for stability
+const decay = 0.90; // Safe range: 0.85-0.95
+```
+
+**Rule:** Karplus-Strong feedback gain > 0.95 causes runaway resonance. Keep it in the 0.85-0.95 range.
+
+#### ❌ Anti-Pattern 4: "Consolidating" UI Imports
+```javascript
+// WRONG: LLMs try to "organize" imports by pulling in core modules
+import { engine } from '../../core/engine.js';
+
+// CORRECT: UI modules MUST receive engine via dependency injection
+export function initializeMyUI(engine, DOM) { ... }
+```
+
+**Rule:** UI modules MUST NOT import from `core/`. They receive dependencies as parameters.
+
+#### ❌ Anti-Pattern 5: "Simplifying" Worker Message Handling
+```javascript
+// WRONG: LLMs "simplify" by removing message type checks
+worker.onmessage = (e) => {
+  const data = e.data;
+  handleFrame(data);
+};
+
+// CORRECT: ALWAYS check message type for robustness
+worker.onmessage = (e) => {
+  const { type, result } = e.data;
+  if (type === 'result') handleFrame(result);
+  else if (type === 'error') handleError(result);
+};
+```
+
+**Rule:** Worker message handlers MUST check `type` field. Workers send multiple message types.
+
+#### ❌ Anti-Pattern 6: "Removing Redundant" Dispose Functions
+```javascript
+// WRONG: LLMs see empty dispose and remove it
+// (Then later code breaks when it tries to call dispose)
+
+// CORRECT: ALL UI modules MUST return dispose, even if empty
+export function initializeMyUI(engine, DOM) {
+  // ... setup code ...
+  return { dispose: () => {} }; // Will be filled in later
+}
+```
+
+**Rule:** ALL UI modules MUST return a `dispose()` function. Empty is fine, but it must exist.
+
+#### ❌ Anti-Pattern 7: "Fixing" Performance by Removing Sampling
+```javascript
+// WRONG: LLMs see conditional logging and "simplify" it
+structuredLog('DEBUG', 'Frame processed', { frameId });
+
+// CORRECT: High-frequency logs MUST use sampling
+if (Math.random() < 0.01) {
+  structuredLog('DEBUG', 'Frame processed', { frameId });
+}
+```
+
+**Rule:** Per-frame logs MUST be sampled (1% or less) to prevent performance degradation.
+
 ## 12. CSS & Layout Rules
 - UI modules must load CSS via a `<link>` element and do layout in `link.onload`.
 - Use a consistent stylesheet path resolution strategy (absolute or `document.baseURI`-aware`).
@@ -268,19 +360,92 @@ Our new system is a true, closed-loop feedback system made of several cooperatin
 - Linting rules must enforce core/ui import boundaries.
 - PRs must include tests for new command handlers or UI behaviors.
 
-## 14. Accessibility & Internationalization
+## 15. Recent Architectural Lessons (7 October 2025)
+
+### Oscillator Pool Architecture
+The audio subsystem uses a pre-allocated oscillator pool pattern for performance. Key learnings:
+
+**Pool Contract:**
+- The pool stores `{osc, gain, panner, active}` objects that are **unconnected and unstarted**
+- Synths receive the pool via `ctx.oscillatorPool` and wire connections themselves
+- Synths MUST extract `oscillatorPool` from `ctx` explicitly (no implicit access)
+- Each oscillator can only call `.start()` once - must use fresh oscillators for new notes
+
+**Common Bug:**
+```javascript
+// WRONG: Forgot to extract oscillatorPool from ctx
+export function playCues(cues, ctx) {
+  const { audioContext, getOscillator } = ctx;
+  oscillatorPool.forEach(...); // ReferenceError at runtime!
+}
+
+// CORRECT: Extract all dependencies explicitly
+export function playCues(cues, ctx) {
+  const { audioContext, getOscillator, masterGain, oscillatorPool } = ctx;
+  if (oscillatorPool && Array.isArray(oscillatorPool)) {
+    oscillatorPool.forEach(...);
+  }
+}
+```
+
+### Karplus-Strong Synthesis Stability
+Physical modeling synths (like plucked strings) require careful gain staging:
+
+**Feedback Gain Rules:**
+- Feedback gain MUST be in range 0.85-0.95 for stability
+- Values > 0.95 cause exponential signal growth (runaway resonance)
+- Values < 0.85 cause premature decay (unrealistic sound)
+- Default safe value: **0.90**
+
+**Amplitude Rules:**
+- Noise excitation should be 0.2-0.4 (not 0.8+)
+- Output amplitude should be scaled by intensity × 0.15 (not 0.3+)
+- Always cap output amplitude to prevent clipping
+
+### Worker Message Contracts
+All workers MUST send structured messages with a `type` field:
+
+```javascript
+// Worker sends:
+postMessage({ type: 'result', result: { data } });
+postMessage({ type: 'error', error: 'description' });
+postMessage({ type: 'ready', features: [] });
+
+// Main thread handles:
+worker.onmessage = (e) => {
+  const { type, result, error } = e.data;
+  if (type === 'result') handleResult(result);
+  else if (type === 'error') handleError(error);
+  else if (type === 'ready') handleReady();
+};
+```
+
+### UI Disposal Requirements
+ALL UI modules must provide disposal cleanup:
+
+**Required in dispose():**
+- Remove ALL event listeners (DOM, engine, workers)
+- Clear ALL intervals and timeouts
+- Stop ALL polling loops
+- Remove ALL created DOM elements
+- Terminate ALL workers
+- Close ALL persistent connections
+
+**Empty dispose is acceptable** during initial development, but must be filled in before PR.
+
+## 16. Accessibility & Internationalization
 - All interactive elements must provide keyboard access and ARIA attributes.
 - Text must be extracted into `web/languages/` and UIs must support locale injection.
 
-## 15. Versioning & Releases
+## 17. Versioning & Releases
 - Expose BUILD_VERSION in `web/core/constants.js`. UIs should display the version badge.
 - Keep changelog entries for architectural changes.
 
-## 16. Onboarding & Maintenance
+## 18. Onboarding & Maintenance
 - Each UI folder must contain a README describing its public API and lifecycle (initialize + dispose).
 - Keep a small architectural checklist in `docs/ARCHITECTURE_CHECKLIST.md` that PR reviewers use.
 
-## 17. Enforcement
+## 19. Enforcement
 - Add a CI lint rule to fail builds on core -> ui imports.
 - Add tests that assert UIs expose `dispose()` and that calling `initialize*UI` twice does not create duplicate IDs.
 
