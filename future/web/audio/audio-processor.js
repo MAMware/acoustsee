@@ -44,6 +44,28 @@ let micPassThroughEnabled = false;
 // Queue a mic stream if it's acquired before the audio subsystem is ready
 let queuedMicStream = null;
 
+// --- Utility: Create a panner node with fallback for environments lacking StereoPanner ---
+function createPannerNode(context) {
+  try {
+    if (typeof context.createStereoPanner === 'function') {
+      return context.createStereoPanner();
+    }
+  } catch (_) { /* ignore */ }
+  // Fallback: use a GainNode and attach a minimal .pan interface
+  const fallback = context.createGain();
+  // Attach a stub pan AudioParam-like object
+  const panParam = {
+    value: 0,
+    setTargetAtTime(v) { this.value = v; },
+    setValueAtTime(v) { this.value = v; }
+  };
+  try { Object.defineProperty(fallback, 'pan', { value: panParam, writable: false }); } catch (_) {
+    // If defineProperty fails, set directly
+    fallback.pan = panParam;
+  }
+  return fallback;
+}
+
 export function bindAudioManager(manager) {
   audioManager = manager;
 }
@@ -243,7 +265,7 @@ export function resizeOscillatorPool(size) {
     // Create a properly structured oscillator object with gain and panner
     const osc = context.createOscillator();
     const gain = context.createGain();
-    const panner = context.createStereoPanner();
+    const panner = createPannerNode(context);
     
     // DO NOT connect or start yet - synths will do that!
     // Just package them together for the synths to use
@@ -286,7 +308,7 @@ function getOscillator() {
   structuredLog('WARN', 'getOscillator: Pool empty, creating new structured oscillator.');
   const osc = context.createOscillator();
   const gain = context.createGain();
-  const panner = context.createStereoPanner();
+  const panner = createPannerNode(context);
   
   // DO NOT connect or start - synths will do that
   
@@ -313,7 +335,7 @@ function releaseOscillator(oscObj) {
   // Create a fresh oscillator object for the pool
   const osc = context.createOscillator();
   const gain = context.createGain();
-  const panner = context.createStereoPanner();
+  const panner = createPannerNode(context);
   
   // DO NOT connect or start - synths will do that
   
@@ -440,7 +462,7 @@ export async function playCues(payload) {
     for (let i = 0; i < toAdd; i++) {
       const osc = context.createOscillator();
       const gain = context.createGain();
-      const panner = context.createStereoPanner();
+      const panner = createPannerNode(context);
       
       // DO NOT connect or start - synths will do that
       

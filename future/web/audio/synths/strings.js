@@ -16,8 +16,8 @@
 // - Lightweight: creates short noise excitation and a feedback delay with damping filter.
 
 export function playStrings(notes = [], ctx = {}) {
-  const ac = ctx.audioContext;
-  const masterGain = ctx.masterGain;
+  // Explicitly extract dependencies from ctx per synth contract
+  const { audioContext: ac, masterGain } = ctx || {};
   if (!ac) {
     console.warn('strings: audioContext not available; skipping');
     return;
@@ -70,7 +70,8 @@ export function playStrings(notes = [], ctx = {}) {
 
     const feedback = ac.createGain();
     // decay near 0.98-0.995 is long; lower values shorten sustain
-    feedback.gain.value = Math.max(0, Math.min(0.999, decay));
+  // Enforce safe feedback range 0.85 - 0.95 (see audio README rules)
+  feedback.gain.value = Math.max(0.85, Math.min(0.95, decay));
 
     const outGain = ac.createGain();
     outGain.gain.value = amp;

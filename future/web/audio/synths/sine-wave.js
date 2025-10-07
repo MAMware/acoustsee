@@ -18,41 +18,70 @@
   };
 
   export function playSineWave(notes, ctx) {
-    const { audioContext, getOscillator, releaseOscillator, masterGain } = ctx || {};
-    if (!audioContext || typeof getOscillator !== 'function') {
+    // Extract ALL dependencies used by the synth to avoid runtime ReferenceErrors
+    const { audioContext, getOscillator, releaseOscillator, masterGain, oscillatorPool } = ctx || {};
+    if (!audioContext || typeof getOscillator !== 'function' || !masterGain) {
       console.warn('sine-wave: audioContext or getOscillator missing; skipping');
       return;
     }
 
     const now = audioContext.currentTime;
     notes.forEach(note => {
-      const osc = getOscillator();
-      if (!osc) return;
+      const oscData = getOscillator();
+      if (!oscData) return; // pool exhausted
 
-      const gainNode = audioContext.createGain();
-      const panner = audioContext.createPanner();
-      try { panner.panningModel = 'equalpower'; } catch (e) {}
-      const posX = note.position && typeof note.position.x === 'number' ? note.position.x : 0;
-      try { panner.setPosition(posX, 0, 1 - Math.abs(posX)); } catch (e) {}
+      const { osc, gain, panner } = oscData;
 
+      // Configure oscillator
       try { osc.type = 'sine'; } catch (e) {}
-      try { osc.frequency.setValueAtTime(note.pitch || 440, now); } catch (e) {}
+      const freq = note.pitch || 440;
+      try {
+        if (typeof osc.frequency.setTargetAtTime === 'function') {
+          osc.frequency.setTargetAtTime(freq, now, 0.01);
+        } else {
+          osc.frequency.value = freq;
+        }
+      } catch (e) {}
 
-      gainNode.gain.setValueAtTime(0, now);
-      gainNode.gain.linearRampToValueAtTime(note.intensity || 1.0, now + (note.attack || 0.01));
-      gainNode.gain.linearRampToValueAtTime(0, now + (note.duration || 0.2));
+      // Envelope
+      const attack = Math.max(0.001, note.attack || 0.01);
+      const duration = Math.max(0.05, note.duration || 0.2);
+      const release = Math.max(0.03, note.release || 0.1);
+      const amp = Math.max(0, Math.min(1, note.intensity || 1.0));
+      try {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(amp, now + attack);
+        gain.gain.linearRampToValueAtTime(0.0001, now + duration);
+      } catch (e) {}
 
-      try { osc.connect(gainNode); gainNode.connect(panner); panner.connect(masterGain); } catch (e) {}
+      // Spatialization: use StereoPanner pan in range [-1, 1]
+      const azimuth = note.position && typeof note.position.x === 'number' ? note.position.x : (typeof note.pan === 'number' ? note.pan : 0);
+      try {
+        if (typeof panner.pan.setTargetAtTime === 'function') {
+          panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, azimuth)), now, 0.01);
+        } else {
+          panner.pan.value = Math.max(-1, Math.min(1, azimuth));
+        }
+      } catch (e) {}
 
-      try { osc.start(now); } catch (e) {}
-      const stopTime = now + (note.duration || 0.2) + (note.release || 0.1);
+      // Connect graph to masterGain (never directly to destination)
+      try {
+        osc.connect(gain);
+        gain.connect(panner);
+        panner.connect(masterGain);
+      } catch (e) {}
+
+      // Start and schedule stop/cleanup
+      try { osc.start(now); } catch (e) { /* ignore double start */ }
+      oscData.started = true;
+      const stopTime = now + duration + release;
       try { osc.stop(stopTime); } catch (e) {}
 
+      // After tail finishes, release entire pool item for reuse
+      const timeoutMs = Math.max(0, (stopTime - now) * 1000) + 50;
       setTimeout(() => {
-        try { osc.disconnect(); } catch (e) {}
-        try { gainNode.disconnect(); } catch (e) {}
-        try { panner.disconnect(); } catch (e) {}
-        try { releaseOscillator(osc); } catch (e) {}
-      }, Math.max(0, (stopTime - now) * 1000) + 50);
+        try { releaseOscillator && releaseOscillator(oscData); } catch (e) {}
+      }, timeoutMs);
     });
   }
