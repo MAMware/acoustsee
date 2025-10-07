@@ -19,7 +19,7 @@ export const synthMeta = {
 };
 
 export function playSawtoothPad(notes = [], ctx = {}) {
-  const { audioContext, getOscillator, masterGain } = ctx;
+  const { audioContext, getOscillator, masterGain, oscillatorPool } = ctx;
 
   if (!audioContext || !getOscillator) {
     console.warn('sawtooth-pad: required audio context not provided.');
@@ -31,15 +31,17 @@ export function playSawtoothPad(notes = [], ctx = {}) {
   const releaseTime = 0.5; // A bit of a tail
 
   // First, gracefully release any notes that are currently playing from this synth.
-  oscillatorPool.forEach(oscObj => {
-    if (oscObj.active && oscObj.synthId === 'sawtooth-pad') {
-      try {
-        oscObj.gain.gain.cancelScheduledValues(now);
-        oscObj.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
-        setTimeout(() => { oscObj.active = false; }, releaseTime * 1000);
-      } catch (e) {}
-    }
-  });
+  if (oscillatorPool && Array.isArray(oscillatorPool)) {
+    oscillatorPool.forEach(oscObj => {
+      if (oscObj.active && oscObj.synthId === 'sawtooth-pad') {
+        try {
+          oscObj.gain.gain.cancelScheduledValues(now);
+          oscObj.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
+          setTimeout(() => { oscObj.active = false; }, releaseTime * 1000);
+        } catch (e) {}
+      }
+    });
+  }
 
   // Then, play the new notes.
   notes.forEach(note => {

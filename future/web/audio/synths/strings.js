@@ -42,8 +42,8 @@ export function playStrings(notes = [], ctx = {}) {
       : (typeof note.midi === 'number' ? midiToFreq(note.midi) : 440 + (idx * 20));
 
     const duration = Math.max(0.05, (typeof note.duration === 'number' ? note.duration : 1.0));
-  const amp = Math.min(0.3, Math.max(0, (typeof note.intensity === 'number' ? note.intensity * 0.3 : 0.15)));
-  const decay = typeof note.decay === 'number' ? note.decay : 0.98; // feedback gain multiplier
+  const amp = Math.min(0.15, Math.max(0, (typeof note.intensity === 'number' ? note.intensity * 0.15 : 0.08)));
+  const decay = typeof note.decay === 'number' ? note.decay : 0.90; // Lower feedback to prevent runaway resonance
   const panVal = note.position ? note.position.x : (typeof note.pan === 'number' ? note.pan : 0);
 
     // Karplus-Strong uses a delay time equal to the fundamental period
@@ -53,7 +53,7 @@ export function playStrings(notes = [], ctx = {}) {
     const noiseLen = Math.floor(ac.sampleRate * 0.03); // 30ms noise
     const noiseBuf = ac.createBuffer(1, noiseLen, ac.sampleRate);
     const data = noiseBuf.getChannelData(0);
-    for (let i = 0; i < noiseLen; i++) data[i] = (Math.random() * 2 - 1) * 0.8;
+    for (let i = 0; i < noiseLen; i++) data[i] = (Math.random() * 2 - 1) * 0.3; // Reduce initial excitation amplitude
 
     // Nodes
     const src = ac.createBufferSource();
