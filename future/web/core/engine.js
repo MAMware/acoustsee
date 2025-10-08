@@ -16,7 +16,7 @@ import { registerTouchGestureCommands } from './commands/touch-gesture-commands.
 import { registerMediaCommands } from './commands/media-commands.js';
 import { registerSettingsCommands } from './commands/settings-commands.js';
 import { registerDebugCommands } from './commands/debug-commands.js';
-import { registerUICommands } from './commands/ui-commands.js';
+import { registerPersistenceCommands } from './commands/persistence-commands.js';
 import { registerPerformanceCommands } from './commands/performance-commands.js';
 import { registerSonificationCommands } from './commands/sonification-commands.js'; 
 import { registerModeCommands } from './commands/mode-commands.js';
@@ -227,8 +227,8 @@ export function createEngine() {
 
   // Register settings and debug command modules
   registerSettingsCommands(engineInstance);
+  registerPersistenceCommands(engineInstance);
   registerDebugCommands(engineInstance);
-  registerUICommands(engineInstance);
   registerPerformanceCommands(engineInstance);
   registerDiagnosticsCommands(engineInstance);
   registerModeCommands(engineInstance);

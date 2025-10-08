@@ -55,4 +55,5 @@ export function registerDebugCommands(engine) {
       return { ok: false, error: e?.message || String(e) };
     }
   });
+
 }
