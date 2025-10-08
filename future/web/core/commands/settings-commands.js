@@ -79,8 +79,9 @@ export function registerSettingsCommands(engine) {
   });
 
   registerCommandHandler('setMotionThreshold', async ({ state: s, payload }) => {
-    const threshold = parseFloat(payload.motionThreshold); // Use parseFloat for slider values
-    if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) { // Assuming 0-1 range from slider
+    const threshold = parseFloat(payload.motionThreshold);
+    // Motion threshold range is 20-120 (pixel difference threshold)
+    if (!isNaN(threshold) && threshold >= 20 && threshold <= 120) {
       s.motionThreshold = threshold;
       structuredLog('INFO', 'DebugUI: Motion threshold set', { threshold });
     }

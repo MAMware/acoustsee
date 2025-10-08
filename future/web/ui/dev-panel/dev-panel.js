@@ -136,7 +136,7 @@ export function initializeDevPanel(arg1, arg2) {
                   <select id="grid-type-select"></select>
                   <label>Motion Threshold</label>
                   <div class="slider-container">
-                    <input id="motion-threshold-slider" type="range" min="0" max="1" step="0.01" value="0.20"><span id="motion-threshold-value">0.20</span>
+                    <input id="motion-threshold-slider" type="range" min="20" max="120" step="20" value="20"><span id="motion-threshold-value">20</span>
                   </div>
                 </div>
                 <div class="control-column">
@@ -849,6 +849,25 @@ export function initializeDevPanel(arg1, arg2) {
         const payloadToSend = { synthesisEngine: selectedValue };
         structuredLog('DEBUG', 'About to dispatch setSynthEngine', { payload: payloadToSend });
         engine.dispatch('setSynthEngine', payloadToSend);
+      });
+    }
+    
+    // Add event listeners for Max Notes and Motion Threshold sliders
+    if (maxNotesSlider) {
+      maxNotesSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value, 10);
+        if (maxNotesValue) maxNotesValue.textContent = value;
+        structuredLog('DEBUG', 'Max notes slider changed', { value });
+        engine.dispatch('setMaxNotes', { maxNotes: value });
+      });
+    }
+    
+    if (motionThresholdSlider) {
+      motionThresholdSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value, 10);
+        if (motionThresholdValue) motionThresholdValue.textContent = value;
+        structuredLog('DEBUG', 'Motion threshold slider changed', { value });
+        engine.dispatch('setMotionThreshold', { motionThreshold: value });
       });
     }
     
