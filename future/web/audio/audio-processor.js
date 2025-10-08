@@ -264,31 +264,52 @@ export function resizeOscillatorPool(size) {
   // CRITICAL FIX: Add 50% buffer to handle bursts without pool depletion
   const bufferedSize = Math.ceil(size * 1.5);
   
+  // First, garbage collect dead oscillators
+  const beforeGC = oscillatorPool.length;
+  oscillatorPool = oscillatorPool.filter(item => item.state !== 'dead');
+  const afterGC = oscillatorPool.length;
+  
+  // Count fresh oscillators
+  const freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
+  
   structuredLog('DEBUG', 'Resizing oscillator pool', { 
     requestedSize: size, 
-    bufferedSize, 
-    currentSize: oscillatorPool.length 
+    bufferedSize,
+    beforeGC,
+    afterGC,
+    freshCount,
+    activeCount: oscillatorPool.filter(item => item.state === 'active').length
   });
   
-  while (oscillatorPool.length < bufferedSize) {
-    // Create a properly structured oscillator object with gain and panner
-    const osc = context.createOscillator();
-    const gain = context.createGain();
-    const panner = createPannerNode(context);
+  // Add fresh oscillators if needed
+  if (freshCount < bufferedSize) {
+    const toAdd = bufferedSize - freshCount;
+    for (let i = 0; i < toAdd; i++) {
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      const panner = createPannerNode(context);
+      
+      // DO NOT connect or start yet - synths will do that!
+      // State tracking: 'fresh' = never used, 'active' = currently playing, 'dead' = stopped (cannot reuse)
+      oscillatorPool.push({ osc, gain, panner, state: 'fresh' });
+    }
     
-    // DO NOT connect or start yet - synths will do that!
-    // Just package them together for the synths to use
-    
-    oscillatorPool.push({ osc, gain, panner, active: false });
+    structuredLog('DEBUG', 'Resized oscillator pool', { 
+      added: toAdd,
+      newFreshCount: oscillatorPool.filter(item => item.state === 'fresh').length,
+      totalSize: oscillatorPool.length 
+    });
   }
-  while (oscillatorPool.length > bufferedSize) {
-    const oscObj = oscillatorPool.pop();
-    // Clean up the removed oscillator if it was ever used
+  
+  // Remove excess fresh oscillators if pool is too large
+  while (freshCount > bufferedSize) {
+    const freshIndex = oscillatorPool.findIndex(item => item.state === 'fresh');
+    if (freshIndex === -1) break;
+    
+    const oscObj = oscillatorPool.splice(freshIndex, 1)[0];
+    // Clean up the removed oscillator
     if (oscObj && oscObj.osc) {
-      try {
-        if (oscObj.started) oscObj.osc.stop();
-        oscObj.osc.disconnect();
-      } catch (e) { /* already stopped */ }
+      try { oscObj.osc.disconnect(); } catch (e) { /* ignore */ }
     }
     if (oscObj && oscObj.gain) {
       try { oscObj.gain.disconnect(); } catch (e) { /* ignore */ }
@@ -297,43 +318,70 @@ export function resizeOscillatorPool(size) {
       try { oscObj.panner.disconnect(); } catch (e) { /* ignore */ }
     }
   }
-  structuredLog('DEBUG', 'Resized oscillator pool', { size: oscillatorPool.length });
 }
 
 function getOscillator() {
   const context = audioManager?.context;
   if (!context) return null;
 
-  if (oscillatorPool.length > 0) {
-    const oscObj = oscillatorPool.pop();
+  // Find a fresh oscillator (never used before)
+  const freshIndex = oscillatorPool.findIndex(item => item.state === 'fresh');
+  
+  if (freshIndex !== -1) {
+    const oscObj = oscillatorPool[freshIndex];
+    oscObj.state = 'active'; // Mark as now being used
+    
     // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
     if (Math.random() < 0.01) {
-      structuredLog('DEBUG', 'getOscillator: Retrieved oscillator from pool', { poolSize: oscillatorPool.length });
+      const freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
+      structuredLog('DEBUG', 'getOscillator: Retrieved fresh oscillator from pool', { 
+        freshCount,
+        totalPoolSize: oscillatorPool.length 
+      });
     }
     return oscObj;
   }
   
-  // Fallback if pool is empty - create a properly structured oscillator object
-  structuredLog('WARN', 'getOscillator: Pool empty, creating new structured oscillator.');
+  // No fresh oscillators available - create a new one
+  structuredLog('WARN', 'getOscillator: Pool has no fresh oscillators, creating new one', {
+    poolSize: oscillatorPool.length,
+    freshCount: 0,
+    activeCount: oscillatorPool.filter(item => item.state === 'active').length,
+    deadCount: oscillatorPool.filter(item => item.state === 'dead').length
+  });
+  
   const osc = context.createOscillator();
   const gain = context.createGain();
   const panner = createPannerNode(context);
   
   // DO NOT connect or start - synths will do that
+  const newOscObj = { osc, gain, panner, state: 'active' };
   
-  return { osc, gain, panner, active: false };
+  // Add to pool for tracking
+  oscillatorPool.push(newOscObj);
+  
+  return newOscObj;
 }
 
 function releaseOscillator(oscObj) {
   const context = audioManager?.context;
   if (!context || !oscObj) return;
   
-  // Stop and disconnect the old oscillator
+  // Mark as dead - Web Audio oscillators can only be started once
+  // Once stopped, they cannot be reused
+  oscObj.state = 'dead';
+  
+  // Stop and disconnect the oscillator
   try {
-    if (oscObj.osc && oscObj.started) {
-      oscObj.osc.stop(context.currentTime + 0.5);
+    if (oscObj.osc) {
+      // Try to stop gracefully with a short fade
+      try {
+        oscObj.osc.stop(context.currentTime + 0.5);
+      } catch (e) {
+        // Already stopped or never started
+      }
+      oscObj.osc.disconnect();
     }
-    if (oscObj.osc) oscObj.osc.disconnect();
     if (oscObj.gain) oscObj.gain.disconnect();
     if (oscObj.panner) oscObj.panner.disconnect();
     if (oscObj.filter) oscObj.filter.disconnect();
@@ -341,18 +389,18 @@ function releaseOscillator(oscObj) {
     // Oscillator might already be stopped or disconnected
   }
   
-  // Create a fresh oscillator object for the pool
-  const osc = context.createOscillator();
-  const gain = context.createGain();
-  const panner = createPannerNode(context);
-  
-  // DO NOT connect or start - synths will do that
-  
-  oscillatorPool.push({ osc, gain, panner, active: false });
-  
   // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
   if (Math.random() < 0.01) {
-    structuredLog('DEBUG', 'releaseOscillator: Returned oscillator to pool', { poolSize: oscillatorPool.length });
+    const freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
+    const activeCount = oscillatorPool.filter(item => item.state === 'active').length;
+    const deadCount = oscillatorPool.filter(item => item.state === 'dead').length;
+    
+    structuredLog('DEBUG', 'releaseOscillator: Marked oscillator as dead', { 
+      freshCount,
+      activeCount,
+      deadCount,
+      totalPoolSize: oscillatorPool.length 
+    });
   }
 }
 
@@ -468,8 +516,15 @@ export async function playCues(payload) {
   // Refill oscillator pool if depleted
   // CRITICAL: Use 1.5x buffer to handle bursts without pool depletion
   const bufferedSize = Math.ceil(maxNotes * 1.5);
-  if (oscillatorPool.length < bufferedSize) {
-    const toAdd = bufferedSize - oscillatorPool.length;
+  
+  // Garbage collect dead oscillators
+  oscillatorPool = oscillatorPool.filter(item => item.state !== 'dead');
+  
+  // Count fresh oscillators
+  const freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
+  
+  if (freshCount < bufferedSize) {
+    const toAdd = bufferedSize - freshCount;
     for (let i = 0; i < toAdd; i++) {
       const osc = context.createOscillator();
       const gain = context.createGain();
@@ -477,9 +532,15 @@ export async function playCues(payload) {
       
       // DO NOT connect or start - synths will do that
       
-      oscillatorPool.push({ osc, gain, panner, active: false });
+      oscillatorPool.push({ osc, gain, panner, state: 'fresh' });
     }
-    structuredLog('DEBUG', 'Refilled oscillator pool', { added: toAdd, newSize: oscillatorPool.length, bufferedSize, maxNotes });
+    structuredLog('DEBUG', 'Refilled oscillator pool', { 
+      added: toAdd, 
+      newFreshCount: oscillatorPool.filter(item => item.state === 'fresh').length,
+      totalSize: oscillatorPool.length,
+      bufferedSize, 
+      maxNotes 
+    });
   }
 }
 

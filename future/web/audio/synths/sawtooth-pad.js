@@ -39,12 +39,11 @@ export function playSawtoothPad(notes = [], ctx = {}) {
   // First, gracefully release any notes that are currently playing from this synth.
   if (oscillatorPool && Array.isArray(oscillatorPool)) {
     oscillatorPool.forEach(oscObj => {
-      if (oscObj.active && oscObj.synthId === 'sawtooth-pad') {
+      if (oscObj.state === 'active' && oscObj.synthId === 'sawtooth-pad') {
         try {
           oscObj.gain.gain.cancelScheduledValues(now);
           oscObj.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
           setTimeout(() => { 
-            oscObj.active = false; 
             try { releaseOscillator && releaseOscillator(oscObj); } catch (e) {}
           }, releaseTime * 1000);
         } catch (e) {}
@@ -61,7 +60,6 @@ export function playSawtoothPad(notes = [], ctx = {}) {
 
     // Tag the oscillator so we know which synth it belongs to
     oscObj.synthId = 'sawtooth-pad';
-    oscObj.active = true;
 
     // --- Synth-specific settings ---
     osc.type = 'sawtooth';
@@ -85,7 +83,6 @@ export function playSawtoothPad(notes = [], ctx = {}) {
     } catch (e) {
       // ignore if already started
     }
-    oscObj.started = true;
     
     // --- Standard note parameters ---
   const freq = note.pitch;
@@ -108,8 +105,10 @@ export function playSawtoothPad(notes = [], ctx = {}) {
 function stopAllSawtoothVoices(oscillatorPool, releaseOscillator, audioContext, now, releaseTime) {
   if (!oscillatorPool || !Array.isArray(oscillatorPool)) return;
   
+  let stoppedCount = 0;
+  
   oscillatorPool.forEach(oscObj => {
-    if (oscObj.active && oscObj.synthId === 'sawtooth-pad' && oscObj.started) {
+    if (oscObj.state === 'active' && oscObj.synthId === 'sawtooth-pad') {
       try {
         // Quick fade out
         oscObj.gain.gain.cancelScheduledValues(now);
@@ -123,13 +122,17 @@ function stopAllSawtoothVoices(oscillatorPool, releaseOscillator, audioContext, 
           } catch (e) {
             // Already stopped
           }
-          oscObj.active = false;
-          oscObj.started = false;
           if (releaseOscillator) releaseOscillator(oscObj);
         }, 60);
+        
+        stoppedCount++;
       } catch (e) {
         console.warn('Error stopping sawtooth voice:', e);
       }
     }
   });
+  
+  if (stoppedCount > 0) {
+    console.log(`Stopped ${stoppedCount} sawtooth-pad voices`);
+  }
 }
