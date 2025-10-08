@@ -7,8 +7,7 @@ import { settings } from './state.js';
 import { structuredLog } from '../utils/logging.js';
 import logger from '../utils/logging.js';
 import { getText, speakText, announceMessage } from '../utils/utils.js'; // <-- REDUCED IMPORTS
-import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive } from './media-controller.js';
-import { startMic, stopMic } from './microphone-controller.js'; //R24925 TODO:REDUCTION
+import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive, startMic, stopMic } from './media-controller.js';
 import { setMicStream, setAutoFpsBenchmark, allocateFrameBuffer } from './state.js';
 import { getPreferredIntervalMs } from '../utils/performance.js';
 import * as audioProcessor from '../audio/audio-processor.js';
