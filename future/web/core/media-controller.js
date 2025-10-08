@@ -1,33 +1,50 @@
 // File: web/core/media-controller.js
 import { trackFeatureUse } from '../core/ingest.js';
 import { addSessionError } from '../utils/performance.js';
-import { announceMessage, getText } from '../utils/utils.js';
-import { notifyDev as notifyDebug } from '../ui/dev-panel/dev-notifier.js';
+import { structuredLog } from '../utils/logging.js';
+import { getText, announceMessage, speakText } from '../utils/utils.js';
 
 let _cameraStream = null;
 
 export async function startCamera(videoEl, constraints = { facingMode: 'environment' }, state = null) {
   try {
     const c = { video: { facingMode: constraints.facingMode }, audio: false };
+    
+    structuredLog('INFO', 'Requesting camera access', { constraints: c });
+    
     const stream = await navigator.mediaDevices.getUserMedia(c);
     _cameraStream = stream;
     if (videoEl) videoEl.srcObject = stream;
     try { await videoEl.play(); } catch (e) { /* ignore play rejections */ }
+    
+    // Rich logging with i18n + accessibility
+    structuredLog('INFO', 'cameraStartSuccess', { device: 'camera' }, {
+      state,
+      getTextFn: getText,
+      announceMessageFn: announceMessage,
+      speakTextFn: speakText,
+      translate: true,
+      announce: true,
+      toast: true,
+    });
+    
     try { trackFeatureUse('camera-start', { timestamp: Date.now() }); } catch (e) {}
     return stream;
   } catch (err) {
     addSessionError({ message: 'start-camera-failed', error: err?.message || String(err) });
-    try {
-      // Show an accessible, translated witness via the debug UI and announcements.
-      await notifyDebug({ key: 'camera.unable', persistent: true, tts: true, state });
-    } catch (e) {
-      try {
-        const msg = await getText('camera.unable', {}, state);
-        announceMessage(msg);
-      } catch (e2) {
-        announceMessage('Unable to access camera.');
-      }
-    }
+    
+    // Rich error logging with TTS for accessibility
+    structuredLog('ERROR', 'cameraStartFailed', { error: err.message }, {
+      state,
+      getTextFn: getText,
+      announceMessageFn: announceMessage,
+      speakTextFn: speakText,
+      translate: true,
+      announce: true,
+      speak: true,  // Speak errors for accessibility!
+      toast: true,
+    });
+    
     try {
       try { const r = require('./reporting.js'); r.reportError(err); }
       catch (e) { import('./reporting.js').then(m => { m.reportError(err); }).catch(() => {}); }
@@ -46,14 +63,20 @@ export function stopCamera(videoEl) {
       try { videoEl.pause(); } catch (e) {}
       try { videoEl.srcObject = null; } catch (e) {}
     }
+    
+    structuredLog('INFO', 'Camera stopped', { device: 'camera' }, { toast: true });
+    
     try { trackFeatureUse('camera-stop', { timestamp: Date.now() }); } catch (e) {}
   } catch (err) {
     addSessionError({ message: 'stop-camera-failed', error: err?.message || String(err) });
+    
+    structuredLog('ERROR', 'Failed to stop camera', { error: err.message });
+    
     try {
       try { const r = require('./reporting.js'); r.reportError(err); }
       catch (e) { import('./reporting.js').then(m => { m.reportError(err); }).catch(() => {}); }
     } catch (e) {}
-  throw err;
+    throw err;
   }
 }
 
@@ -62,10 +85,40 @@ export function isCameraActive() {
 }
 
 // --- Microphone helpers ---
-export async function startMic(constraints = { audio: true }) {
-  if (!navigator?.mediaDevices?.getUserMedia) throw new Error('getUserMedia not available');
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
-  return stream;
+export async function startMic(constraints = { audio: true }, state = null) {
+  try {
+    if (!navigator?.mediaDevices?.getUserMedia) throw new Error('getUserMedia not available');
+    
+    structuredLog('INFO', 'Requesting microphone access', { constraints });
+    
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    
+    // Rich logging with i18n + accessibility
+    structuredLog('INFO', 'micStartSuccess', { device: 'microphone' }, {
+      state,
+      getTextFn: getText,
+      announceMessageFn: announceMessage,
+      speakTextFn: speakText,
+      translate: true,
+      announce: true,
+      toast: true,
+    });
+    
+    return stream;
+  } catch (err) {
+    // Rich error logging with TTS for accessibility
+    structuredLog('ERROR', 'micStartFailed', { error: err.message }, {
+      state,
+      getTextFn: getText,
+      announceMessageFn: announceMessage,
+      speakTextFn: speakText,
+      translate: true,
+      announce: true,
+      speak: true,  // Speak errors for accessibility!
+      toast: true,
+    });
+    throw err;
+  }
 }
 
 export function stopMic(stream) {

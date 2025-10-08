@@ -1,6 +1,6 @@
 # AcoustSee
 
-AcoustSee is an open-source framework that runs as a web application designed to help blind and visually impaired individuals perceive their surroundings through sound. It uses a device's camera and translates visuals into real-time, informative soundscapes.
+An open-source computer vision sound synthetizer framework designed to help blind and visually impaired individuals perceive their surroundings through sound. It uses a device's camera and translates visuals into real-time, informative soundscapes.
 
 The project is built with a focus on accessibility, performance, and extensibility, using vanilla JavaScript and modern browser APIs to run efficiently on a wide range of devices, especially mobile phones.
 

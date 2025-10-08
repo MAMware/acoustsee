@@ -153,6 +153,10 @@
   "camera": {
     "unable": "Unable to access camera."
   },
+  "cameraStartSuccess": "Camera started successfully",
+  "cameraStartFailed": "Failed to start camera",
+  "micStartSuccess": "Microphone started successfully",
+  "micStartFailed": "Failed to start microphone",
   "language": {
     "set": "Language set to {languageName}."
   },

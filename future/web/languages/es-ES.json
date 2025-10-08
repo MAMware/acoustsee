@@ -137,6 +137,10 @@
   "camera": {
     "unable": "No se puede acceder a la cámara."
   },
+  "cameraStartSuccess": "Cámara iniciada correctamente",
+  "cameraStartFailed": "Error al iniciar la cámara",
+  "micStartSuccess": "Micrófono iniciado correctamente",
+  "micStartFailed": "Error al iniciar el micrófono",
   "mic": {
     "on": "Micrófono activado.",
     "off": "Micrófono desactivado.",

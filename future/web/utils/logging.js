@@ -6,6 +6,8 @@
 import { addIdbLog } from './idb-logger.js';
 import { output } from './core-logger.js';
 import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
+// DO NOT import from utils.js here - creates circular dependency!
+// Instead, lazily import getText, announceMessage, speakText when needed
 // Avoid importing `isMobile` from ./performance.js here because that module
 // imports `state.js` which in turn imports this logger. That circular import
 // can cause a temporal-dead-zone (TDZ) where logger internals aren't
@@ -115,8 +117,17 @@ export function setSampleRate(rate) {
  * @param {string} level - One of 'DEBUG', 'INFO', 'WARN', 'ERROR'.
  * @param {string} message - Descriptive message (e.g., 'setAudioInterval').
  * @param {Object} [data={}] - Additional context (e.g., { timerId: 42, ms: 50 }).
- * @param {boolean} [persist=true] - If true, also calls addLog with serialized form.
+ * @param {boolean|Object} [persist=true] - If true, persist to IDB. If object, use as options.
  * @param {boolean} [sample=true] - If false, bypass sampling (for critical logs).
+ * @param {Object} [options] - Enhanced logging options
+ * @param {Object} [options.state] - App state (for i18n translation)
+ * @param {Function} [options.getTextFn] - getText function (to avoid circular import)
+ * @param {Function} [options.announceMessageFn] - announceMessage function
+ * @param {Function} [options.speakTextFn] - speakText function
+ * @param {boolean} [options.translate=false] - Treat message as i18n key
+ * @param {boolean} [options.announce=false] - Announce to screen reader
+ * @param {boolean} [options.speak=false] - Speak via TTS
+ * @param {boolean} [options.toast=false] - Show in dev panel
  */
 
 let inStructuredLog = false;
@@ -163,7 +174,24 @@ function shouldThrottle(level, message) {
 /**
  * Logs a structured message synchronously with recursion guard and rate limiting.
  */
-export function structuredLog(level, message, data = {}, persist = true, sample = true) {
+export function structuredLog(level, message, data = {}, persist = true, sample = true, options = {}) {
+  // Handle legacy API: if persist is an object, it's the options parameter
+  if (typeof persist === 'object' && persist !== null && !Array.isArray(persist)) {
+    options = persist;
+    persist = true;
+  }
+  
+  const { 
+    state, 
+    getTextFn, 
+    announceMessageFn, 
+    speakTextFn,
+    translate = false, 
+    announce = false, 
+    speak = false, 
+    toast = false 
+  } = options;
+  
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
   if (numericLevel < currentLogLevel) return;
   if (sample && level.toUpperCase() === 'DEBUG' && Math.random() > sampleRate) return;
@@ -178,15 +206,53 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
   try {
     const timestamp = new Date().toISOString();
     
+    // Translate message if requested and state available
+    let finalMessage = message;
+    if (translate && state && getTextFn) {
+      try {
+        // Use provided getText function to avoid circular import
+        finalMessage = getTextFn(message, data, state);
+        // getText is async, but we can't await in sync function
+        // So we handle the promise inline
+        if (finalMessage && typeof finalMessage.then === 'function') {
+          finalMessage.then(translatedMsg => {
+            // Re-log with translated message (deferred)
+            structuredLog(level, translatedMsg, data, persist, sample, { ...options, translate: false });
+          }).catch(() => {
+            // Translation failed, use original
+          });
+          // Use original message for now
+          finalMessage = message;
+        }
+      } catch (err) {
+        // If translation fails, use original message
+        finalMessage = message;
+      }
+    }
+    
     // Auto-generate metadata and merge with provided data (pass level for conditional metadata)
     const metadata = generateMetadata(level);
+    
+    // Add rich telemetry data for D1 ingestion
     const telemetryData = {
       ...metadata,
       ...data, // Allow overrides or additions
+      ingestion_id: crypto && crypto.randomUUID ? crypto.randomUUID() : null,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      url: typeof location !== 'undefined' ? location.href : '',
     };
     
-    const logEntry = { timestamp, level: level.toUpperCase(), message, data: telemetryData };
-  // Use core-logger to output formatted message
+    // Extract error info if available
+    if (data.error && data.error instanceof Error) {
+      telemetryData.filename = data.error.fileName || '';
+      telemetryData.lineno = data.error.lineNumber || 0;
+      telemetryData.colno = data.error.columnNumber || 0;
+      telemetryData.stack = data.error.stack || '';
+    }
+    
+    const logEntry = { timestamp, level: level.toUpperCase(), message: finalMessage, data: telemetryData };
+    
+    // Use core-logger to output formatted message
     let payload = '';
     if (Object.keys(telemetryData).length) {
       try {
@@ -195,7 +261,40 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
         payload = ' [Unserializable data]';
       }
     }
-  output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${message}${payload}`);
+    output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${finalMessage}${payload}`);
+    
+    // Accessibility features (opt-in)
+    if (announce && announceMessageFn) {
+      try {
+        announceMessageFn(finalMessage);
+      } catch (err) {
+        console.warn('Failed to announce message:', err);
+      }
+    }
+    
+    if (speak && state && speakTextFn) {
+      try {
+        speakTextFn(finalMessage, 'polite', state);
+      } catch (err) {
+        console.warn('Failed to speak message:', err);
+      }
+    }
+    
+    // Dev panel toast (opt-in)
+    if (toast) {
+      try {
+        showDevToast(finalMessage, { level: level.toUpperCase() });
+      } catch (err) {
+        console.warn('Failed to show dev toast:', err);
+      }
+    }
+    
+    // Send to analytics endpoint if configured
+    if (typeof window !== 'undefined' && window.ANALYTICS_ENDPOINT) {
+      sendToAnalytics(logEntry).catch(err => {
+        console.warn('Failed to send to analytics:', err);
+      });
+    }
     
     // Enhanced IndexedDB persistence for important logs
     if (persist) {
@@ -254,5 +353,91 @@ const defaultAdapter = {
     }
   }
 };
+
+/**
+ * Send log entry to analytics endpoint for D1 ingestion
+ */
+async function sendToAnalytics(logEntry) {
+  if (typeof window === 'undefined' || !window.ANALYTICS_ENDPOINT) return;
+  
+  try {
+    await fetch(window.ANALYTICS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'client_error',
+        level: logEntry.level,
+        message: logEntry.message,
+        timestamp: logEntry.timestamp,
+        source: 'client',
+        filename: logEntry.data?.filename || '',
+        lineno: logEntry.data?.lineno || 0,
+        colno: logEntry.data?.colno || 0,
+        stack: logEntry.data?.stack || '',
+        user_agent: logEntry.data?.user_agent || '',
+        url: logEntry.data?.url || '',
+        app_version: logEntry.data?.app_version || null,
+        env: logEntry.data?.env || null,
+        payload_json: JSON.stringify(logEntry.data),
+        ingestion_id: logEntry.data?.ingestion_id || null,
+      }),
+    });
+  } catch (err) {
+    // Don't throw - analytics failure shouldn't break app
+    console.warn('Analytics send failed:', err);
+  }
+}
+
+/**
+ * Show toast notification in dev panel
+ */
+function showDevToast(message, { level }) {
+  if (typeof document === 'undefined') return;
+  
+  const panel = document.getElementById('acoustsee-dev-panel');
+  if (!panel) return; // Dev panel not active
+  
+  // Find or create toast container
+  let toastContainer = panel.querySelector('.dev-toasts');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'dev-toasts';
+    toastContainer.style.cssText = 'position: fixed; top: 60px; right: 10px; z-index: 10000; max-width: 300px;';
+    panel.appendChild(toastContainer);
+  }
+  
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = `dev-toast dev-toast--${level.toLowerCase()}`;
+  toast.textContent = message;
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
+  
+  // Style based on level
+  const levelColors = {
+    ERROR: '#fee',
+    WARN: '#ffa',
+    INFO: '#eff',
+    DEBUG: '#eee',
+  };
+  toast.style.cssText = `
+    background: ${levelColors[level] || '#fff'};
+    border-left: 4px solid ${level === 'ERROR' ? '#f00' : level === 'WARN' ? '#fa0' : '#0af'};
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    font-size: 12px;
+    animation: slideIn 0.3s ease-out;
+  `;
+  
+  toastContainer.appendChild(toast);
+  
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease-in';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
 
 export default defaultAdapter;
