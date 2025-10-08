@@ -148,8 +148,17 @@ export function registerMediaCommands(engine) {
   }));
 
   // The "Smart" Stop Handler - SOLE OWNER of stopping the processing lifecycle.
-  registerCommandHandler('stopProcessing', ({ state: s }) => {
-    structuredLog('INFO', 'COMMAND: stopProcessing begins.');
+  registerCommandHandler('stopProcessing', ({ state: s, payload }) => {
+    // Capture call stack to identify who called stopProcessing
+    const callStack = new Error().stack;
+    const callerInfo = callStack?.split('\n')[2]?.trim() || 'unknown';
+    
+    structuredLog('INFO', 'COMMAND: stopProcessing begins.', { 
+      caller: callerInfo,
+      hasPayload: !!payload,
+      isProcessing: s.isProcessing 
+    });
+    
     if (_activeMediaStream) {
       _activeMediaStream.getTracks().forEach(track => track.stop());
       _activeMediaStream = null;

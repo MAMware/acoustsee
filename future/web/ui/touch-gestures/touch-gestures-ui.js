@@ -29,8 +29,20 @@ export function initializeAccessibleUI(arg1, arg2) {
   try {
     const startStopButton = DOM && DOM.button1;
     if (startStopButton && typeof startStopButton.addEventListener === 'function') {
+      let lastClickTime = 0;
+      const DEBOUNCE_MS = 500; // Prevent rapid clicks within 500ms
+      
       startStopButton.addEventListener('click', (e) => {
         e.preventDefault();
+        
+        // Debounce: ignore clicks within 500ms of previous click
+        const now = Date.now();
+        if (now - lastClickTime < DEBOUNCE_MS) {
+          console.log('Ignoring rapid click on Start/Stop button');
+          return;
+        }
+        lastClickTime = now;
+        
         const isProcessing = engine.getState().isProcessing;
         if (isProcessing) {
           engine.dispatch('stopProcessing', { videoEl: DOM && DOM.videoFeed });

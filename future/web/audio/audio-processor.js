@@ -466,8 +466,10 @@ export async function playCues(payload) {
   }
 
   // Refill oscillator pool if depleted
-  if (oscillatorPool.length < maxNotes) {
-    const toAdd = maxNotes - oscillatorPool.length;
+  // CRITICAL: Use 1.5x buffer to handle bursts without pool depletion
+  const bufferedSize = Math.ceil(maxNotes * 1.5);
+  if (oscillatorPool.length < bufferedSize) {
+    const toAdd = bufferedSize - oscillatorPool.length;
     for (let i = 0; i < toAdd; i++) {
       const osc = context.createOscillator();
       const gain = context.createGain();
@@ -477,7 +479,7 @@ export async function playCues(payload) {
       
       oscillatorPool.push({ osc, gain, panner, active: false });
     }
-    structuredLog('DEBUG', 'Refilled oscillator pool', { added: toAdd, newSize: oscillatorPool.length });
+    structuredLog('DEBUG', 'Refilled oscillator pool', { added: toAdd, newSize: oscillatorPool.length, bufferedSize, maxNotes });
   }
 }
 
