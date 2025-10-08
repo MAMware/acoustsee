@@ -30,6 +30,12 @@ export function playSawtoothPad(notes = [], ctx = {}) {
   const attackTime = 0.1;  // Slow attack for a "pad" sound
   const releaseTime = 0.5; // A bit of a tail
 
+  // CRITICAL FIX: Stop all voices when notes array is empty (camera stopped)
+  if (!notes || notes.length === 0) {
+    stopAllSawtoothVoices(oscillatorPool, releaseOscillator, audioContext, now, releaseTime);
+    return;
+  }
+
   // First, gracefully release any notes that are currently playing from this synth.
   if (oscillatorPool && Array.isArray(oscillatorPool)) {
     oscillatorPool.forEach(oscObj => {
@@ -95,5 +101,35 @@ export function playSawtoothPad(notes = [], ctx = {}) {
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(amp, now + attackTime);
     // This is a simplification; a real pad would have a decay/sustain phase
+  });
+}
+
+// Helper function to stop all sawtooth-pad voices immediately
+function stopAllSawtoothVoices(oscillatorPool, releaseOscillator, audioContext, now, releaseTime) {
+  if (!oscillatorPool || !Array.isArray(oscillatorPool)) return;
+  
+  oscillatorPool.forEach(oscObj => {
+    if (oscObj.active && oscObj.synthId === 'sawtooth-pad' && oscObj.started) {
+      try {
+        // Quick fade out
+        oscObj.gain.gain.cancelScheduledValues(now);
+        oscObj.gain.gain.setValueAtTime(oscObj.gain.gain.value || 0, now);
+        oscObj.gain.gain.linearRampToValueAtTime(0, now + 0.05); // 50ms fade
+        
+        // Stop oscillator and release back to pool
+        setTimeout(() => {
+          try {
+            if (oscObj.osc) oscObj.osc.stop();
+          } catch (e) {
+            // Already stopped
+          }
+          oscObj.active = false;
+          oscObj.started = false;
+          if (releaseOscillator) releaseOscillator(oscObj);
+        }, 60);
+      } catch (e) {
+        console.warn('Error stopping sawtooth voice:', e);
+      }
+    }
   });
 }

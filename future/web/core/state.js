@@ -13,8 +13,8 @@ export let settings = {
   availableEngines: availableEnginesData || [],
   availableLanguages: availableLanguagesData || [],
   audioTimerId: null,
-  updateInterval: computeDefaultUpdateInterval(20),
-  autoFPS: true,
+  updateInterval: 166, // 6 FPS default (166ms = ~6fps) for stable debugging
+  autoFPS: false, // Disabled during debugging to prevent adaptive interference
   // Phase 2: performance tuning flags (can be adjusted at runtime by UI or tests)
   autoFpsDownscale: 0.25, // fraction of full canvas to use for benchmark (0.25 = 25%)
   autoFpsSamples: 2, // number of benchmark samples to take (1..4)

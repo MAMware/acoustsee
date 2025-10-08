@@ -154,6 +154,15 @@ export function registerMediaCommands(engine) {
       _activeMediaStream.getTracks().forEach(track => track.stop());
       _activeMediaStream = null;
     }
+    
+    // CRITICAL FIX: Send empty cues to all synths to force voice cleanup
+    try {
+      audioProcessor.playCues([]);  // Empty array stops all voices
+      structuredLog('DEBUG', 'Sent empty cues array to stop synth voices');
+    } catch (err) {
+      structuredLog('ERROR', 'Failed to stop synth voices', { error: err.message });
+    }
+    
     // Any necessary teardown for video/audio pipelines can be dispatched from here.
     s.isProcessing = false;
     structuredLog('INFO', 'COMMAND: stopProcessing COMPLETED.');

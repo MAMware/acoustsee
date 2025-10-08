@@ -261,7 +261,16 @@ export function resizeOscillatorPool(size) {
   const context = audioManager?.context;
   if (!context) return;
   
-  while (oscillatorPool.length < size) {
+  // CRITICAL FIX: Add 50% buffer to handle bursts without pool depletion
+  const bufferedSize = Math.ceil(size * 1.5);
+  
+  structuredLog('DEBUG', 'Resizing oscillator pool', { 
+    requestedSize: size, 
+    bufferedSize, 
+    currentSize: oscillatorPool.length 
+  });
+  
+  while (oscillatorPool.length < bufferedSize) {
     // Create a properly structured oscillator object with gain and panner
     const osc = context.createOscillator();
     const gain = context.createGain();
@@ -272,7 +281,7 @@ export function resizeOscillatorPool(size) {
     
     oscillatorPool.push({ osc, gain, panner, active: false });
   }
-  while (oscillatorPool.length > size) {
+  while (oscillatorPool.length > bufferedSize) {
     const oscObj = oscillatorPool.pop();
     // Clean up the removed oscillator if it was ever used
     if (oscObj && oscObj.osc) {

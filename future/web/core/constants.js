@@ -11,9 +11,9 @@ export const LOG_LEVELS = {
 };
 
 // Version constants for different modules
-export const BUILD_VERSION = '0.8.6-flow';
-export const AUDIO_VERSION = '0.8-flow';
+export const BUILD_VERSION = '0.8.7-utilsRefactor';
+export const AUDIO_VERSION = '0.8.1-flow';
 export const VIDEO_VERSION = '0.6-lucasKanadeFlow';
 export const UI_VERSION = '0.6.3-refinedDevPanel';
 export const LANGUAGES_VERSION = '0.2-spaEng';
-export const UTILS_VERSION = '0.9.3-optimizedInsights';
+export const UTILS_VERSION = '0.9.5-cleanRefactor';

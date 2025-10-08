@@ -237,9 +237,9 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     const telemetryData = {
       ...metadata,
       ...data, // Allow overrides or additions
-      ingestion_id: crypto && crypto.randomUUID ? crypto.randomUUID() : null,
-      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-      url: typeof location !== 'undefined' ? location.href : '',
+    //  ingestion_id: crypto && crypto.randomUUID ? crypto.randomUUID() : null,
+    //  user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    //  url: typeof location !== 'undefined' ? location.href : '',
     };
     
     // Extract error info if available
