@@ -34,7 +34,7 @@ export function setSelectedSynthEngine(engineId) {
     _selectedSynthPlayFn = null;
   }
 }
-const oscillatorPool = [];
+let oscillatorPool = [];
 const activeOscillators = new Map();
 let masterGain = null;
 // --- State for Microphone Pass-through ---
