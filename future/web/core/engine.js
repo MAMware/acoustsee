@@ -128,10 +128,6 @@ export function createEngine() {
     }
   }
 
-  // --- Legacy video element references (kept for backward compatibility) ---
-  let _videoElForScheduler = null;
-  let _canvasElForScheduler = null;
-
   async function dispatch(commandName, payload = {}) {
     const handler = handlers[commandName];
     
@@ -144,8 +140,7 @@ export function createEngine() {
       const handlerInfo = {
         command: commandName,
         handlerExists: !!handler,
-        isMediaWrapper: ['toggleProcessing', 'startProcessing', 'stopProcessing'].includes(commandName),
-        availableHandlers: Object.keys(handlers).filter(k => k.includes(commandName) || k.includes('media'))
+        availableHandlers: Object.keys(handlers).filter(k => k.includes(commandName))
       };
       
       // Aggressive sampling for DEBUG logs to reduce dev panel spam
@@ -214,16 +209,8 @@ export function createEngine() {
     }
   });
 
-  // Register media-related command handlers under a namespaced key to avoid
-  // colliding with the engine's public wrapper handlers. Media module will
-  // register `startProcessing`, `stopProcessing`, `processFrame` which we
-  // expose as `__media_startProcessing`, etc.
-  registerMediaCommands({
-    registerCommandHandler: (name, fn) => { handlers[`__media_${name}`] = fn; },
-    dispatch: engineInstance.dispatch,
-    onStateChange: engineInstance.onStateChange,
-    getState: engineInstance.getState,
-  });
+  // Register media commands directly - no wrapper indirection needed
+  registerMediaCommands(engineInstance);
 
   // Register settings and debug command modules
   registerSettingsCommands(engineInstance);
@@ -232,97 +219,6 @@ export function createEngine() {
   registerPerformanceCommands(engineInstance);
   registerDiagnosticsCommands(engineInstance);
   registerModeCommands(engineInstance);
-
-  // --- MEDIA WRAPPER HANDLERS ---
-  // IMPORTANT: These must be registered AFTER all external modules to ensure they
-  // override any conflicting handlers registered by other modules.
-  // These wrappers delegate to the media module which registers its handlers under
-  // namespaced keys (__media_*). The media handlers manage their own state, 
-  // and these wrappers handle scheduler coordination.
-  
-  registerCommandHandler('startProcessing', async (context) => {
-    structuredLog('DEBUG', 'Engine wrapper: startProcessing called', { 
-      hasMediaHandler: !!handlers['__media_startProcessing'],
-      allHandlers: Object.keys(handlers).filter(k => k.includes('media'))
-    });
-    
-    const mediaHandler = handlers['__media_startProcessing'];
-    if (!mediaHandler) {
-      structuredLog('ERROR', 'media startProcessing handler not registered');
-      throw new Error('media startProcessing handler not registered');
-    }
-    
-    try {
-      // Call the media handler - it will set state.isProcessing = true on success
-      const result = await mediaHandler(context);
-      
-      // Only start scheduler if media handler succeeded and state is now processing
-      if (context.state.isProcessing) {
-        _videoElForScheduler = result?.videoEl || null;
-        _canvasElForScheduler = result?.canvasEl || null;
-        // Note: The modern scheduler (scheduler.js) is automatically initialized
-        // and handles diagnosticTick dispatches. No manual scheduler start needed.
-        structuredLog('INFO', 'Video processing started - modern scheduler is handling diagnostics.');
-      } else {
-        structuredLog('WARN', 'Scheduler not started - media handler did not set isProcessing=true');
-      }
-      
-      return { videoEl: _videoElForScheduler, canvasEl: _canvasElForScheduler };
-    } catch (error) {
-      structuredLog('ERROR', 'Engine wrapper: startProcessing failed', { 
-        error: error.message, 
-        stack: error.stack 
-      });
-      throw error;
-    }
-  });
-
-  registerCommandHandler('stopProcessing', async (context) => {
-    structuredLog('DEBUG', 'Engine wrapper: stopProcessing called');
-    const mediaHandler = handlers['__media_stopProcessing'];
-    if (!mediaHandler) {
-      structuredLog('ERROR', 'media stopProcessing handler not registered');
-      throw new Error('media stopProcessing handler not registered');
-    }
-    
-    try {
-      // Call the media handler - it will set state.isProcessing = false
-      const result = await mediaHandler(context);
-
-      // Clean up video element references
-      _videoElForScheduler = null;
-      _canvasElForScheduler = null;
-      // Note: The modern scheduler (scheduler.js) automatically handles stopping
-      structuredLog('INFO', 'Video processing stopped.');
-
-      return result;
-    } catch (error) {
-      structuredLog('ERROR', 'Engine wrapper: stopProcessing failed', { 
-        error: error.message, 
-        stack: error.stack 
-      });
-      throw error;
-    }
-  });
-
-  registerCommandHandler('toggleProcessing', async (context) => {
-    structuredLog('DEBUG', 'Engine wrapper: toggleProcessing called');
-    const mediaHandler = handlers['__media_toggleProcessing'];
-    if (!mediaHandler) {
-      structuredLog('ERROR', 'media toggleProcessing handler not registered');
-      throw new Error('media toggleProcessing handler not registered');
-    }
-    
-    try {
-      return await mediaHandler(context);
-    } catch (error) {
-      structuredLog('ERROR', 'Engine wrapper: toggleProcessing failed', { 
-        error: error.message, 
-        stack: error.stack 
-      });
-      throw error;
-    }
-  });
 
   return engineInstance;
 }
