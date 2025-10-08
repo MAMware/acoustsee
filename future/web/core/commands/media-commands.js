@@ -168,7 +168,7 @@ export function registerMediaCommands(engine) {
         await mediaStopCamera(videoEl);
         return { cameraActive: false };
       } else {
-        await mediaStartCamera(videoEl, { facingMode: 'environment' });
+        await mediaStartCamera(videoEl, { facingMode: 'environment' }, s);
         return { cameraActive: true };
       }
     }, {

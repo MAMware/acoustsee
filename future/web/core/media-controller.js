@@ -6,7 +6,7 @@ import { notifyDev as notifyDebug } from '../ui/dev-panel/dev-notifier.js';
 
 let _cameraStream = null;
 
-export async function startCamera(videoEl, constraints = { facingMode: 'environment' }) {
+export async function startCamera(videoEl, constraints = { facingMode: 'environment' }, state = null) {
   try {
     const c = { video: { facingMode: constraints.facingMode }, audio: false };
     const stream = await navigator.mediaDevices.getUserMedia(c);
@@ -19,10 +19,10 @@ export async function startCamera(videoEl, constraints = { facingMode: 'environm
     addSessionError({ message: 'start-camera-failed', error: err?.message || String(err) });
     try {
       // Show an accessible, translated witness via the debug UI and announcements.
-      await notifyDebug({ key: 'camera.unable', persistent: true, tts: true });
+      await notifyDebug({ key: 'camera.unable', persistent: true, tts: true, state });
     } catch (e) {
       try {
-        const msg = await getText('camera.unable');
+        const msg = await getText('camera.unable', {}, state);
         announceMessage(msg);
       } catch (e2) {
         announceMessage('Unable to access camera.');

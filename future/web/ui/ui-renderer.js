@@ -15,8 +15,8 @@ export function setupUIRenderer(DOM, engine) {
       const languageName = (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function')
         ? (new Intl.DisplayNames([state.language || 'en-US'], { type: 'language' }).of(langId.split('-')[0]) || langId)
         : langId;
-      const text = await getText('button3.normal.text', { languageName }).catch(() => `Language: ${languageName}`);
-      const aria = await getText('button3.normal.aria', { languageName }).catch(() => text || `Language: ${languageName}`);
+      const text = await getText('button3.normal.text', { languageName }, state).catch(() => `Language: ${languageName}`);
+      const aria = await getText('button3.normal.aria', { languageName }, state).catch(() => text || `Language: ${languageName}`);
       const span = DOM.button3.querySelector('.button-text') || DOM.button3;
       if (span) span.textContent = text;
       DOM.button3.setAttribute('aria-label', aria || text);
@@ -31,7 +31,7 @@ export function setupUIRenderer(DOM, engine) {
       if (!DOM.button1) return; // grid may be shown on button1 in settings mode
       const grid = state.gridType || (state.availableGrids && state.availableGrids[0] && state.availableGrids[0].id) || 'default';
       const span = DOM.button1.querySelector('.button-text') || DOM.button1;
-      const text = await getText('button1.normal.gridText', { grid }).catch(() => `Grid: ${grid}`);
+      const text = await getText('button1.normal.gridText', { grid }, state).catch(() => `Grid: ${grid}`);
       if (span) span.textContent = text;
       DOM.button1.setAttribute('data-grid', grid);
     } catch (e) {
@@ -46,7 +46,7 @@ export function setupUIRenderer(DOM, engine) {
   DOM.button1.setAttribute('aria-pressed', isProcessing ? 'true' : 'false');
   const span = DOM.button1.querySelector('.button-text') || DOM.button1;
   const key = isProcessing ? 'button1.normal.stop.text' : 'button1.normal.start.text';
-  const text = await getText(key).catch(() => (isProcessing ? 'Stop' : 'Start'));
+  const text = await getText(key, {}, state).catch(() => (isProcessing ? 'Stop' : 'Start'));
       if (span) span.textContent = text;
     } catch (e) {
       console.warn('updateCameraButton failed', e);
@@ -59,13 +59,13 @@ export function setupUIRenderer(DOM, engine) {
       const enabled = !!state.autoFPS;
       const span = DOM.button4.querySelector('.button-text') || DOM.button4;
       if (enabled) {
-        const text = await getText('button4.normal.auto.on.text').catch(() => 'Auto');
+        const text = await getText('button4.normal.auto.on.text', {}, state).catch(() => 'Auto');
         if (span) span.textContent = text;
         DOM.button4.setAttribute('aria-pressed', 'true');
       } else {
         // show numeric FPS derived from updateInterval
         const fps = Math.round(1000 / (Number(state.updateInterval) || 1000 / 20));
-        const text = await getText('button4.normal.fps.text', { fps }).catch(() => `${fps} FPS`);
+        const text = await getText('button4.normal.fps.text', { fps }, state).catch(() => `${fps} FPS`);
         if (span) span.textContent = text;
         DOM.button4.setAttribute('aria-pressed', 'false');
       }
@@ -80,7 +80,7 @@ export function setupUIRenderer(DOM, engine) {
       const active = !!state.micStream;
       const span = DOM.button2.querySelector('.button-text') || DOM.button2;
       const key = active ? 'button2.normal.on.text' : 'button2.normal.off.text';
-      const text = await getText(key).catch(() => (active ? 'Mic On' : 'Mic Off'));
+      const text = await getText(key, {}, state).catch(() => (active ? 'Mic On' : 'Mic Off'));
       if (span) span.textContent = text;
       DOM.button2.setAttribute('aria-pressed', active ? 'true' : 'false');
     } catch (e) {

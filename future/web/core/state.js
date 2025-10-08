@@ -259,4 +259,4 @@ export function setMicStream(micStream) {
   }
 }
 
-export let lastTTSTime = 0; // Tracks the last TTS invocation time globally
+// Removed: lastTTSTime moved to utils/utils.js module scope (TTS-specific state)

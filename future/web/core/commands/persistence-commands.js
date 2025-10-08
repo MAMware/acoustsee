@@ -23,12 +23,12 @@ export function registerPersistenceCommands(engine) {
         motionThreshold: s.motionThreshold
       };
       localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
-      try { const msg = await getText('settings.saved').catch(() => null); if (msg) speakText(msg); } catch (_) {}
+      try { const msg = await getText('settings.saved', {}, s).catch(() => null); if (msg) speakText(msg, 'tts', s); } catch (_) {}
       structuredLog('INFO', 'Settings saved to localStorage', settingsToSave);
       return { saved: true };
     } catch (err) {
       structuredLog('ERROR', 'saveSettings error', { message: err.message });
-      try { const errorMsg = await getText('settings.save_error').catch(() => null); if (errorMsg) speakText(errorMsg); } catch (_) {}
+      try { const errorMsg = await getText('settings.save_error', {}, s).catch(() => null); if (errorMsg) speakText(errorMsg, 'tts', s); } catch (_) {}
       return { saved: false };
     }
   });
@@ -39,22 +39,22 @@ export function registerPersistenceCommands(engine) {
       if (savedSettingsJSON) {
         const parsed = JSON.parse(savedSettingsJSON);
         Object.assign(s, parsed);
-        try { await setLanguage(s.language); } catch (_) {}
-        try { await translatePage(document); } catch (_) {}
+        try { await setLanguage(s.language, s); } catch (_) {}
+        try { await translatePage(document, s); } catch (_) {}
         try {
           const api = getAudioApi();
           if (api && typeof api.setMaxNotes === 'function') api.setMaxNotes(s.maxNotes);
           else audioProcessor.resizeOscillatorPool(s.maxNotes);
         } catch (_) {}
-        try { const msg = await getText('settings.loaded').catch(() => null); if (msg) speakText(msg); } catch (_) {}
+        try { const msg = await getText('settings.loaded', {}, s).catch(() => null); if (msg) speakText(msg, 'tts', s); } catch (_) {}
         structuredLog('INFO', 'Settings loaded from localStorage', parsed);
       } else {
-        try { const msg = await getText('settings.load_none').catch(() => null); if (msg) speakText(msg); } catch (_) {}
+        try { const msg = await getText('settings.load_none', {}, s).catch(() => null); if (msg) speakText(msg, 'tts', s); } catch (_) {}
         structuredLog('INFO', 'No saved settings found in localStorage.');
       }
     } catch (err) {
       structuredLog('ERROR', 'Load settings error', { message: err.message });
-      try { const errorMsg = await getText('settings.load_error').catch(() => null); if (errorMsg) speakText(errorMsg); } catch (_) {}
+      try { const errorMsg = await getText('settings.load_error', {}, s).catch(() => null); if (errorMsg) speakText(errorMsg, 'tts', s); } catch (_) {}
     }
   });
 

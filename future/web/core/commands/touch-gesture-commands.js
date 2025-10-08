@@ -16,12 +16,12 @@ export function registerTouchGestureCommands(engine) {
   registerCommandHandler('toggleProcessing', async ({ state: s, payload }) => {
     if (s.isProcessing) {
       await dispatch('stopProcessing', payload); 
-      const msg = await getText('processing.stopped').catch(() => 'Stopped');
-      speakText(msg);
+      const msg = await getText('processing.stopped', {}, s).catch(() => 'Stopped');
+      speakText(msg, 'tts', s);
     } else {
       await dispatch('startProcessing', payload); //is this the correct way? dont we another method to stop/start like startCamera?
-      const msg = await getText('processing.started').catch(() => 'Started');
-      speakText(msg);
+      const msg = await getText('processing.started', {}, s).catch(() => 'Started');
+      speakText(msg, 'tts', s);
     }
   });
 
@@ -32,14 +32,14 @@ export function registerTouchGestureCommands(engine) {
       const synthName = s.availableEngines.find(e => e.id === s.synthesisEngine)?.name || s.synthesisEngine;
       
       const msg = await getText('status.full', {
-        status: await getText(statusKey),
+        status: await getText(statusKey, {}, s),
         grid: gridName,
         synth: synthName
-      });
-      speakText(msg);
+      }, s);
+      speakText(msg, 'tts', s);
     } catch (e) {
       structuredLog('ERROR', 'announceStatus failed', { error: e.message });
-      speakText("Could not announce status.");
+      speakText("Could not announce status.", 'tts', s);
     }
   });
 
@@ -49,16 +49,16 @@ export function registerTouchGestureCommands(engine) {
     }
     s.isSettingsMode = true;
     s.settings.currentCategoryIndex = 0; // Start at the first category
-    const msg = await getText('settings.enter').catch(() => 'Settings mode. Swipe left or right to choose a category.');
-    speakText(msg);
+    const msg = await getText('settings.enter', {}, s).catch(() => 'Settings mode. Swipe left or right to choose a category.');
+    speakText(msg, 'tts', s);
     await dispatch('announceCurrentSettingCategory');
   });
 
   registerCommandHandler('exitSettingsMode', async ({ state: s }) => {
     s.isSettingsMode = false;
     await dispatch('saveSettings'); // Auto-save on exit
-    const msg = await getText('settings.exit').catch(() => 'Exiting settings.');
-    speakText(msg);
+    const msg = await getText('settings.exit', {}, s).catch(() => 'Exiting settings.');
+    speakText(msg, 'tts', s);
   });
   
   registerCommandHandler('cycleSettingCategory', async ({ state: s, payload }) => {
@@ -100,9 +100,9 @@ export function registerTouchGestureCommands(engine) {
         const currentLangIndex = langs.indexOf(s.language);
         const nextLangIndex = (currentLangIndex + direction + langs.length) % langs.length;
         const newLang = langs[nextLangIndex];
-        await setLanguage(newLang); // This also saves it
+        await setLanguage(newLang, s); // This also saves it
         engine.setState({ language: newLang });
-        try { await translatePage(document); } catch (e) { /* best-effort */ }
+        try { await translatePage(document, s); } catch (e) { /* best-effort */ }
         break;
       case 'maxNotes':
         const current = Number(s.maxNotes) || 0;
@@ -122,8 +122,8 @@ export function registerTouchGestureCommands(engine) {
   registerCommandHandler('announceCurrentSettingCategory', async ({ state: s }) => {
     if (!s.isSettingsMode) return;
     const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
-    const categoryName = await getText(`settings.category.${categoryId}`).catch(() => categoryId);
-    speakText(categoryName);
+    const categoryName = await getText(`settings.category.${categoryId}`, {}, s).catch(() => categoryId);
+    speakText(categoryName, 'tts', s);
   });
   
   registerCommandHandler('announceCurrentSettingValue', async ({ state: s }) => {
@@ -142,18 +142,18 @@ export function registerTouchGestureCommands(engine) {
           valueText = s.availableLanguages.find(l => l.id === s.language)?.name || s.language;
           break;
         case 'maxNotes':
-          valueText = await getText('settings.value.notes', { count: s.maxNotes });
+          valueText = await getText('settings.value.notes', { count: s.maxNotes }, s);
           break;
         case 'motionThreshold':
           let sensitivity = 'Medium';
           if ((Number(s.motionThreshold) || 0) <= 40) sensitivity = 'High';
           if ((Number(s.motionThreshold) || 0) >= 80) sensitivity = 'Low';
           valueText = await getText('settings.value.sensitivity', {
-            level: await getText(`settings.sensitivity.${sensitivity.toLowerCase()}`)
-          });
+            level: await getText(`settings.sensitivity.${sensitivity.toLowerCase()}`, {}, s)
+          }, s);
           break;
       }
-      speakText(valueText);
+      speakText(valueText, 'tts', s);
     } catch (err) {
       structuredLog('ERROR', 'Failed to announce setting value', { error: err.message });
     }
@@ -172,13 +172,13 @@ export function registerTouchGestureCommands(engine) {
       
       trackFeatureUse('user-report', reportPayload); 
       
-      const msg = await getText('report.sending').catch(() => 'Thank you. Sending report.');
-      speakText(msg);
+      const msg = await getText('report.sending', {}, state).catch(() => 'Thank you. Sending report.');
+      speakText(msg, 'tts', state);
 
     } catch (err) {
       structuredLog('ERROR', 'Failed to send user report', { error: err.message });
-      const msg = await getText('report.error').catch(() => 'Sorry, the report could not be sent.');
-      speakText(msg);
+      const msg = await getText('report.error', {}, state).catch(() => 'Sorry, the report could not be sent.');
+      speakText(msg, 'tts', state);
     }
   });
 }

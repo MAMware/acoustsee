@@ -1,5 +1,8 @@
 import { TTS_COOLDOWN_MS } from '../core/constants.js';
-import { settings, lastTTSTime } from '../core/state.js';
+// File: utils/utils.js
+
+// Module-scoped state for TTS throttling (moved from core/state.js)
+let lastTTSTime = 0;
 import { structuredLog } from './logging.js';
 import { computeAnnounceDelay, deviceSummary } from './performance.js';
 
@@ -10,9 +13,11 @@ export const ANNOUNCE_REWRITE_DELAY_MS = 150;
 /**
  * Initializes language if not set, using available configs.
  * Call this once upfront (e.g., after loadConfigs in main.js) to avoid races.
+ * @param {Object} state - The application state object
  * @returns {string} The selected language ID.
  */
-export function initializeLanguageIfNeeded() {
+export function initializeLanguageIfNeeded(state) {
+  const settings = state;
   if (!settings.language) {
     structuredLog('WARN', 'Language not initialized; attempting persisted or default');
     // Try persisted user selection first
@@ -66,6 +71,7 @@ export function clearTranslationsCache() {
  * Contract:
  * - key: dot-notated translation key (e.g. 'powerOn.text').
  * - params: substitution parameters for placeholders in the translation.
+ * - state: The application state object (for language settings).
  *
  * Error modes:
  * - If the language file cannot be fetched the function returns the original
@@ -75,10 +81,12 @@ export function clearTranslationsCache() {
  *
  * @param {string} key - Translation key (dot-notated).
  * @param {Object} [params={}] - Params for placeholder replacement.
+ * @param {Object} state - The application state object.
  * @returns {Promise<string>} The formatted message, or key on failure.
  */
-export async function getText(key, params = {}) {
+export async function getText(key, params = {}, state) {
   try {
+    const settings = state;
     const languageId = settings.language;
     if (!languageId) {
       throw new Error('Language not set; call initializeLanguageIfNeeded first');
@@ -133,8 +141,10 @@ export async function getText(key, params = {}) {
  * Speaks the message via TTS if enabled, enforcing a 3-second cooldown.
  * @param {string} message - Message to speak.
  * @param {string} [type='tts'] - Type (for logging).
+ * @param {Object} state - The application state object.
  */
-export function speakText(message, type = 'tts') {
+export function speakText(message, type = 'tts', state) {
+  const settings = state;
   if (type === 'tts' && settings.ttsEnabled) {
     const now = Date.now();
     if (now - lastTTSTime < TTS_COOLDOWN_MS) { 
@@ -211,9 +221,14 @@ export async function preloadTranslations(languageId) {
 /**
  * Set active language and optionally persist to localStorage.
  * Ensures translations are preloaded into cache.
+ * @param {string} languageId - The language ID to set.
+ * @param {Object} state - The application state object.
+ * @param {Object} [options] - Optional configuration.
+ * @param {boolean} [options.persist=true] - Whether to persist to localStorage.
  */
-export async function setLanguage(languageId, { persist = true } = {}) {
+export async function setLanguage(languageId, state, { persist = true } = {}) {
   try {
+    const settings = state;
     settings.language = languageId;
     await preloadTranslations(languageId);
     if (persist && typeof localStorage !== 'undefined') {
@@ -230,10 +245,13 @@ export async function setLanguage(languageId, { persist = true } = {}) {
 
 /**
  * Translate DOM elements annotated with data-i18n and data-i18n-aria.
+ * @param {Document|Element} root - The root element to translate.
+ * @param {Object} state - The application state object.
  */
-export function translatePage(root = document) {
+export function translatePage(root = document, state) {
   try {
     if (!root || typeof root.querySelectorAll !== 'function') return;
+    const settings = state;
     const lang = settings.language;
     const translations = translationsCache[lang];
 

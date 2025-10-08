@@ -1,10 +1,10 @@
 // Adapter to show translated, accessible notifications inside the Dev Panel.
 import { getText, announceMessage, speakText } from '../../utils/utils.js';
 
-export async function notifyDev({ key, params = {}, persistent = false, tts = true } = {}) {
+export async function notifyDev({ key, params = {}, persistent = false, tts = true, state } = {}) {
   let text = key;
   try {
-    text = await getText(key, params);
+    text = await getText(key, params, state);
   } catch (e) {
     try { console.warn('notifyDev: getText failed', e); } catch (e2) {}
     text = key;
@@ -12,7 +12,7 @@ export async function notifyDev({ key, params = {}, persistent = false, tts = tr
 
   try { announceMessage(text); } catch (e) { try { console.warn('announceMessage failed', e); } catch (e2) {} }
   if (tts) {
-    try { speakText(text, 'tts'); } catch (e) { try { console.warn('speakText failed', e); } catch (e2) {} }
+    try { speakText(text, 'tts', state); } catch (e) { try { console.warn('speakText failed', e); } catch (e2) {} }
   }
 
   try {

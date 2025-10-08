@@ -16,7 +16,6 @@ import {
   showCriticalError, 
   isCriticalSystem 
 } from './utils/error-handling.js';
-import { setDOM, setDispatchEvent } from './core/context.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
 import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
 import AudioManager from './audio/audio-manager.js';
@@ -37,10 +36,10 @@ const ERROR_TIMEFRAME_MS = 2 * 60 * 1000; // Look at last 2 minutes
 const translationCache = {};
 
 // Cached getText wrapper
-async function getTextCached(key, params = {}) {
+async function getTextCached(key, params = {}, state) {
   const cacheKey = JSON.stringify({ key, params });
   if (translationCache[cacheKey]) return translationCache[cacheKey];
-  const result = await getText(key, params);
+  const result = await getText(key, params, state);
   translationCache[cacheKey] = result;
   return result;
 }
@@ -55,8 +54,6 @@ const DOM = {
   debugPanel: document.getElementById('debugPanel'),
     uiPanelRoot: document.getElementById('ui-panel-root'),
 };
-
-setDOM(DOM);
 
 /*
   Runtime Base Path Detection
@@ -122,8 +119,6 @@ export async function init() {
     // Wrap engine with smart ingest interceptor that leverages existing performance data
     const engine = createIngestInterceptor(baseEngine);
     
-    setDispatchEvent(engine.dispatch);
-    
     // Make engine globally available for UI components
     window.engine = engine;
 
@@ -155,10 +150,10 @@ export async function init() {
     });
 
     // Ensure language is initialized before UI translation
-    initializeLanguageIfNeeded();
+    initializeLanguageIfNeeded(settings);
     try {
-      await setLanguage(settings.language);
-      translatePage(document);
+      await setLanguage(settings.language, settings);
+      translatePage(document, settings);
     } catch (e) {
       structuredLog('WARN', 'setLanguage/translatePage failed', { error: e?.message || String(e) });
     }
@@ -169,9 +164,9 @@ export async function init() {
       if (!settings.gridType) missing.push('grids');
       if (!settings.synthesisEngine) missing.push('engines');
       if (!settings.language) missing.push('languages');
-      const msg = await getText('initMissingConfigs', { missing: missing.join(', ') });
+      const msg = await getText('initMissingConfigs', { missing: missing.join(', ') }, settings);
       announceMessage(msg);
-      if (settings.ttsEnabled) speakText(msg);
+      if (settings.ttsEnabled) speakText(msg, 'tts', settings);
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
 
@@ -258,7 +253,7 @@ export async function init() {
       // Helper: unlock audio and initialize audio subsystems inside user gesture
       async function handleAudioUnlock(event) {
         // Show initializing feedback
-        const initLabel = await getText('powerOn.initializing', {}).catch(() => 'Initializing...');
+        const initLabel = await getText('powerOn.initializing', {}, settings).catch(() => 'Initializing...');
         if (DOM.powerOn.querySelector('.power-label')) {
           DOM.powerOn.querySelector('.power-label').textContent = initLabel;
         } else {
@@ -300,8 +295,8 @@ export async function init() {
         if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
         if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';
         DOM.powerOn.setAttribute('aria-pressed', 'true');
-        const onMsg = await getText('audioOn').catch(() => 'Audio enabled');
-        speakText(onMsg);
+        const onMsg = await getText('audioOn', {}, settings).catch(() => 'Audio enabled');
+        speakText(onMsg, 'tts', settings);
         try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
 
         try {
@@ -315,9 +310,9 @@ export async function init() {
       async function handlePowerOnError(error, originalLabel) {
         addSessionError({ message: 'power-on-failed', error: error?.message || String(error) });
         structuredLog('ERROR', 'Power on handler failed', { error: error?.message || String(error) });
-        const failMsg = await getText('audio.unavailable').catch(() => 'Audio unavailable. Tap to try again.');
+        const failMsg = await getText('audio.unavailable', {}, settings).catch(() => 'Audio unavailable. Tap to try again.');
         announceMessage(failMsg);
-        speakText(failMsg);
+        speakText(failMsg, 'tts', settings);
         if (DOM.powerOn.querySelector('.power-label')) {
           DOM.powerOn.querySelector('.power-label').textContent = originalLabel;
         } else {
@@ -404,13 +399,13 @@ export async function init() {
     structuredLog('ERROR', 'init error', { message: specificMessage, data: errorData, stack: err.stack });
     originalConsole.error('init error:', err.message);
       try {
-      const errorText = await getText('init.tts.error');
-      speakText(errorText);
-      const initFail = await getTextCached('init.failed', { specificMessage }).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
+      const errorText = await getText('init.tts.error', {}, settings);
+      speakText(errorText, 'tts', settings);
+      const initFail = await getTextCached('init.failed', { specificMessage }, settings).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
       announceMessage(initFail);
     } catch (ttsErr) {
       originalConsole.error('TTS error:', ttsErr.message);
-      const initFail = await getTextCached('init.failed', { specificMessage }).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
+      const initFail = await getTextCached('init.failed', { specificMessage }, settings).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
       announceMessage(initFail);
     }
   }
