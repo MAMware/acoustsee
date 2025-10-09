@@ -54,107 +54,135 @@ export function registerMediaCommands(engine) {
 
     // The "Smart" Start Handler - SOLE OWNER of starting the processing lifecycle.
   registerCommandHandler('startProcessing', wrapAsyncHandler('startProcessing', async ({ state: s, payload }) => {
-    structuredLog('DEBUG', 'COMMAND: startProcessing handler called', { isProcessing: s.isProcessing, payload });
-    
-    if (s.isProcessing) {
-      structuredLog('WARN', 'COMMAND: startProcessing aborted - already processing');
-      return; // Prevent re-entry
-    }
-    
-    try {
-      s.isProcessing = true;
-      structuredLog('INFO', 'COMMAND: Start processing initiated.');
+      structuredLog('DEBUG', 'COMMAND: startProcessing handler called', { isProcessing: s.isProcessing, payload });
 
-      structuredLog('DEBUG', 'COMMAND: Requesting camera permissions...');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      _activeMediaStream = stream;
-      structuredLog('DEBUG', 'COMMAND: Camera stream acquired successfully.');
-
-      // Better DOM element resolution with fallback
-      let videoEl = payload?.videoEl;
-      if (!videoEl && typeof window !== 'undefined' && window.DOM?.videoFeed) {
-        videoEl = window.DOM.videoFeed;
-        structuredLog('DEBUG', 'COMMAND: Using DOM.videoFeed element');
-      } else if (!videoEl) {
-        // Create a temporary video element if none provided
-        videoEl = document.createElement('video');
-        videoEl.setAttribute('playsinline', 'true');
-        videoEl.setAttribute('muted', 'true');
-        structuredLog('DEBUG', 'COMMAND: Created temporary video element');
+      if (s.isProcessing) {
+        structuredLog('WARN', 'COMMAND: startProcessing aborted - already processing');
+        return; // Prevent re-entry
       }
 
-      videoEl.srcObject = _activeMediaStream;
-      structuredLog('DEBUG', 'COMMAND: Stream assigned to video element, waiting for play...');
-      
-      await videoEl.play();
-      structuredLog('INFO', 'COMMAND: Video stream is active and metadata loaded.');
-
-      // Allocate a reusable frame buffer for worker transfer path if enabled
       try {
-        const w = Number(videoEl.videoWidth) || 0;
-        const h = Number(videoEl.videoHeight) || 0;
-        if (s.workerTransferEnabled && w > 0 && h > 0) {
-          // Request allocation via engine command so it can be tracked and stored as metadata
-          engine.dispatch('allocateFrameBuffer', { width: w, height: h });
-        }
-      } catch (e) { /* best-effort */ }
+        structuredLog('INFO', 'COMMAND: Start processing initiated.');
 
-      // Publish source video size into state and keep it updated
-      const updateVideoSize = () => {
+        structuredLog('DEBUG', 'COMMAND: Requesting camera permissions...');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        _activeMediaStream = stream;
+        structuredLog('DEBUG', 'COMMAND: Camera stream acquired successfully.');
+
+        // Better DOM element resolution with fallback
+        let videoEl = payload?.videoEl;
+        if (!videoEl && typeof window !== 'undefined' && window.DOM?.videoFeed) {
+          videoEl = window.DOM.videoFeed;
+          structuredLog('DEBUG', 'COMMAND: Using DOM.videoFeed element');
+        } else if (!videoEl) {
+          // Create a temporary video element if none provided
+          videoEl = document.createElement('video');
+          videoEl.setAttribute('playsinline', 'true');
+          videoEl.setAttribute('muted', 'true');
+          structuredLog('DEBUG', 'COMMAND: Created temporary video element');
+        }
+
+        // Attach and play stream (play errors are non-fatal for autoplay policies)
+        try { videoEl.srcObject = _activeMediaStream; } catch (_) {}
+        try { await videoEl.play(); } catch (e) { /* ignore autoplay rejects */ }
+
+        // Mark processing state (serializable via engine.setState when available)
+        if (typeof engine.setState === 'function') {
+          engine.setState({ isProcessing: true });
+        } else {
+          s.isProcessing = true;
+        }
+
+        // Hand off to the new initializeVideoPipeline command for heavy lifting
+        await engine.dispatch('initializeVideoPipeline', { videoEl, stream });
+
+        structuredLog('INFO', 'COMMAND: startProcessing initiation completed.');
+      } catch (err) {
+        structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
+        if (_activeMediaStream) {
+          try { _activeMediaStream.getTracks().forEach(track => track.stop()); } catch (_) {}
+          _activeMediaStream = null;
+        }
+        if (typeof engine.setState === 'function') engine.setState({ isProcessing: false });
+        throw err; // Re-throw to help with debugging
+      }
+  }));
+
+    // New: initializeVideoPipeline - dedicated video pipeline initialization
+    registerCommandHandler('initializeVideoPipeline', wrapAsyncHandler('initializeVideoPipeline', async ({ state: s, payload }) => {
+      const { videoEl, stream } = payload || {};
+      if (!videoEl || !stream) {
+        throw new Error('initializeVideoPipeline requires { videoEl, stream } payload');
+      }
+
+      // Keep a module-scoped reference for teardown
+      _activeMediaStream = stream;
+
+      try {
+        structuredLog('INFO', 'COMMAND: Initializing video pipeline...');
+
+        // Publish source video size into state and keep it updated
+        const updateVideoSize = () => {
+          try {
+            const w = Number(videoEl.videoWidth) || 0;
+            const h = Number(videoEl.videoHeight) || 0;
+            if (w > 0 && h > 0) {
+              const cur = engine.getState().videoSize || {};
+              if (cur.width !== w || cur.height !== h) {
+                engine.setState({ videoSize: { width: w, height: h } });
+              }
+            }
+          } catch (_) {}
+        };
+        try {
+          updateVideoSize();
+          videoEl.addEventListener('loadedmetadata', updateVideoSize, { passive: true });
+          videoEl.addEventListener('resize', updateVideoSize, { passive: true });
+          videoEl.addEventListener('playing', updateVideoSize, { passive: true });
+        } catch (_) {}
+
+        // Allocate a reusable frame buffer for worker transfer path if enabled
         try {
           const w = Number(videoEl.videoWidth) || 0;
           const h = Number(videoEl.videoHeight) || 0;
-          if (w > 0 && h > 0) {
-            const cur = engine.getState().videoSize || {};
-            if (cur.width !== w || cur.height !== h) {
-              engine.setState({ videoSize: { width: w, height: h } });
+          if (s.workerTransferEnabled && w > 0 && h > 0) {
+            engine.dispatch('allocateFrameBuffer', { width: w, height: h });
+          }
+        } catch (e) { /* best-effort */ }
+
+        await initializeVideo({
+          videoElement: videoEl,
+          engine: engine,
+          getEngineState: () => engine.getState(),
+          getCurrentGrid: () => {
+            const state = engine.getState();
+            if (!state.availableGrids || state.availableGrids.length === 0) {
+              structuredLog('WARN', 'No grids available for getCurrentGrid');
+              return null;
             }
-          }
-        } catch (_) {}
-      };
-      try {
-        updateVideoSize();
-        videoEl.addEventListener('loadedmetadata', updateVideoSize, { passive: true });
-        videoEl.addEventListener('resize', updateVideoSize, { passive: true });
-        videoEl.addEventListener('playing', updateVideoSize, { passive: true });
-      } catch (_) {}
+            const currentGrid = state.availableGrids.find(grid => grid.id === state.gridType);
+            if (!currentGrid) {
+              structuredLog('WARN', 'Current grid not found', { gridType: state.gridType, availableGrids: state.availableGrids.map(g => g.id) });
+              return state.availableGrids[0];
+            }
+            return currentGrid;
+          },
+          registerWorker: window.__acoustseeDevPanelRegisterWorker,
+          motionThreshold: s.motionThreshold,
+        });
 
-      // Change to INFO level since this is important initialization information
-      structuredLog('INFO', 'COMMAND: Initializing video pipeline...');
-      await initializeVideo({
-        videoElement: videoEl,
-        engine: engine,
-        getEngineState: () => engine.getState(),
-        getCurrentGrid: () => {
-          const state = engine.getState();
-          if (!state.availableGrids || state.availableGrids.length === 0) {
-            structuredLog('WARN', 'No grids available for getCurrentGrid');
-            return null;
-          }
-          // Find the grid with the current gridType
-          const currentGrid = state.availableGrids.find(grid => grid.id === state.gridType);
-          if (!currentGrid) {
-            structuredLog('WARN', 'Current grid not found', { gridType: state.gridType, availableGrids: state.availableGrids.map(g => g.id) });
-            return state.availableGrids[0]; // Fallback to first available grid
-          }
-          return currentGrid;
-        },
-        registerWorker: window.__acoustseeDevPanelRegisterWorker,
-        motionThreshold: s.motionThreshold,
-      });
-      
-      structuredLog('INFO', 'COMMAND: startProcessing COMPLETED successfully.');
-
-    } catch (err) {
-      structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
-      if (_activeMediaStream) {
-        _activeMediaStream.getTracks().forEach(track => track.stop());
-        _activeMediaStream = null;
+        structuredLog('INFO', 'COMMAND: initializeVideoPipeline COMPLETED successfully.');
+        return { ok: true };
+      } catch (err) {
+        structuredLog('ERROR', 'COMMAND: initializeVideoPipeline FAILED.', { error: err.message, stack: err.stack });
+        // Best-effort cleanup of stream on failure
+        if (_activeMediaStream) {
+          try { _activeMediaStream.getTracks().forEach(t => { try { t.stop(); } catch (_) {} }); } catch (_) {}
+          _activeMediaStream = null;
+        }
+        throw err;
       }
-      s.isProcessing = false;
-      throw err; // Re-throw to help with debugging
-    }
-  }));
+    }));
 
   // The "Smart" Stop Handler - SOLE OWNER of stopping the processing lifecycle.
   registerCommandHandler('stopProcessing', ({ state: s, payload }) => {
