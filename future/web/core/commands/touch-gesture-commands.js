@@ -8,7 +8,7 @@ import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText, setLanguage, translatePage } from '../../utils/utils.js';
 import { getAllIdbLogs } from '../../utils/idb-logger.js';
 import { trackFeatureUse } from '../ingest.js';
-import * as audioProcessor from '../../audio/audio-processor.js';
+// Do not import audio-processor directly; use engine.audioApi
 
 export function registerTouchGestureCommands(engine) {
   const { registerCommandHandler, dispatch } = engine;
@@ -108,7 +108,15 @@ export function registerTouchGestureCommands(engine) {
         const current = Number(s.maxNotes) || 0;
         const next = Math.max(1, current + (direction > 0 ? 1 : -1));
         engine.setState({ maxNotes: next });
-        try { audioProcessor.resizeOscillatorPool(next); } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
+        try {
+          if (engine.audioApi && typeof engine.audioApi.resizeOscillatorPool === 'function') {
+            engine.audioApi.resizeOscillatorPool(next);
+          } else if (engine.audioApi && typeof engine.audioApi.setMaxNotes === 'function') {
+            engine.audioApi.setMaxNotes(next);
+          } else {
+            structuredLog('WARN', 'maxNotes: audioApi not available to update pool size');
+          }
+        } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
         break;
       case 'motionThreshold':
         let newThreshold = (Number(s.motionThreshold) || 20) + (direction * 20);

@@ -3,7 +3,7 @@
 
 import { structuredLog } from '../../utils/logging.js';
 import logger from '../../utils/logging.js';
-import * as audioProcessor from '../../audio/audio-processor.js';
+// Do not import audio-processor directly; use engine.audioApi provided at runtime
 
 export function registerAudioCommands(engine) {
   const { registerCommandHandler } = engine;
@@ -17,7 +17,8 @@ export function registerAudioCommands(engine) {
       if (api && typeof api.playCues === 'function') {
         await api.playCues(cues);
       } else {
-        await audioProcessor.playCues(cues);
+        structuredLog('WARN', 'audioPlayCues handler failed: audioApi not initialized');
+        return { played: false };
       }
       return { played: true, count: cues.length };
     } catch (e) {

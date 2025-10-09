@@ -5,8 +5,7 @@
 
 import { structuredLog } from '../../utils/logging.js';
 import { getText } from '../../utils/utils.js';
-import * as audioProcessor from '../../audio/audio-processor.js';
-import { getAudioApi, setSelectedSynthEngine } from '../../audio/audio-processor.js';
+// Do not import audio-processor directly; use engine.audioApi instead
 
 export function registerSettingsCommands(engine) {
   const { registerCommandHandler, dispatch } = engine;
@@ -55,7 +54,13 @@ export function registerSettingsCommands(engine) {
     
     if (currentState.availableEngines && currentState.availableEngines.find(e => e.id === newEngineId)) {
       engine.setState({ synthesisEngine: newEngineId });
-      try { setSelectedSynthEngine(newEngineId); } catch (_) {}
+      try {
+        if (engine.audioApi && typeof engine.audioApi.setSelectedSynthEngine === 'function') {
+          engine.audioApi.setSelectedSynthEngine(newEngineId);
+        } else {
+          structuredLog('WARN', 'setSynthEngine: audioApi.setSelectedSynthEngine not available');
+        }
+      } catch (_) {}
       structuredLog('INFO', 'DebugUI: Synth engine set', { synthesisEngine: newEngineId });
     } else {
       structuredLog('WARN', 'DebugUI: Synth engine not found or invalid', { 
@@ -70,9 +75,13 @@ export function registerSettingsCommands(engine) {
     if (!isNaN(maxNotes) && maxNotes >= 1 && maxNotes <= 100) {
       s.maxNotes = maxNotes;
       try {
-        const api = getAudioApi();
-        if (api && typeof api.setMaxNotes === 'function') api.setMaxNotes(s.maxNotes);
-        else audioProcessor.resizeOscillatorPool(s.maxNotes);
+        if (engine.audioApi && typeof engine.audioApi.setMaxNotes === 'function') {
+          engine.audioApi.setMaxNotes(s.maxNotes);
+        } else if (engine.audioApi && typeof engine.audioApi.resizeOscillatorPool === 'function') {
+          engine.audioApi.resizeOscillatorPool(s.maxNotes);
+        } else {
+          structuredLog('WARN', 'setMaxNotes: audioApi not available to update pool size');
+        }
       } catch (e) { structuredLog('WARN', 'setMaxNotes/resizeOscillatorPool failed', { error: e?.message }); }
       structuredLog('INFO', 'DebugUI: Max notes set', { maxNotes });
     }

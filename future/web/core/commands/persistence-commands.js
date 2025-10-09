@@ -5,7 +5,7 @@
 import { structuredLog } from '../../utils/logging.js';
 import { getAllIdbLogs } from '../../utils/idb-logger.js';
 import { setLanguage, translatePage, getText, speakText } from '../../utils/utils.js';
-import * as audioProcessor from '../../audio/audio-processor.js';
+// audio-processor module should not be imported directly from commands; use engine.audioApi
 
 export function registerPersistenceCommands(engine) {
   const { registerCommandHandler } = engine;
@@ -41,9 +41,11 @@ export function registerPersistenceCommands(engine) {
         try { await setLanguage(s.language, s); } catch (_) {}
         try { await translatePage(document, s); } catch (_) {}
         try {
-          const api = engine.audioApi;
-          if (api && typeof api.setMaxNotes === 'function') api.setMaxNotes(s.maxNotes);
-          else audioProcessor.resizeOscillatorPool(s.maxNotes);
+          if (engine.audioApi && typeof engine.audioApi.resizeOscillatorPool === 'function') {
+            engine.audioApi.resizeOscillatorPool(s.maxNotes);
+          } else {
+            structuredLog('WARN', 'loadSettings: audioApi not available to resize oscillator pool');
+          }
         } catch (_) {}
   try { const msg = await getText('settings.loaded', {}, s).catch(() => null); if (msg) speakText(s, msg, 'tts'); } catch (_) {}
         structuredLog('INFO', 'Settings loaded from localStorage', parsed);

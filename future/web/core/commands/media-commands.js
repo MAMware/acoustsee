@@ -9,7 +9,7 @@ import {
   showCriticalError 
 } from '../../utils/error-handling.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive, startMic, stopMic } from '../media-controller.js';
-import * as audioProcessor from '../../audio/audio-processor.js';
+// Do not import audio-processor directly in command modules; use engine.audioApi
 import { initializeVideo } from '../../video/frame-processor.js';
 
 // Core media command functionality
