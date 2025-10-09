@@ -6,7 +6,6 @@ import { structuredLog } from '../../utils/logging.js';
 import { getAllIdbLogs } from '../../utils/idb-logger.js';
 import { setLanguage, translatePage, getText, speakText } from '../../utils/utils.js';
 import * as audioProcessor from '../../audio/audio-processor.js';
-import { getAudioApi } from '../../audio/audio-processor.js';
 
 export function registerPersistenceCommands(engine) {
   const { registerCommandHandler } = engine;
@@ -42,7 +41,7 @@ export function registerPersistenceCommands(engine) {
         try { await setLanguage(s.language, s); } catch (_) {}
         try { await translatePage(document, s); } catch (_) {}
         try {
-          const api = getAudioApi();
+          const api = engine.audioApi;
           if (api && typeof api.setMaxNotes === 'function') api.setMaxNotes(s.maxNotes);
           else audioProcessor.resizeOscillatorPool(s.maxNotes);
         } catch (_) {}
