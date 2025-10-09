@@ -48,212 +48,26 @@ export function initializeDevPanel(arg1, arg2) {
   panel.style.display = 'none';
 
   // Activation handler: renders HTML, loads CSS, wires UI, and shows the panel.
-  const onAppPoweredOn = () => {
+  const onAppPoweredOn = async () => {
     console.log('Activating Dev Panel in response to app:poweredOn event.');
-    
+
     // Enable DEBUG level logging for the dev panel
     setLogLevel('DEBUG');
     structuredLog('INFO', 'Dev Panel: Log level set to DEBUG');
 
-    // 1) Render HTML structure
+    // 1) Fetch and render HTML structure from external template
     try {
-      panel.innerHTML = `
-        <div class="devpanel-main-content">
-          <div class="devpanel-header">
-            <h1>Developer Panel</h1>
-            <div id="devpanel-subtitle">Versions: Loading...</div>
-          </div>
-
-          <div class="devpanel-section state-section">
-            <h2 class="section-header">
-              <span>State Inspector</span>
-              <input type="text" placeholder="Filter" id="state-filter-external" class="header-filter" />
-              <button class="collapse-btn" data-target="state-content" aria-expanded="true" title="Collapse Inspector">-</button>
-            </h2>
-            <div id="state-content" class="section-content">
-              <!-- StateInspector component will be rendered here -->
-            </div>
-          </div>
-
-          <!-- Side-by-side Worker and Video Preview, always aligned -->
-          <div class="devpanel-row devpanel-row-balanced">
-            <div id="worker-explorer-container" class="devpanel-section worker-section">
-              <h2 class="section-header">
-                <span>Worker Performance</span>
-                <span class="section-header-spacer"></span>
-                <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
-              </h2>
-              <div id="worker-content" class="section-content">
-                <div id="worker-explorer-legend"></div>
-                <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
-              </div>
-            </div>
-
-            <div class="devpanel-section video-section">
-              <h2 class="section-header">
-                <span>Live Video Preview</span>
-                <span class="section-header-spacer"></span>
-                <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
-              </h2>
-              <div id="video-content" class="section-content video-content">
-                <!-- Replaced the <video> preview with a low-overhead processing preview canvas. -->
-                <div id="devpanel-preview-container" class="preview-container">
-                  <div class="preview-toggle-row">
-                    <input type="checkbox" id="devpanel-preview-toggle" aria-label="Show processing preview (low FPS)" />
-                    <label for="devpanel-preview-toggle">Processing Preview (2–5 FPS)</label>
-                  </div>
-                  <canvas id="devpanel-preview-canvas" width="320" height="240"></canvas>
-                  <p class="perf-note">Note: This preview samples the processing canvas at low FPS to avoid extra decoders.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="devpanel-section controls-section">
-            <h2 class="section-header"><span>Controls</span></h2>
-            <div class="section-content">
-              <div class="devpanel-actions-grid">
-                <button data-action="toggleProcessing" type="button">Start / Stop</button>
-                <button data-action="resumeAudio" type="button">Resume Audio</button>
-                <button data-action="saveSettings" type="button">Save Settings</button>
-                <button data-action="loadSettings" type="button">Load Settings</button>
-              </div>
-              <div class="controls-grid-2col">
-                <div class="control-column">
-                  <label>Operating Mode</label>
-                  <select id="mode-select">
-                    <option value="flow">Flow (Navigation)</option>
-                    <option value="focus">Focus (Identification)</option>
-                  </select>
-                  <label>Grid Type</label>
-                  <select id="grid-type-select"></select>
-                  <label>Motion Threshold</label>
-                  <div class="slider-container">
-                    <input id="motion-threshold-slider" type="range" min="20" max="120" step="20" value="20"><span id="motion-threshold-value">20</span>
-                  </div>
-                </div>
-                <div class="control-column">
-                  <label>Synth Engine</label>
-                  <select id="synth-engine-select"></select>
-                  <label>Max Notes</label>
-                  <div class="slider-container">
-                    <input id="max-notes-slider" type="range" min="1" max="64" value="16"><span id="max-notes-value">16</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="devpanel-row two-col">
-            <div class="devpanel-section performance-section">
-              <h2 class="section-header">
-                <span>Performance Controls</span>
-                <span class="section-header-spacer"></span>
-                <button class="collapse-btn" data-target="performance-controls-content" aria-expanded="true" title="Collapse Performance Controls">-</button>
-              </h2>
-              <div id="performance-controls-content" class="section-content">
-                <div class="performance-grid">
-                  <div class="control-column">
-                    <label>FPS Mode</label>
-                    <select id="fps-mode-select">
-                      <option value="auto">Auto (Adaptive)</option>
-                      <option value="manual">Manual</option>
-                    </select>
-                    <label>Target FPS (Manual)</label>
-                    <div class="slider-container">
-                      <input id="target-fps-slider" type="range" min="4" max="30" step="1" value="15">
-                      <span id="target-fps-value">15</span>
-                    </div>
-                  </div>
-                  <div class="control-column">
-                    <label>Frame Skip Rate</label>
-                    <div class="slider-container">
-                      <input id="frame-skip-slider" type="range" min="1" max="4" step="1" value="1">
-                      <span id="frame-skip-value">1</span>
-                    </div>
-                    <label>Resolution Scale</label>
-                    <div class="slider-container">
-                      <input id="resolution-scale-slider" type="range" min="0.25" max="1.0" step="0.25" value="1.0">
-                      <span id="resolution-scale-value">1.0</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="performance-actions">
-                  <button data-action="resetThrottling" type="button">Reset Throttling</button>
-                  <button data-action="applyThrottling" type="button">Apply Manual Throttling</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="devpanel-section ingest-section">
-              <h2 class="section-header">
-                <span>Performance Analytics</span>
-                <button class="collapse-btn" data-target="ingest-content" aria-expanded="true" title="Collapse Analytics">-</button>
-              </h2>
-              <div id="ingest-content" class="section-content">
-                <div class="ingest-grid">
-                  <div class="control-column">
-                    <label class="inline-checkbox"><input id="ingest-enabled-checkbox" type="checkbox" checked> <span>Analytics Enabled</span></label>
-                    <label class="inline-checkbox"><input id="battery-optimization-checkbox" type="checkbox" checked> <span>Battery Optimization</span></label>
-                    <label>Max Events/Second</label>
-                    <select id="ingest-rate-select">
-                      <option value="1">Minimal (1/sec)</option>
-                      <option value="2">Low Battery (2/sec)</option>
-                      <option value="5">Low (5/sec)</option>
-                      <option value="10" selected>Normal (10/sec)</option>
-                      <option value="30">High (30/sec)</option>
-                      <option value="60">Debug (60/sec)</option>
-                    </select>
-                  </div>
-                  <div class="control-column">
-                    <label>Event Categories</label>
-                    <div class="category-toggles">
-                      <label class="category-toggle">
-                        <input type="checkbox" data-category="user_workflow" checked>
-                        <span class="toggle-label">User Workflow</span>
-                      </label>
-                      <label class="category-toggle">
-                        <input type="checkbox" data-category="auto_optimization" checked>
-                        <span class="toggle-label">Auto Optimization</span>
-                      </label>
-                      <label class="category-toggle">
-                        <input type="checkbox" data-category="performance_critical">
-                        <span class="toggle-label">Performance Critical</span>
-                      </label>
-                      <label class="category-toggle">
-                        <input type="checkbox" data-category="performance_settings">
-                        <span class="toggle-label">Performance Settings</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                <div class="ingest-actions">
-                  <button data-action="updateIngestSettings" type="button">Apply Settings</button>
-                  <button data-action="exportIngestLogs" type="button">Export Analytics</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="devpanel-section logs-section">
-            <h2 class="section-header"><span>Live Logs</span></h2>
-            <div class="section-content">
-              <div class="log-controls">
-                <button id="log-pause-btn" type="button">Pause</button>
-                <button id="log-clear-btn" type="button">Clear</button>
-                <button id="log-export-btn" type="button">Export</button>
-              </div>
-              <div id="devpanel-log-view"></div>
-            </div>
-          </div>
-        </div>
-      `;
+      const resp = await fetch(new URL('./dev-panel.html', import.meta.url));
+      if (!resp.ok) throw new Error(`Failed to fetch template: ${resp.status} ${resp.statusText}`);
+      const html = await resp.text();
+      panel.innerHTML = html;
     } catch (e) {
+      // Preserve original fallback behavior using executeNonCriticalOperation
       return executeNonCriticalOperation('dev-panel', () => {
         throw e; // Re-throw to trigger fallback
       }, (error) => {
         const fallback = createMinimalFallback('dev-panel', error);
-        
+
         // Add basic controls for core accessibility functions
         const basicControls = document.createElement('div');
         basicControls.innerHTML = `
@@ -278,7 +92,7 @@ export function initializeDevPanel(arg1, arg2) {
             ">Log State</button>
           </div>
         `;
-        
+
         fallback.appendChild(basicControls);
         panel.appendChild(fallback);
         return; // Don't continue initialization
