@@ -12,16 +12,7 @@ import { availableEnginesData } from './synths/available-synths.js';
 
 let audioManager = null;
 let _config = {};
-let _audioApi = null;
 let _selectedSynthPlayFn = null;
-
-export function setAudioApi(api) {
-  _audioApi = api || null;
-}
-
-export function getAudioApi() {
-  return _audioApi;
-}
 
 // Allow UI/commands to select a global synth engine to apply to notes
 export function setSelectedSynthEngine(engineId) {
@@ -159,7 +150,8 @@ export async function initializeAudio(config = {}) {
     }
     
     structuredLog('INFO', 'Audio system initialized successfully');
-    return true; // Success indicator
+    // Return the initialized API surface so callers can invoke playCues.
+    return { playCues };
   }, {
     contextState: context?.state,
     hasAudioManager: !!audioManager

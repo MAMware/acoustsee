@@ -267,8 +267,9 @@ export async function init() {
         await audioManager.initialize();
         try {
           // Initialize audio processor using dependency injection via a config object.
-          const audioApi = await initializeAudio({ audioManager, maxNotes: settings.maxNotes, engineDispatch: engine.dispatch });
-          try { const { setAudioApi } = await import('./audio/audio-processor.js'); setAudioApi(audioApi); } catch(e) {}
+          const audioApi = await initializeAudio({ audioManager, maxNotes: settings.maxNotes });
+          // Attach the initialized audio API onto the engine for consumers.
+          engine.audioApi = audioApi;
         } catch (initErr) {
           // Handle critical audio system failures appropriately
           if (initErr instanceof AccessibilityError) {

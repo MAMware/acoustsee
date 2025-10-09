@@ -1,7 +1,6 @@
 // filepath: future/web/core/commands/sonification-commands.js
 // MODIFIED - Calculates duration and dispatches benchmark log. /R24925: Validate and clarify
 
-import { playCues } from '../../audio/audio-processor.js';
 import { structuredLog } from '../../utils/logging.js';
 
 /**
@@ -31,7 +30,13 @@ export function registerSonificationCommands(engine) {
       return; // Nothing to play
     }
     
-    // This is the bridge: call the audio API with the standardized data.
-    playCues(cuesToProcess);
+    // This is the bridge: call the audio API with the standardized data. Use
+    // the initialized API attached to the engine to ensure we use the active
+    // AudioContext and oscillator pool.
+    if (engine.audioApi && typeof engine.audioApi.playCues === 'function') {
+      engine.audioApi.playCues(cuesToProcess);
+    } else {
+      structuredLog('ERROR', 'Audio API not initialized on engine. Cannot play cues.');
+    }
   });
 }
