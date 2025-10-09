@@ -12,7 +12,7 @@ export const LOG_LEVELS = {
 
 // Version constants for different modules
 export const BUILD_VERSION = '0.8.8-simplerCues';
-export const AUDIO_VERSION = '0.8.2-simplerCues';
+export const AUDIO_VERSION = '0.8.2-simplerCues!';
 export const VIDEO_VERSION = '0.6-lucasKanadeFlow';
 export const UI_VERSION = '0.6.4-devHTML';
 export const LANGUAGES_VERSION = '0.2-spaEng';
