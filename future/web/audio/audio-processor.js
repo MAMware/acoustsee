@@ -419,19 +419,19 @@ function releaseOscillator(oscObj) {
  * @param {Array<Object>} cues - An array of cue objects from the frame processor. Each cue
  *   should have `objectType`, `pitch`, `intensity`, and `position`.
  */
-export async function playCues(payload) {
+export async function playCues(cues) { // The argument is now just the cues array
   const context = audioManager?.context;
-  
+
   // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
   if (Math.random() < 0.01) {
     structuredLog('DEBUG', 'playCues called', { 
       hasContext: !!context, 
       contextState: context?.state,
-      payloadType: Array.isArray(payload) ? 'array' : 'object',
-      payload: payload 
+      payloadType: Array.isArray(cues) ? 'array' : 'invalid',
+      cuesSample: Array.isArray(cues) ? cues.slice(0,3) : null
     });
   }
-  
+
   if (!context || context.state !== 'running') {
     structuredLog('WARN', 'playCues: AudioContext not running', { 
       hasContext: !!context, 
@@ -454,28 +454,18 @@ export async function playCues(payload) {
     }
   }
 
-  // The new payload can be a simple array (for Flow mode) or a complex object (for Focus mode)
-  const isFocusMode = payload.primaryCue && payload.secondaryCues;
-  
-  let primaryProfile, cuesToProcess;
-
-  if (isFocusMode) {
-    // In Focus Mode, the primary cue determines the instrument (timbre).
-    primaryProfile = soundProfileManifest[payload.primaryCue.objectType];
-    // The secondary cues are the "sheet music" that describes the object's form.
-    cuesToProcess = payload.secondaryCues;
-  } else {
-    // In Flow Mode, the payload is just a simple array of cues.
-    cuesToProcess = Array.isArray(payload) ? payload : [];
-  }
+  // cues should be an array. Find the primary cue (if any) via isPrimary flag
+  const cuesArray = Array.isArray(cues) ? cues : [];
+  const primaryCue = cuesArray.find(c => c && c.isPrimary);
+  const primaryProfile = primaryCue ? soundProfileManifest[primaryCue.objectType] : null;
 
   const notesBySynth = new Map();
   const maxNotes = Number(_config.maxNotes) || 12;
 
-  for (const cue of cuesToProcess.slice(0, maxNotes)) {
+  for (const cue of cuesArray.slice(0, maxNotes)) {
     // If in Focus mode, we force the synth from the primary object's profile.
     // Otherwise, in Flow mode, we look up the profile for each individual cue.
-    let profile = isFocusMode ? primaryProfile : (soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion']);
+    let profile = primaryProfile || (soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion']);
     if (!profile || typeof profile.playFunction !== 'function') continue;
 
     // Override with globally selected synth engine if provided

@@ -226,11 +226,12 @@ export async function initializeVideo(config) {
           const mainObject = objectResults.detectedObjects[0];
           const shapeResults = await simulateShapeAnalysis(mainObject);
 
-          // Part A: Create the Primary "Identity" Cue
+          // Part A: Create the Primary "Identity" Cue with an 'isPrimary' flag
           const primaryCue = {
             objectType: mainObject.label, // 'bottle' from our simulation
             intensity: mainObject.confidence,
-            position: mainObject.position
+            position: mainObject.position,
+            isPrimary: true
           };
 
           // Part B: Use the Grid as a "Sonic Sculptor" to create the "sheet music"
@@ -245,16 +246,17 @@ export async function initializeVideo(config) {
           if (secondaryCues.length === 0) {
             secondaryCues.push({ pitch: 440, intensity: 0.8, position: mainObject.position });
           }
-          
-          // In Focus mode, the payload is a complex object
-          dispatchPayload = { primaryCue, secondaryCues };
+
+          // Combine into a single standardized cues array (primary first)
+          const combinedCues = [primaryCue, ...secondaryCues];
+          dispatchPayload = { cues: combinedCues };
         }
       }
       
       if (dispatchPayload) {
-        structuredLog('INFO', 'Dispatching audioCuesReady', { cueCount: dispatchPayload.cues ? dispatchPayload.cues.length : (dispatchPayload.secondaryCues ? dispatchPayload.secondaryCues.length + 1 : 0), mode: state.currentMode });
+        structuredLog('INFO', 'Dispatching audioCuesReady', { cueCount: dispatchPayload.cues ? dispatchPayload.cues.length : 0, mode: state.currentMode });
         engine.dispatch('audioCuesReady', {
-          ...dispatchPayload, // This will spread either the cues array or the {primary, secondary} object
+          cues: dispatchPayload.cues || [],
           frameId: payload.frameId,
           startTime: payload.startTime
         });
