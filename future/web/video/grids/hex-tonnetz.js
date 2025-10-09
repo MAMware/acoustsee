@@ -85,33 +85,5 @@ export function mapFunction(frameData, width, height, prevFrameData, opts = {}) 
   return { cues };
 }
 
-// Legacy functions maintained for backward compatibility
-export function mapFrameToCues(frameData, width, height, prevFrameData, opts = {}) {
-  // DEPRECATED: Use mapFunction instead for proper tonnetz implementation
-  // This maintains basic motion mapping for backward compatibility
-  
-  // Since this is a legacy function and motion detection is now handled by workers,
-  // we'll provide a minimal fallback that doesn't require motion detection
-  const cues = [];
-  
-  // Simple fallback: create a single cue at screen center if frameData exists
-  if (frameData && width > 0 && height > 0) {
-    const cue = {
-      objectType: 'default_motion',
-      intensity: 0.5, // Default intensity
-      position: {
-        x: 0.0,  // Center of screen
-        y: 0.0,  // Center of screen  
-        z: 0.0
-      }
-    };
-    cues.push(cue);
-  }
-
-  return { cues };
-}
-
-export function mapFrameToHexTonnetz(frame, opts = {}) {
-  // DEPRECATED: Legacy stub function
-  return { cues: [], meta: { id: 'hex-tonnetz' } };
-}
+// Legacy functions removed — this module now exposes only `meta` and
+// `mapFunction` and expects analysis results via opts.movingRegions.

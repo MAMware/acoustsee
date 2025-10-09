@@ -31,9 +31,8 @@ export function loadAvailableGrids() {
     for (const r of results) {
       if (r.status === 'fulfilled' && r.value && r.value.m) {
         const { name, m } = r.value;
-        // Prefer standardized export name `mapFunction` and fall back to legacy
-        // names for backward compatibility. R17925 we should try not to hardcode, lets brainstorm how to
-        const mapFn = m.mapFunction || m.mapFrameToCircleOfFifths || m.mapFrameToHexTonnetz || m.mapFrameToCues || m.mapFrameToGrid;
+  // Only accept the standardized export name `mapFunction`.
+  const mapFn = m.mapFunction;
         const id = (m.meta && m.meta.id) || name;
         if (typeof mapFn === 'function') {
           grids.push({ id, mapFunction: mapFn, meta: m.meta || {} });
