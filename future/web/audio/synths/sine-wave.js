@@ -72,16 +72,19 @@
         panner.connect(masterGain);
       } catch (e) {}
 
-      // Start and schedule stop/cleanup
-      try { osc.start(now); } catch (e) { /* ignore double start */ }
-      oscData.started = true;
-      const stopTime = now + duration + release;
-      try { osc.stop(stopTime); } catch (e) {}
+      // Start and schedule stop/cleanup. Use precise ended event for cleanup.
+      try { 
+        osc.start(now); 
+        const stopTime = now + duration + release;
+        osc.stop(stopTime);
 
-      // After tail finishes, release entire pool item for reuse
-      const timeoutMs = Math.max(0, (stopTime - now) * 1000) + 50;
-      setTimeout(() => {
-        try { releaseOscillator && releaseOscillator(oscData); } catch (e) {}
-      }, timeoutMs);
+        // Use the 'ended' event for precise cleanup instead of setTimeout.
+        osc.onended = () => {
+          try { if (releaseOscillator) releaseOscillator(oscData); } catch (e) {}
+        };
+      } catch (e) { 
+        // If start fails (e.g., already started), immediately release.
+        try { if (releaseOscillator) releaseOscillator(oscData); } catch (ee) {}
+      }
     });
   }
