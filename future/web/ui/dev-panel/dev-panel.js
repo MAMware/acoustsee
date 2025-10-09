@@ -14,15 +14,8 @@ import { StateInspector } from './state-inspector.js';
 // Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
 
-// Log available version constants and fallbacks to help detect missing values early.
-console.log('dev-panel module loaded. Versions:', {
-  BUILD_VERSION,
-  AUDIO_VERSION,
-  VIDEO_VERSION,
-  UI_VERSION,
-  LANGUAGES_VERSION,
-  UTILS_VERSION
-});
+// Module loaded. Version information is read from engine.getState().buildInfo at runtime.
+console.log('dev-panel module loaded. Version info will be read from engine state at runtime.');
 
 export function initializeDevPanel(arg1, arg2) {
   // R24925 Support two call patterns for migration:
