@@ -98,6 +98,14 @@ export function playSawtoothPad(notes = [], ctx = {}) {
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(amp, now + attackTime);
     // This is a simplification; a real pad would have a decay/sustain phase
+    // Schedule stop and cleanup for this voice
+    try {
+      const stopTime = now + (note.duration || 0.5) + releaseTime;
+      try { osc.stop(stopTime); } catch (e) { /* ignore */ }
+      osc.onended = () => {
+        try { if (releaseOscillator) releaseOscillator(oscObj); } catch (e) {}
+      };
+    } catch (e) {}
   });
 }
 
@@ -115,15 +123,19 @@ function stopAllSawtoothVoices(oscillatorPool, releaseOscillator, audioContext, 
         oscObj.gain.gain.setValueAtTime(oscObj.gain.gain.value || 0, now);
         oscObj.gain.gain.linearRampToValueAtTime(0, now + 0.05); // 50ms fade
         
-        // Stop oscillator and release back to pool
-        setTimeout(() => {
-          try {
-            if (oscObj.osc) oscObj.osc.stop();
-          } catch (e) {
-            // Already stopped
+        // Stop oscillator and release back to pool (schedule immediate stop after fade)
+        try {
+          if (oscObj.osc) {
+            try { oscObj.osc.stop(now + 0.06); } catch (e) { /* ignore */ }
+            oscObj.osc.onended = () => {
+              try { if (releaseOscillator) releaseOscillator(oscObj); } catch (e) {}
+            };
+          } else {
+            if (releaseOscillator) releaseOscillator(oscObj);
           }
-          if (releaseOscillator) releaseOscillator(oscObj);
-        }, 60);
+        } catch (e) {
+          try { if (releaseOscillator) releaseOscillator(oscObj); } catch (ee) {}
+        }
         
         stoppedCount++;
       } catch (e) {

@@ -83,6 +83,11 @@ export function playFmSynthesis(notes, ctx = {}) {
     // Start the carrier oscillator
     try {
       oscData.osc.start(now);
+      // Schedule stop and cleanup for carrier
+      try { oscData.osc.stop(now + 0.5); } catch (e) { /* ignore */ }
+      oscData.osc.onended = () => {
+        try { if (ctx.releaseOscillator) ctx.releaseOscillator(oscData); } catch (e) {}
+      };
     } catch (e) {
       // ignore if already started
     }
@@ -169,9 +174,13 @@ export function playFmSynthesis(notes, ctx = {}) {
         // ignore connection failures
       }
       
-      // Start harmonic oscillator
+      // Start harmonic oscillator and schedule stop/cleanup
       try {
         harmonicOsc.osc.start(now);
+        try { harmonicOsc.osc.stop(now + 0.5); } catch (e) { /* ignore */ }
+        harmonicOsc.osc.onended = () => {
+          try { if (ctx.releaseOscillator) ctx.releaseOscillator(harmonicOsc); } catch (e) {}
+        };
       } catch (e) {
         // ignore if already started
       }

@@ -74,9 +74,10 @@
 
       // Start and schedule stop/cleanup. Use precise ended event for cleanup.
       try { 
-        osc.start(now); 
+        osc.start(now);
         const stopTime = now + duration + release;
-        osc.stop(stopTime);
+        // Schedule stop so 'onended' fires for cleanup
+        try { osc.stop(stopTime); } catch (e) { /* ignore */ }
 
         // Use the 'ended' event for precise cleanup instead of setTimeout.
         osc.onended = () => {
