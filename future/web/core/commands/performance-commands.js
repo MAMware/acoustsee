@@ -4,7 +4,6 @@
 // it runs only when called as toggleAutoFps ? 
 // how this benchmark reflect the device performance ?
 
-import { setAutoFpsBenchmark } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
 
 export function registerPerformanceCommands(engine) {
@@ -32,7 +31,8 @@ export function registerPerformanceCommands(engine) {
       const fps = Math.max(8, Math.min(30, Math.round(1000 / intervalMs)));
       s.updateInterval = 1000 / fps; // Store the interval, not the rounded FPS
       
-      setAutoFpsBenchmark({ intervalMs, sampleCount, safetyFactor: s.autoFpsBenchmark?.safetyFactor || 0.7 });
+  // Update benchmark through engine command handler to keep state changes traceable
+  engine.dispatch('setAutoFpsBenchmark', { intervalMs, sampleCount, safetyFactor: s.autoFpsBenchmark?.safetyFactor || 0.7 });
       
       return { fps, intervalMs };
     } catch (e) {

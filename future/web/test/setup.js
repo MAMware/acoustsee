@@ -8,3 +8,11 @@ console.warn = (...args) => {
   if (String(args[0]).includes('IndexedDB') || String(args[0]).includes('[IDB FALLBACK]')) return;
   originalWarn.apply(console, args);
 };
+
+// Minimal navigator.mediaDevices shim so tests that request getUserMedia don't throw
+if (typeof global.navigator === 'undefined') global.navigator = {};
+global.navigator.mediaDevices = global.navigator.mediaDevices || {
+  getUserMedia: jest.fn().mockResolvedValue({
+    getTracks: () => [{ stop: jest.fn() }]
+  })
+};

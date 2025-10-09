@@ -8,7 +8,7 @@ import { structuredLog } from '../utils/logging.js';
 import logger from '../utils/logging.js';
 import { getText, speakText, announceMessage } from '../utils/utils.js'; // <-- REDUCED IMPORTS
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive, startMic, stopMic } from './media-controller.js';
-import { setMicStream, setAutoFpsBenchmark, allocateFrameBuffer } from './state.js';
+// Removed direct state mutator imports; state updates must go through engine commands.
 import { getPreferredIntervalMs } from '../utils/performance.js';
 import * as audioProcessor from '../audio/audio-processor.js';
 import { registerTouchGestureCommands } from './commands/touch-gesture-commands.js'; 

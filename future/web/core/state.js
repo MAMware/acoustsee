@@ -197,66 +197,9 @@ export async function getLogs() {
   }).join('');
 }
 
-export function setStream(stream) {
-  settings.stream = stream;
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'setStream', { streamSet: !!stream });
-  }
-}
-
-export function setAutoFpsBenchmark({ intervalMs, sampleCount = 0, safetyFactor = 0.7 } = {}) {
-  settings.autoFpsBenchmark = settings.autoFpsBenchmark || {};
-  settings.autoFpsBenchmark.lastIntervalMs = intervalMs;
-  settings.autoFpsBenchmark.measuredAt = Date.now();
-  settings.autoFpsBenchmark.sampleCount = sampleCount;
-  settings.autoFpsBenchmark.safetyFactor = safetyFactor;
-  if (settings.debugLogging) structuredLog('INFO', 'setAutoFpsBenchmark', { settings: settings.autoFpsBenchmark });
-}
-
-/**
- * Set a frame processor function used by runtime benchmarks.
- * The function should have signature (frameData, w, h) => Promise|void.
- */
-export function setFrameProcessor(proc) {
-  settings._frameProcessor = proc;
-  if (settings.debugLogging) structuredLog('INFO', 'setFrameProcessor', { hasProcessor: !!proc });
-}
-
-/**
- * Allocate or replace a reusable frame buffer that other modules (benchmark,
- * processor) may use to avoid per-frame allocations. Returns the buffer.
- */
-export function allocateFrameBuffer(width, height) {
-  try {
-    const buf = new Uint8ClampedArray(Math.max(0, width) * Math.max(0, height) * 4);
-    settings._frameBuffer = buf;
-    if (settings.debugLogging) structuredLog('INFO', 'allocateFrameBuffer', { width, height });
-    return buf;
-  } catch (e) {
-    structuredLog('ERROR', 'allocateFrameBuffer failed', e);
-    return null;
-  }
-}
-
-export function setFrameBuffer(buf) {
-  settings._frameBuffer = buf;
-  if (settings.debugLogging) structuredLog('INFO', 'setFrameBuffer', { provided: !!buf });
-  return buf;
-}
-
-export function setAudioInterval(timerId) {
-  settings.audioTimerId = timerId;
-  if (settings.debugLogging) {
-    const ms = settings.updateInterval;
-    structuredLog('INFO', 'setAudioInterval', { timerId, updateIntervalMs: ms });
-  }
-}
-
-export function setMicStream(micStream) {
-  settings.micStream = micStream;
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'setMicStream', { micStreamSet: !!micStream });
-  }
-}
+// NOTE: Direct state mutators were intentionally removed. All state updates
+// must go through the engine command handlers (see future/web/core/commands/).
+// Keep the settings object exported; mutations should be performed by command
+// handlers which call engine.setState(...) so changes are traceable.
 
 // Removed: lastTTSTime moved to utils/utils.js module scope (TTS-specific state)

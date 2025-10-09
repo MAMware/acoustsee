@@ -174,12 +174,9 @@ export async function computeAutoIntervalBenchmark(video, canvas, processFrameWi
     const effectiveMs = Math.max(avgMs / safetyFactor, 1000 / 30);
     const targetFps = Math.max(8, Math.min(Math.floor(1000 / effectiveMs), 30));
 
-    try {
-      // Persist benchmark metadata including downscale factor and samples used
-      setAutoFpsBenchmark({ intervalMs: Math.round(1000 / targetFps), sampleCount: measuredCount, safetyFactor, downscaleFactor: scale });
-    } catch (e) {
-      // non-fatal
-    }
+    // Return computed metadata; callers should persist via engine commands
+    const computed = { intervalMs: Math.round(1000 / targetFps), sampleCount: measuredCount, safetyFactor, downscaleFactor: scale };
+    return computed.intervalMs;
 
     return 1000 / targetFps;
   } catch (e) {
@@ -209,7 +206,7 @@ export async function getPreferredIntervalMs({ forceBenchmark = false, maxAgeMs 
       const proc = settings._frameProcessor || null;
       if (video && canvas && proc) {
         const ms = await computeAutoIntervalBenchmark(video, canvas, proc);
-        if (ms && Number.isFinite(ms)) return ms;
+      if (ms && Number.isFinite(ms)) return ms;
       }
     } catch (e) {
       // fall back to baseline

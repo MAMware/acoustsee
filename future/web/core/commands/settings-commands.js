@@ -120,4 +120,63 @@ export function registerSettingsCommands(engine) {
       categories: Object.keys(categories) 
     });
   });
+
+  // --- Replacement handlers for state.js mutators (migrated from core/state.js)
+  registerCommandHandler('setMicStream', ({ payload }) => {
+    const { stream } = payload || {};
+    // Use engine.setState to ensure serializable state updates and change tracing
+    const current = engine.getState();
+    engine.setState({ micStream: stream });
+    structuredLog('INFO', 'State updated via command: setMicStream', { micStreamSet: !!stream });
+  });
+
+  registerCommandHandler('setAutoFpsBenchmark', ({ payload }) => {
+    const { intervalMs, sampleCount = 0, safetyFactor = 0.7 } = payload || {};
+    const prev = engine.getState().autoFpsBenchmark || {};
+    const newBenchmarkState = {
+      ...prev,
+      lastIntervalMs: intervalMs,
+      measuredAt: Date.now(),
+      sampleCount: typeof sampleCount === 'number' ? sampleCount : prev.sampleCount || 0,
+      safetyFactor: typeof safetyFactor === 'number' ? safetyFactor : prev.safetyFactor || 0.7
+    };
+    engine.setState({ autoFpsBenchmark: newBenchmarkState });
+    structuredLog('INFO', 'State updated via command: setAutoFpsBenchmark', { settings: newBenchmarkState });
+  });
+
+  registerCommandHandler('setStream', ({ payload }) => {
+    const { stream } = payload || {};
+    engine.setState({ stream });
+    structuredLog('INFO', 'State updated via command: setStream', { streamSet: !!stream });
+  });
+
+  registerCommandHandler('setFrameProcessor', ({ payload }) => {
+    const { proc } = payload || {};
+    // Store serializable descriptor only (e.g., id) to keep state JSON-serializable
+    const frameProcessorId = proc?.id ?? null;
+    engine.setState({ frameProcessorId });
+    structuredLog('INFO', 'State updated via command: setFrameProcessor', { frameProcessorId });
+  });
+
+  registerCommandHandler('allocateFrameBuffer', ({ payload }) => {
+    const { width = 0, height = 0 } = payload || {};
+    // Do not store raw buffers in state — only metadata about allocation
+    const frameBufferMeta = { width, height, allocatedAt: Date.now() };
+    engine.setState({ frameBuffer: frameBufferMeta });
+    structuredLog('INFO', 'State updated via command: allocateFrameBuffer', { frameBufferMeta });
+    return { frameBufferMeta };
+  });
+
+  registerCommandHandler('setFrameBuffer', ({ payload }) => {
+    const { bufMeta } = payload || {};
+    engine.setState({ frameBuffer: bufMeta || null });
+    structuredLog('INFO', 'State updated via command: setFrameBuffer', { hasFrameBuffer: !!bufMeta });
+  });
+
+  registerCommandHandler('setAudioInterval', ({ payload }) => {
+    const { timerId } = payload || {};
+    // Store timer id metadata only (primitive) to avoid storing functions or handles
+    engine.setState({ audioTimerId: timerId ?? null });
+    structuredLog('INFO', 'State updated via command: setAudioInterval', { audioTimerId: timerId ?? null });
+  });
 }

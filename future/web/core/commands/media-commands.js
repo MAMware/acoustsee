@@ -1,8 +1,7 @@
 // File: web/core/commands/media-commands.js
 // Handles commands related to starting, stopping, and processing media streams.
-// MAMware review R250905: microphone-controller.js seems better consolidated into media-controller.js
 
-import { settings, setMicStream, allocateFrameBuffer } from '../state.js';
+import { settings } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
 import { 
   executeCriticalOperation, 
@@ -89,6 +88,16 @@ export function registerMediaCommands(engine) {
       
       await videoEl.play();
       structuredLog('INFO', 'COMMAND: Video stream is active and metadata loaded.');
+
+      // Allocate a reusable frame buffer for worker transfer path if enabled
+      try {
+        const w = Number(videoEl.videoWidth) || 0;
+        const h = Number(videoEl.videoHeight) || 0;
+        if (s.workerTransferEnabled && w > 0 && h > 0) {
+          // Request allocation via engine command so it can be tracked and stored as metadata
+          engine.dispatch('allocateFrameBuffer', { width: w, height: h });
+        }
+      } catch (e) { /* best-effort */ }
 
       // Publish source video size into state and keep it updated
       const updateVideoSize = () => {
@@ -214,14 +223,12 @@ export function registerMediaCommands(engine) {
     try {
       if (s.micStream) {
         stopMic(s.micStream);
-        setMicStream(null);
-        s.micStream = null;
+        engine.dispatch('setMicStream', { stream: null });
         return { micActive: false };
       } else {
         const stream = await startMic();
         if (stream) {
-          setMicStream(stream);
-          s.micStream = stream;
+          engine.dispatch('setMicStream', { stream });
           return { micActive: true };
         }
         return { micActive: false };
