@@ -400,12 +400,14 @@ export function initializeDevPanel(arg1, arg2) {
         if (workerChartRenderLoopId === null) {
           lastRenderTime = performance.now();
           workerChartRenderLoopId = requestAnimationFrame(renderLoop);
+          try { panel.__workerChartRAFId = workerChartRenderLoopId; } catch (e) {}
         }
       };
       const stopChart = () => {
         if (workerChartRenderLoopId !== null) {
-          cancelAnimationFrame(workerChartRenderLoopId);
+          try { cancelAnimationFrame(workerChartRenderLoopId); } catch (e) {}
           workerChartRenderLoopId = null;
+          try { panel.__workerChartRAFId = null; } catch (e) {}
         }
       };
 
@@ -447,7 +449,7 @@ export function initializeDevPanel(arg1, arg2) {
       }
 
       // Also use Page Visibility API to globally pause the chart
-      document.addEventListener('visibilitychange', () => {
+      const visibilityHandler = () => {
         // Find the worker section element safely.
         const workerSection = panel.querySelector('#worker-explorer-container'); // <-- CORRECT SELECTOR
         if (!workerSection) return; // Defensive check
@@ -458,21 +460,27 @@ export function initializeDevPanel(arg1, arg2) {
           // Only restart if it was supposed to be running
           startChart();
         }
-      });
+      };
+      document.addEventListener('visibilitychange', visibilityHandler);
+      panel.__visibilityHandler = visibilityHandler;
 
       // Start chart when processing begins (workers become active)
-      engine.onStateChange && engine.onStateChange(state => {
-        const workerSection = panel.querySelector('#worker-explorer-container');
-        if (workerSection && !workerSection.classList.contains('collapsed')) {
-          if (state.isProcessing && workerChartRenderLoopId === null) {
-            // Processing started and chart isn't running - start it
-            startChart();
-          } else if (!state.isProcessing && workerChartRenderLoopId !== null) {
-            // Processing stopped - optionally keep chart running to show final data
-            stopChart(); // Uncomment if you want chart to stop when processing stops
+      if (engine.onStateChange) {
+        const onStateChangeCb = (state) => {
+          const workerSection = panel.querySelector('#worker-explorer-container');
+          if (workerSection && !workerSection.classList.contains('collapsed')) {
+            if (state.isProcessing && workerChartRenderLoopId === null) {
+              // Processing started and chart isn't running - start it
+              startChart();
+            } else if (!state.isProcessing && workerChartRenderLoopId !== null) {
+              // Processing stopped - optionally keep chart running to show final data
+              stopChart(); // Uncomment if you want chart to stop when processing stops
+            }
           }
-        }
-      });
+        };
+        const maybeUnsub = engine.onStateChange(onStateChangeCb);
+        if (typeof maybeUnsub === 'function') panel.__engineOnStateUnsubscribe = maybeUnsub;
+      }
 
     } catch (e) { console.error('Failed to wire collapse buttons or worker chart', e); }
 
@@ -657,12 +665,16 @@ export function initializeDevPanel(arg1, arg2) {
         if (previewToggle.checked) startPreview(4);
       }, 600);
 
-      engine.onStateChange((state) => {
-        if (!state) return;
-        if (state.isProcessing && previewToggle.checked && !panel.__previewInterval) {
-          startPreview(4);
-        }
-      });
+      if (engine.onStateChange) {
+        const previewOnState = (state) => {
+          if (!state) return;
+          if (state.isProcessing && previewToggle.checked && !panel.__previewInterval) {
+            startPreview(4);
+          }
+        };
+        const maybeUnsub = engine.onStateChange(previewOnState);
+        if (typeof maybeUnsub === 'function') panel.__previewOnStateUnsubscribe = maybeUnsub;
+      }
 
     } catch (e) { console.error('Failed to wire processing preview', e); }
 
@@ -957,23 +969,66 @@ export function initializeDevPanel(arg1, arg2) {
     }
   }
 
-  // Add cleanup handler for state inspector
-  const originalRemove = panel.remove;
-  panel.remove = function() {
-    try {
-      if (this.__stateInspector && typeof this.__stateInspector.dispose === 'function') {
-        this.__stateInspector.dispose();
-      }
-    } catch (_) {}
-    try {
-      if (typeof this.__stopPreview === 'function') {
-        this.__stopPreview();
-      }
-      if (typeof this.__detachPreviewVideoEvents === 'function') {
-        this.__detachPreviewVideoEvents();
-      }
-    } catch (_) {}
-    return originalRemove.call(this);
+  // Consolidated disposer - return a dispose() function that cleans up everything
+  return {
+    dispose() {
+      structuredLog('INFO', 'Disposing Dev Panel...');
+
+      // 1. Dispose of StateInspector
+      try {
+        if (panel.__stateInspector && typeof panel.__stateInspector.dispose === 'function') {
+          panel.__stateInspector.dispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 2. Dispose of wired actions from dev-panel.actions.js
+      try {
+        if (panel.__devActionsDispose && typeof panel.__devActionsDispose === 'function') {
+          panel.__devActionsDispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 3. Stop the video preview and clean up its resources
+      try {
+        if (typeof panel.__stopPreview === 'function') panel.__stopPreview();
+      } catch (e) { /* swallow */ }
+      try {
+        if (typeof panel.__detachPreviewVideoEvents === 'function') panel.__detachPreviewVideoEvents();
+      } catch (e) { /* swallow */ }
+
+      // 4. Stop the worker chart rendering loop
+      try {
+        if (typeof cancelAnimationFrame === 'function') {
+          // We stored RAF id in workerChartRenderLoopId inside setupUI scope; try to access via panel
+          const rafId = panel.__workerChartRAFId;
+          if (typeof rafId === 'number') cancelAnimationFrame(rafId);
+        }
+      } catch (e) { /* swallow */ }
+
+      // 5. Clean up the log viewer callback
+      try { setOutputCallback(null); } catch (e) { /* swallow */ }
+
+      // 6. Remove global event listeners (visibilitychange)
+      try {
+        if (typeof panel.__visibilityHandler === 'function') {
+          document.removeEventListener('visibilitychange', panel.__visibilityHandler);
+        }
+      } catch (e) { /* swallow */ }
+
+      // 7. Remove engine state change listener if present
+      try {
+        if (panel.__engineOnStateUnsubscribe && typeof panel.__engineOnStateUnsubscribe === 'function') {
+          panel.__engineOnStateUnsubscribe();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 8. Remove panel node from DOM
+      try {
+        if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+      } catch (e) { /* swallow */ }
+
+      structuredLog('INFO', 'Dev Panel disposed successfully.');
+    }
   };
 }
 

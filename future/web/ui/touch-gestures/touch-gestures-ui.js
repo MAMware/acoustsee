@@ -179,6 +179,45 @@ export function initializeAccessibleUI(arg1, arg2) {
       mainArea.addEventListener('pointerup', handlePointerUp);
       createSwipeDetector(mainArea, handleSwipe);
     }
+
+  // Named timers and swipe detector cleanup
+  return {
+    dispose() {
+      try {
+        if (mainArea && mainArea.removeEventListener) {
+          mainArea.removeEventListener('click', handleClick);
+          mainArea.removeEventListener('pointerdown', handlePointerDown);
+          mainArea.removeEventListener('pointerup', handlePointerUp);
+        }
+
+        // Clean up swipe detector listeners / instance if present
+        try {
+          if (swipeDetector) {
+            if (typeof swipeDetector.dispose === 'function') {
+              swipeDetector.dispose();
+            } else if (typeof swipeDetector.off === 'function') {
+              swipeDetector.off('swipe');
+            } else if (typeof swipeDetector.removeEventListener === 'function') {
+              swipeDetector.removeEventListener('swipe', () => {});
+            }
+            swipeDetector = null;
+          }
+        } catch (e) {
+          structuredLog('WARN', 'swipeDetector dispose failed', { message: String(e) });
+        }
+
+        // Clear timers
+        try { clearTimeout(tapTimer); } catch (_) {}
+        try { clearTimeout(longPressTimer); } catch (_) {}
+        tapTimer = 0;
+        longPressTimer = 0;
+
+        structuredLog('INFO', 'Touch Gestures UI disposed');
+      } catch (err) {
+        structuredLog('ERROR', 'touch-gestures dispose error', { message: String(err) });
+      }
+    }
+  };
 }
 // Provide a canonical export for the touch gestures initializer (legacy name)
 export const initializeTouchGesturesUI = initializeAccessibleUI;
