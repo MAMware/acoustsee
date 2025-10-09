@@ -12,7 +12,6 @@
 
 import { structuredLog } from './logging.js';
 import { deviceSummary } from './performance.js';
-import { BUILD_VERSION } from '../core/constants.js';
 
 // Module-scoped queue for analytics events to avoid ReferenceError from closures
 let eventQueue = [];
@@ -317,9 +316,9 @@ function createLightweightEvent(command, engine) {
     command,
     category,
     timestamp: Date.now(),
-    url: window.location.href,
-    app_version: BUILD_VERSION,
-    env: state.environment || 'production'
+  url: window.location.href,
+  app_version: state.buildInfo?.version || 'unknown',
+  env: state.environment || 'production'
   };
   
   // Add context without JSON.stringify
@@ -405,10 +404,10 @@ export function setupIngestErrorTracking() {
       lineno: event.lineno || 0,
       colno: event.colno || 0,
       stack: event.error?.stack || '',
-      url: window.location.href,
-      user_agent: navigator.userAgent,
-      app_version: BUILD_VERSION,
-      env: 'production',
+  url: window.location.href,
+  user_agent: navigator.userAgent,
+  app_version: state.buildInfo?.version || 'unknown',
+  env: 'production',
       timestamp: Date.now(),
       
       // Direct object instead of JSON.stringify
@@ -432,10 +431,10 @@ export function setupIngestErrorTracking() {
       lineno: 0,
       colno: 0,
       stack: event.reason?.stack || '',
-      url: window.location.href,
-      user_agent: navigator.userAgent,
-      app_version: BUILD_VERSION,
-      env: 'production',
+  url: window.location.href,
+  user_agent: navigator.userAgent,
+  app_version: state.buildInfo?.version || 'unknown',
+  env: 'production',
       timestamp: Date.now(),
       
       // Direct object instead of JSON.stringify

@@ -1,6 +1,4 @@
 // filepath: future/web/video/workers/frame-provider-worker.js
-import { installWorkerMonitor } from '../../ui/dev-panel/worker-instrument.js';
-
 let canvas = null, ctx = null, streamReader = null, reader = null;
 let isRunning = false, frameCounter = 0;
 
@@ -8,9 +6,8 @@ let isRunning = false, frameCounter = 0;
 let frameSkipRate = 1;     // Process every frame by default
 let resolutionScale = 1.0; // Full resolution by default
 
-const { instrumentSync } = installWorkerMonitor('FrameProvider');
-
-const provideFrame = instrumentSync(async () => {
+async function provideFrame() {
+  // Standalone frame provider; instrumentation removed to avoid ui -> video import
   if (!isRunning || !reader || !ctx) return;
   
   try {
@@ -61,7 +58,7 @@ const provideFrame = instrumentSync(async () => {
     console.error('Frame provider error:', e);
     isRunning = false;
   }
-});
+}
 
 async function loop() {
   await provideFrame();

@@ -5,6 +5,7 @@ import { availableGridsData } from '../video/grids/available-grids.js';
 import { availableEnginesData } from '../audio/synths/available-synths.js';
 import { availableLanguagesData } from '../languages/available-languages.js';
 import { computeDefaultUpdateInterval, computeDefaultMaxNotes, deviceSummary } from '../utils/performance.js';
+import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION, UTILS_VERSION } from './constants.js';
 
 export let settings = {
   debugLogging: true,
@@ -78,6 +79,16 @@ export let settings = {
   // --- END WIP ---
   motionThreshold: 20,
   maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value
+  ,
+  // Expose build/version information to the rest of the app via engine state.
+  buildInfo: {
+    version: BUILD_VERSION,
+    audio_version: AUDIO_VERSION,
+    video_version: VIDEO_VERSION,
+    ui_version: UI_VERSION,
+    languages_version: LANGUAGES_VERSION,
+    utils_version: UTILS_VERSION
+  }
 };
 
 // Detect local/test environments where telemetry should be disabled by default.

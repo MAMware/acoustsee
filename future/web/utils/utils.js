@@ -1,4 +1,3 @@
-import { TTS_COOLDOWN_MS } from '../core/constants.js';
 // File: utils/utils.js
 
 // Module-scoped state for TTS throttling (moved from core/state.js)
@@ -143,18 +142,27 @@ export async function getText(key, params = {}, state) {
  * @param {string} [type='tts'] - Type (for logging).
  * @param {Object} state - The application state object.
  */
-export function speakText(message, type = 'tts', state) {
-  const settings = state;
+/**
+ * speakText(state, message, type = 'tts')
+ * Note: signature changed to accept `state` as the first argument to avoid importing core constants.
+ */
+export function speakText(state, message, type = 'tts') {
+  const settings = state || {};
   if (type === 'tts' && settings.ttsEnabled) {
     const now = Date.now();
-    if (now - lastTTSTime < TTS_COOLDOWN_MS) { 
-    structuredLog('INFO', 'TTS cooldown active, speech skipped.', { message, lastTTSTime, now });
-    return;
-  }
+    const cooldown = settings.settings?.ttsCooldownMs || settings.ttsCooldownMs || 3000;
+    if (now - lastTTSTime < cooldown) {
+      structuredLog('INFO', 'TTS cooldown active, speech skipped.', { message, lastTTSTime, now, cooldown });
+      return;
+    }
     lastTTSTime = now;
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = settings.language;
-    window.speechSynthesis.speak(utterance);
+    try {
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.lang = settings.language;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      structuredLog('WARN', 'TTS speak failed', { error: e?.message || String(e) });
+    }
   }
 }
 

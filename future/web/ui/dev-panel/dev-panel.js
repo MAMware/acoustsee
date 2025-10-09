@@ -11,7 +11,7 @@ import { createAndWireActions } from './dev-panel.actions.js';
 import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
 import { StateInspector } from './state-inspector.js';
-import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION, UTILS_VERSION } from '../../core/constants.js';
+// Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
 
 // Log available version constants and fallbacks to help detect missing values early.
@@ -480,8 +480,9 @@ export function initializeDevPanel(arg1, arg2) {
     try {
       const subtitle = panel.querySelector('#devpanel-subtitle');
       const metaVer = document.querySelector('meta[name="acoustsee-version"]')?.getAttribute('content');
-      const ver = metaVer || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || BUILD_VERSION;
-      subtitle.textContent = `Build: ${ver} | Audio: ${AUDIO_VERSION || 'n/a'} | Video: ${VIDEO_VERSION || 'n/a'} | UI: ${UI_VERSION || 'n/a'} | Utils: ${UTILS_VERSION || 'n/a'}`;
+      const buildInfo = engine.getState().buildInfo || {};
+      const ver = metaVer || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || buildInfo.version || 'unknown';
+      subtitle.textContent = `Build: ${ver} | Audio: ${buildInfo.audio_version || 'n/a'} | Video: ${buildInfo.video_version || 'n/a'} | UI: ${buildInfo.ui_version || 'n/a'} | Utils: ${buildInfo.utils_version || 'n/a'}`;
     } catch (e) {}
 
     // --- Cost-Effective Processing Canvas Preview Wiring ---

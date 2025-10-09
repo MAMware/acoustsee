@@ -166,7 +166,7 @@ export async function init() {
       if (!settings.language) missing.push('languages');
       const msg = await getText('initMissingConfigs', { missing: missing.join(', ') }, settings);
       announceMessage(msg);
-      if (settings.ttsEnabled) speakText(msg, 'tts', settings);
+  if (settings.ttsEnabled) speakText(settings, msg, 'tts');
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
 
@@ -296,7 +296,7 @@ export async function init() {
         if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';
         DOM.powerOn.setAttribute('aria-pressed', 'true');
         const onMsg = await getText('audioOn', {}, settings).catch(() => 'Audio enabled');
-        speakText(onMsg, 'tts', settings);
+  speakText(settings, onMsg, 'tts');
         try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
 
         try {
@@ -312,7 +312,7 @@ export async function init() {
         structuredLog('ERROR', 'Power on handler failed', { error: error?.message || String(error) });
         const failMsg = await getText('audio.unavailable', {}, settings).catch(() => 'Audio unavailable. Tap to try again.');
         announceMessage(failMsg);
-        speakText(failMsg, 'tts', settings);
+  speakText(settings, failMsg, 'tts');
         if (DOM.powerOn.querySelector('.power-label')) {
           DOM.powerOn.querySelector('.power-label').textContent = originalLabel;
         } else {
@@ -399,8 +399,8 @@ export async function init() {
     structuredLog('ERROR', 'init error', { message: specificMessage, data: errorData, stack: err.stack });
     originalConsole.error('init error:', err.message);
       try {
-      const errorText = await getText('init.tts.error', {}, settings);
-      speakText(errorText, 'tts', settings);
+  const errorText = await getText('init.tts.error', {}, settings);
+  speakText(settings, errorText, 'tts');
       const initFail = await getTextCached('init.failed', { specificMessage }, settings).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
       announceMessage(initFail);
     } catch (ttsErr) {

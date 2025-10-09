@@ -1,6 +1,7 @@
 // Consolidated performance utilities: device heuristics (DOM-free) and
 // an optional DOM runtime benchmark. This replaces the older `device.js`.
-import { setAutoFpsBenchmark, settings } from '../core/state.js';
+// Note: Do not import from core/state.js here to respect subsystem boundaries.
+// Any state required by these functions must be passed in by callers.
 
 export function getUserAgent() {
   try { return (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'node'; } catch (e) { return 'node'; }
@@ -103,8 +104,9 @@ export async function computeAutoIntervalBenchmark(video, canvas, processFrameWi
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
     // Configurable test scale and sample count (small values => much less CPU/battery)
-    const scale = (settings && typeof settings.autoFpsDownscale === 'number') ? settings.autoFpsDownscale : 0.25;
-    const samples = (settings && typeof settings.autoFpsSamples === 'number') ? Math.max(1, Math.min(4, settings.autoFpsSamples)) : 2;
+  // `settings` must be provided by the caller via closure or arguments.
+  const scale = (typeof settings !== 'undefined' && settings && typeof settings.autoFpsDownscale === 'number') ? settings.autoFpsDownscale : 0.25;
+  const samples = (typeof settings !== 'undefined' && settings && typeof settings.autoFpsSamples === 'number') ? Math.max(1, Math.min(4, settings.autoFpsSamples)) : 2;
 
     const testW = Math.max(64, Math.floor(canvas.width * scale));
     const testH = Math.max(48, Math.floor(canvas.height * scale));
@@ -203,7 +205,8 @@ export async function getPreferredIntervalMs({ forceBenchmark = false, maxAgeMs 
     try {
       const video = (typeof document !== 'undefined') ? document.getElementById('videoFeed') : null;
       const canvas = (typeof document !== 'undefined') ? document.getElementById('frameCanvas') : null;
-      const proc = settings._frameProcessor || null;
+    // Caller should attach a `_frameProcessor` to the provided settings object if available
+    const proc = (typeof settings !== 'undefined' && settings && settings._frameProcessor) ? settings._frameProcessor : null;
       if (video && canvas && proc) {
         const ms = await computeAutoIntervalBenchmark(video, canvas, proc);
       if (ms && Number.isFinite(ms)) return ms;
