@@ -203,8 +203,10 @@ export function registerMediaCommands(engine) {
     
     // CRITICAL FIX: Send empty cues to all synths to force voice cleanup
     try {
-      audioProcessor.playCues([]);  // Empty array stops all voices
-      structuredLog('DEBUG', 'Sent empty cues array to stop synth voices');
+      if (engine.audioApi && typeof engine.audioApi.playCues === 'function') {
+        engine.audioApi.playCues([]); // Send empty array to stop all voices
+        structuredLog('DEBUG', 'Sent empty cues array to stop synth voices');
+      }
     } catch (err) {
       structuredLog('ERROR', 'Failed to stop synth voices', { error: err.message });
     }

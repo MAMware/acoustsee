@@ -152,7 +152,7 @@ export async function initializeAudio(config = {}) {
     structuredLog('INFO', 'Audio system initialized successfully');
     // Return the initialized API surface so callers can invoke playCues
     // and allow commands to adjust runtime settings such as pool size.
-    return { playCues, resizeOscillatorPool };
+    return { playCues, resizeOscillatorPool, setSelectedSynthEngine };
   }, {
     contextState: context?.state,
     hasAudioManager: !!audioManager
