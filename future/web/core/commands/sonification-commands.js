@@ -34,6 +34,7 @@ export function registerSonificationCommands(engine) {
     // the initialized API attached to the engine to ensure we use the active
     // AudioContext and oscillator pool.
     if (engine.audioApi && typeof engine.audioApi.playCues === 'function') {
+      structuredLog('DEBUG', 'audioCuesReady -> invoking playCues', { hasAudioApi: !!engine.audioApi, playCuesIsFunction: typeof engine.audioApi.playCues });
       engine.audioApi.playCues(cuesToProcess);
     } else {
       structuredLog('ERROR', 'Audio API not initialized on engine. Cannot play cues.');

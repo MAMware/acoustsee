@@ -391,6 +391,11 @@ function releaseOscillator(oscObj) {
 export async function playCues(cues) { // The argument is now just the cues array
   const context = audioManager?.context;
 
+  // Lightweight debug: report that playCues has been entered and the AudioContext state
+  try {
+    structuredLog('DEBUG', 'playCues entered', { contextState: context?.state || 'no-context', receivedType: Array.isArray(cues) ? 'array' : typeof cues });
+  } catch (e) { /* best-effort logging */ }
+
   // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
   if (Math.random() < 0.01) {
     structuredLog('DEBUG', 'playCues called', { 
