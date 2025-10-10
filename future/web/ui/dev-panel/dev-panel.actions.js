@@ -341,6 +341,74 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         attachedHandlers.push({ el: sandboxPan, type: 'input', fn: handler });
       }
     } catch (e) { console.error('Failed to wire Synth Sandbox sliders', e); }
+
+      // --- Add this block for Touch Pad logic ---
+      try {
+        const padArea = panel.querySelector('#touch-pad-area');
+        let isPadActive = false;
+
+        const generateCuesFromPad = (e) => {
+          try {
+            if (!isPadActive) return;
+            const state = engine.getState && engine.getState();
+            const currentGrid = state && state.availableGrids && state.availableGrids.find(g => g.id === state.gridType);
+
+            if (!currentGrid || typeof currentGrid.mapFunction !== 'function') {
+              structuredLog('WARN', 'Touch Pad: No valid grid selected.');
+              return;
+            }
+
+            const rect = padArea.getBoundingClientRect();
+            const x = (e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX)) - rect.left;
+            const y = (e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY)) - rect.top;
+
+            // Simulate the data structure from the motion-worker
+            const mockMotionResults = {
+              movingRegions: [{
+                x: x,
+                y: y,
+                intensity: 100 // Use a high, fixed intensity for testing
+              }]
+            };
+
+            // Use the selected grid to generate cues
+            const gridOutput = currentGrid.mapFunction(null, rect.width, rect.height, null, mockMotionResults);
+
+            if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
+              // Dispatch using the known-good audioPlayCues command
+              engine.dispatch && engine.dispatch('audioPlayCues', { cues: gridOutput.cues });
+            }
+          } catch (err) {
+            structuredLog('ERROR', 'Touch Pad generate error', { error: err?.message || String(err) });
+          }
+        };
+
+        const onPointerDown = (e) => {
+          isPadActive = true;
+          try { padArea.setPointerCapture && padArea.setPointerCapture(e.pointerId); } catch (_) {}
+          generateCuesFromPad(e);
+        };
+
+        const onPointerUp = (e) => {
+          isPadActive = false;
+          try { padArea.releasePointerCapture && padArea.releasePointerCapture(e.pointerId); } catch (_) {}
+          engine.dispatch && engine.dispatch('audioPlayCues', { cues: [] }); // Stop sound on release
+        };
+        
+        if (padArea) {
+          padArea.addEventListener('pointerdown', onPointerDown);
+          padArea.addEventListener('pointermove', generateCuesFromPad);
+          padArea.addEventListener('pointerup', onPointerUp);
+          padArea.addEventListener('pointerleave', onPointerUp); // Also stop on leave
+
+          // Add to cleanup
+          attachedHandlers.push({ el: padArea, type: 'pointerdown', fn: onPointerDown });
+          attachedHandlers.push({ el: padArea, type: 'pointermove', fn: generateCuesFromPad });
+          attachedHandlers.push({ el: padArea, type: 'pointerup', fn: onPointerUp });
+          attachedHandlers.push({ el: padArea, type: 'pointerleave', fn: onPointerUp });
+        }
+
+      } catch (e) { console.error('Failed to wire Touch Pad', e); }
   } catch (e) {
     console.error('createAndWireActions: error wiring controls', e);
   }
