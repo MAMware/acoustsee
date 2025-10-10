@@ -8,10 +8,11 @@ import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparklin
 import { structuredLog } from '../../utils/logging.js';
 
 export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
-  const actionsContainer = panel.querySelector('.devpanel-actions-grid');
+  // There may be multiple action grids (e.g., Synth Sandbox and Controls).
+  const actionsContainers = panel.querySelectorAll('.devpanel-actions-grid');
   const ingestActions = panel.querySelector('.ingest-actions');
-  if (!actionsContainer) {
-    console.error('createAndWireActions: Could not find .devpanel-actions-grid container in the provided panel.');
+  if (!actionsContainers || actionsContainers.length === 0) {
+    console.error('createAndWireActions: Could not find any .devpanel-actions-grid containers in the provided panel.');
     return { dispose() {} };
   }
 
@@ -27,8 +28,8 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   const delegatedClick = (ev) => {
     const btn = ev.target.closest && ev.target.closest('button[data-action]');
     if (!btn) return;
-    // Check if button is in either actionsContainer or ingestActions
-    const isInActions = actionsContainer.contains(btn) || (ingestActions && ingestActions.contains(btn));
+  // Check if button is in any of the actionsContainers or ingestActions
+  const isInActions = Array.from(actionsContainers).some(c => c.contains(btn)) || (ingestActions && ingestActions.contains(btn));
     if (!isInActions) return;
     
     const action = btn.getAttribute('data-action');
@@ -241,8 +242,13 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         break;
     }
   };
-  actionsContainer.addEventListener('click', delegatedClick);
-  attachedHandlers.push({ el: actionsContainer, type: 'click', fn: delegatedClick });
+  // Attach delegated click to all action grids
+  Array.from(actionsContainers).forEach(container => {
+    try {
+      container.addEventListener('click', delegatedClick);
+      attachedHandlers.push({ el: container, type: 'click', fn: delegatedClick });
+    } catch (e) { /* ignore */ }
+  });
   
   // Also attach to ingestActions for Export Analytics button
   if (ingestActions) {
