@@ -398,7 +398,7 @@ function releaseOscillator(oscObj) {
  * @param {Array<Object>} cues - An array of cue objects from the frame processor. Each cue
  *   should have `objectType`, `pitch`, `intensity`, and `position`.
  */
-export async function playCues(cues) { // The argument is now just the cues array
+export function playCues(cues) { // The argument is now just the cues array
   const context = audioManager?.context;
 
   // Lightweight debug: report that playCues has been entered and the AudioContext state
@@ -417,25 +417,8 @@ export async function playCues(cues) { // The argument is now just the cues arra
   }
 
   if (!context || context.state !== 'running') {
-    structuredLog('WARN', 'playCues: AudioContext not running', { 
-      hasContext: !!context, 
-      state: context?.state 
-    });
-    
-    // Try to resume the context if it's suspended
-    if (context && context.state === 'suspended') {
-      structuredLog('INFO', 'playCues: Attempting to resume suspended AudioContext');
-      try {
-        await context.resume();
-        structuredLog('INFO', 'playCues: AudioContext resumed successfully', { state: context.state });
-        // Continue with audio processing after successful resume
-      } catch (error) {
-        structuredLog('ERROR', 'playCues: Failed to resume AudioContext', { error: error.message });
-        return;
-      }
-    } else {
-      return;
-    }
+    structuredLog('WARN', 'playCues: AudioContext not running. Skipping.', { state: context?.state });
+    return;
   }
 
   // cues should be an array. Find the primary cue (if any) via isPrimary flag

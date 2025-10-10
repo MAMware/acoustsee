@@ -9,13 +9,13 @@ export function registerAudioCommands(engine) {
   const { registerCommandHandler } = engine;
 
   // Play cues handler - invokes audio subsystem to render cues
-  registerCommandHandler('audioPlayCues', async ({ state: s, payload }) => {
+  registerCommandHandler('audioPlayCues', ({ state: s, payload }) => {
     try {
       const cues = payload?.cues || [];
       if (!Array.isArray(cues) || cues.length === 0) return { played: false };
       const api = engine.audioApi;
       if (api && typeof api.playCues === 'function') {
-        await api.playCues(cues);
+        api.playCues(cues);
       } else {
         structuredLog('WARN', 'audioPlayCues handler failed: audioApi not initialized');
         return { played: false };
