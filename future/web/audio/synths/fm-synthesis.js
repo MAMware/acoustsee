@@ -26,15 +26,6 @@ export function playFmSynthesis(notes, ctx = {}) {
   const now = audioContext.currentTime;
   const releaseTime = 0.05; // seconds for fade-out
 
-  // Fade out / mark pool oscillators inactive to avoid clicks
-  oscillatorPool.forEach(o => {
-    if (o && o.gain && typeof o.gain.gain.cancelScheduledValues === 'function') {
-      o.gain.gain.cancelScheduledValues(now);
-      o.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
-    }
-    if (o) o.active = false;
-  });
-
   // Normalize notes: accept pitch / freq / frequency and intensity / amplitude
   // Note: spatial information is provided via `position: { x, y, z }`. Use
   // position.x as the azimuth value for panning. We normalize into a local

@@ -37,19 +37,7 @@ export function playSawtoothPad(notes = [], ctx = {}) {
   }
 
   // First, gracefully release any notes that are currently playing from this synth.
-  if (oscillatorPool && Array.isArray(oscillatorPool)) {
-    oscillatorPool.forEach(oscObj => {
-      if (oscObj.state === 'active' && oscObj.synthId === 'sawtooth-pad') {
-        try {
-          oscObj.gain.gain.cancelScheduledValues(now);
-          oscObj.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
-          setTimeout(() => { 
-            try { releaseOscillator && releaseOscillator(oscObj); } catch (e) {}
-          }, releaseTime * 1000);
-        } catch (e) {}
-      }
-    });
-  }
+  
 
   // Then, play the new notes.
   notes.forEach(note => {

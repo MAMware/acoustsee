@@ -70,11 +70,14 @@ export function playStrings(notes = [], ctx = {}) {
 
     const feedback = ac.createGain();
     // decay near 0.98-0.995 is long; lower values shorten sustain
-  // Enforce safe feedback range 0.85 - 0.95 (see audio README rules)
-  feedback.gain.value = Math.max(0.85, Math.min(0.95, decay));
+    // Enforce safe feedback range 0.85 - 0.95 (see audio README rules)
+    const safeDecay = Math.max(0.85, Math.min(note.decay || decay || 0.9, 0.95));
+    feedback.gain.value = safeDecay;
 
-    const outGain = ac.createGain();
-    outGain.gain.value = amp;
+  const outGain = ac.createGain();
+  // Enforce a hard cap on amplitude to avoid clipping and runaway levels
+  const finalAmp = Math.min(0.15, amp); // Hard cap at 0.15
+  outGain.gain.value = finalAmp;
 
     // Optional stereo panner if available (guarded)
     let panner = null;
