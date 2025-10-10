@@ -109,6 +109,7 @@ export function initializeDevPanel(arg1, arg2) {
             const durationSlider = panel.querySelector('#pad-duration');
             const durationValue = panel.querySelector('#pad-duration-value');
             let isPadActive = false;
+            let padStartTime = null; // Track when touch/click started
 
             // Wire up slider display
             let _padDurationHandler = null;
@@ -136,6 +137,7 @@ export function initializeDevPanel(arg1, arg2) {
                   const padDur = durationSlider ? parseFloat(durationSlider.value) : undefined;
                   if (typeof padDur === 'number' && !Number.isNaN(padDur)) {
                     gridOutput.cues.forEach(c => { c.duration = c.duration || padDur; });
+                    structuredLog('DEBUG', 'Touch Pad: Duration attached to cues', { duration: padDur, cueCount: gridOutput.cues.length });
                   }
                   engine.dispatch && engine.dispatch('audioPlayCues', { cues: gridOutput.cues });
                 }
@@ -144,12 +146,22 @@ export function initializeDevPanel(arg1, arg2) {
 
             const onPointerDown = (e) => {
               isPadActive = true;
+              padStartTime = performance.now(); // Record start time
               try { padArea.setPointerCapture && padArea.setPointerCapture(e.pointerId); } catch (_) {}
               generateCuesFromPad(e);
             };
 
             const onPointerUp = (e) => {
               isPadActive = false;
+              // Log the touch/click duration for debugging
+              if (padStartTime !== null) {
+                const duration = performance.now() - padStartTime;
+                structuredLog('DEBUG', 'Touch Pad: Interaction ended', { 
+                  interactionDuration: Math.round(duration), 
+                  expectedNoteDuration: durationSlider ? parseFloat(durationSlider.value) : 'unknown' 
+                });
+                padStartTime = null;
+              }
               try { padArea.releasePointerCapture && padArea.releasePointerCapture(e.pointerId); } catch (_) {}
               engine.dispatch && engine.dispatch('audioPlayCues', { cues: [] });
             };
