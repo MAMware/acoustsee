@@ -88,7 +88,7 @@ export function playSawtoothPad(notes = [], ctx = {}) {
     // This is a simplification; a real pad would have a decay/sustain phase
     // Schedule stop and cleanup for this voice
     try {
-      const stopTime = now + (note.duration || 0.5) + releaseTime;
+  const stopTime = now + (note.duration || 5.0) + releaseTime; // Use a long default for testing
       try { osc.stop(stopTime); } catch (e) { /* ignore */ }
       osc.onended = () => {
         try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscObj.id, synth: 'sawtooth-pad' }); } catch (_) {}
