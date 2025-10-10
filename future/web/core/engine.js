@@ -193,7 +193,13 @@ export function createEngine() {
 
   // Register handlers from external modules
   registerTouchGestureCommands(engineInstance); 
-  registerSonificationCommands(engineInstance); 
+  structuredLog('INFO', 'ENGINE: Attempting to register Sonification commands...');
+  try {
+    registerSonificationCommands(engineInstance);
+    structuredLog('INFO', 'ENGINE: Sonification commands registration call completed.');
+  } catch (e) {
+    structuredLog('ERROR', 'ENGINE: Sonification registration threw', { error: e?.message || String(e) });
+  }
   // Register audio command handlers in a dedicated module
   // Try dynamic import first (works in modern browsers). Fall back to require() for test environments.
   import('./commands/audio-commands.js').then(mod => {

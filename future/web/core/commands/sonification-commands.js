@@ -8,6 +8,7 @@ import { structuredLog } from '../../utils/logging.js';
  * @param {object} engine - The main application engine instance. //R24925: Validate claims
  */
 export function registerSonificationCommands(engine) {
+  structuredLog('INFO', 'SONIFICATION-COMMANDS: registerSonificationCommands function has been entered.');
   if (!engine || typeof engine.registerCommandHandler !== 'function') {
     structuredLog('ERROR', 'sonification-commands: Cannot register, invalid engine provided.');
     return;
