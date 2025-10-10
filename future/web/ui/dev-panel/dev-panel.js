@@ -102,6 +102,63 @@ export function initializeDevPanel(arg1, arg2) {
     // 2) Define wiring function which will be called after CSS is loaded
     const wireUpUI = async () => {
       try {
+        // --- START NEW BLOCK: Touch Pad Wiring ---
+        try {
+          const padArea = panel.querySelector('#touch-pad-area'); // Use the correct ID
+          if (padArea) {
+            let isPadActive = false;
+
+            const generateCuesFromPad = (e) => {
+              try {
+                if (!isPadActive) return;
+                const state = engine.getState && engine.getState();
+                const currentGrid = state && state.availableGrids && state.availableGrids.find(g => g.id === state.gridType);
+                if (!currentGrid) return;
+
+                const rect = padArea.getBoundingClientRect();
+                const x = (e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX)) - rect.left;
+                const y = (e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY)) - rect.top;
+
+                const mockMotionResults = { movingRegions: [{ x: x, y: y, intensity: 100 }] };
+
+                const gridOutput = currentGrid.mapFunction && currentGrid.mapFunction(null, rect.width, rect.height, null, mockMotionResults);
+                if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
+                  engine.dispatch && engine.dispatch('audioPlayCues', { cues: gridOutput.cues });
+                }
+              } catch (err) { structuredLog('ERROR', 'Touch Pad generate error', { error: err?.message || String(err) }); }
+            };
+
+            const onPointerDown = (e) => {
+              isPadActive = true;
+              try { padArea.setPointerCapture && padArea.setPointerCapture(e.pointerId); } catch (_) {}
+              generateCuesFromPad(e);
+            };
+
+            const onPointerUp = (e) => {
+              isPadActive = false;
+              try { padArea.releasePointerCapture && padArea.releasePointerCapture(e.pointerId); } catch (_) {}
+              engine.dispatch && engine.dispatch('audioPlayCues', { cues: [] });
+            };
+
+            padArea.addEventListener('pointerdown', onPointerDown);
+            padArea.addEventListener('pointermove', generateCuesFromPad);
+            padArea.addEventListener('pointerup', onPointerUp);
+            padArea.addEventListener('pointerleave', onPointerUp);
+
+            // Store a cleanup function on the panel for the main dispose function
+            panel.__touchPadCleanup = () => {
+              try { padArea.removeEventListener('pointerdown', onPointerDown); } catch (_) {}
+              try { padArea.removeEventListener('pointermove', generateCuesFromPad); } catch (_) {}
+              try { padArea.removeEventListener('pointerup', onPointerUp); } catch (_) {}
+              try { padArea.removeEventListener('pointerleave', onPointerUp); } catch (_) {}
+            };
+            structuredLog('INFO', 'Touch Pad UI wired successfully.');
+          } else {
+            structuredLog('WARN', 'Touch Pad area (#touch-pad-area) not found in template.');
+          }
+        } catch (e) { console.error('Failed to wire Touch Pad', e); }
+        // --- END NEW BLOCK ---
+
         await setupUI(); // setupUI is declared below
         panel.style.display = 'flex';
       } catch (e) {
@@ -819,6 +876,13 @@ export function initializeDevPanel(arg1, arg2) {
       try {
         if (typeof panel.__visibilityHandler === 'function') {
           document.removeEventListener('visibilitychange', panel.__visibilityHandler);
+        }
+      } catch (e) { /* swallow */ }
+
+      // 6.5 Touch Pad cleanup if present
+      try {
+        if (typeof panel.__touchPadCleanup === 'function') {
+          panel.__touchPadCleanup();
         }
       } catch (e) { /* swallow */ }
 
