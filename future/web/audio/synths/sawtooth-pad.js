@@ -91,6 +91,7 @@ export function playSawtoothPad(notes = [], ctx = {}) {
       const stopTime = now + (note.duration || 0.5) + releaseTime;
       try { osc.stop(stopTime); } catch (e) { /* ignore */ }
       osc.onended = () => {
+        try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscObj.id, synth: 'sawtooth-pad' }); } catch (_) {}
         try { if (releaseOscillator) releaseOscillator(oscObj); } catch (e) {}
       };
     } catch (e) {}

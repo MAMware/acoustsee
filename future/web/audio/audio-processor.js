@@ -322,6 +322,10 @@ function getOscillator() {
   
   if (freshIndex !== -1) {
     const oscObj = oscillatorPool[freshIndex];
+    if (!oscObj.id) {
+      oscObj.id = `osc_${Math.random().toString(36).substring(2, 9)}`;
+    }
+    structuredLog('DEBUG', `OSC_LIFECYCLE: GET`, { id: oscObj.id, state: oscObj.state, synth: _selectedSynthPlayFn?.name || 'unknown' });
     oscObj.state = 'active'; // Mark as now being used
     
     // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
@@ -350,6 +354,10 @@ function getOscillator() {
   
   // DO NOT connect or start - synths will do that
   const newOscObj = { osc, gain, panner, state: 'active' };
+  if (!newOscObj.id) {
+    newOscObj.id = `osc_${Math.random().toString(36).substring(2, 9)}`;
+  }
+  structuredLog('DEBUG', `OSC_LIFECYCLE: GET`, { id: newOscObj.id, state: newOscObj.state, synth: _selectedSynthPlayFn?.name || 'unknown' });
   
   // Add to pool for tracking
   oscillatorPool.push(newOscObj);
@@ -360,6 +368,7 @@ function getOscillator() {
 function releaseOscillator(oscObj) {
   if (!oscObj) return;
 
+  structuredLog('DEBUG', `OSC_LIFECYCLE: RELEASE`, { id: oscObj.id });
   // Mark as dead. An oscillator cannot be started more than once.
   oscObj.state = 'dead';
 

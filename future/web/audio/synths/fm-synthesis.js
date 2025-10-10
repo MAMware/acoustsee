@@ -77,6 +77,7 @@ export function playFmSynthesis(notes, ctx = {}) {
       // Schedule stop and cleanup for carrier
       try { oscData.osc.stop(now + 0.5); } catch (e) { /* ignore */ }
       oscData.osc.onended = () => {
+        try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscData.id, synth: 'fm-synthesis' }); } catch (_) {}
         try { if (ctx.releaseOscillator) ctx.releaseOscillator(oscData); } catch (e) {}
       };
     } catch (e) {
@@ -170,6 +171,7 @@ export function playFmSynthesis(notes, ctx = {}) {
         harmonicOsc.osc.start(now);
         try { harmonicOsc.osc.stop(now + 0.5); } catch (e) { /* ignore */ }
         harmonicOsc.osc.onended = () => {
+          try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: harmonicOsc.id, synth: 'fm-synthesis', role: 'harmonic' }); } catch (_) {}
           try { if (ctx.releaseOscillator) ctx.releaseOscillator(harmonicOsc); } catch (e) {}
         };
       } catch (e) {

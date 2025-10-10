@@ -81,6 +81,7 @@
 
         // Use the 'ended' event for precise cleanup instead of setTimeout.
         osc.onended = () => {
+          try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscData.id, synth: 'sine-wave' }); } catch (_) {}
           try { if (releaseOscillator) releaseOscillator(oscData); } catch (e) {}
         };
       } catch (e) { 
