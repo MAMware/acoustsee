@@ -335,8 +335,9 @@ function getOscillator() {
     return oscObj;
   }
   
-  // No fresh oscillators available - create a new one
-  structuredLog('WARN', 'getOscillator: Pool has no fresh oscillators, creating new one', {
+  // No fresh oscillators available. THIS IS A CRITICAL FAILURE SIGN.
+  structuredLog('ERROR', 'OSCILLATOR_POOL_EXHAUSTED', {
+    message: 'Pool has no fresh oscillators. This indicates a leak. Creating a fallback oscillator.',
     poolSize: oscillatorPool.length,
     freshCount: 0,
     activeCount: oscillatorPool.filter(item => item.state === 'active').length,
