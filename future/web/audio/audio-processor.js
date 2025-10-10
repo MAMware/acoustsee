@@ -459,6 +459,12 @@ export async function playCues(cues) { // The argument is now just the cues arra
       position: cue.position
     };
     notesBySynth.get(profile.playFunction).push(note);
+    // Log if this is the test-note so we can trace successful playback
+    try {
+      if (cue && cue.id === 'test-note') {
+        structuredLog('INFO', 'playCues: detected test-note cue', { pitch: cue.pitch, intensity: cue.intensity });
+      }
+    } catch (e) { /* ignore logging errors */ }
   }
 
   // The rest of the function remains the same, executing the synths.
@@ -473,6 +479,14 @@ export async function playCues(cues) { // The argument is now just the cues arra
         settings: _config.settings 
       };
       playFunction(notes, synthContext);
+      // Log that notes were handed to the synth. If any of the notes were the test-note,
+      // log an INFO message indicating the test tone was passed to the synth.
+      try {
+        const hasTestNote = notes.some(n => n && n.id === 'test-note');
+        if (hasTestNote) {
+          structuredLog('INFO', 'playCues: test-note handed to synth', { synth: playFunction.name || 'anonymous', noteCount: notes.length });
+        }
+      } catch (e) { /* ignore logging errors */ }
     } catch (e) {
       structuredLog('ERROR', `Synth function '${playFunction.name}' failed`, { error: e?.message });
     }

@@ -21,8 +21,9 @@ export function registerDebugCommands(engine) {
       }
 
   const cues = [{ id: 'test-note', pitch: payload?.pitch || 440, pan: 0, intensity: 1.0, objectType: 'default_motion', position: { x: 0 } }];
-      await dispatch('audioPlayCues', { cues });
-      return { ok: true };
+  await dispatch('audioPlayCues', { cues });
+  structuredLog('INFO', 'playTestNote: dispatched audioPlayCues', { cueIds: cues.map(c => c.id) });
+  return { ok: true };
     } catch (e) {
       structuredLog('WARN', 'playTestNote failed', { error: e?.message });
       return { ok: false, error: e?.message };
