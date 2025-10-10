@@ -80,7 +80,7 @@ export function playFmSynthesis(notes, ctx = {}) {
       try { oscData.osc.stop(now + noteDuration); } catch (e) { /* ignore */ }
       oscData.osc.onended = () => {
         try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscData.id, synth: 'fm-synthesis' }); } catch (_) {}
-        try { if (ctx.releaseOscillator) ctx.releaseOscillator(oscData); } catch (e) {}
+        // try { if (ctx.releaseOscillator) ctx.releaseOscillator(oscData); } catch (e) {} // TEMPORARILY DISABLED FOR DEBUGGING
       };
     } catch (e) {
       // ignore if already started

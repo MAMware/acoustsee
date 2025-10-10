@@ -92,7 +92,7 @@ export function playSawtoothPad(notes = [], ctx = {}) {
       try { osc.stop(stopTime); } catch (e) { /* ignore */ }
       osc.onended = () => {
         try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscObj.id, synth: 'sawtooth-pad' }); } catch (_) {}
-        try { if (releaseOscillator) releaseOscillator(oscObj); } catch (e) {}
+        // try { if (releaseOscillator) releaseOscillator(oscObj); } catch (e) {} // TEMPORARILY DISABLED FOR DEBUGGING
       };
     } catch (e) {}
   });
@@ -117,7 +117,7 @@ function stopAllSawtoothVoices(oscillatorPool, releaseOscillator, audioContext, 
           if (oscObj.osc) {
             try { oscObj.osc.stop(now + 0.06); } catch (e) { /* ignore */ }
             oscObj.osc.onended = () => {
-              try { if (releaseOscillator) releaseOscillator(oscObj); } catch (e) {}
+              // try { if (releaseOscillator) releaseOscillator(oscObj); } catch (e) {} // TEMPORARILY DISABLED FOR DEBUGGING
             };
           } else {
             if (releaseOscillator) releaseOscillator(oscObj);
