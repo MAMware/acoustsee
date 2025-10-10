@@ -45,6 +45,26 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       case 'playTestNote':
         engine.dispatch && engine.dispatch('playTestNote', { pitch: 440 });
         break;
+      case 'sandbox-play-note':
+        try {
+          const pitch = parseFloat(panel.querySelector('#sandbox-pitch')?.value || '440');
+          const intensity = parseFloat(panel.querySelector('#sandbox-intensity')?.value || '0.5');
+          const pan = parseFloat(panel.querySelector('#sandbox-pan')?.value || '0');
+          const manualCue = {
+            objectType: 'default_motion',
+            pitch: pitch,
+            intensity: intensity,
+            pan: pan,
+            position: { x: pan, y: 0, z: 0 }
+          };
+
+          // Dispatch the same event the video pipeline uses
+          engine.dispatch && engine.dispatch('audioCuesReady', { cues: [manualCue] });
+          structuredLog('INFO', 'Synth Sandbox: Dispatched manual cue', manualCue);
+        } catch (e) {
+          structuredLog('ERROR', 'Synth Sandbox: Failed to dispatch manual cue', { error: e?.message || String(e) });
+        }
+        break;
       case 'resumeAudio':
         engine.dispatch && engine.dispatch('resumeAudio');
         break;
@@ -283,6 +303,32 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       resScaleEl.addEventListener('input', onResScale);
       attachedHandlers.push({ el: resScaleEl, type: 'input', fn: onResScale });
     }
+    // --- Synth Sandbox slider UI updates ---
+    try {
+      const sandboxPitch = panel.querySelector('#sandbox-pitch');
+      const sandboxPitchValue = panel.querySelector('#sandbox-pitch-value');
+      if (sandboxPitch && sandboxPitchValue) {
+        const handler = (e) => { sandboxPitchValue.textContent = e.target.value; };
+        sandboxPitch.addEventListener('input', handler);
+        attachedHandlers.push({ el: sandboxPitch, type: 'input', fn: handler });
+      }
+
+      const sandboxIntensity = panel.querySelector('#sandbox-intensity');
+      const sandboxIntensityValue = panel.querySelector('#sandbox-intensity-value');
+      if (sandboxIntensity && sandboxIntensityValue) {
+        const handler = (e) => { sandboxIntensityValue.textContent = e.target.value; };
+        sandboxIntensity.addEventListener('input', handler);
+        attachedHandlers.push({ el: sandboxIntensity, type: 'input', fn: handler });
+      }
+
+      const sandboxPan = panel.querySelector('#sandbox-pan');
+      const sandboxPanValue = panel.querySelector('#sandbox-pan-value');
+      if (sandboxPan && sandboxPanValue) {
+        const handler = (e) => { sandboxPanValue.textContent = e.target.value; };
+        sandboxPan.addEventListener('input', handler);
+        attachedHandlers.push({ el: sandboxPan, type: 'input', fn: handler });
+      }
+    } catch (e) { console.error('Failed to wire Synth Sandbox sliders', e); }
   } catch (e) {
     console.error('createAndWireActions: error wiring controls', e);
   }

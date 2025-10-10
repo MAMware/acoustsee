@@ -4,6 +4,41 @@
     <div id="devpanel-subtitle">Versions: Loading...</div>
   </div>
 
+  <!-- Synth Sandbox: Manual cue sender for testing audio in isolation -->
+  <div class="devpanel-section synth-sandbox-section">
+    <h2 class="section-header">
+      <span>Synth Sandbox</span>
+      <button class="collapse-btn" data-target="synth-sandbox-content" aria-expanded="true" title="Collapse Sandbox">-</button>
+    </h2>
+    <div id="synth-sandbox-content" class="section-content">
+      <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Manually send cues to the audio engine. Bypasses the video pipeline.</p>
+      <div class="controls-grid-2col">
+        <div class="control-column">
+          <label>Pitch (Hz)</label>
+          <div class="slider-container">
+            <input id="sandbox-pitch" type="range" min="100" max="2000" step="1" value="440">
+            <span id="sandbox-pitch-value">440</span>
+          </div>
+          <label>Intensity (Volume)</label>
+          <div class="slider-container">
+            <input id="sandbox-intensity" type="range" min="0" max="1" step="0.05" value="0.5">
+            <span id="sandbox-intensity-value">0.5</span>
+          </div>
+        </div>
+        <div class="control-column">
+          <label>Pan (Left/Right)</label>
+          <div class="slider-container">
+            <input id="sandbox-pan" type="range" min="-1" max="1" step="0.1" value="0">
+            <span id="sandbox-pan-value">0</span>
+          </div>
+          <div class="devpanel-actions-grid" style="margin-top: 16px;">
+              <button data-action="sandbox-play-note" type="button">Play Single Note</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="devpanel-section state-section">
     <h2 class="section-header">
       <span>State Inspector</span>
