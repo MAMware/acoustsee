@@ -35,7 +35,8 @@ export function playFmSynthesis(notes, ctx = {}) {
     intensity: n.intensity ?? n.amplitude ?? n.amp ?? 0,
     harmonics: n.harmonics || n.overtones || [],
     azimuth: n.position ? n.position.x : (typeof n.pan === 'number' ? n.pan : 0),
-    modFreq: n.modFreq
+    modFreq: n.modFreq,
+    duration: typeof n.duration === 'number' ? n.duration : undefined
   })).sort((a, b) => b.intensity - a.intensity);
 
   let modIndex = 0;
@@ -74,8 +75,9 @@ export function playFmSynthesis(notes, ctx = {}) {
     // Start the carrier oscillator
     try {
       oscData.osc.start(now);
-  // Schedule stop and cleanup for carrier (extended for testing)
-  try { oscData.osc.stop(now + 5.0); } catch (e) { /* ignore */ }
+      // Schedule stop and cleanup for carrier (respect provided duration or a short default)
+      const noteDuration = allNotes[i].duration || 0.5;
+      try { oscData.osc.stop(now + noteDuration); } catch (e) { /* ignore */ }
       oscData.osc.onended = () => {
         try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscData.id, synth: 'fm-synthesis' }); } catch (_) {}
         try { if (ctx.releaseOscillator) ctx.releaseOscillator(oscData); } catch (e) {}
@@ -169,7 +171,7 @@ export function playFmSynthesis(notes, ctx = {}) {
       // Start harmonic oscillator and schedule stop/cleanup
       try {
         harmonicOsc.osc.start(now);
-  try { harmonicOsc.osc.stop(now + 5.0); } catch (e) { /* ignore */ }
+        try { harmonicOsc.osc.stop(now + (allNotes[i].duration || 0.5)); } catch (e) { /* ignore */ }
         harmonicOsc.osc.onended = () => {
           try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: harmonicOsc.id, synth: 'fm-synthesis', role: 'harmonic' }); } catch (_) {}
           try { if (ctx.releaseOscillator) ctx.releaseOscillator(harmonicOsc); } catch (e) {}

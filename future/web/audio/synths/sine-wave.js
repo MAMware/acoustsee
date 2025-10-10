@@ -45,7 +45,7 @@
 
       // Envelope
       const attack = Math.max(0.001, note.attack || 0.01);
-  const duration = Math.max(0.05, note.duration || 5.0); // Use a long default for testing
+  const duration = Math.max(0.05, note.duration || 0.2); // Use the provided duration, or a short default
       const release = Math.max(0.03, note.release || 0.1);
       const amp = Math.max(0, Math.min(1, note.intensity || 1.0));
       try {

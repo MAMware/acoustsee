@@ -106,7 +106,16 @@ export function initializeDevPanel(arg1, arg2) {
         try {
           const padArea = panel.querySelector('#touch-pad-area'); // Use the correct ID
           if (padArea) {
+            const durationSlider = panel.querySelector('#pad-duration');
+            const durationValue = panel.querySelector('#pad-duration-value');
             let isPadActive = false;
+
+            // Wire up slider display
+            let _padDurationHandler = null;
+            if (durationSlider && durationValue) {
+              _padDurationHandler = (e) => { durationValue.textContent = parseFloat(e.target.value).toFixed(1); };
+              durationSlider.addEventListener('input', _padDurationHandler);
+            }
 
             const generateCuesFromPad = (e) => {
               try {
@@ -123,6 +132,11 @@ export function initializeDevPanel(arg1, arg2) {
 
                 const gridOutput = currentGrid.mapFunction && currentGrid.mapFunction(null, rect.width, rect.height, null, mockMotionResults);
                 if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
+                  // If user set a pad duration, attach it to each generated cue
+                  const padDur = durationSlider ? parseFloat(durationSlider.value) : undefined;
+                  if (typeof padDur === 'number' && !Number.isNaN(padDur)) {
+                    gridOutput.cues.forEach(c => { c.duration = c.duration || padDur; });
+                  }
                   engine.dispatch && engine.dispatch('audioPlayCues', { cues: gridOutput.cues });
                 }
               } catch (err) { structuredLog('ERROR', 'Touch Pad generate error', { error: err?.message || String(err) }); }
@@ -151,6 +165,7 @@ export function initializeDevPanel(arg1, arg2) {
               try { padArea.removeEventListener('pointermove', generateCuesFromPad); } catch (_) {}
               try { padArea.removeEventListener('pointerup', onPointerUp); } catch (_) {}
               try { padArea.removeEventListener('pointerleave', onPointerUp); } catch (_) {}
+              try { if (_padDurationHandler && durationSlider) durationSlider.removeEventListener('input', _padDurationHandler); } catch (_) {}
             };
             structuredLog('INFO', 'Touch Pad UI wired successfully.');
           } else {
