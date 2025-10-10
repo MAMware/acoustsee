@@ -58,9 +58,16 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
             position: { x: pan, y: 0, z: 0 }
           };
 
-          // Dispatch the same event the video pipeline uses
+          // Dispatch the main pipeline event for logging and compatibility
           engine.dispatch && engine.dispatch('audioCuesReady', { cues: [manualCue] });
-          structuredLog('INFO', 'Synth Sandbox: Dispatched manual cue', manualCue);
+
+          // ALSO dispatch the direct audio play command as a robust fallback
+          try {
+            engine.dispatch && engine.dispatch('audioPlayCues', { cues: [manualCue] });
+            structuredLog('INFO', 'Synth Sandbox: Dispatched manual cue via BOTH events', manualCue);
+          } catch (e) {
+            structuredLog('WARN', 'Synth Sandbox: Failed to dispatch audioPlayCues fallback', { error: e?.message || String(e), manualCue });
+          }
         } catch (e) {
           structuredLog('ERROR', 'Synth Sandbox: Failed to dispatch manual cue', { error: e?.message || String(e) });
         }

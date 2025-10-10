@@ -260,6 +260,14 @@ export async function initializeVideo(config) {
           frameId: payload.frameId,
           startTime: payload.startTime
         });
+        // Robust fallback: also dispatch direct audio play command which may be
+        // consumed by older or alternate audio handlers expecting this event.
+        try {
+          engine.dispatch && engine.dispatch('audioPlayCues', { cues: dispatchPayload.cues || [] });
+          structuredLog('DEBUG', 'Frame processor: Also dispatched audioPlayCues fallback', { cueCount: dispatchPayload.cues.length });
+        } catch (e) {
+          structuredLog('WARN', 'Frame processor: Failed to dispatch audioPlayCues fallback', { error: e?.message || String(e) });
+        }
       }
     };
 
