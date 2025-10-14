@@ -19,7 +19,7 @@ import {
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
 import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
 import AudioManager from './audio/audio-manager.js';
-import { initializeAudio, bindAudioManager as bindAudioProcessor } from './audio/audio-processor.js';
+import { initializeAudio, bindAudioManager as bindAudioProcessor, registerAudioListeners } from './audio/audio-processor.js';
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { getComponent } from './ui/ui-registry.js';
@@ -270,6 +270,8 @@ export async function init() {
           const audioApi = await initializeAudio({ audioManager, maxNotes: settings.maxNotes });
           // Attach the initialized audio API onto the engine for consumers.
           engine.audioApi = audioApi;
+          // Register audio listeners for object and BPM cues
+          registerAudioListeners(engine);
         } catch (initErr) {
           // Handle critical audio system failures appropriately
           if (initErr instanceof AccessibilityError) {

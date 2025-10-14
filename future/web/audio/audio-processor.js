@@ -548,3 +548,50 @@ export async function resumeAudioContext() {
     return { ok: false, state: context.state || 'unknown', error: e?.message || String(e) };
   }
 }
+
+export function registerAudioListeners(engine) {
+  let bpm = 100;
+  let cueInterval = 60000 / bpm / 4; // 4 cues/beat
+  let cueSchedulerId = null;
+
+  const startCueScheduler = () => {
+    if (cueSchedulerId) cancelAnimationFrame(cueSchedulerId);
+    let lastTime = 0;
+    const scheduleCues = (timestamp) => {
+      if (timestamp - lastTime >= cueInterval) {
+        // Play batch of up to 4 cues from state.cueBuffer
+        const cues = (engine.state.cueBuffer || []).splice(0, 4);
+        if (cues.length > 0) playCues(cues);
+        lastTime = timestamp;
+      }
+      cueSchedulerId = requestAnimationFrame(scheduleCues);
+    };
+    cueSchedulerId = requestAnimationFrame(scheduleCues);
+  };
+
+  engine.onStateChange('objectCuesReady', (cues) => {
+    const { objects } = cues;
+    objects.forEach(obj => {
+      let profile;
+      switch (obj) {
+        case 'person': profile = { type: 'pluck', freq: 440, gain: 0.5 }; break;
+        case 'tree': profile = { type: 'shimmer', freq: 220, gain: 0.3 }; break;
+        case 'rough_ground': profile = { type: 'noise', freq: 100, gain: 0.7 }; break;
+        case 'trash': profile = { type: 'crunch', freq: 300, gain: 0.6 }; break;
+        case 'box': profile = { type: 'thud', freq: 150, gain: 0.5 }; break;
+        default: return; // Skip unknown
+      }
+      // Play immediately for objects
+      playCues([{ profile }]);
+    });
+  });
+
+  engine.onStateChange('bpmUpdate', ({ bpm: newBpm }) => {
+    bpm = newBpm;
+    cueInterval = 60000 / bpm / 4;
+    startCueScheduler();
+  });
+
+  // Start initial scheduler
+  startCueScheduler();
+}

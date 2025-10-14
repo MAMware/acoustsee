@@ -9,19 +9,13 @@ import {
 
 // --- ADD THESE SIMULATED WORKER FUNCTIONS at the top of the file, after the imports ---
 async function simulateObjectDetection(motionResults) {
-  // If there is significant motion, pretend we detected a "bottle".
-  if (motionResults.movingRegions.length > 0) {
-    const mainRegion = motionResults.movingRegions[0];
-    return {
-      detectedObjects: [{
-        label: 'bottle',
-        confidence: 0.95,
-        // The position of the object is the position of the most intense motion
-        position: { x: mainRegion.x, y: mainRegion.y } 
-      }]
-    };
-  }
-  return { detectedObjects: [] };
+  // Use detected objects from motion worker
+  const detectedObjects = motionResults.objects.map(obj => ({
+    label: obj,
+    confidence: 0.8,
+    position: { x: 100, y: 100 } // Placeholder
+  }));
+  return { detectedObjects };
 }
 
 async function simulateShapeAnalysis(object) {
@@ -45,7 +39,8 @@ let motionWorker = null;
 function startMotionWorker() {
   if (motionWorker) return;
   try {
-    motionWorker = new Worker(new URL('./workers/motion-worker.js', import.meta.url), { type: 'module' });
+    const workerPath = state.currentMode === 'hybrid' ? './workers/image-worker.js' : './workers/motion-worker.js';
+    motionWorker = new Worker(new URL(workerPath, import.meta.url), { type: 'module' });
     if (_config.registerWorker) _config.registerWorker(motionWorker, 'MotionSpecialist');
     
     // Add error handler for worker crashes
@@ -68,31 +63,37 @@ function startMotionWorker() {
   }
 }
 
+let prevFrameData = null;
+
 function processWithMotionWorker(frameData, width, height) {
   return new Promise(resolve => {
-    if (!motionWorker) return resolve({ movingRegions: [] });
+    if (!motionWorker) return resolve({ movingRegions: [], textureGrid: [], objects: [], inferredBPM: 100 });
 
     const messageHandler = (event) => {
       const data = event.detail;
-      if (data.type === 'motion') {
+      if (data.type === 'flowCues') {
         motionWorker.removeEventListener('motionResult', messageHandler);
-        const { coordsBuffer, intensBuffer, count } = data;
-        const coords = new Uint16Array(coordsBuffer);
-        const intens = new Uint8Array(intensBuffer);
-        const movingRegions = [];
-        for (let i = 0; i < count; i++) {
-          movingRegions.push({ x: coords[i * 2], y: coords[i * 2 + 1], intensity: intens[i] });
+        const { result } = data;
+        // Convert to old format for compatibility
+        const movingRegions = result.gridFlows.flat().map(f => ({ x: 0, y: 0, intensity: f.mag * 10 })); // Placeholder
+        const motionResults = { ...result, movingRegions };
+        // Dispatch new cues for hybrid mode
+        engine.dispatch('flowCuesReady', motionResults);
+        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
+          engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
         }
-        resolve({ movingRegions });
+        resolve(motionResults);
       }
     };
     motionWorker.addEventListener('motionResult', messageHandler);
 
-    const yBuf = rgbaToY(frameData, width, height);
+    const frame = { data: frameData, width, height };
+    const prevFrame = prevFrameData ? { data: prevFrameData, width, height } : frame;
     motionWorker.postMessage({
-      type: 'frame', yBuffer: yBuf.buffer, w: width, h: height,
-      threshold: _config.motionThreshold
-    }, [yBuf.buffer]);
+      type: 'processFrame', frame, prevFrame, gridSize: { rows: 4, cols: 4 }
+    });
+    prevFrameData = frameData.slice();
   });
 }
 
@@ -195,6 +196,18 @@ export async function initializeVideo(config) {
       if (state.currentMode === 'flow') {
         const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height);
         
+        // Dispatch new cues
+        engine.dispatch('flowCuesReady', motionResults);
+        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
+          engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
+        }
+        
+        // Log textureGrid for debug
+        if (window.location.search.includes('debug=true')) {
+          structuredLog('DEBUG', 'TextureGrid', { grid: motionResults.textureGrid });
+        }
+        
         // Very aggressive sampling - only log every 100th frame to reduce dev panel spam
         if (payload.frameId && payload.frameId % 100 === 0) {
           structuredLog('DEBUG', 'Frame processor: Motion results', { 
@@ -220,6 +233,14 @@ export async function initializeVideo(config) {
       } else if (state.currentMode === 'focus') {
         // In Focus mode, run specialists and generate a rich payload
         const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height);
+        
+        // Dispatch new cues
+        engine.dispatch('flowCuesReady', motionResults);
+        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
+          engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
+        }
+        
         const objectResults = await simulateObjectDetection(motionResults);
 
         if (objectResults.detectedObjects.length > 0) {

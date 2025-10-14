@@ -193,6 +193,23 @@ export function createEngine() {
 
   // Register handlers from external modules
   registerTouchGestureCommands(engineInstance); 
+  // Register haptic handler for pointer cues
+  engineInstance.registerCommandHandler('pointerCuesReady', (state, result) => {
+    const newState = { ...state, pointed: result };
+    if (newState.hapticEnabled && result.object) {
+      let pattern;
+      switch (result.object) {
+        case 'person': pattern = [100, 50, 100]; break;  // Vivo pulse
+        case 'tree': pattern = [200]; break;  // Estático steady
+        case 'rough_ground': pattern = [50, 50, 50]; break;  // Rapid alert colisión
+        default: pattern = [100]; break;
+      }
+      if ('vibrate' in navigator) {
+        navigator.vibrate(pattern);  // Dep-free haptic
+      }
+    }
+    return newState;
+  }); 
   structuredLog('INFO', 'ENGINE: Attempting to register Sonification commands...');
   try {
     registerSonificationCommands(engineInstance);
