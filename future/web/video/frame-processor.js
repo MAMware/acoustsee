@@ -205,7 +205,7 @@ export async function initializeVideo(config) {
         
         // Log textureGrid for debug
         if (window.location.search.includes('debug=true')) {
-          structuredLog('DEBUG', 'TextureGrid', { grid: motionResults.textureGrid });
+          structuredLog('DEBUG', 'Cues', { textureGrid: motionResults.textureGrid, objects: motionResults.objects });
         }
         
         // Very aggressive sampling - only log every 100th frame to reduce dev panel spam

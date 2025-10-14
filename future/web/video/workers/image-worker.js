@@ -174,7 +174,7 @@ self.onmessage = (e) => {
             const i = (y * width + x) * 4;
             const hDiff = Math.abs(getLuma(currentData, i) - getLuma(currentData, i + 4));  // Horiz edge
             const vDiff = Math.abs(getLuma(currentData, i) - getLuma(currentData, (y+1)*width*4 + x*4));  // Vert edge
-            if (hDiff > 50 && vDiff > 50) rectCount++;  // Strong rect-like edges
+            if (hDiff > 60 && vDiff > 60) rectCount++;  // Strong rect-like edges
           }
         }
         return rectCount > 10 ? 'box' : null;  // Threshold
@@ -185,7 +185,17 @@ self.onmessage = (e) => {
 
       const detectTrash = () => {
         const highTextureCells = textureGrid.flat().filter(t => t > 50).length;
-        if (highTextureCells > rows * cols * 0.3 && avgMag > 5) return 'trash';  // Irregular + motion
+        const hasChromaVariance = textureGrid.flat().some((t, idx) => {
+          if (t > 50) {
+            const r = Math.floor(idx / cols);
+            const c = idx % cols;
+            const i = (Math.floor(r * cellH + cellH / 2) * width + Math.floor(c * cellW + cellW / 2)) * 4;
+            const g = currentData[i + 1], b = currentData[i + 2];
+            return Math.abs(g - b) > 20;
+          }
+          return false;
+        });
+        if (highTextureCells > rows * cols * 0.3 && avgMag > 5 && hasChromaVariance) return 'trash';
         return null;
       };
 

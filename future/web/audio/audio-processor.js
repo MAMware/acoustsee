@@ -553,11 +553,13 @@ export function registerAudioListeners(engine) {
   let bpm = 100;
   let cueInterval = 60000 / bpm / 4; // 4 cues/beat
   let cueSchedulerId = null;
+  let lastBpmUpdate = 0;
 
   const startCueScheduler = () => {
     if (cueSchedulerId) cancelAnimationFrame(cueSchedulerId);
     let lastTime = 0;
     const scheduleCues = (timestamp) => {
+      if (!engine.state.cueBuffer || !engine.state.cueBuffer.length) return; // Avoid RAF if empty
       if (timestamp - lastTime >= cueInterval) {
         // Play batch of up to 4 cues from state.cueBuffer
         const cues = (engine.state.cueBuffer || []).splice(0, 4);
@@ -587,6 +589,8 @@ export function registerAudioListeners(engine) {
   });
 
   engine.onStateChange('bpmUpdate', ({ bpm: newBpm }) => {
+    if (Date.now() - lastBpmUpdate < 500) return; // Debounce
+    lastBpmUpdate = Date.now();
     bpm = newBpm;
     cueInterval = 60000 / bpm / 4;
     startCueScheduler();

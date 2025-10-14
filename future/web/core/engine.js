@@ -195,6 +195,7 @@ export function createEngine() {
   registerTouchGestureCommands(engineInstance); 
   // Register haptic handler for pointer cues
   engineInstance.registerCommandHandler('pointerCuesReady', (state, result) => {
+    if (state.currentMode !== 'focus' && state.currentMode !== 'hybrid') return state;
     const newState = { ...state, pointed: result };
     if (newState.hapticEnabled && result.object) {
       let pattern;
@@ -206,9 +207,48 @@ export function createEngine() {
       }
       if ('vibrate' in navigator) {
         navigator.vibrate(pattern);  // Dep-free haptic
+      } else {
+        structuredLog('WARN', 'No vibrate support');
       }
     }
-    return newState;
+    const cue = { profile: { type: result.object, freq: 400, gain: 0.8 } };
+    return { ...newState, cueBuffer: [...newState.cueBuffer, cue] };
+  });
+
+  // Register setMode handler
+  engineInstance.registerCommandHandler('setMode', (state, { mode }) => {
+    if (['flow', 'focus', 'hybrid'].includes(mode)) {
+      structuredLog('INFO', 'Mode switched', { mode });
+      return { ...state, currentMode: mode, cueBuffer: [] };  // Clear buffer
+    }
+    structuredLog('ERROR', 'Invalid mode', { mode });
+    return state;
+  });
+
+  // Register flowCuesReady handler with mode-specific logic
+  engineInstance.registerCommandHandler('flowCuesReady', (state, result) => {
+    const newCues = result.gridFlows.flat().map(f => ({
+      profile: { type: 'motion', freq: 200 + f.mag * 100, gain: 0.5 }
+    }));
+    if (state.currentMode === 'hybrid') {
+      newCues.push(...(result.objects || []).map(o => ({
+        profile: { type: o, freq: o === 'rough_ground' ? 100 : 300, gain: 0.7 }
+      })));
+      if (result.textureGrid) {
+        structuredLog('DEBUG', 'Cues', { textureGrid: result.textureGrid, objects: result.objects });
+      }
+    }
+    return { ...state, cueBuffer: [...state.cueBuffer, ...newCues] };
+  });
+
+  // Register bpmUpdate handler with debounce
+  let lastBpmUpdate = 0;
+  engineInstance.registerCommandHandler('bpmUpdate', (state, { bpm }) => {
+    if (Math.abs(bpm - state.bpm) < 5) return state;  // Debounce small changes
+    if (Date.now() - lastBpmUpdate < 500) return state;  // Time debounce
+    lastBpmUpdate = Date.now();
+    structuredLog('INFO', 'BPM updated', { bpm });
+    return { ...state, bpm };
   }); 
   structuredLog('INFO', 'ENGINE: Attempting to register Sonification commands...');
   try {
