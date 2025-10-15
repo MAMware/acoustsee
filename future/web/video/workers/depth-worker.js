@@ -48,7 +48,7 @@ self.onmessage = (e) => {
         return Math.log(1 + Math.exp(Math.abs(response)));  // Softplus
       };
 
-      // Average to gridDepths
+      // Average to gridDepths with sampling and skip low depth
       const { rows, cols } = gridSize;
       const cellW = width / cols;
       const cellH = height / rows;
@@ -56,8 +56,8 @@ self.onmessage = (e) => {
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           let sum = 0, count = 0;
-          for (let yy = Math.floor(r * cellH); yy < Math.floor((r + 1) * cellH); yy++) {
-            for (let xx = Math.floor(c * cellW); xx < Math.floor((c + 1) * cellW); xx++) {
+          for (let yy = Math.floor(r * cellH); yy < Math.floor((r + 1) * cellH); yy += 30) {  // Sample every 30px
+            for (let xx = Math.floor(c * cellW); xx < Math.floor((c + 1) * cellW); xx += 30) {
               const i = yy * width + xx;
               if (i < depths.length) {
                 sum += depths[i];
@@ -65,7 +65,8 @@ self.onmessage = (e) => {
               }
             }
           }
-          gridDepths[r][c] = count > 0 ? sum / count : 0;
+          const avg = count > 0 ? sum / count : 0;
+          gridDepths[r][c] = avg < 0.2 ? 0 : avg;  // Skip low depth cells
         }
       }
 

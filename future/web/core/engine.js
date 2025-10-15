@@ -264,6 +264,14 @@ export function createEngine() {
     // Audio feedback for toggle
     engineInstance.dispatch('playTestNote', { pitch: enabled ? 800 : 400, gain: 0.3 });
     return { ...state, hapticEnabled: enabled };
+  });
+
+  // Register depthCuesReady handler
+  engineInstance.registerCommandHandler('depthCuesReady', (state, result) => {
+    const depthCues = result.gridDepths.flat().map((depth, idx) => ({
+      profile: { type: 'depth', freq: 200 + depth * 400, gain: 0.5 }  // High depth = low pitch for close
+    }));
+    return { ...state, cueBuffer: [...state.cueBuffer, ...depthCues] };
   }); 
   structuredLog('INFO', 'ENGINE: Attempting to register Sonification commands...');
   try {

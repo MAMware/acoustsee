@@ -123,7 +123,7 @@ function processWithMotionWorker(frameData, width, height) {
     motionWorker.postMessage({
       type: 'processFrame', frame, prevFrame, gridSize: { rows: 4, cols: 4 }
     });
-    if (depthWorker) {
+    if (depthWorker && (state.currentMode === 'hybrid' || state.currentMode === 'focus')) {
       depthWorker.postMessage({
         type: 'processFrame', frame, prevFrame, gridSize: { rows: 4, cols: 4 }
       });

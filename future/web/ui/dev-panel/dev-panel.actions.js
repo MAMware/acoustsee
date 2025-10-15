@@ -389,16 +389,16 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         <h3>Live Cues</h3>
         <p><strong>Mode:</strong> ${state.currentMode || 'flow'}</p>
         <p><strong>BPM:</strong> ${state.bpm || 100}</p>
-        <p><strong>TextureGrid:</strong> ${state.textureGrid ? JSON.stringify(state.textureGrid.slice(0, 2)) : 'N/A'}</p>
+        <p><strong>TextureGrid:</strong> <pre>${state.textureGrid ? JSON.stringify(state.textureGrid, null, 2) : 'N/A'}</pre></p>
         <p><strong>Objects:</strong> ${state.objects ? state.objects.join(', ') : 'None'}</p>
-        <p><strong>Pointed:</strong> ${state.pointed ? JSON.stringify(state.pointed) : 'None'}</p>
+        <p><strong>Pointed:</strong> ${state.pointed ? JSON.stringify(state.pointed, null, 2) : 'None'}</p>
       `;
     }
   };
 
   // Mode switch button
   const modeButton = document.createElement('button');
-  modeButton.textContent = 'Switch Mode';
+  modeButton.textContent = `Switch Mode (Current: ${engine.state.currentMode || 'flow'})`;
   modeButton.setAttribute('data-action', 'switchMode');
   modeButton.type = 'button';
   const controlsGrid = panel.querySelector('.devpanel-actions-grid');
@@ -417,7 +417,10 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   });
 
   // Update display on state changes
-  engine.onStateChange(updateCuesDisplay);
+  engine.onStateChange((state) => {
+    updateCuesDisplay(state);
+    if (modeButton) modeButton.textContent = `Switch Mode (Current: ${state.currentMode || 'flow'})`;
+  });
 
   return { dispose };
 }
