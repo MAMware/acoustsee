@@ -91,6 +91,9 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         if (skipSlider) { skipSlider.value = '1'; if (skipValue) skipValue.textContent = '1'; }
         if (scaleSlider) { scaleSlider.value = '1.0'; if (scaleValue) scaleValue.textContent = '1.0'; }
         break;
+      case 'toggleHaptic':
+        engine.dispatch && engine.dispatch('toggleHaptic', { enabled: !engine.state.hapticEnabled });
+        break;
       case 'applyThrottling':
         const skipRate = panel.querySelector('#frame-skip-slider')?.value || 1;
         const scale = panel.querySelector('#resolution-scale-slider')?.value || 1.0;

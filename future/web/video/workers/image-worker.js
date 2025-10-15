@@ -174,7 +174,7 @@ self.onmessage = (e) => {
             const i = (y * width + x) * 4;
             const hDiff = Math.abs(getLuma(currentData, i) - getLuma(currentData, i + 4));  // Horiz edge
             const vDiff = Math.abs(getLuma(currentData, i) - getLuma(currentData, (y+1)*width*4 + x*4));  // Vert edge
-            if (hDiff > 60 && vDiff > 60) rectCount++;  // Strong rect-like edges
+            if (hDiff > 60 && vDiff > 60 && Math.abs(hDiff / vDiff - 1) < 0.5) rectCount++;  // Strong rect-like edges with aspect ratio check
           }
         }
         return rectCount > 10 ? 'box' : null;  // Threshold
@@ -191,7 +191,10 @@ self.onmessage = (e) => {
             const c = idx % cols;
             const i = (Math.floor(r * cellH + cellH / 2) * width + Math.floor(c * cellW + cellW / 2)) * 4;
             const g = currentData[i + 1], b = currentData[i + 2];
-            return Math.abs(g - b) > 20;
+            const variance = Math.abs(g - b);
+            // Debug chroma variance if needed
+            // self.postMessage({ type: 'debug', message: 'TrashChroma', data: { variance } });
+            return variance > 20;
           }
           return false;
         });

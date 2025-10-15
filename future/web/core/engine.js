@@ -234,8 +234,15 @@ export function createEngine() {
       newCues.push(...(result.objects || []).map(o => ({
         profile: { type: o, freq: o === 'rough_ground' ? 100 : 300, gain: 0.7 }
       })));
+      if (state.hapticEnabled && 'vibrate' in navigator && result.objects.includes('rough_ground')) {
+        navigator.vibrate([50, 50, 50]);  // Rapid alert para colisión
+      } else if (!('vibrate' in navigator)) {
+        structuredLog('WARN', 'No vibrate support');
+      }
       if (result.textureGrid) {
         structuredLog('DEBUG', 'Cues', { textureGrid: result.textureGrid, objects: result.objects });
+      } else {
+        result.textureGrid = Array(4).fill().map(() => Array(4).fill(0));  // Fallback
       }
     }
     return { ...state, cueBuffer: [...state.cueBuffer, ...newCues] };
@@ -249,6 +256,12 @@ export function createEngine() {
     lastBpmUpdate = Date.now();
     structuredLog('INFO', 'BPM updated', { bpm });
     return { ...state, bpm };
+  });
+
+  // Register toggleHaptic handler
+  engineInstance.registerCommandHandler('toggleHaptic', (state, { enabled }) => {
+    structuredLog('INFO', 'Haptic toggled', { enabled });
+    return { ...state, hapticEnabled: enabled };
   }); 
   structuredLog('INFO', 'ENGINE: Attempting to register Sonification commands...');
   try {

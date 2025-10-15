@@ -10,6 +10,9 @@ function testMultiParadigm(engine) {
     objects: ['person', 'rough_ground'],
     inferredBPM: 115
   };
+  let vibratePattern = null;
+  global.navigator = global.navigator || {};
+  global.navigator.vibrate = (pattern) => { vibratePattern = pattern; };
 
   engine.dispatch('setMode', { mode: 'hybrid' });
   if (engine.getState().currentMode !== 'hybrid') throw new Error('Mode set failed');
@@ -20,6 +23,30 @@ function testMultiParadigm(engine) {
   if (engine.getState().pointed.object !== 'person') throw new Error('Pointer not detected');
   engine.dispatch('bpmUpdate', { bpm: 115 });
   if (engine.getState().bpm !== 115) throw new Error('BPM not updated');
+  // Assert haptic for person
+  if (!vibratePattern || vibratePattern.toString() !== [100, 50, 100].toString()) throw new Error('Haptic not triggered for person');
+}
+
+// Smoke test for haptic and workers
+function testHapticAndWorkers(engine) {
+  const mockResult = {
+    gridFlows: Array(4).fill().map(() => Array(4).fill({ u: 1, v: 1, mag: 6 })),
+    textureGrid: Array(4).fill().map(() => Array(4).fill(60)),
+    objects: ['person', 'rough_ground'],
+    inferredBPM: 115
+  };
+  let vibratePattern = null;
+  global.navigator.vibrate = (pattern) => { vibratePattern = pattern; };
+
+  engine.dispatch('setMode', { mode: 'hybrid' });
+  engine.dispatch('toggleHaptic', { enabled: true });
+  engine.dispatch('flowCuesReady', mockResult);
+  if (!vibratePattern || vibratePattern.toString() !== [50, 50, 50].toString()) throw new Error('Haptic not triggered for rough_ground');
+  if (!engine.getState().cueBuffer.some(c => c.profile.type === 'rough_ground')) throw new Error('Rough ground cue added');
+
+  engine.dispatch('pointerCuesReady', { object: 'person', pointedCell: { r: 1, c: 1 } });
+  if (!vibratePattern || vibratePattern.toString() !== [100, 50, 100].toString()) throw new Error('Haptic triggered for person');
+  if (engine.getState().pointed.object !== 'person') throw new Error('Pointer detected');
 }
 
 // Basic environment shims for running example
@@ -100,6 +127,15 @@ global.document = global.document || { visibilityState: 'visible', addEventListe
       console.log('Example: testMultiParadigm passed');
     } catch (e) {
       console.error('testMultiParadigm error', e);
+    }
+
+    // Run haptic and workers smoke test
+    try {
+      const engine2 = engineMod.createEngine();
+      testHapticAndWorkers(engine2);
+      console.log('Example: testHapticAndWorkers passed');
+    } catch (e) {
+      console.error('testHapticAndWorkers error', e);
     }
 
     // Also run the demo worker example if available

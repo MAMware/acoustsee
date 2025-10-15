@@ -560,6 +560,8 @@ export function registerAudioListeners(engine) {
     let lastTime = 0;
     const scheduleCues = (timestamp) => {
       if (!engine.state.cueBuffer || !engine.state.cueBuffer.length) return; // Avoid RAF if empty
+      // Limit cueBuffer to max 16 to prevent overflow
+      if (engine.state.cueBuffer.length > 16) engine.state.cueBuffer = engine.state.cueBuffer.slice(-16);
       if (timestamp - lastTime >= cueInterval) {
         // Play batch of up to 4 cues from state.cueBuffer
         const cues = (engine.state.cueBuffer || []).splice(0, 4);

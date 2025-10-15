@@ -755,6 +755,14 @@ export function initializeDevPanel(arg1, arg2) {
         engine.dispatch('setSynthEngine', payloadToSend);
       });
     }
+
+    if (modeSelect) {
+      modeSelect.addEventListener('change', (e) => {
+        const selectedValue = e.target.value;
+        structuredLog('DEBUG', 'Mode dropdown changed', { mode: selectedValue });
+        engine.dispatch('setMode', { mode: selectedValue });
+      });
+    }
     
     // Add event listeners for Max Notes and Motion Threshold sliders
     if (maxNotesSlider) {
