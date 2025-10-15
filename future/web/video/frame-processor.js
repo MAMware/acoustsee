@@ -33,7 +33,7 @@ async function simulateShapeAnalysis(object) {
 let _config = {};
 let frameProviderWorker = null;
 let motionWorker = null;
-// ... add placeholders for future specialist workers (depthWorker, etc.)
+let depthWorker = null;
 
 // --- Helper Functions ---
 function startMotionWorker() {
@@ -58,8 +58,38 @@ function startMotionWorker() {
       motionWorker.dispatchEvent(event);
     };
     structuredLog('INFO', 'Motion Specialist worker started.');
+    
+    // Start depth worker for hybrid/focus
+    if (state.currentMode === 'hybrid' || state.currentMode === 'focus') {
+      startDepthWorker();
+    }
   } catch (e) {
     structuredLog('ERROR', 'Failed to start Motion Specialist worker.', { error: e });
+  }
+}
+
+function startDepthWorker() {
+  if (depthWorker) return;
+  try {
+    depthWorker = new Worker(new URL('./workers/depth-worker.js', import.meta.url), { type: 'module' });
+    if (_config.registerWorker) _config.registerWorker(depthWorker, 'DepthSpecialist');
+    
+    depthWorker.onerror = (error) => {
+      structuredLog('ERROR', 'Depth worker error', { 
+        message: error.message, 
+        filename: error.filename, 
+        lineno: error.lineno 
+      });
+    };
+    
+    depthWorker.onmessage = (e) => {
+      if (e.data.type === 'depthCues') {
+        engine.dispatch('depthCuesReady', e.data.result);
+      }
+    };
+    structuredLog('INFO', 'Depth Specialist worker started.');
+  } catch (e) {
+    structuredLog('ERROR', 'Failed to start Depth Specialist worker.', { error: e });
   }
 }
 
@@ -93,6 +123,11 @@ function processWithMotionWorker(frameData, width, height) {
     motionWorker.postMessage({
       type: 'processFrame', frame, prevFrame, gridSize: { rows: 4, cols: 4 }
     });
+    if (depthWorker) {
+      depthWorker.postMessage({
+        type: 'processFrame', frame, prevFrame, gridSize: { rows: 4, cols: 4 }
+      });
+    }
     prevFrameData = frameData.slice();
   });
 }

@@ -381,5 +381,43 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
     }
   }
 
+  // Update cues display
+  const updateCuesDisplay = (state) => {
+    const cuesPanel = panel.querySelector('#cues-panel');
+    if (cuesPanel) {
+      cuesPanel.innerHTML = `
+        <h3>Live Cues</h3>
+        <p><strong>Mode:</strong> ${state.currentMode || 'flow'}</p>
+        <p><strong>BPM:</strong> ${state.bpm || 100}</p>
+        <p><strong>TextureGrid:</strong> ${state.textureGrid ? JSON.stringify(state.textureGrid.slice(0, 2)) : 'N/A'}</p>
+        <p><strong>Objects:</strong> ${state.objects ? state.objects.join(', ') : 'None'}</p>
+        <p><strong>Pointed:</strong> ${state.pointed ? JSON.stringify(state.pointed) : 'None'}</p>
+      `;
+    }
+  };
+
+  // Mode switch button
+  const modeButton = document.createElement('button');
+  modeButton.textContent = 'Switch Mode';
+  modeButton.setAttribute('data-action', 'switchMode');
+  modeButton.type = 'button';
+  const controlsGrid = panel.querySelector('.devpanel-actions-grid');
+  if (controlsGrid) controlsGrid.appendChild(modeButton);
+
+  // Add switchMode action
+  attachedHandlers.push({
+    element: modeButton,
+    event: 'click',
+    handler: () => {
+      const modes = ['flow', 'focus', 'hybrid'];
+      const currentIndex = modes.indexOf(engine.state.currentMode || 'flow');
+      const newMode = modes[(currentIndex + 1) % modes.length];
+      engine.dispatch && engine.dispatch('setMode', { mode: newMode });
+    }
+  });
+
+  // Update display on state changes
+  engine.onStateChange(updateCuesDisplay);
+
   return { dispose };
 }
