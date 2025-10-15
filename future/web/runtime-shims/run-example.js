@@ -18,6 +18,7 @@ function testMultiParadigm(engine) {
   if (engine.getState().currentMode !== 'hybrid') throw new Error('Mode set failed');
   engine.dispatch('flowCuesReady', mockResult);
   if (!engine.getState().cueBuffer.length) throw new Error('Cues not added');
+  if (engine.getState().cueBuffer.length !== 6) throw new Error('Cue buffer length incorrect'); // 4 motion + 2 objects
   if (!engine.getState().cueBuffer.some(c => c.profile.type === 'rough_ground')) throw new Error('Rough ground not detected');
   engine.dispatch('pointerCuesReady', { object: 'person', pointedCell: { r: 1, c: 1 } });
   if (engine.getState().pointed.object !== 'person') throw new Error('Pointer not detected');
@@ -43,6 +44,7 @@ function testHapticAndWorkers(engine) {
   engine.dispatch('flowCuesReady', mockResult);
   if (!vibratePattern || vibratePattern.toString() !== [50, 50, 50].toString()) throw new Error('Haptic not triggered for rough_ground');
   if (!engine.getState().cueBuffer.some(c => c.profile.type === 'rough_ground')) throw new Error('Rough ground cue added');
+  if (engine.getState().cueBuffer.length !== 6) throw new Error('Cue buffer length incorrect'); // 4 motion + 2 objects
 
   engine.dispatch('pointerCuesReady', { object: 'person', pointedCell: { r: 1, c: 1 } });
   if (!vibratePattern || vibratePattern.toString() !== [100, 50, 100].toString()) throw new Error('Haptic triggered for person');

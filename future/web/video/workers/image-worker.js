@@ -192,9 +192,10 @@ self.onmessage = (e) => {
             const i = (Math.floor(r * cellH + cellH / 2) * width + Math.floor(c * cellW + cellW / 2)) * 4;
             const g = currentData[i + 1], b = currentData[i + 2];
             const variance = Math.abs(g - b);
+            const softVariance = Math.log(1 + Math.exp(variance)); // Softplus for smooth scores
             // Debug chroma variance if needed
             // self.postMessage({ type: 'debug', message: 'TrashChroma', data: { variance } });
-            return variance > 20;
+            return softVariance > 25; // Adjusted threshold for urban clutter
           }
           return false;
         });

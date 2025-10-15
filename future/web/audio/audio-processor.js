@@ -559,6 +559,7 @@ export function registerAudioListeners(engine) {
     if (cueSchedulerId) cancelAnimationFrame(cueSchedulerId);
     let lastTime = 0;
     const scheduleCues = (timestamp) => {
+      if (engine.state.currentMode !== 'hybrid') { cueSchedulerId = null; return; } // Clear RAF if not rhythmic mode
       if (!engine.state.cueBuffer || !engine.state.cueBuffer.length) return; // Avoid RAF if empty
       // Limit cueBuffer to max 16 to prevent overflow
       if (engine.state.cueBuffer.length > 16) engine.state.cueBuffer = engine.state.cueBuffer.slice(-16);

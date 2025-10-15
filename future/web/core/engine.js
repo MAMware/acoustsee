@@ -261,6 +261,8 @@ export function createEngine() {
   // Register toggleHaptic handler
   engineInstance.registerCommandHandler('toggleHaptic', (state, { enabled }) => {
     structuredLog('INFO', 'Haptic toggled', { enabled });
+    // Audio feedback for toggle
+    engineInstance.dispatch('playTestNote', { pitch: enabled ? 800 : 400, gain: 0.3 });
     return { ...state, hapticEnabled: enabled };
   }); 
   structuredLog('INFO', 'ENGINE: Attempting to register Sonification commands...');
