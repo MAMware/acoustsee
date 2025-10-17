@@ -29,6 +29,8 @@ let prevData = null;
 let depthPath = 'pseudo'; // Default to pseudo-depth
 let gpuDevice = null;     // Cached GPU device for reuse
 let gpuQueue = null;      // Cached GPU queue for reuse
+// Grid configuration is now received with each frame (stateless pattern)
+// Workers no longer maintain configuration state
 
 // Minimal U-Net CNN in vanilla JS (encoder-decoder with 3 conv layers, ReLU, upsample)
 function conv2d(input, kernel, stride = 1) {
@@ -477,7 +479,8 @@ function computePseudoDepth(data, width, height) {
 // ============================================================================
 
 self.onmessage = (e) => {
-  const { type, frame, prevFrame, gridSize, path } = e.data;
+  const { type, frame, prevFrame, gridSize, path, gridConfig = { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.2 }, mode = 'hybrid' } = e.data;
+  
   if (type === 'setPath') {
     depthPath = path; // 'pseudo' or 'cnn'
   }
@@ -489,6 +492,9 @@ self.onmessage = (e) => {
         const data = frame.data;
 
         let gridDepths;
+        // Use gridConfig passed with this frame (stateless); fallback to legacy gridSize parameter if needed
+        const config = gridConfig || (gridSize && { rows: gridSize.rows, cols: gridSize.cols }) || { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.2 };
+        
         if (depthPath === 'cnn') {
           // Use CNN for depth
           const grayscale = new Uint8Array(width * height);
@@ -497,7 +503,7 @@ self.onmessage = (e) => {
           }
           const depthFlat = await computeCNNDepth(grayscale, width, height);
           // Average to grid
-          const { rows, cols } = gridSize;
+          const { rows, cols } = config;
           const cellW = width / cols;
           const cellH = height / rows;
           gridDepths = Array.from({length: rows}, () => Array(cols).fill(0));
@@ -521,7 +527,7 @@ self.onmessage = (e) => {
           const depths = computePseudoDepth(data, width, height);
 
           // Average to gridDepths with sampling and skip low depth
-          const { rows, cols } = gridSize;
+          const { rows, cols, skipThreshold } = config;
           const cellW = width / cols;
           const cellH = height / rows;
           gridDepths = Array.from({length: rows}, () => Array(cols).fill(0));
@@ -538,12 +544,20 @@ self.onmessage = (e) => {
                 }
               }
               const avg = count > 0 ? sum / count : 0;
-              gridDepths[r][c] = avg < 0.2 ? 0 : avg;  // Skip low depth cells
+              gridDepths[r][c] = avg < skipThreshold ? 0 : avg;  // Skip low depth cells using threshold
             }
           }
         }
 
-        self.postMessage({ type: 'depthCues', result: { gridDepths, timestamp: Date.now() } });
+        self.postMessage({ 
+          type: 'depthCues', 
+          result: { 
+            gridDepths, 
+            timestamp: Date.now(),
+            gridConfig: config,
+            mode
+          } 
+        });
       } catch (error) {
         self.postMessage({ type: 'error', error: error.message });
       }

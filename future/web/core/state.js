@@ -84,9 +84,12 @@ export let settings = {
   // This is an experimental feature. Do not remove or change without referencing TASKS.md ARCH-3.
   // Current operating mode: 'flow' (navigation) or 'focus' (identification) R151025: UPDATE the hybrid approach
   currentMode: 'flow',
-  depthPath: 'pseudo', // 'pseudo' or 'cnn' // R151025: i had the idead that will do WebGL/vanilly JS paths, is it this?
+  depthPath: 'pseudo', // 'pseudo' or 'cnn' // R151025: i had the idea that will do WebGL/vanilly JS paths, is it this?
   // When true, mode switches are simulated and heavy ML paths should be blocked by producers.
   dualModeWIP: true, // R151025: WIP was meant to indicate Work In Progress, having it the declaration it self is qute a code smell: dualModeWIP 
+  // Enable optional semantic detection (person/tree/rough_ground/trash/box) for educational purposes
+  // Default: false (off) for performance. Can be toggled via dev panel for learning/exploration
+  enableSemanticDetection: false,
   // --- END WIP ---
   motionThreshold: 20,
   maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value R151025: lets check this limit is not a issue in regard of soem sound issues like the lack of persistence
@@ -135,7 +138,8 @@ function validateSettingsSchema(settingsObj) {
     dayNightMode: 'string',
     resetStateOnError: 'boolean',
     motionThreshold: 'number',
-    currentMode: 'string'
+    currentMode: 'string',
+    enableSemanticDetection: 'boolean'
   };
 
   for (const key in schema) {

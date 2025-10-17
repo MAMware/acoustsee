@@ -1,40 +1,22 @@
 // filepath: future/web/video/frame-processor.js
 import { structuredLog } from '../utils/logging.js';
 import { rgbaToY } from './videoframe-helper.js';
+import { getGridConfig } from './grids/grid-config.js';
 import { 
   executeCriticalOperation, 
   AccessibilityError, 
   showCriticalError 
 } from '../utils/error-handling.js';
 
-// --- ADD THESE SIMULATED WORKER FUNCTIONS at the top of the file, after the imports ---
-async function simulateObjectDetection(motionResults) {
-  // Use detected objects from motion worker
-  const detectedObjects = motionResults.objects.map(obj => ({
-    label: obj,
-    confidence: 0.8,
-    position: { x: 100, y: 100 } // Placeholder
-  }));
-  return { detectedObjects };
-}
-
-async function simulateShapeAnalysis(object) {
-  // Pretend all detected objects are "tall and thin".
-  if (object) {
-    return {
-      shape: { verticality: 0.9, horizontality: 0.2, complexity: 0.3 }
-    };
-  }
-  return { shape: {} };
-}
-// --- END SIMULATED WORKERS ---
-
 // --- Module State ---
 let _config = {};
 let frameProviderWorker = null;
 let motionWorker = null;
 let depthWorker = null;
-let previousDepthPath = null; // R151025 what is this used for?
+let previousDepthPath = null; // Track depth computation path changes (used to avoid redundant reconfigurations)
+
+// Current mode and grid config are derived from engine state, not stored locally
+// This keeps frame-processor stateless for configuration
 
 // --- Helper Functions ---
 function startMotionWorker() {
@@ -96,7 +78,7 @@ function startDepthWorker() {
 
 let prevFrameData = null;
 
-function processWithMotionWorker(frameData, width, height) {
+function processWithMotionWorker(frameData, width, height, state) {
   return new Promise(resolve => {
     if (!motionWorker) return resolve({ movingRegions: [], textureGrid: [], objects: [], inferredBPM: 100 });
 
@@ -108,7 +90,7 @@ function processWithMotionWorker(frameData, width, height) {
         // Convert to old format for compatibility
         const movingRegions = result.gridFlows.flat().map(f => ({ x: 0, y: 0, intensity: f.mag * 10 })); // Placeholder
         const motionResults = { ...result, movingRegions };
-        // Dispatch new cues for hybrid mode
+        // Dispatch new cues
         engine.dispatch('flowCuesReady', motionResults);
         if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
         if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
@@ -121,12 +103,26 @@ function processWithMotionWorker(frameData, width, height) {
 
     const frame = { data: frameData, width, height };
     const prevFrame = prevFrameData ? { data: prevFrameData, width, height } : frame;
+    
+    // Derive grid config from current engine state (stateless pattern)
+    const gridConfig = getGridConfig(state.currentMode || 'hybrid');
+    
+    // For image-worker: pass enableSemanticDetection from state
     motionWorker.postMessage({
-      type: 'processFrame', frame, prevFrame, gridSize: { rows: 4, cols: 4 }
+      type: 'processFrame', 
+      frame, 
+      prevFrame, 
+      gridConfig,
+      mode: state.currentMode || 'hybrid',
+      enableSemantic: state.enableSemanticDetection || false
     });
     if (depthWorker && (state.currentMode === 'hybrid' || state.currentMode === 'focus')) {
       depthWorker.postMessage({
-        type: 'processFrame', frame, prevFrame, gridSize: { rows: 4, cols: 4 }
+        type: 'processFrame', 
+        frame, 
+        prevFrame, 
+        gridConfig,
+        mode: state.currentMode || 'hybrid'
       });
     }
     prevFrameData = frameData.slice();
@@ -230,7 +226,7 @@ export async function initializeVideo(config) {
       }
 
       if (state.currentMode === 'flow') {
-        const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height);
+        const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height, state);
         
         // Dispatch new cues
         engine.dispatch('flowCuesReady', motionResults);
@@ -268,7 +264,7 @@ export async function initializeVideo(config) {
 
       } else if (state.currentMode === 'focus') {
         // In Focus mode, run specialists and generate a rich payload
-        const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height);
+        const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height, state);
         
         // Dispatch new cues
         engine.dispatch('flowCuesReady', motionResults);
@@ -343,6 +339,12 @@ export async function initializeVideo(config) {
           structuredLog('INFO', 'Depth path updated', { path: state.depthPath });
         }
         previousDepthPath = state.depthPath;
+      }
+      
+      // Note: Grid configuration is embedded in every frame message (stateless pattern)
+      // Mode changes automatically take effect on the next frame processing
+      if (state.currentMode) {
+        structuredLog('DEBUG', 'Paradigm mode active', { mode: state.currentMode });
       }
     });
     

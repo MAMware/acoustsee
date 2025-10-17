@@ -3,8 +3,9 @@
 // Uses vanilla JavaScript convolution and matrix solving for compatibility and performance in web workers.
 // Maintains adaptive thresholding for robustness in varying conditions.
 // Outputs coords, intensity (based on flow magnitude), u (horizontal flow), and v (vertical flow) as transferable buffers.
+// v0.6 (2025-10-17): Added paradigm-aware gridSize support and dynamic grid configuration. By Claude Haiku 4.5
 // v0.5 Created by MAMware and Grok (xAI.com)
-// REVISON 2025-10-05 - Enhanced with Lucas-Kanade optical flow based on research in motion-worker.js.md.
+// Enhanced with Lucas-Kanade optical flow based on research in motion-worker.js.md, REV 2025-10-05.
 
 // Add this import at the top if not present
 import { structuredLog } from '../../utils/logging.js';
@@ -14,6 +15,9 @@ let _width = 0;
 let _height = 0;
 let _adaptiveThreshold = 20; // Internal adaptive threshold (5-50 pixel difference range)
 let _useAdaptive = true; // Whether to use adaptive thresholding
+
+// Grid configuration is now received with each frame (stateless pattern)
+// Workers no longer maintain configuration state
 
 function convolve2d(image, width, height, kernel) {
   const kh = kernel.length;
@@ -164,15 +168,47 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
 
 self.onmessage = (ev) => {
   const msg = ev.data || {};
+
+  // Process frame with inline grid configuration (stateless)
+  // gridConfig and mode are passed with every frame, not stored in worker state
   if (msg.type === 'frame') {
     try {
-      const { ts = 0, w = 0, h = 0, yBuffer, step = 6, threshold = 20, maxRegions = 64, windowSize = 5 } = msg;
+      const { 
+        ts = 0, 
+        w = 0, 
+        h = 0, 
+        yBuffer, 
+        step = 6, 
+        threshold = 20, 
+        maxRegions = 64, 
+        windowSize = 5,
+        gridConfig = { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 },
+        mode = 'hybrid'
+      } = msg;
       
-      structuredLog('DEBUG', 'Motion worker received frame', { width: w, height: h, threshold });
+      structuredLog('DEBUG', 'Motion worker received frame', { 
+        width: w, 
+        height: h, 
+        threshold, 
+        mode,
+        gridSize: { rows: gridConfig.rows, cols: gridConfig.cols }
+      });
       
       if (!yBuffer) {
         structuredLog('WARN', 'Motion worker: No yBuffer received');
-        self.postMessage({ type: 'motion', ts, count: 0, coordsBuffer: new Uint16Array(0).buffer, intensBuffer: new Uint8Array(0).buffer, uBuffer: new Float32Array(0).buffer, vBuffer: new Float32Array(0).buffer });
+        self.postMessage({ 
+          type: 'motionCues',
+          result: {
+            coords: new Uint16Array(0),
+            intens: new Uint8Array(0),
+            uFlow: new Float32Array(0),
+            vFlow: new Float32Array(0),
+            count: 0,
+            timestamp: ts,
+            gridConfig,
+            mode,
+          }
+        });
         return;
       }
       
@@ -181,17 +217,22 @@ self.onmessage = (ev) => {
         count: res.count, 
         threshold, 
         adaptiveThreshold: _adaptiveThreshold,
-        usingAdaptive: _useAdaptive 
+        usingAdaptive: _useAdaptive,
+        mode,
       });
       
       const toSend = {
-        type: 'motion',
-        ts,
-        count: res.count,
-        coordsBuffer: res.coords.buffer,
-        intensBuffer: res.intens.buffer,
-        uBuffer: res.uFlow.buffer,
-        vBuffer: res.vFlow.buffer
+        type: 'motionCues',
+        result: {
+          coords: res.coords,
+          intens: res.intens,
+          uFlow: res.uFlow,
+          vFlow: res.vFlow,
+          count: res.count,
+          timestamp: Date.now(),
+          gridConfig,
+          mode,
+        }
       };
       self.postMessage(toSend, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
     } catch (e) {
@@ -200,20 +241,24 @@ self.onmessage = (ev) => {
         stack: e.stack,
         name: e.name
       });
-      // Send empty result to keep pipeline alive
+      // Send empty result to keep pipeline alive R171025 why we would want to keep the pipeline alive? could this casue issues in regard of the oscilators and sound generation?
       self.postMessage({ 
-        type: 'motion', 
-        ts: msg.ts || 0, 
-        count: 0, 
-        coordsBuffer: new Uint16Array(0).buffer, 
-        intensBuffer: new Uint8Array(0).buffer, 
-        uBuffer: new Float32Array(0).buffer, 
-        vBuffer: new Float32Array(0).buffer 
+        type: 'motionCues', 
+        result: {
+          coords: new Uint16Array(0),
+          intens: new Uint8Array(0),
+          uFlow: new Float32Array(0),
+          vFlow: new Float32Array(0),
+          count: 0,
+          timestamp: msg.ts || 0,
+          gridConfig: _currentGridConfig,
+          mode: _currentMode,
+        }
       });
     }
   } else if (msg.type === 'handshake') {
     structuredLog('INFO', 'Motion worker initialized');
-    self.postMessage({ type: 'ready', features: ['motion', 'flow'] });
+    self.postMessage({ type: 'ready', features: ['motion', 'flow', 'gridConfig'] });
   } else if (msg.type === 'simulate') {
     structuredLog('INFO', 'Motion worker simulation mode');
     self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true });

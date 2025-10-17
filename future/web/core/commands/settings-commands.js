@@ -188,4 +188,15 @@ export function registerSettingsCommands(engine) {
     engine.setState({ audioTimerId: timerId ?? null });
     structuredLog('INFO', 'State updated via command: setAudioInterval', { audioTimerId: timerId ?? null });
   });
+
+  registerCommandHandler('toggleSemanticDetection', ({ payload }) => {
+    const currentState = engine.getState();
+    const enabled = payload?.enabled !== undefined ? payload.enabled : !currentState.enableSemanticDetection;
+    
+    engine.setState({ enableSemanticDetection: enabled });
+    structuredLog('INFO', 'Semantic detection toggled', { 
+      enabled, 
+      context: 'Heuristic-based person/tree/rough_ground/trash/box detection'
+    });
+  });
 }

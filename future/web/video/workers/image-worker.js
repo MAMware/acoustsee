@@ -1,23 +1,29 @@
 // workers/image-worker.js (Enhanced Image Processing Worker for AcoustSee Multi-Paradigm System)
 //
 // Responsibilities:
-// - Optical Flow Computation: Calculates Lucas-Kanade optical flow on full RGB frames, averaged into a configurable grid (e.g., 4x4).
-// - Texture Analysis: Applies Gabor filters to detect surface textures (e.g., rough ground, obstacles) for collision detection.
-// - Object Detection: Dep-free detection of objects (person/tree/rough_ground/trash/box) using color thresholds, texture, and motion cues.
+// - Optical Flow Computation: Calculates Lucas-Kanade optical flow on full RGB frames, averaged into a configurable grid.
+// - Texture Analysis: Applies Gabor filters to detect surface textures for collision detection.
+// - Abstract Feature Extraction: Computes abstract spatial features (textureRich, fastMotion, edgeConcentration).
+// - Optional Semantic Detection: Community-contributed semantic object detection (person/tree/rough_ground/trash/box).
+//                                Can be enabled/disabled, off by default to minimize overhead.
 // - BPM Inference: Infers user activity tempo (90-130 BPM) from motion magnitude for rhythmic audio cues.
 // - Egomotion Differentiation: Uses flow vectors to distinguish user motion from independent object motion.
 //
 // Workflow:
-// 1. Receive { type: 'processFrame', frame: ImageData, prevFrame: ImageData, gridSize: { rows: 4, cols: 4 } }
+// 1. Receive { type: 'processFrame', frame: ImageData, prevFrame: ImageData, gridConfig, mode, enableSemantic }
 // 2. Compute optical flow between frames, aggregate into gridFlows (per-cell u, v, mag).
 // 3. Apply Gabor convolution for textureGrid (per-cell texture response).
-// 4. Detect objects based on texture, color, and motion thresholds.
-// 5. Infer BPM from average flow magnitude.
-// 6. Send { type: 'flowCues', result: { gridFlows, textureGrid, objects, inferredBPM, timestamp } }
+// 4. Extract abstract features (textureRich, fastMotion, edgeConcentration).
+// 5. OPTIONAL: If enabled, run semantic detection (person, tree, etc.) for educational/community exploration.
+// 6. Infer BPM from average flow magnitude.
+// 7. Send { type: 'flowCues', result: { gridFlows, textureGrid, abstractFeatures, semanticObjects, statistics, inferredBPM, timestamp } }
 //
 // Dependencies: Pure JS, no external libs. Runs in Web Worker for performance.
-//
-// Future Extensions: Integrate ML models (e.g., TensorFlow.js for depth), add more object classes, refine egomotion subtraction.
+// 
+// Design Rationale:
+// - Primary audio generation uses ABSTRACT spatial features (depth, motion, texture).
+// - Semantic detection is OPTIONAL and runs only if explicitly enabled by consumers.
+// - This keeps the core lightweight while allowing community to experiment with semantic approaches.
 
 function convolve2d(image, width, height, kernel) {
   const kh = kernel.length;
@@ -48,14 +54,39 @@ function convolve2d(image, width, height, kernel) {
 }
 
 let prevData = null;
+// Grid configuration is now received with each frame (stateless pattern)
+// Workers no longer maintain configuration state
 
 self.onmessage = (e) => {
-  const { type, frame, prevFrame, gridSize } = e.data;
+  const { 
+    type, 
+    frame, 
+    prevFrame, 
+    gridConfig = { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 },
+    mode = 'hybrid', 
+    enableSemantic = false 
+  } = e.data;
+
+  // Process frame with inline configuration (stateless)
+  // gridConfig, mode, and enableSemantic are passed with every frame, not stored in worker state
   if (type === 'processFrame') {
     try {
       if (!prevData) {
         prevData = prevFrame.data.slice();
-        self.postMessage({ type: 'flowCues', result: { gridFlows: [], textureGrid: [], objects: [], inferredBPM: 100, timestamp: Date.now() } });
+        self.postMessage({ 
+          type: 'flowCues', 
+          result: { 
+            gridFlows: [], 
+            textureGrid: [], 
+            abstractFeatures: [],
+            semanticObjects: [],
+            statistics: {},
+            inferredBPM: 100, // this value is a fallback as "safe" default
+            timestamp: Date.now(),
+            gridConfig,
+            mode,
+          } 
+        });
         return;
       }
 
@@ -72,16 +103,26 @@ self.onmessage = (e) => {
       const kernelT = [[1, 1], [1, 1]];
 
       // Compute derivatives (fx, fy, ft) using convolution on luma
-      const fx = convolve2d(currentData.map((_, i) => i % 4 === 3 ? 0 : getLuma(currentData, i)), width, height, kernelX);
-      const fy = convolve2d(currentData.map((_, i) => i % 4 === 3 ? 0 : getLuma(currentData, i)), width, height, kernelY);
-      const ft = convolve2d(currentData.map((_, i) => i % 4 === 3 ? 0 : getLuma(currentData, i)), width, height, kernelT);
-      for (let i = 0; i < ft.length; i++) ft[i] -= convolve2d(prev.map((_, j) => j % 4 === 3 ? 0 : getLuma(prev, j)), width, height, kernelT)[i];
+      const lumaArray = new Float32Array(width * height);
+      const prevLumaArray = new Float32Array(width * height);
+      for (let i = 0; i < width * height; i++) {
+        lumaArray[i] = getLuma(currentData, i * 4);
+        prevLumaArray[i] = getLuma(prev, i * 4);
+      }
+
+      const fx = convolve2d(lumaArray, width, height, kernelX);
+      const fy = convolve2d(lumaArray, width, height, kernelY);
+      const ftCurr = convolve2d(lumaArray, width, height, kernelT);
+      const ftPrev = convolve2d(prevLumaArray, width, height, kernelT);
+      const ft = new Float32Array(width * height);
+      for (let i = 0; i < ft.length; i++) ft[i] = ftCurr[i] - ftPrev[i];
 
       const w = 2; // Window size for LK
       const tau = 1e-2; // Reliability threshold
 
       // Compute gridFlows by averaging LK flow per cell
-      const { rows, cols } = gridSize;
+      // Use gridConfig passed with this frame (stateless)
+      const { rows, cols, aggregation, skipThreshold } = gridConfig;
       const cellW = width / cols;
       const cellH = height / rows;
       const gridFlows = Array.from({length: rows}, () => Array(cols).fill({ u: 0, v: 0, mag: 0 }));
@@ -152,7 +193,7 @@ self.onmessage = (e) => {
         return Math.log(1 + Math.exp(Math.abs(response)));
       };
 
-      // Texture grid + object detection (from textures/flow)
+      // Texture grid: Gabor filter responses
       const textureGrid = Array.from({length: rows}, () => Array(cols).fill(0));
       const startTime = performance.now();
       for (let r = 0; r < rows; r++) {
@@ -163,56 +204,146 @@ self.onmessage = (e) => {
         }
       }
       const gaborTime = performance.now() - startTime;
-      if (gaborTime > 10) {
-        self.postMessage({ type: 'perfMetrics', metric: 'gaborTime', value: gaborTime, timestamp: Date.now() });
+
+      // Compute statistics for abstract feature extraction and optional semantic detection
+      const flowMags = gridFlows.flat().map(f => f.mag);
+      const textures = textureGrid.flat();
+      const statistics = {
+        meanFlow: flowMags.reduce((a, b) => a + b, 0) / flowMags.length,
+        maxFlow: Math.max(...flowMags),
+        minFlow: Math.min(...flowMags),
+        edgeEnergy: textures.reduce((a, b) => a + b, 0) / textures.length,
+        cellsActive: gridFlows.flat().filter(f => f.mag > skipThreshold).length,
+        cellsTotal: rows * cols,
+      };
+
+      // ABSTRACT FEATURES: These are the primary signals for audio generation
+      const abstractFeatures = [];
+
+      // Feature 1: Texture richness (abstract spatial complexity)
+      const textureRichRatio = textures.filter(t => t > 1.5).length / textures.length;
+      if (textureRichRatio > 0.3) {
+        abstractFeatures.push({
+          type: 'textureRich',
+          magnitude: textureRichRatio,
+          distribution: 'spatial',
+          reasoning: `Surface texture complexity: ${(textureRichRatio * 100).toFixed(1)}% of grid`,
+        });
       }
 
-      const detectBox = () => {
-        let rectCount = 0;
-        for (let y = 1; y < height - 1; y += 10) {
-          for (let x = 1; x < width - 1; x += 10) {
-            const i = (y * width + x) * 4;
-            const hDiff = Math.abs(getLuma(currentData, i) - getLuma(currentData, i + 4));  // Horiz edge
-            const vDiff = Math.abs(getLuma(currentData, i) - getLuma(currentData, (y+1)*width*4 + x*4));  // Vert edge
-            if (hDiff > 60 && vDiff > 60 && Math.abs(hDiff / vDiff - 1) < 0.5) rectCount++;  // Strong rect-like edges with aspect ratio check
+      // Feature 2: Fast motion regions (abstract temporal energy)
+      const fastMotionRatio = flowMags.filter(m => m > 10).length / flowMags.length;
+      if (statistics.meanFlow > 8 || fastMotionRatio > 0.2) {
+        abstractFeatures.push({
+          type: 'fastMotion',
+          magnitude: statistics.meanFlow,
+          distribution: 'temporal',
+          reasoning: `Motion energy: mean=${statistics.meanFlow.toFixed(1)}, ${(fastMotionRatio * 100).toFixed(1)}% fast regions`,
+        });
+      }
+
+      // Feature 3: Edge energy concentration (abstract structural features)
+      if (statistics.edgeEnergy > 1.5) {
+        abstractFeatures.push({
+          type: 'edgeConcentration',
+          magnitude: statistics.edgeEnergy,
+          distribution: 'spatial',
+          reasoning: `Edge concentration: ${statistics.edgeEnergy.toFixed(2)} (high=sharp boundaries)`,
+        });
+      }
+
+      // OPTIONAL SEMANTIC DETECTION: Only run if explicitly enabled
+      // This is for educational purposes and community exploration
+      const semanticObjects = [];
+      if (enableSemantic) {
+        // Simple heuristic-based semantic detection (no ML models)
+        
+        // Detect "person": high motion + concentrated edges + relatively uniform texture
+        if (statistics.meanFlow > 8 && statistics.edgeEnergy > 1.5 && statistics.cellsActive / statistics.cellsTotal > 0.4) {
+          semanticObjects.push({
+            type: 'person',
+            confidence: Math.min(1, (statistics.meanFlow / 15) * 0.5 + (statistics.edgeEnergy / 3) * 0.5),
+            reasoning: 'Moving object with defined edges',
+          });
+        }
+
+        // Detect "tree": high texture + vertical gradient + stable
+        let verticalGradient = 0;
+        for (let r = 1; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            verticalGradient += Math.abs(textureGrid[r][c] - textureGrid[r - 1][c]);
           }
         }
-        return rectCount > 10 ? 'box' : null;  // Threshold
-      };
+        verticalGradient /= (rows - 1) * cols || 1;
+        
+        if (statistics.edgeEnergy > 1.8 && verticalGradient > 0.3 && statistics.meanFlow < 5) {
+          semanticObjects.push({
+            type: 'tree',
+            confidence: Math.min(1, (statistics.edgeEnergy / 3) * 0.5 + (verticalGradient / 1) * 0.5),
+            reasoning: 'Textured vertical structure, stable',
+          });
+        }
 
-      // BPM infer from avgMag
-      const avgMag = gridFlows.flat().reduce((sum, f) => sum + f.mag, 0) / gridFlows.flat().length;
+        // Detect "rough_ground": low motion + high texture variation + large coverage
+        if (statistics.meanFlow < 3 && statistics.edgeEnergy > 1.5 && statistics.cellsActive / statistics.cellsTotal > 0.6) {
+          semanticObjects.push({
+            type: 'rough_ground',
+            confidence: Math.min(1, (statistics.edgeEnergy / 2.5) * 0.7 + (1 - statistics.meanFlow / 5) * 0.3),
+            reasoning: 'Textured stable surface, high coverage',
+          });
+        }
 
-      const detectTrash = () => {
-        const highTextureCells = textureGrid.flat().filter(t => t > 50).length;
-        const hasChromaVariance = textureGrid.flat().some((t, idx) => {
-          if (t > 50) {
-            const r = Math.floor(idx / cols);
-            const c = idx % cols;
-            const i = (Math.floor(r * cellH + cellH / 2) * width + Math.floor(c * cellW + cellW / 2)) * 4;
-            const g = currentData[i + 1], b = currentData[i + 2];
-            const variance = Math.abs(g - b);
-            const softVariance = Math.log(1 + Math.exp(variance)); // Softplus for smooth scores
-            // Debug chroma variance if needed
-            // self.postMessage({ type: 'debug', message: 'TrashChroma', data: { variance } });
-            return softVariance > 25; // Adjusted threshold for urban clutter
-          }
-          return false;
-        });
-        if (highTextureCells > rows * cols * 0.3 && avgMag > 5 && hasChromaVariance) return 'trash';
-        return null;
-      };
+        // Detect "trash": irregular motion + mixed texture
+        const flowVariance = statistics.maxFlow - statistics.meanFlow;
+        if (flowVariance > 5 && statistics.meanFlow > 4 && statistics.edgeEnergy > 1.2 && statistics.edgeEnergy < 2.5) {
+          semanticObjects.push({
+            type: 'trash',
+            confidence: Math.min(1, (flowVariance / 10) * 0.5 + (statistics.meanFlow / 15) * 0.3 + (1 - Math.abs(statistics.edgeEnergy - 1.8) / 2) * 0.2),
+            reasoning: 'Irregular motion patterns, complex texture',
+          });
+        }
 
-      const objects = [];
-      // Person/tree as before...
-      if (textureGrid.flat().some(t => t > 70)) objects.push('rough_ground');  // High texture = piso malo
+        // Detect "box": rectangular edges + stable + compact
+        let borderEnergy = 0;
+        let count = 0;
+        for (let c = 0; c < cols; c++) {
+          borderEnergy += (textureGrid[0]?.[c] || 0) + (textureGrid[rows - 1]?.[c] || 0);
+          count += 2;
+        }
+        for (let r = 0; r < rows; r++) {
+          borderEnergy += (textureGrid[r]?.[0] || 0) + (textureGrid[r]?.[cols - 1] || 0);
+          count += 2;
+        }
+        borderEnergy /= count || 1;
+        
+        const activity = statistics.cellsActive / statistics.cellsTotal;
+        if (borderEnergy > 1.0 && statistics.meanFlow < 4 && activity > 0.3 && activity < 0.7) {
+          semanticObjects.push({
+            type: 'box',
+            confidence: Math.min(1, (borderEnergy / 2) * 0.5 + (1 - statistics.meanFlow / 8) * 0.3 + (1 - Math.abs(activity - 0.5)) * 0.2),
+            reasoning: 'Rectangular object pattern',
+          });
+        }
+      }
 
-      objects.push(detectBox(), detectTrash()).filter(Boolean);
-
-      const inferredBPM = avgMag < 5 ? 100 : (avgMag < 10 ? 115 : 120);
+      const inferredBPM = statistics.meanFlow < 5 ? 100 : (statistics.meanFlow < 10 ? 115 : 120);
 
       prevData = currentData.slice();
-      self.postMessage({ type: 'flowCues', result: { gridFlows, textureGrid, objects, inferredBPM, timestamp: Date.now() } });
+      self.postMessage({ 
+        type: 'flowCues', 
+        result: { 
+          gridFlows, 
+          textureGrid, 
+          abstractFeatures,      // PRIMARY: Abstract spatial/temporal features
+          semanticObjects,       // OPTIONAL: Only if enabled
+          statistics,            // Metadata for decision-making
+          inferredBPM, 
+          timestamp: Date.now(),
+          gridConfig,
+          mode,
+          semanticEnabled,
+        } 
+      });
     } catch (error) {
       self.postMessage({ type: 'error', error: error.message });
     }

@@ -257,6 +257,129 @@ The depth worker supports two distinct computational paths, selected via the `pa
 - Can be triggered at lower latency (<45ms) via frame skipping (every 2nd frame) for real-time responsiveness.
 - Compatible with both paradigms; CNN path provides richer depth detail, pseudo-depth path prioritizes speed.
 
+### 8.2 Paradigm-Aware Grid Configuration (ARCH-3.5)
+
+The `grid-config.js` module provides centralized, paradigm-aware grid sizing and aggregation strategy management. This design enables adaptive performance tuning and data-driven workflow decisions across all video workers.
+
+#### Grid Configurations by Paradigm
+
+Each paradigm defines an optimal grid size and aggregation strategy:
+
+| Paradigm | Grid Size | Aggregation | Skip Threshold | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Flow** | 3×3 (9 cells) | `mean` | 0.1 | Fast, lightweight; responsive navigation feedback |
+| **Focus** | 8×8 (64 cells) | `max` | 0.05 | High-resolution detail; precision object identification |
+| **Hybrid** | 5×5 (25 cells) | `weighted` | 0.075 | Balanced; moderate resolution with real-time responsiveness |
+
+#### Stateless Worker Pattern (R171025 Refactoring) // R171025v2 i dont we whould document this, at least not in architecture, this is more of a changelog.
+
+Workers no longer maintain configuration state. This eliminates race conditions and makes the system more debuggable:
+
+**Before (Problematic):**
+```javascript
+// ❌ Workers stored mutable state
+let _currentGridConfig = { rows: 4, cols: 4, ... };
+self.onmessage = (e) => {
+  if (e.data.type === 'configure') {
+    _currentGridConfig = e.data.gridConfig;  // Silent state mutation
+  }
+  if (e.data.type === 'processFrame') {
+    // Uses stale _currentGridConfig if configure message was dropped
+  }
+};
+```
+
+**After (Fixed - Stateless):**
+```javascript
+// ✅ Configuration flows in with every frame
+self.onmessage = (e) => {
+  const { type, frame, gridConfig, mode, enableSemantic } = e.data;
+  if (type === 'processFrame') {
+    // Use gridConfig directly - no stored state
+    const { rows, cols, aggregation, skipThreshold } = gridConfig;
+    // Process using local parameters only
+  }
+};
+```
+
+**Benefits:**
+- **No race conditions:** Workers never have stale config
+- **Atomic frames:** Each frame is self-contained with full config
+- **Debuggable:** DevTools shows gridConfig for every frame
+- **Testable:** No mutable worker state to manage
+
+#### Message Flow
+
+The `frame-processor.js` orchestrator sends grid configuration with every frame: // R171025 i would like to know the overhead of having the grid configuration passed on every frame, lets consider that we aim to have between 5 and 15 frames per second
+
+1. **Initialization:** When engine loads, `frame-processor.js` imports `getGridConfig` from `grid-config.js`.
+2. **State Management:** Engine maintains `state.currentMode` and `state.enableSemanticDetection`.
+3. **Frame Processing:** For each frame, `frame-processor.js`:
+   - Derives `gridConfig = getGridConfig(state.currentMode)` 
+   - Sends: `{ type: 'processFrame', frame, gridConfig, mode, enableSemantic }`
+   - Workers receive fresh config with every frame (stateless)
+4. **No Handshake:** Workers don't need `configure`/`ready` messages; config arrives inline with data
+
+#### Signal Path: Abstract Features (Primary) + Optional Semantic Layer
+
+All workers extract **abstract spatial features** as the primary signal path:
+
+- **Motion Worker** (`motion-worker.js`): Lucas-Kanade optical flow → grid flow magnitudes → `motionCues`
+- **Image Worker** (`image-worker.js`):
+  - Primary: Extract abstract features (`textureRich`, `fastMotion`, `edgeConcentration`)
+  - Optional: Heuristic semantic detection (person, tree, rough_ground, trash, box) — disabled by default, togglable via `state.enableSemanticDetection`
+  - Emit `flowCues` with both abstract features and conditionally-included semantic objects
+- **Depth Worker** (`depth-worker.js`): Sobel/CNN depth → grid depths → `depthCues` with grid metadata
+
+#### Semantic Detection Control 
+
+Semantic detection is configurable and disabled by default for performance:
+
+**In Engine State (`core/state.js`):**
+```javascript
+{
+  enableSemanticDetection: false,  // Opt-in for educational exploration
+  currentMode: 'flow',             // Can be 'flow', 'focus', or 'hybrid'
+}
+```
+
+**Toggle via Command (settings-commands.js):**
+```javascript
+engine.dispatch('toggleSemanticDetection', { enabled: true });
+// or toggle current state:
+engine.dispatch('toggleSemanticDetection', {});
+```
+
+**Flow to Workers:**
+```javascript
+// frame-processor.js derives current state each frame
+imageWorker.postMessage({
+  type: 'processFrame',
+  frame,
+  gridConfig,
+  mode,
+  enableSemantic: state.enableSemanticDetection  // From engine state
+});
+```
+
+#### Feature Detector Module (`feature-detector.js`)
+
+The `SemanticFeatureDetector` class provides optional, lightweight heuristic-based object detection for educational/community exploration:
+
+- **5 Detection Methods:** person (vertical motion + edges), tree (textured vertical + stable), rough_ground (noisy high-frequency), trash (clustered low-confidence regions), box (rectangular boundaries)
+- **Threshold-Based:** No ML models; uses Gabor filters, histogram analysis, and gradient patterns — designed for student learning
+- **Opt-In:** Only runs when `enableSemanticDetection=true`; does not affect core audio generation
+- **Confidence Scoring:** Each detection includes reasoning and confidence metric for uncertainty handling
+- **Educational Value:** Community can explore and improve heuristics without ML complexity
+
+#### Benefits
+
+- **Performance Tuning:** Flow mode uses fast 3×3 grids for responsiveness; Focus mode scales to 8×8 for precision
+- **Clean Separation:** Abstract features drive real-time audio; semantic detection available for educational/community extensions
+- **Flexible Configuration:** Grid config and semantic detection toggle dynamically without worker restarts
+- **Backward Compatibility:** Workers accept both legacy `gridSize` parameter and new `gridConfig` parameter
+- **Debuggable:** Every frame message contains full configuration; no hidden worker state
+
 ## 9. Audio Subsystem: The Adaptive Conductor
 
 The audio subsystem, orchestrated by the `playCues` "Conductor," translates `cues` into sound. Its output also adapts to the current operating mode.
