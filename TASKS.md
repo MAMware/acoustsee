@@ -13,11 +13,11 @@ This document tracks active and future development tasks to provide a clear proj
        - **[ ] `ARCH-3.2`:** Add dep-free object detection (person/tree/rough_ground/trash/box) in motion worker using thresholds and Gabor textures.
        - **[ ] `ARCH-3.3`:** Integrate BPM inference (from motion mag: 100 normal, 115 brisk, 120 moderate) for rhythmic cues (4 cues/beat).
        - **[ ] `ARCH-3.4`:** Add haptic vibration in pointer mode for tactile feedback on detected objects.
--   **[ ] `ML-1`:** Implement custom monocular depth estimator worker using TensorFlow.js for depth maps and grid averaging.
+-   **[~] `ML-1`:** Implement monocular depth estimator worker with WebGPU GPU acceleration for CNN convolutions. (Updated: Using WebGPU compute shaders for conv2d operations with graceful CPU fallback. Hybrid approach: GPU for convolution, CPU for Sobel/Gabor pseudo-depth path. See `docs/adr/0005-webgpu-acceleration.md`.) _(Status: GPU path complete 2025-10-16, integration/testing in progress)_
 -   **[ ] `ML-2`:** Add ML-based melody generator worker to create near real-time melodies from depth grids (4-6 notes per 45ms frame).
 -   **[ ] `VIDEO-1`:** Enhance motion worker with Lucas-Kanade optical flow, hybrid metric (city-block luma + Euclidean chroma), and dep-free object detection (person/tree).
 -   **[ ] `VIDEO-2`:** Implement pointer worker for hand/cane detection in Focus mode, dispatching pointed grid cells.
--   **[ ] `AUDIO-4`:** Integrate OSC output for external synth control (melody notes, VCF modulation via egomotion).
+
 -   **[ ] `AUDIO-5`:** Add BPM inference from motion magnitude (90-130 BPM based on walking pace) for rhythmic cue synchronization.
 
 ## Completed Tasks
@@ -38,3 +38,4 @@ This document tracks active and future development tasks to provide a clear proj
 		 - Rationale: improves separation of concerns, testability, and reduces risk when changing timing policies.
 -   **[ ] `TEST-1`:** Add smoke tests in `runtime-shims` for new workers (depth, melody, motion with objects, pointer) and OSC output.
 -   **[ ] `UI-7`:** Update dev-panel to display new cues (depth, melody, objects, pointer) and allow paradigm switching.
+-   **[ ] `AUDIO-4`:** Integrate OSC output for external synth control (melody notes, VCF modulation via egomotion). VERY LOW PRIORITY, WE MIGHT LEAVE THIS ATM

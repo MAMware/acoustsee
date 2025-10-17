@@ -188,14 +188,74 @@ The video subsystem captures and analyzes camera input using an intelligent, per
 
 *   **FrameProvider Worker:** A dedicated worker that isolates camera access. It runs its own `requestAnimationFrame` loop to provide a clean, steady stream of video frames, tagging each with timing metadata for performance measurement.
 *   **Orchestrator (`frame-processor.js`):** The central brain of the video pipeline. It receives frames from the `FrameProvider` and, based on the application's current mode (`flow` vs. `focus`), delegates analysis tasks to the appropriate specialist workers.
-*   **Specialist Workers (`motion-worker.js`, etc.):** Each specialist is an expert in a single, computationally expensive task (e.g., motion detection, object recognition, shape analysis). They return structured, semantic data.
+*   **Specialist Workers (`motion-worker.js`, `depth-worker.js`, etc.):** Each specialist is an expert in a single, computationally expensive task (e.g., motion detection, depth estimation, object recognition). They return structured, semantic data.
+    *   **`motion-worker.js`:** Real-time optical flow and motion magnitude computation; fast, CPU-based.
+    *   **`depth-worker.js`:** Monocular depth estimation with dual paths: GPU-accelerated CNN (WebGPU compute shaders) with CPU fallback, or fast CPU-only Sobel edge detection. See ADR-0005 for WebGPU acceleration strategy.
 *   **Grids (`grids/`):** Pluggable **"Sonic Sculptor"** modules. Their role changes based on the mode:
     *   **In `Flow` Mode:** They translate unstructured spatial data (like raw motion) into a musical concept, creating an ambient soundscape. Example: `linear-pitch.js`.
-    *   **In `Focus` Mode:** They translate structured semantic data from the specialists (like a detected object's shape or form) into a specific sonic signature, like a melody or arpeggio, effectively "drawing" the object's form with sound.
+    *   **In `Focus` Mode:** They translate structured semantic data from the specialists (like a detected object's shape or form) into a specific sonic signature, like a melody or arpeggio, effectively "drawing" the object's form with sound. // R161025 "structured semantic data" we might want to revisit this apprach, i dont think we need this complexity of semantic data, instead we should try to handle "abstract" data and to transforn it into sound, as direct as we can, lightweight in all termns.
 
 ### Data Flow & Output Contract
 
 The Orchestrator coordinates the specialists and the active Grid to produce the final output: an array of `cues`. This array is then dispatched in an `'audioCuesReady'` event. The content and richness of these cues adapt to both the operating mode and real-time performance constraints.
+
+### 8.1 Depth Worker: GPU-Accelerated Monocular Depth Estimation
+
+The `depth-worker.js` specialist provides real-time, relative depth information for melody modulation and spatial scene understanding. It implements a hybrid architecture combining GPU acceleration with CPU fallback for compatibility.
+
+#### Design Overview
+
+The depth worker supports two distinct computational paths, selected via the `path` parameter:
+
+1. **CNN Path (GPU-Accelerated):** Uses a minimal U-Net encoder-decoder architecture with WebGPU compute shaders for 2D convolution operations.
+   - **Encoder:** 3 GPU-accelerated convolutional layers with ReLU activation.
+   - **Decoder:** Bilinear upsampling + convolutional layers to reconstruct full-resolution depth map.
+   - **Fallback:** If WebGPU unavailable or fails, automatically switches to CPU-only vanilla JS implementation.
+   - **Output:** Flattened depth map [0, 1] averaged into grid cells per paradigm.
+
+2. **Pseudo-Depth Path (CPU-Only):** Fast, dependency-free approach using Sobel edge detection.
+   - **Sobel operator:** Detects edges via gradient magnitude; high-gradient regions → close objects.
+   - **Softplus normalization:** `log(1 + exp(x))` maps edge magnitude to [0, ∞) → [0, 1].
+   - **Gabor texture enhancement:** Optional; refines collision detection via Gabor-kernel correlation.
+   - **Sampling:** Every 30 pixels per grid cell for speed; skip cells with depth < 0.2.
+
+#### GPU Acceleration Strategy (WebGPU)
+
+**See ADR-0005 for complete rationale and implementation details.**
+
+- **Compute Shader (WGSL):** Parallelizes 2D convolution across GPU threads; workgroup size 256 for efficient utilization.
+- **Buffer Management:** Async GPU buffer creation, data transfer, bind group setup, and readback.
+- **Device Caching:** GPU device initialized once and cached to avoid repeated adapter/device creation overhead.
+- **Graceful Fallback:** Any GPU failure (initialization, shader compilation, device loss) automatically triggers CPU path without interrupting playback.
+- **Structured Logging:** Sampled logs (1% sample rate) for GPU operation monitoring without console spam.
+
+#### Message Contract
+
+**Input:** `{ type: 'processFrame', frame: ImageData, gridSize: { rows: 4, cols: 4 }, path: 'cnn'|'pseudo' }`
+
+**Output:** `{ type: 'depthCues', result: { gridDepths: [[...], ...], timestamp: number } }`
+
+- `gridDepths`: 2D array [rows][cols] with averaged depth per grid cell, normalized to [0, 1].
+- `timestamp`: Frame processing completion time for diagnostics.
+
+#### Performance Characteristics
+
+- **Pseudo-depth path:** 20-40ms for 640×480 (CPU-only, no GPU overhead).
+- **CNN path (GPU available):** 50-150ms for 640×480 encoder-decoder (10x faster than pure CPU).
+- **CNN path (GPU unavailable):** 500-1000ms for 640×480 (falls back to vanilla JS conv2d).
+
+#### Error Handling & Resilience
+
+- **GPU initialization failure:** Log warning, use CPU path for all subsequent frames.
+- **GPU shader compilation failure:** Catch exception, fall back to CPU for that frame; retry GPU on next frame.
+- **Device loss:** Clear cached device; re-initialize on next frame with exponential backoff.
+- **Out-of-memory:** GPU buffer allocation failure triggers automatic CPU path.
+
+#### Integration Notes
+
+- Used in **Focus Mode** (ML-1) for melody modulation via depth grid.
+- Can be triggered at lower latency (<45ms) via frame skipping (every 2nd frame) for real-time responsiveness.
+- Compatible with both paradigms; CNN path provides richer depth detail, pseudo-depth path prioritizes speed.
 
 ## 9. Audio Subsystem: The Adaptive Conductor
 

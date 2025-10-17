@@ -104,6 +104,11 @@
           </select>
           <label>Grid Type</label>
           <select id="grid-type-select"></select>
+          <label>Depth Path</label>
+          <select id="depth-path-select">
+            <option value="pseudo">Pseudo (Sobel/Gabor)</option>
+            <option value="cnn">CNN (Full Regression)</option>
+          </select>
           <label>Motion Threshold</label>
           <div class="slider-container">
             <input id="motion-threshold-slider" type="range" min="20" max="120" step="20" value="20"><span id="motion-threshold-value">20</span>

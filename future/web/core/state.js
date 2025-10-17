@@ -1,4 +1,11 @@
 // File: web/core/state.js
+//
+// R151025: This file needs cleanup, it seems to have unfished work and need for detail where ambiguity arises,
+// each line will be taged with R151025 once issues are addressed please remove the comments that prompted them.
+//
+// R151025: why unused imports? e.g. deprecated or unfinished?
+// R151025: state.js we need to reflect in "real" time the state of parameters of settings (e.g. starting at line 10 from state.js) at the developer panel since currently the user needs to change the code for many settings parametization. The "Developer Panel"  has a "State Inspector" that is a good candidate for where do this could be the "State Inspector". The current "State Inspector" is fixed and it does not reflect the actual settings in "real" time, instead it reflects the defaults. 
+
 import { structuredLog } from '../utils/logging.js';
 import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';
 import { availableGridsData } from '../video/grids/available-grids.js';
@@ -7,6 +14,8 @@ import { availableLanguagesData } from '../languages/available-languages.js';
 import { computeDefaultUpdateInterval, computeDefaultMaxNotes, deviceSummary } from '../utils/performance.js';
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION, UTILS_VERSION } from './constants.js';
 
+// R151025: Why so many nulls? are they any usefull being null? 
+// R151025: Dont be a lot more usefull being able to set the values for parameters from the developer-panel State impoestor?
 export let settings = {
   debugLogging: true,
   stream: null,
@@ -23,7 +32,8 @@ export let settings = {
   // When true, transfer ArrayBuffer ownership to the worker to avoid copies
   // and prefer a reusable buffer allocation (main thread should allocate once).
   // Enabled by default for higher-performance paths.
-  workerTransferEnabled: true,
+  // R151925: Describe in detail the "paths"
+  workerTransferEnabled: false,
   // Stores the most recent auto-FPS benchmark results (measured interval in ms and metadata)
   autoFpsBenchmark: {
     lastIntervalMs: null,
@@ -52,7 +62,7 @@ export let settings = {
     maxEventsPerSecond: 10,
     enableOnLowPerformance: true,
     enableOnMobile: true,
-    // Configurable optimization thresholds
+    // Configurable optimization thresholds 
     performanceThresholds: {
       lowCpuCores: 2,         // Optimize if CPU cores <= 2
       lowMemoryGB: 2,         // Optimize if RAM <= 2GB
@@ -69,16 +79,17 @@ export let settings = {
   },
   dayNightMode: 'day',
   resetStateOnError: true,
-  // --- WIP: ARCH-3 ---
-  // Dual-mode prototype flags and runtime guard.
+  // --- WIP: ARCH-3 --- 
+  // Dual-mode prototype flags and runtime guard. R151025 WE ARE NOW DEVELOPENT A MULTI PARADGIM 
   // This is an experimental feature. Do not remove or change without referencing TASKS.md ARCH-3.
-  // Current operating mode: 'flow' (navigation) or 'focus' (identification)
+  // Current operating mode: 'flow' (navigation) or 'focus' (identification) R151025: UPDATE the hybrid approach
   currentMode: 'flow',
+  depthPath: 'pseudo', // 'pseudo' or 'cnn' // R151025: i had the idead that will do WebGL/vanilly JS paths, is it this?
   // When true, mode switches are simulated and heavy ML paths should be blocked by producers.
-  dualModeWIP: true,
+  dualModeWIP: true, // R151025: WIP was meant to indicate Work In Progress, having it the declaration it self is qute a code smell: dualModeWIP 
   // --- END WIP ---
   motionThreshold: 20,
-  maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value
+  maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value R151025: lets check this limit is not a issue in regard of soem sound issues like the lack of persistence
   ,
   // Expose build/version information to the rest of the app via engine state.
   buildInfo: {
@@ -91,7 +102,7 @@ export let settings = {
   }
 };
 
-// Detect local/test environments where telemetry should be disabled by default.
+// Detect local/test environments where telemetry should be disabled by default. R151025 where did the rationally that telemetry is not needed for local environments?, i dont see the use of this and it might be better removed
 const IS_LOCALHOST = (typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname))
   || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test');
 
@@ -151,12 +162,13 @@ function validateSettingsSchema(settingsObj) {
   return true;
 }
 
+// R151025: lets document better what is saved to configs, if it is only this... we could do a lot better
 /**
  * Initializes default settings from the loaded configuration files.
  * This runs after the config files have been fetched and parsed.
  */
 function initializeDefaults() {
-  structuredLog('INFO', 'Initializing settings from loaded configs.');
+  structuredLog('INFO', 'Initializing settings from loaded configs.'); // R151025: is this actualy loading settings configs? the section comments staes that this loads defaults 
 
   if (!validateSettingsSchema(settings)) {
     structuredLog('ERROR', 'initializeDefaults: Invalid settings schema', { settings });
@@ -184,7 +196,7 @@ function initializeDefaults() {
     if (t === '0') settings.ingestEnabled = false;
     else if (t === '1') settings.ingestEnabled = true;
     else if (IS_LOCALHOST) {
-      // Default to disabled on localhost/test to avoid accidental network calls.
+      // Default to disabled on localhost/test to avoid accidental network calls. R151025: explain such "accidental network calls"
       settings.ingestEnabled = false;
     }
   } catch (e) {
@@ -194,7 +206,7 @@ function initializeDefaults() {
 
 initializeDefaults();
 
-// --- REMOVED loadConfigs: configs are now loaded statically via import ---
+// --- REMOVED loadConfigs: configs are now loaded statically via import --- R151025 Do wee need to keep this comment?
 
 export async function getLogs() {
   // Fetch from IndexedDB and pretty-print for readability.

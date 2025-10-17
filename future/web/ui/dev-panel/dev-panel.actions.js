@@ -283,6 +283,16 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       attachedHandlers.push({ el: fpsModeSel, type: 'change', fn: onFpsMode });
     }
 
+  const depthPathSel = panel.querySelector('#depth-path-select');
+    if (depthPathSel) {
+      const onDepthPath = (e) => {
+        const path = e.target.value;
+        engine.dispatch && engine.dispatch('setDepthPath', { path });
+      };
+      depthPathSel.addEventListener('change', onDepthPath);
+      attachedHandlers.push({ el: depthPathSel, type: 'change', fn: onDepthPath });
+    }
+
   const targetFpsEl = panel.querySelector('#target-fps-slider');
     const targetFpsValueEl = panel.querySelector('#target-fps-value');
     if (targetFpsEl) {

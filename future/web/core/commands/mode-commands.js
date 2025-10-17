@@ -30,5 +30,29 @@ export function registerModeCommands(engine) {
     engine.setState({ currentMode: mode });
   });
   
+  registerCommandHandler('setDepthPath', ({ payload }) => {
+    const { path } = payload;
+    const validPaths = ['pseudo', 'cnn'];
+    if (!validPaths.includes(path)) {
+      structuredLog('WARN', 'Invalid depth path requested', { path, validPaths });
+      return;
+    }
+    
+    const currentState = engine.getState();
+    if (currentState.depthPath === path) {
+      structuredLog('DEBUG', 'Depth path already set', { path });
+      return;
+    }
+    
+    structuredLog('INFO', 'Switching depth estimation path', { 
+      from: currentState.depthPath, 
+      to: path 
+    });
+    
+    engine.setState({ depthPath: path });
+    
+    // Depth worker will be notified via state change listener in frame-processor
+  });
+  
   structuredLog('DEBUG', 'Mode commands registered');
 }

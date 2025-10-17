@@ -34,6 +34,7 @@ let _config = {};
 let frameProviderWorker = null;
 let motionWorker = null;
 let depthWorker = null;
+let previousDepthPath = null; // R151025 what is this used for?
 
 // --- Helper Functions ---
 function startMotionWorker() {
@@ -333,6 +334,15 @@ export async function initializeVideo(config) {
         frameProviderWorker.postMessage({ type: 'start' });
       } else {
         frameProviderWorker.postMessage({ type: 'stop' });
+      }
+      
+      // Check for depth path changes
+      if (state.depthPath && state.depthPath !== previousDepthPath) {
+        if (depthWorker) {
+          depthWorker.postMessage({ type: 'setPath', path: state.depthPath });
+          structuredLog('INFO', 'Depth path updated', { path: state.depthPath });
+        }
+        previousDepthPath = state.depthPath;
       }
     });
     
