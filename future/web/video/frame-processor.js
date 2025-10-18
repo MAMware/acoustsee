@@ -19,10 +19,10 @@ let previousDepthPath = null; // Track depth computation path changes (used to a
 // This keeps frame-processor stateless for configuration
 
 // --- Helper Functions ---
-function startMotionWorker() {
+function startMotionWorker(currentMode = 'flow') {
   if (motionWorker) return;
   try {
-    const workerPath = state.currentMode === 'hybrid' ? './workers/image-worker.js' : './workers/motion-worker.js';
+    const workerPath = currentMode === 'hybrid' ? './workers/image-worker.js' : './workers/motion-worker.js';
     motionWorker = new Worker(new URL(workerPath, import.meta.url), { type: 'module' });
     if (_config.registerWorker) _config.registerWorker(motionWorker, 'MotionSpecialist');
     
@@ -43,7 +43,7 @@ function startMotionWorker() {
     structuredLog('INFO', 'Motion Specialist worker started.');
     
     // Start depth worker for hybrid/focus
-    if (state.currentMode === 'hybrid' || state.currentMode === 'focus') {
+    if (currentMode === 'hybrid' || currentMode === 'focus') {
       startDepthWorker();
     }
   } catch (e) {
@@ -138,8 +138,9 @@ export async function initializeVideo(config) {
   
   structuredLog('DEBUG', 'initializeVideo: Starting video pipeline initialization', config);
 
-  startMotionWorker();
-  // startDepthWorker(); // etc.
+  // Pass current mode from engine state to startMotionWorker
+  const currentMode = config.engine?.getState?.()?.currentMode || 'flow';
+  startMotionWorker(currentMode);
 
   return await executeCriticalOperation('video-processing', async () => {
     const { videoElement, engine } = config;

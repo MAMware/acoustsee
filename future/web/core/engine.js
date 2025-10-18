@@ -256,6 +256,16 @@ export function createEngine() {
 
   // Register flowCuesReady handler with mode-specific logic
   engineInstance.registerCommandHandler('flowCuesReady', (state, result) => {
+    // Defensive check: ensure result and gridFlows exist
+    if (!result || !result.gridFlows) {
+      structuredLog('WARN', 'flowCuesReady: invalid or missing result data', { 
+        hasResult: !!result,
+        hasGridFlows: !!result?.gridFlows,
+        resultKeys: result ? Object.keys(result) : []
+      });
+      return state; // Return unchanged state
+    }
+    
     const newCues = result.gridFlows.flat().map(f => ({
       profile: { type: 'motion', freq: 200 + f.mag * 100, gain: 0.5 }
     }));
