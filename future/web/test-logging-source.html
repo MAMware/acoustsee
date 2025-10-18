@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Logging Source Location</title>
+</head>
+<body>
+  <h1>Logging Source Location Test</h1>
+  <button id="testBtn">Log Test Messages</button>
+  <div id="output" style="border: 1px solid #ccc; padding: 10px; margin-top: 10px; white-space: pre; font-family: monospace;"></div>
+
+  <script type="module">
+    import { structuredLog } from './utils/logging.js';
+
+    const testBtn = document.getElementById('testBtn');
+    const output = document.getElementById('output');
+
+    // Intercept console.log to capture output
+    const logs = [];
+    const originalLog = console.log;
+    const originalDebug = console.debug;
+    const originalInfo = console.info;
+
+    console.log = function(...args) {
+      logs.push({ level: 'LOG', msg: args });
+      originalLog.apply(console, args);
+    };
+    console.debug = function(...args) {
+      logs.push({ level: 'DEBUG', msg: args });
+      originalDebug.apply(console, args);
+    };
+    console.info = function(...args) {
+      logs.push({ level: 'INFO', msg: args });
+      originalInfo.apply(console, args);
+    };
+
+    testBtn.addEventListener('click', () => {
+      logs.length = 0;
+      output.textContent = 'Logging test messages... Check browser console.\n\n';
+      
+      // Test from this file
+      structuredLog('DEBUG', 'Test DEBUG message', { testData: 'debug' });
+      structuredLog('INFO', 'Test INFO message', { testData: 'info' });
+      structuredLog('WARN', 'Test WARN message', { testData: 'warn' });
+      
+      // Show what we captured
+      setTimeout(() => {
+        output.textContent += 'Captured logs:\n';
+        logs.forEach((log, i) => {
+          output.textContent += `${i}: [${log.level}] ${log.msg.join(' ')}\n`;
+        });
+      }, 100);
+    });
+
+    output.textContent = 'Click "Log Test Messages" button to run the test. Check browser console for source locations.';
+  </script>
+</body>
+</html>

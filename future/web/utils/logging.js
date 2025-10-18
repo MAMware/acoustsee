@@ -58,7 +58,7 @@ const loggingConfig = {
 export { loggingConfig };
 
 // Auto-generate metadata from stack trace (conditional based on log level)
-function generateMetadata(level = 'INFO') {
+function generateMetadata(level = 'INFO', callStack = '') {
   if (!loggingConfig.includeMetadata) return {};
   
   const normalizedLevel = level.toUpperCase();
@@ -68,18 +68,37 @@ function generateMetadata(level = 'INFO') {
   // Start with empty metadata object
   const metadata = {};
   
-  // Extract caller location for ALL log levels (needed for browser console to show correct file:line)
-  // Full stack traces (includeStack) only for WARN/ERROR
-  const error = new Error();
-  const stack = error.stack || '';
+  // Extract caller location using the callStack captured at structuredLog entry
+  const stack = callStack || '';
   const lines = stack.split('\n');
-  const callerLine = lines[2] || ''; // Approximate caller info
   
-  // Parse filename, lineno, colno from stack (basic parsing)
-  const match = callerLine.match(/at (.+):(\d+):(\d+)/);
-  metadata.filename = match ? match[1] : '';
-  metadata.lineno = match ? parseInt(match[2], 10) : 0;
-  metadata.colno = match ? parseInt(match[3], 10) : 0;
+  // Find the first line that's NOT from logging.js or core-logger.js
+  // (skip the Error constructor and internal logging frames)
+  let callerLine = '';
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    // Skip frames from logging.js or core-logger.js
+    if (!line.includes('logging.js') && !line.includes('core-logger.js')) {
+      callerLine = line;
+      break;
+    }
+  }
+  
+  // Parse filename, lineno, colno from stack
+  // Handle multiple formats: "at fn (file:line:col)" or "at file:line:col"
+  let match = callerLine.match(/\((.+?):(\d+):(\d+)\)/);
+  if (!match) {
+    match = callerLine.match(/at (.+):(\d+):(\d+)/);
+  }
+  
+  if (match) {
+    // Extract just the filename from the path
+    let fullPath = match[1];
+    const filename = fullPath.split('/').pop() || fullPath;
+    metadata.filename = filename;
+    metadata.lineno = parseInt(match[2], 10);
+    metadata.colno = parseInt(match[3], 10);
+  }
   
   // Only include full stack for WARN/ERROR when includeStack is enabled
   if (loggingConfig.includeStack && isHighPriority) {
@@ -216,6 +235,10 @@ export function throttleError(err, options = {}) {
 }
 
 export function structuredLog(level, message, data = {}, persist = true, sample = true, options = {}) {
+  // Capture call stack IMMEDIATELY at function entry (before any processing)
+  // This is critical for accurate source location extraction
+  const callStack = new Error().stack || '';
+  
   // Handle legacy API: if persist is an object, it's the options parameter
   if (typeof persist === 'object' && persist !== null && !Array.isArray(persist)) {
     options = persist;
@@ -252,8 +275,8 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     // NOTE: Translation removed from hot path. Move i18n logic to UI/presentation layer post-hoc.
     const finalMessage = message;
     
-    // Auto-generate metadata and merge with provided data (pass level for conditional metadata)
-    const metadata = generateMetadata(level);
+    // Auto-generate metadata and merge with provided data (pass level and callStack for accurate source location)
+    const metadata = generateMetadata(level, callStack);
     
     // Add rich telemetry data for D1 ingestion, including traceId for correlation // R171025 the correlation is only for D1 ingestion? it might be usefull to have it at "Live logs"
     const telemetryData = {
