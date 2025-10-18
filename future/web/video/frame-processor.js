@@ -130,6 +130,80 @@ function processWithMotionWorker(frameData, width, height, state) {
 }
 
 /**
+ * Simulates object detection based on motion results.
+ * In Focus mode, this converts motion data into detected semantic objects.
+ * 
+ * @param {object} motionResults - Results from motion worker containing movingRegions, etc.
+ * @returns {object} Object detection results with detectedObjects array
+ */
+async function simulateObjectDetection(motionResults = {}) {
+  try {
+    // If no semantic detection is enabled or no motion, return empty
+    if (!motionResults.objects || motionResults.objects.length === 0) {
+      return { detectedObjects: [] };
+    }
+
+    // In a real implementation, this would run an ML model (TensorFlow, etc.)
+    // For now, we simulate by treating the first motion object as a detected object
+    const detectedObjects = motionResults.objects.slice(0, 1).map((obj, idx) => ({
+      id: `obj_${idx}`,
+      label: obj.label || 'unknown_object',
+      confidence: Math.min(1.0, obj.confidence || 0.7),
+      position: obj.position || { x: 0, y: 0, z: 0 },
+      boundingBox: obj.boundingBox || { x: 0, y: 0, width: 100, height: 100 }
+    }));
+
+    return { detectedObjects };
+  } catch (e) {
+    structuredLog('WARN', 'simulateObjectDetection failed', { error: e?.message || String(e) });
+    return { detectedObjects: [] };
+  }
+}
+
+/**
+ * Simulates shape analysis for a detected object.
+ * Provides additional shape metadata (texture, edges, corners) for grid mapping.
+ * 
+ * @param {object} detectedObject - A detected object from object detection
+ * @returns {object} Shape analysis results
+ */
+async function simulateShapeAnalysis(detectedObject = {}) {
+  try {
+    if (!detectedObject.id) {
+      return { 
+        shapeType: 'unknown',
+        edges: [],
+        texture: [],
+        movingRegions: [] 
+      };
+    }
+
+    // In a real implementation, this would analyze pixel-level features
+    // For now, we return a basic shape analysis structure
+    return {
+      shapeType: detectedObject.label || 'generic',
+      confidence: detectedObject.confidence || 0.5,
+      edges: [],
+      texture: [],
+      // Simulate some motion regions based on the object's bounding box
+      movingRegions: [{
+        x: detectedObject.position?.x || 0.5,
+        y: detectedObject.position?.y || 0.5,
+        intensity: (detectedObject.confidence || 0.7) * 100
+      }]
+    };
+  } catch (e) {
+    structuredLog('WARN', 'simulateShapeAnalysis failed', { error: e?.message || String(e) });
+    return {
+      shapeType: 'unknown',
+      edges: [],
+      texture: [],
+      movingRegions: []
+    };
+  }
+}
+
+/**
  * Initializes the modern, off-thread video processing pipeline.
  * This is the single, correct entry point for video processing.
  */
@@ -260,6 +334,30 @@ export async function initializeVideo(config) {
                 cuesCount: gridOutput.cues.length 
               });
             }
+          } else {
+            // FALLBACK: Grid returned no cues, create a default one from motion data // R181025 we must be cautious with fallbacks, remember that this is a navigation aid for blind users
+            if (motionResults.movingRegions && motionResults.movingRegions.length > 0) {
+              const defaultCues = motionResults.movingRegions.slice(0, 1).map(region => ({
+                objectType: 'default_motion',
+                pitch: 440 + (region.y || 0) * 400, // Vary pitch based on position
+                intensity: Math.min(1.0, (region.intensity || 50) / 100),
+                position: { x: region.x || 0, y: region.y || 0, z: 0 }
+              }));
+              dispatchPayload = { cues: defaultCues };
+              structuredLog('DEBUG', 'Frame processor: Created fallback cues for Flow mode', { cuesCount: defaultCues.length });
+            }
+          }
+        } else {
+          // FALLBACK: No grid available, create cues from motion data directly
+          if (motionResults.movingRegions && motionResults.movingRegions.length > 0) {
+            const defaultCues = motionResults.movingRegions.slice(0, 1).map(region => ({
+              objectType: 'default_motion',
+              pitch: 440 + (region.y || 0) * 400,
+              intensity: Math.min(1.0, (region.intensity || 50) / 100),
+              position: { x: region.x || 0, y: region.y || 0, z: 0 }
+            }));
+            dispatchPayload = { cues: defaultCues };
+            structuredLog('DEBUG', 'Frame processor: No grid, using motion-based fallback cues', { cuesCount: defaultCues.length });
           }
         }
 
@@ -304,6 +402,16 @@ export async function initializeVideo(config) {
           // Combine into a single standardized cues array (primary first)
           const combinedCues = [primaryCue, ...secondaryCues];
           dispatchPayload = { cues: combinedCues };
+        } else {
+          // FALLBACK: If no objects detected in Focus mode, fall back to Flow mode grid mapping // R181025 isnt this the purpose of the hybrid mode? 
+          // This ensures audio continues even when object detection fails or finds nothing
+          if (grid && grid.mapFunction) {
+            const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
+            if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
+              dispatchPayload = { cues: gridOutput.cues };
+              structuredLog('DEBUG', 'Focus mode fallback: Using motion-based cues', { cueCount: gridOutput.cues.length });
+            }
+          }
         }
       }
       
