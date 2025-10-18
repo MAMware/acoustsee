@@ -5,6 +5,7 @@
 import { getWorkerStats } from './worker-monitor.js';
 import { RingBuffer, makeThrottledRenderer, scaleCanvasForDPR, drawMultiSparkline } from './worker-charts.js';
 import { structuredLog } from '../../utils/logging.js';
+import { clearIdbLogs } from '../../utils/idb-logger.js';
 
 export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   // There may be multiple action grids (e.g., Synth Sandbox and Controls).
@@ -245,6 +246,40 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
           });
         } catch (e) {
           structuredLog('ERROR', 'exportIngestLogs failed', { error: e.message });
+        }
+        break;
+      case 'clearIdbLogs':
+        try {
+          const clearBtn = btn;
+          clearBtn.disabled = true;
+          const originalText = clearBtn.textContent;
+          clearBtn.textContent = 'Clearing...';
+          
+          clearIdbLogs().then(() => {
+            structuredLog('INFO', 'User cleared IDB logs from dev panel', {});
+            clearBtn.textContent = '✓ Logs cleared';
+            clearBtn.classList.add('success');
+            
+            // Reset button after 2 seconds
+            setTimeout(() => {
+              clearBtn.textContent = originalText;
+              clearBtn.classList.remove('success');
+              clearBtn.disabled = false;
+            }, 2000);
+          }).catch(err => {
+            structuredLog('ERROR', 'Failed to clear IDB logs', { error: err.message });
+            clearBtn.textContent = `✗ Failed: ${err.message}`;
+            clearBtn.classList.add('error');
+            
+            // Reset button after 3 seconds
+            setTimeout(() => {
+              clearBtn.textContent = originalText;
+              clearBtn.classList.remove('error');
+              clearBtn.disabled = false;
+            }, 3000);
+          });
+        } catch (e) {
+          structuredLog('ERROR', 'clearIdbLogs dispatch failed', { error: e.message });
         }
         break;
       default:

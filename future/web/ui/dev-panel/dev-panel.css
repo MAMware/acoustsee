@@ -301,6 +301,33 @@
 .performance-actions button:hover,
 .ingest-actions button:hover { background: #4a5b6b; }
 
+/* Danger button styling for destructive actions */
+.danger-btn {
+  background: #c92a2a !important;
+  border-color: #a61e4d !important;
+  color: #fff !important;
+}
+
+.danger-btn:hover {
+  background: #a61e4d !important;
+}
+
+.danger-btn:disabled {
+  background: #822c31 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+}
+
+.danger-btn.success {
+  background: #2d7d38 !important;
+  border-color: #2d7d38 !important;
+}
+
+.danger-btn.error {
+  background: #a61e4d !important;
+  border-color: #a61e4d !important;
+}
+
 .segmented-control button.active {
   background-color: #3498db;
   color: white;
