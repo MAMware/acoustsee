@@ -372,6 +372,8 @@ The `SemanticFeatureDetector` class provides optional, lightweight heuristic-bas
 - **Confidence Scoring:** Each detection includes reasoning and confidence metric for uncertainty handling
 - **Educational Value:** Community can explore and improve heuristics without ML complexity
 
+**See Also:** [Semantic Detection: Educational Guide to Computer Vision in AcoustSee](../../docs/SEMANTIC_DETECTION_GUIDE.md) — A comprehensive walkthrough of all detection methods, thresholds, algorithms, and how to extend the system for student projects.
+
 #### Benefits
 
 - **Performance Tuning:** Flow mode uses fast 3×3 grids for responsiveness; Focus mode scales to 8×8 for precision

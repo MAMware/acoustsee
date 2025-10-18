@@ -55,6 +55,16 @@ The application is built on a decoupled, headless architecture.
 - **`audio/audio-processor.js`:** Manages the Web Audio API, sound profiles, and synths.
 - **`ui/` directory:** Contains pluggable UI modules (e.g., `touch-gestures/` for accessible UI, `dev-panel/` for debugging).
 
+## Educational Resources
+
+### Semantic Detection Guide
+
+Learn how AcoustSee performs lightweight, heuristic-based object detection without machine learning:
+
+- **[Semantic Detection: Educational Guide to Computer Vision in AcoustSee](./docs/SEMANTIC_DETECTION_GUIDE.md)** — A comprehensive walkthrough of detection methods (person, tree, rough_ground, trash, box), the algorithms behind them (Gabor filters, optical flow, edge detection), and how to extend the system for student projects and research.
+
+This is perfect for educators and students learning computer vision fundamentals without the complexity of neural networks.
+
 ## Contributing
 
 This project is open-source and contributions are welcome. To add a new grid, synth, or language, add the corresponding file in the `video/grids/`, `audio/synths/`, or `utils/` directory and ensure it integrates with the command handlers and registries.

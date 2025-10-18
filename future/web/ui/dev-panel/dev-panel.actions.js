@@ -293,6 +293,23 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       attachedHandlers.push({ el: depthPathSel, type: 'change', fn: onDepthPath });
     }
 
+  // Semantic Detection Toggle (Educational Mode)
+  const semanticDetectionToggle = panel.querySelector('#semantic-detection-toggle');
+    if (semanticDetectionToggle) {
+      const onSemanticToggle = (e) => {
+        const enabled = e.target.checked;
+        engine.dispatch && engine.dispatch('toggleSemanticDetection', { enabled });
+        structuredLog('INFO', 'Semantic detection toggled', { enabled, context: 'Dev Panel' });
+      };
+      // Initialize from state
+      const state = engine.getState && engine.getState();
+      if (state && state.enableSemanticDetection !== undefined) {
+        semanticDetectionToggle.checked = state.enableSemanticDetection;
+      }
+      semanticDetectionToggle.addEventListener('change', onSemanticToggle);
+      attachedHandlers.push({ el: semanticDetectionToggle, type: 'change', fn: onSemanticToggle });
+    }
+
   const targetFpsEl = panel.querySelector('#target-fps-slider');
     const targetFpsValueEl = panel.querySelector('#target-fps-value');
     if (targetFpsEl) {
@@ -372,6 +389,12 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
           } else {
             focusBtn.classList.remove('active'); flowBtn.classList.add('active');
           }
+        }
+        
+        // Update semantic detection toggle state
+        const semanticToggle = panel.querySelector('#semantic-detection-toggle');
+        if (semanticToggle && state && state.enableSemanticDetection !== undefined) {
+          semanticToggle.checked = state.enableSemanticDetection;
         }
       } catch (e) { /* ignore */ }
     });
