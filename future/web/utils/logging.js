@@ -68,18 +68,21 @@ function generateMetadata(level = 'INFO') {
   // Start with empty metadata object
   const metadata = {};
   
-  // Stack traces only for WARN/ERROR
+  // Extract caller location for ALL log levels (needed for browser console to show correct file:line)
+  // Full stack traces (includeStack) only for WARN/ERROR
+  const error = new Error();
+  const stack = error.stack || '';
+  const lines = stack.split('\n');
+  const callerLine = lines[2] || ''; // Approximate caller info
+  
+  // Parse filename, lineno, colno from stack (basic parsing)
+  const match = callerLine.match(/at (.+):(\d+):(\d+)/);
+  metadata.filename = match ? match[1] : '';
+  metadata.lineno = match ? parseInt(match[2], 10) : 0;
+  metadata.colno = match ? parseInt(match[3], 10) : 0;
+  
+  // Only include full stack for WARN/ERROR when includeStack is enabled
   if (loggingConfig.includeStack && isHighPriority) {
-    const error = new Error();
-    const stack = error.stack || '';
-    const lines = stack.split('\n');
-    const callerLine = lines[2] || ''; // Approximate caller info
-    
-    // Parse filename, lineno, colno from stack (basic parsing)
-    const match = callerLine.match(/at (.+):(\d+):(\d+)/);
-    metadata.filename = match ? match[1] : '';
-    metadata.lineno = match ? parseInt(match[2], 10) : 0;
-    metadata.colno = match ? parseInt(match[3], 10) : 0;
     metadata.stack = stack;
   }
   
@@ -279,6 +282,11 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     }
     
     // Use core-logger to output formatted message
+    // Extract caller location if available for display
+    const callerInfo = telemetryData.filename && telemetryData.lineno 
+      ? ` ${telemetryData.filename}:${telemetryData.lineno}:${telemetryData.colno || 0}`
+      : '';
+    
     let payload = '';
     if (Object.keys(telemetryData).length) {
       try {
@@ -287,7 +295,7 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
         payload = ' [Unserializable data]';
       }
     }
-    output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${finalMessage}${payload}`);
+    output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${finalMessage}${callerInfo}${payload}`);
     
     // Accessibility features (opt-in)
     if (announce && announceMessageFn) {
