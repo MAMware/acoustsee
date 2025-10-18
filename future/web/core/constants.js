@@ -11,9 +11,9 @@ export const LOG_LEVELS = {
 };
 
 // Version constants for different modules
-export const BUILD_VERSION = '0.9.0-hybrid';
+export const BUILD_VERSION = '0.9.0-improvedLogging';
 export const AUDIO_VERSION = '0.8.3-BPM';
-export const VIDEO_VERSION = '0.7.0-hybrid';
+export const VIDEO_VERSION = '0.7.1-enhancedHybrid';
 export const UI_VERSION = '0.7.0-touchPad';
 export const LANGUAGES_VERSION = '0.2-spaEng';
-export const UTILS_VERSION = '0.9.5-simplerRefactor';
+export const UTILS_VERSION = '0.9.5-improvedLogging';

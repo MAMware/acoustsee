@@ -431,7 +431,8 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
 
   // Mode switch button
   const modeButton = document.createElement('button');
-  modeButton.textContent = `Switch Mode (Current: ${engine.state.currentMode || 'flow'})`;
+  const currentMode = engine?.getState?.()?.currentMode || 'flow';
+  modeButton.textContent = `Switch Mode (Current: ${currentMode})`;
   modeButton.setAttribute('data-action', 'switchMode');
   modeButton.type = 'button';
   const controlsGrid = panel.querySelector('.devpanel-actions-grid');
@@ -442,8 +443,11 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
     element: modeButton,
     event: 'click',
     handler: () => {
+      if (!engine) return;
+      const state = engine?.getState?.();
+      if (!state) return;
       const modes = ['flow', 'focus', 'hybrid'];
-      const currentIndex = modes.indexOf(engine.state.currentMode || 'flow');
+      const currentIndex = modes.indexOf(state.currentMode || 'flow');
       const newMode = modes[(currentIndex + 1) % modes.length];
       engine.dispatch && engine.dispatch('setMode', { mode: newMode });
     }

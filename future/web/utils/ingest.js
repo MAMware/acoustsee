@@ -404,10 +404,10 @@ export function setupIngestErrorTracking() {
       lineno: event.lineno || 0,
       colno: event.colno || 0,
       stack: event.error?.stack || '',
-  url: window.location.href,
-  user_agent: navigator.userAgent,
-  app_version: state.buildInfo?.version || 'unknown',
-  env: 'production',
+      url: window.location.href,
+      user_agent: navigator.userAgent,
+      app_version: null, // Version will be added by logging system or left null
+      env: 'production',
       timestamp: Date.now(),
       
       // Direct object instead of JSON.stringify
@@ -431,10 +431,10 @@ export function setupIngestErrorTracking() {
       lineno: 0,
       colno: 0,
       stack: event.reason?.stack || '',
-  url: window.location.href,
-  user_agent: navigator.userAgent,
-  app_version: state.buildInfo?.version || 'unknown',
-  env: 'production',
+      url: window.location.href,
+      user_agent: navigator.userAgent,
+      app_version: null, // Version will be added by logging system or left null
+      env: 'production',
       timestamp: Date.now(),
       
       // Direct object instead of JSON.stringify

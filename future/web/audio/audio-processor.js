@@ -550,6 +550,12 @@ export async function resumeAudioContext() {
 }
 
 export function registerAudioListeners(engine) {
+  // Defensive check: ensure engine is valid
+  if (!engine) {
+    structuredLog('WARN', 'registerAudioListeners: engine is null, listeners not registered');
+    return;
+  }
+  
   let bpm = 100;
   let cueInterval = 60000 / bpm / 4; // 4 cues/beat
   let cueSchedulerId = null;
@@ -559,13 +565,17 @@ export function registerAudioListeners(engine) {
     if (cueSchedulerId) cancelAnimationFrame(cueSchedulerId);
     let lastTime = 0;
     const scheduleCues = (timestamp) => {
-      if (engine.state.currentMode !== 'hybrid') { cueSchedulerId = null; return; } // Clear RAF if not rhythmic mode
-      if (!engine.state.cueBuffer || !engine.state.cueBuffer.length) return; // Avoid RAF if empty
+      // Defensive: check engine state exists before accessing
+      const state = engine?.getState?.();
+      if (!state) return; // No state available, skip scheduling
+      
+      if (state.currentMode !== 'hybrid') { cueSchedulerId = null; return; } // Clear RAF if not rhythmic mode
+      if (!state.cueBuffer || !state.cueBuffer.length) return; // Avoid RAF if empty
       // Limit cueBuffer to max 16 to prevent overflow
-      if (engine.state.cueBuffer.length > 16) engine.state.cueBuffer = engine.state.cueBuffer.slice(-16);
+      if (state.cueBuffer.length > 16) state.cueBuffer = state.cueBuffer.slice(-16);
       if (timestamp - lastTime >= cueInterval) {
         // Play batch of up to 4 cues from state.cueBuffer
-        const cues = (engine.state.cueBuffer || []).splice(0, 4);
+        const cues = (state.cueBuffer || []).splice(0, 4);
         if (cues.length > 0) playCues(cues);
         lastTime = timestamp;
       }

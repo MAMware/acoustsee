@@ -179,8 +179,6 @@ export async function computeAutoIntervalBenchmark(video, canvas, processFrameWi
     // Return computed metadata; callers should persist via engine commands
     const computed = { intervalMs: Math.round(1000 / targetFps), sampleCount: measuredCount, safetyFactor, downscaleFactor: scale };
     return computed.intervalMs;
-
-    return 1000 / targetFps;
   } catch (e) {
     return 1000 / DEFAULT_TARGET_FPS;
   }
