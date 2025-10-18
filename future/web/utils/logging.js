@@ -43,12 +43,15 @@ function safeStringify(obj) {
 let currentLogLevel = LOG_LEVELS[DEFAULT_LOG_LEVEL];
 let sampleRate = detectIsMobile() ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 
-// Config for logging behavior
+// Config for logging behavior, including throttling
 const loggingConfig = {
   includeMetadata: true, // Enable/disable metadata
   includeUserAgent: false, // Privacy: excluded by default
   includeStack: false, // Only include for WARN/ERROR by default
   includeUrl: false, // Only include for WARN/ERROR by default
+  maxLogsPerMessage: 15, // Max identical messages per THROTTLE_WINDOW_MS
+  throttleWindowMs: 1000, // Throttle window duration in milliseconds
+  enableThrottling: true, // Global throttling enable/disable
 };
 
 // Export config for runtime control
@@ -113,31 +116,40 @@ export function setSampleRate(rate) {
 
 /**
  * Logs a structured message with level, timestamp, and data payload.
- * Emits asynchronously to prevent blocking.
+ * Dispatches asynchronously to prevent blocking high-throughput paths (frame processing).
  * @param {string} level - One of 'DEBUG', 'INFO', 'WARN', 'ERROR'.
  * @param {string} message - Descriptive message (e.g., 'setAudioInterval').
  * @param {Object} [data={}] - Additional context (e.g., { timerId: 42, ms: 50 }).
  * @param {boolean|Object} [persist=true] - If true, persist to IDB. If object, use as options.
- * @param {boolean} [sample=true] - If false, bypass sampling (for critical logs).
+ * @param {boolean} [applyRateLimitingAndSampling=true] - If false, bypass throttling and sampling.
  * @param {Object} [options] - Enhanced logging options
- * @param {Object} [options.state] - App state (for i18n translation)
- * @param {Function} [options.getTextFn] - getText function (to avoid circular import)
- * @param {Function} [options.announceMessageFn] - announceMessage function
- * @param {Function} [options.speakTextFn] - speakText function
- * @param {boolean} [options.translate=false] - Treat message as i18n key
+ * @param {string} [options.traceId] - Trace ID for correlating related logs
+ * @param {Object} [options.state] - App state (for i18n translation, if enabled elsewhere) // R171025 elsewhere like where?
+ * @param {boolean} [options.unthrottled=false] - If true, skip throttling (takes precedence)
  * @param {boolean} [options.announce=false] - Announce to screen reader
  * @param {boolean} [options.speak=false] - Speak via TTS
  * @param {boolean} [options.toast=false] - Show in dev panel
+ * @param {string} [options.persistAs] - Explicit ingestion key (e.g., 'telemetry', 'error')
  */
 
 let inStructuredLog = false;
+let globalTraceId = null; // Global trace context for correlation
+
+export function setGlobalTraceId(traceId) {
+  globalTraceId = traceId;
+}
+
+export function getGlobalTraceId() {
+  return globalTraceId;
+}
 
 // Rate limiting for log flooding prevention
 const logThrottleMap = new Map();
-const THROTTLE_WINDOW_MS = 1000; // 1 second window
-const MAX_LOGS_PER_MESSAGE = 5; // Max 5 identical messages per second
 
 function shouldThrottle(level, message) {
+  // Skip if throttling is disabled globally
+  if (!loggingConfig.enableThrottling) return false;
+  
   // Don't throttle ERROR level logs
   if (level.toUpperCase() === 'ERROR') return false;
   
@@ -152,7 +164,7 @@ function shouldThrottle(level, message) {
   const entry = logThrottleMap.get(key);
   
   // If outside the throttle window, reset
-  if (now - entry.firstTime > THROTTLE_WINDOW_MS) {
+  if (now - entry.firstTime > loggingConfig.throttleWindowMs) {
     entry.count = 1;
     entry.firstTime = now;
     entry.lastTime = now;
@@ -160,7 +172,7 @@ function shouldThrottle(level, message) {
   }
   
   // If we've hit the limit, throttle
-  if (entry.count >= MAX_LOGS_PER_MESSAGE) {
+  if (entry.count >= loggingConfig.maxLogsPerMessage) {
     entry.lastTime = now;
     return true;
   }
@@ -171,9 +183,35 @@ function shouldThrottle(level, message) {
   return false;
 }
 
-/**
- * Logs a structured message synchronously with recursion guard and rate limiting.
- */
+// warn-once helper: log the same warning only once per key
+const _warnOnceSet = new Set();
+export function warnOnce(key, level = 'WARN', message, data = {}) {
+  if (_warnOnceSet.has(key)) return;
+  _warnOnceSet.add(key);
+  structuredLog(level, message, data, true, false);
+}
+
+// Error throttler: aggregate repeated errors and optionally return whether to log full stack
+const _errorCounts = new Map();
+export function throttleError(err, options = {}) {
+  try {
+    const message = err && err.message ? err.message : String(err || 'Error');
+    const key = options.key || (err && err.name ? `${err.name}:${message}` : message);
+    const prev = _errorCounts.get(key) || 0;
+    _errorCounts.set(key, prev + 1);
+
+    // If first occurrence, return { log: true }
+    if (prev === 0) return { log: true, occurrences: 1 };
+
+    // Otherwise, only log every N occurrences
+    const sampleEvery = options.sampleEvery || 50;
+    if ((prev + 1) % sampleEvery === 0) return { log: true, occurrences: prev + 1 };
+    return { log: false, occurrences: prev + 1 };
+  } catch (e) {
+    return { log: true, occurrences: 1 };
+  }
+}
+
 export function structuredLog(level, message, data = {}, persist = true, sample = true, options = {}) {
   // Handle legacy API: if persist is an object, it's the options parameter
   if (typeof persist === 'object' && persist !== null && !Array.isArray(persist)) {
@@ -182,22 +220,24 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
   }
   
   const { 
-    state, 
-    getTextFn, 
-    announceMessageFn, 
-    speakTextFn,
-    translate = false, 
+    traceId = globalTraceId,
+    unthrottled = false,
     announce = false, 
     speak = false, 
-    toast = false 
+    toast = false,
+    persistAs = null,
+    announceMessageFn,
+    speakTextFn
   } = options;
   
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
   if (numericLevel < currentLogLevel) return;
+  
+  // Apply sampling only for DEBUG level if sample is true (corrected semantics)
   if (sample && level.toUpperCase() === 'DEBUG' && Math.random() > sampleRate) return;
   
-  // Rate limiting check
-  if (shouldThrottle(level, message)) {
+  // Rate limiting check (unless unthrottled flag is set)
+  if (!unthrottled && shouldThrottle(level, message)) {
     return;
   }
 
@@ -206,41 +246,22 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
   try {
     const timestamp = new Date().toISOString();
     
-    // Translate message if requested and state available
-    let finalMessage = message;
-    if (translate && state && getTextFn) {
-      try {
-        // Use provided getText function to avoid circular import
-        finalMessage = getTextFn(message, data, state);
-        // getText is async, but we can't await in sync function
-        // So we handle the promise inline
-        if (finalMessage && typeof finalMessage.then === 'function') {
-          finalMessage.then(translatedMsg => {
-            // Re-log with translated message (deferred)
-            structuredLog(level, translatedMsg, data, persist, sample, { ...options, translate: false });
-          }).catch(() => {
-            // Translation failed, use original
-          });
-          // Use original message for now
-          finalMessage = message;
-        }
-      } catch (err) {
-        // If translation fails, use original message
-        finalMessage = message;
-      }
-    }
+    // NOTE: Translation removed from hot path. Move i18n logic to UI/presentation layer post-hoc.
+    const finalMessage = message;
     
     // Auto-generate metadata and merge with provided data (pass level for conditional metadata)
     const metadata = generateMetadata(level);
     
-    // Add rich telemetry data for D1 ingestion
+    // Add rich telemetry data for D1 ingestion, including traceId for correlation // R171025 the correlation is only for D1 ingestion? it might be usefull to have it at "Live logs"
     const telemetryData = {
       ...metadata,
       ...data, // Allow overrides or additions
-    //  ingestion_id: crypto && crypto.randomUUID ? crypto.randomUUID() : null,
-    //  user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-    //  url: typeof location !== 'undefined' ? location.href : '',
     };
+    
+    // Add traceId if available for log correlation
+    if (traceId) {
+      telemetryData.traceId = traceId;
+    }
     
     // Extract error info if available
     if (data.error && data.error instanceof Error) {
@@ -251,6 +272,11 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     }
     
     const logEntry = { timestamp, level: level.toUpperCase(), message: finalMessage, data: telemetryData };
+    
+    // Add explicit ingestion category if provided
+    if (persistAs) {
+      logEntry.ingestionKey = persistAs;
+    }
     
     // Use core-logger to output formatted message
     let payload = '';
@@ -272,9 +298,9 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
       }
     }
     
-    if (speak && state && speakTextFn) {
+    if (speak && speakTextFn) {
       try {
-        speakTextFn(finalMessage, 'polite', state);
+        speakTextFn(finalMessage, 'polite');
       } catch (err) {
         console.warn('Failed to speak message:', err);
       }
@@ -298,10 +324,16 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     
     // Enhanced IndexedDB persistence for important logs
     if (persist) {
-      // Always persist WARN+ level logs and performance_ingest data
-      const shouldPersist = numericLevel >= LOG_LEVELS.WARN || 
-                           message === 'performance_ingest' || 
-                           message.includes('error_ingest');
+      // Determine persistence based on explicit key or log level
+      let shouldPersist = false;
+      
+      if (persistAs) {
+        // If explicit ingestion key provided, always persist
+        shouldPersist = true;
+      } else {
+        // Otherwise, persist WARN+ level logs by default
+        shouldPersist = numericLevel >= LOG_LEVELS.WARN;
+      }
       
       if (shouldPersist) {
         addIdbLog(logEntry).catch(err => {
@@ -438,6 +470,29 @@ function showDevToast(message, { level }) {
     toast.style.animation = 'slideOut 0.3s ease-in';
     setTimeout(() => toast.remove(), 300);
   }, 3000);
+}
+
+/**
+ * Cleanup function to dispose logging resources.
+ * Clears all in-memory throttle state, warn-once keys, error counts, and trace context.
+ * Should be called during app shutdown or module cleanup.
+ * @returns {void}
+ */
+export function dispose() {
+  // Clear all rate-limiting state
+  logThrottleMap.clear();
+  
+  // Clear warn-once tracking
+  _warnOnceSet.clear();
+  
+  // Clear error count deduplication
+  _errorCounts.clear();
+  
+  // Reset global trace context
+  globalTraceId = null;
+  
+  // Note: inStructuredLog and _invalidListenerSeen are internal guards; cleared for safety
+  inStructuredLog = false;
 }
 
 export default defaultAdapter;

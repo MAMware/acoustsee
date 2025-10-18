@@ -4,7 +4,7 @@
 // Minimal headless engine: owns state and exposes a dispatch API for commands.
 
 import { settings } from './state.js';
-import { structuredLog } from '../utils/logging.js';
+import { structuredLog, throttleError } from '../utils/logging.js';
 import logger from '../utils/logging.js';
 import { getText, speakText, announceMessage } from '../utils/utils.js'; // <-- REDUCED IMPORTS
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive, startMic, stopMic } from './media-controller.js';
@@ -67,18 +67,47 @@ export function createEngine() {
     } catch (e) { /* best-effort */ }
   }
 
+  // Keep a small in-memory registry to avoid noisy repeated errors R171025 lets explain this approach better, e.g. "how much memory? is it ram?"
+  const _invalidListenerSeen = new Set();
+  const _listenerErrorCounts = new Map();
   function notifyListeners() {
-    for (const fn of Array.from(listeners)) {
-      try { fn(state); } catch (e) { 
-        structuredLog('WARN', 'engine listener error', { error: e?.message });
-        try { logger.logError && logger.logError(e); } catch (er) {}
+    for (const candidate of Array.from(listeners)) {
+      // Validate listener is callable. If not, remove and warn once.
+      if (typeof candidate !== 'function') {
+        const key = String(candidate);
+        if (!_invalidListenerSeen.has(key)) {
+          _invalidListenerSeen.add(key);
+          structuredLog('WARN', 'Engine: removed non-function listener', { listenerType: typeof candidate });
+        }
+        listeners.delete(candidate);
+        continue;
+      }
+
+      try {
+        candidate(state);
+      } catch (e) {
+        const t = throttleError(e, { sampleEvery: 50 });
+        if (t.log) {
+          structuredLog('WARN', 'engine listener error', { error: e?.message, stack: e?.stack, occurrences: t.occurrences });
+          try { logger.logError && logger.logError(e); } catch (er) {}
+        }
       }
     }
   }
 
   function onStateChange(fn) {
+    if (typeof fn !== 'function') {
+      structuredLog('WARN', 'onStateChange: attempted to register non-function listener', { listenerType: typeof fn });
+      return () => {};
+    }
     listeners.add(fn);
-    try { fn(state); } catch (e) { /* best-effort */ }
+    try { fn(state); } catch (e) { 
+      // If initial call throws, record it but avoid spamming
+      const errKey = e && e.message ? `${e.name || 'Error'}:${e.message}` : 'unknown_init_listener_error';
+      const prev = _listenerErrorCounts.get(errKey) || 0;
+      _listenerErrorCounts.set(errKey, prev + 1);
+      if (prev === 0) structuredLog('WARN', 'engine listener initial call failed', { error: e?.message });
+    }
     return () => listeners.delete(fn);
   }
 
