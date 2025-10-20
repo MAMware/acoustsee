@@ -46,14 +46,24 @@ export const GRID_CONFIGS = {
  * Get grid configuration for a given mode.
  * Falls back to 'hybrid' if mode is unrecognized.
  * 
+ * CRITICAL: This function must include frameWidth and frameHeight because:
+ * - Grid aggregator worker needs these to map pixel coordinates → grid cells
+ * - Pan-intensity mapper worker needs these to calculate weighted pan position
+ * - Without dimensions, workers fail validation and crash
+ * 
  * @param {string} mode - One of 'flow', 'focus', 'hybrid'
- * @returns {object} Grid configuration with rows, cols, aggregation, skipThreshold, purpose
+ * @param {number} frameWidth - Frame width in pixels (default 640 for testing)
+ * @param {number} frameHeight - Frame height in pixels (default 480 for testing)
+ * @returns {object} Grid configuration with rows, cols, aggregation, skipThreshold, purpose, frameWidth, frameHeight
  */
-export function getGridConfig(mode) {
-  if (!mode || !GRID_CONFIGS[mode]) {
-    return GRID_CONFIGS.hybrid;
-  }
-  return GRID_CONFIGS[mode];
+export function getGridConfig(mode, frameWidth = 640, frameHeight = 480) {
+  const baseConfig = !mode || !GRID_CONFIGS[mode] ? GRID_CONFIGS.hybrid : GRID_CONFIGS[mode];
+  
+  return {
+    ...baseConfig,
+    frameWidth,
+    frameHeight
+  };
 }
 
 /**

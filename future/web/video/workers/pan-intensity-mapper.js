@@ -39,11 +39,13 @@ self.onmessage = (e) => {
 
     // Debug: log what we received
     if (type === 'processFrame') {
-      structuredLog('DEBUG', 'Pan mapper: Received processFrame', {
+      structuredLog('DEBUG', '[PanMapper] Received processFrame', {
         hasGrid: !!grid,
         gridLength: grid ? grid.length : null,
         hasGridConfig: !!gridConfig,
-        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null
+        gridConfigKeys: gridConfig ? Object.keys(gridConfig) : null,
+        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
+        frameWidthHeight: gridConfig ? `${gridConfig.frameWidth}x${gridConfig.frameHeight}` : 'missing'
       }, false, Math.random() < 0.01);
     }
 

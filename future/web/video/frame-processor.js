@@ -161,7 +161,8 @@ function processFlowMode(frameData, width, height, state) {
       let panIntensity = null;
       let resolved = false;
 
-      const gridConfig = getGridConfig('flow');
+      // ✅ CRITICAL FIX: Pass frame dimensions to gridConfig so workers can map coordinates → cells
+      const gridConfig = getGridConfig('flow', width, height);
       const yBuffer = rgbaToY(frameData, width, height);
 
       // Motion worker handler

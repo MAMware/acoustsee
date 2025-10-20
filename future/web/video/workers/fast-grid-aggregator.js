@@ -36,11 +36,13 @@ self.onmessage = (e) => {
 
     // Debug: log what we received
     if (type === 'processFrame') {
-      structuredLog('DEBUG', 'Grid aggregator: Received processFrame', {
+      structuredLog('DEBUG', '[GridAgg] Received processFrame', {
         hasMotionRegions: !!motionRegions,
         motionRegionsKeys: motionRegions ? Object.keys(motionRegions) : null,
         hasGridConfig: !!gridConfig,
-        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null
+        gridConfigKeys: gridConfig ? Object.keys(gridConfig) : null,
+        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
+        frameWidthHeight: gridConfig ? `${gridConfig.frameWidth}x${gridConfig.frameHeight}` : 'missing'
       }, false, Math.random() < 0.01);
     }
 
@@ -79,10 +81,15 @@ self.onmessage = (e) => {
     }
 
     if (!frameWidth || !frameHeight || frameWidth <= 0 || frameHeight <= 0) {
+      structuredLog('ERROR', '[GridAgg] Invalid frame dimensions', {
+        frameWidth,
+        frameHeight,
+        configKeys: Object.keys(gridConfig)
+      });
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.GRID_AGGREGATOR,
-          `Invalid frame dimensions: ${frameWidth}x${frameHeight}`
+          `Invalid frame dimensions: ${frameWidth}x${frameHeight}. gridConfig keys: ${Object.keys(gridConfig)}`
         )
       );
       return;
