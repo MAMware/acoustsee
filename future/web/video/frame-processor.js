@@ -167,6 +167,12 @@ function processFlowMode(frameData, width, height, state) {
       // Motion worker handler
       const motionHandler = (e) => {
         try {
+          structuredLog('DEBUG', 'Motion handler: Received message', {
+            messageType: e.data?.type,
+            hasResult: !!e.data?.result,
+            resultKeys: e.data?.result ? Object.keys(e.data.result) : null
+          }, false, Math.random() < 0.01); // Sample: ~1% of frames
+          
           // Validate message per Phase 1.5 pattern
           const validation = WorkerContract.validate(e.data);
           if (!validation.valid) {
@@ -177,11 +183,21 @@ function processFlowMode(frameData, width, height, state) {
             motionRegions = { coords: new Uint16Array(0), intens: new Uint8Array(0), count: 0 };
           } else {
             const result = WorkerContract.getResult(e.data);
+            structuredLog('DEBUG', 'Motion handler: Extracted result', {
+              hasCoords: result?.coords ? true : false,
+              coordsType: result?.coords?.constructor?.name,
+              hasIntens: result?.intens ? true : false,
+              count: result?.count
+            }, false, Math.random() < 0.01);
             motionRegions = result;
           }
 
           // Proceed to grid aggregator
           if (motionRegions && motionRegions.coords) {
+            structuredLog('DEBUG', 'Motion handler: Sending to gridAggregator', {
+              regionCount: motionRegions.count,
+              coordsLength: motionRegions.coords.length
+            }, false, Math.random() < 0.01);
             flowModeWorkers.gridAggregator.postMessage({
               type: 'processFrame',
               motionRegions,
@@ -199,9 +215,15 @@ function processFlowMode(frameData, width, height, state) {
         }
       };
 
-      // Grid aggregator handler
+            // Grid aggregator handler
       const gridHandler = (e) => {
         try {
+          structuredLog('DEBUG', 'Grid handler: Received message', {
+            messageType: e.data?.type,
+            hasResult: !!e.data?.result,
+            resultKeys: e.data?.result ? Object.keys(e.data.result) : null
+          }, false, Math.random() < 0.01);
+          
           // Validate message per Phase 1.5 pattern
           const validation = WorkerContract.validate(e.data);
           if (!validation.valid) {
@@ -212,11 +234,17 @@ function processFlowMode(frameData, width, height, state) {
             gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
           } else {
             const result = WorkerContract.getResult(e.data);
-            // Guard against null result (safety check)
+            structuredLog('DEBUG', 'Grid handler: Extracted result', {
+              hasResult: !!result,
+              hasGrid: result ? 'grid' in result : false,
+              resultKeys: result ? Object.keys(result) : null
+            }, false, Math.random() < 0.01);
+            
+            // ✅ Guard before accessing
             if (!result || typeof result.grid === 'undefined') {
               structuredLog('WARN', 'Grid aggregator returned invalid/empty result', {
                 hasResult: !!result,
-                hasGrid: result ? typeof result.grid : 'N/A'
+                hasGrid: result ? 'grid' in result : 'N/A'
               });
               gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
             } else {
@@ -226,6 +254,10 @@ function processFlowMode(frameData, width, height, state) {
 
           // Proceed to pan-intensity mapper
           if (gridData) {
+            structuredLog('DEBUG', 'Grid handler: Sending to panIntensityMapper', {
+              gridLength: gridData.length,
+              gridType: gridData.constructor.name
+            }, false, Math.random() < 0.01);
             flowModeWorkers.panIntensityMapper.postMessage({
               type: 'processFrame',
               grid: gridData,

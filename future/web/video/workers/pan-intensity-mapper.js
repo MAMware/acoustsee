@@ -23,6 +23,7 @@
  */
 
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
+import { structuredLog } from '../utils/logging.js';
 
 /**
  * Main message handler
@@ -35,6 +36,16 @@ import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js
 self.onmessage = (e) => {
   try {
     const { type, grid, gridConfig } = e.data;
+
+    // Debug: log what we received
+    if (type === 'processFrame') {
+      structuredLog('DEBUG', 'Pan mapper: Received processFrame', {
+        hasGrid: !!grid,
+        gridLength: grid ? grid.length : null,
+        hasGridConfig: !!gridConfig,
+        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null
+      }, false, Math.random() < 0.01);
+    }
 
     if (type !== 'processFrame') {
       self.postMessage(
@@ -98,6 +109,10 @@ self.onmessage = (e) => {
       )
     );
   } catch (error) {
+    structuredLog('ERROR', 'Pan mapper: Processing error', {
+      message: error.message,
+      stack: error.stack
+    });
     self.postMessage(
       WorkerContract.createError(
         WORKER_TYPES.PAN_INTENSITY_MAPPER,

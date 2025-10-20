@@ -20,6 +20,7 @@
  */
 
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
+import { structuredLog } from '../utils/logging.js';
 
 /**
  * Main message handler
@@ -32,6 +33,16 @@ import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js
 self.onmessage = (e) => {
   try {
     const { type, motionRegions, gridConfig } = e.data;
+
+    // Debug: log what we received
+    if (type === 'processFrame') {
+      structuredLog('DEBUG', 'Grid aggregator: Received processFrame', {
+        hasMotionRegions: !!motionRegions,
+        motionRegionsKeys: motionRegions ? Object.keys(motionRegions) : null,
+        hasGridConfig: !!gridConfig,
+        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null
+      }, false, Math.random() < 0.01);
+    }
 
     if (type !== 'processFrame') {
       self.postMessage(
@@ -103,6 +114,10 @@ self.onmessage = (e) => {
       )
     );
   } catch (error) {
+    structuredLog('ERROR', 'Grid aggregator: Processing error', {
+      message: error.message,
+      stack: error.stack
+    });
     self.postMessage(
       WorkerContract.createError(
         WORKER_TYPES.GRID_AGGREGATOR,
