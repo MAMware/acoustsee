@@ -16,7 +16,7 @@
 // 4. Extract abstract features (textureRich, fastMotion, edgeConcentration).
 // 5. OPTIONAL: If enabled, run semantic detection (person, tree, etc.) for educational/community exploration.
 // 6. Infer BPM from average flow magnitude.
-// 7. Send { type: 'flowCues', result: { gridFlows, textureGrid, abstractFeatures, semanticObjects, statistics, inferredBPM, timestamp } }
+// 7. Send { type: 'processingResult', version: '2.0', ... } per worker-contract.js
 //
 // Dependencies: Pure JS, no external libs. Runs in Web Worker for performance.
 // 
@@ -24,6 +24,8 @@
 // - Primary audio generation uses ABSTRACT spatial features (depth, motion, texture).
 // - Semantic detection is OPTIONAL and runs only if explicitly enabled by consumers.
 // - This keeps the core lightweight while allowing community to experiment with semantic approaches.
+
+import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
 
 function convolve2d(image, width, height, kernel) {
   const kh = kernel.length;
@@ -73,20 +75,24 @@ self.onmessage = (e) => {
     try {
       if (!prevData) {
         prevData = prevFrame.data.slice();
-        self.postMessage({ 
-          type: 'flowCues', 
-          result: { 
-            gridFlows: [], 
-            textureGrid: [], 
-            abstractFeatures: [],
-            semanticObjects: [],
-            statistics: {},
-            inferredBPM: 100, // this value is a fallback as "safe" default
-            timestamp: Date.now(),
-            gridConfig,
+        self.postMessage(
+          WorkerContract.createResult(
+            WORKER_TYPES.IMAGE,
             mode,
-          } 
-        });
+            [CAPABILITIES.FLOW_VECTORS, CAPABILITIES.MOTION_MAGNITUDE, CAPABILITIES.TEXTURE_ANALYSIS],
+            {
+              gridFlows: [], 
+              textureGrid: [], 
+              abstractFeatures: [],
+              semanticObjects: [],
+              statistics: {},
+              inferredBPM: 100, // this value is a fallback as "safe" default
+              timestamp: Date.now(),
+              gridConfig,
+              mode,
+            }
+          )
+        );
         return;
       }
 
@@ -329,23 +335,45 @@ self.onmessage = (e) => {
       const inferredBPM = statistics.meanFlow < 5 ? 100 : (statistics.meanFlow < 10 ? 115 : 120);
 
       prevData = currentData.slice();
-      self.postMessage({ 
-        type: 'flowCues', 
-        result: { 
-          gridFlows, 
-          textureGrid, 
-          abstractFeatures,      // PRIMARY: Abstract spatial/temporal features
-          semanticObjects,       // OPTIONAL: Only if enabled
-          statistics,            // Metadata for decision-making
-          inferredBPM, 
-          timestamp: Date.now(),
-          gridConfig,
+      
+      // Determine capabilities based on what was computed
+      const capabilities = [
+        CAPABILITIES.FLOW_VECTORS,
+        CAPABILITIES.MOTION_MAGNITUDE,
+        CAPABILITIES.TEXTURE_ANALYSIS,
+        CAPABILITIES.BPM_INFERENCE,
+      ];
+      if (semanticEnabled && semanticObjects.length > 0) {
+        capabilities.push(CAPABILITIES.SEMANTIC_DETECTION);
+      }
+      
+      self.postMessage(
+        WorkerContract.createResult(
+          WORKER_TYPES.IMAGE,
           mode,
-          semanticEnabled,
-        } 
-      });
+          capabilities,
+          { 
+            gridFlows, 
+            textureGrid, 
+            abstractFeatures,      // PRIMARY: Abstract spatial/temporal features
+            semanticObjects,       // OPTIONAL: Only if enabled
+            statistics,            // Metadata for decision-making
+            inferredBPM, 
+            timestamp: Date.now(),
+            gridConfig,
+            mode,
+            semanticEnabled,
+          }
+        )
+      );
     } catch (error) {
-      self.postMessage({ type: 'error', error: error.message });
+      self.postMessage(
+        WorkerContract.createError(
+          WORKER_TYPES.IMAGE,
+          `Frame processing failed: ${error.message}`,
+          error
+        )
+      );
     }
   }
 };

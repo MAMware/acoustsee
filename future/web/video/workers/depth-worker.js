@@ -12,18 +12,20 @@
 // 3. computeCNNDepth tries WebGPU acceleration (GPU buffers, compute shaders).
 // 4. On GPU failure, fallback to vanilla JS conv2d/upsample (CPU).
 // 5. Average depth map into gridDepths per cell.
-// 6. Send { type: 'depthCues', result: { gridDepths, timestamp } }
+// 6. Send via worker-contract.js with DEPTH_MAP capability
 //
 // Workflow (Pseudo-depth path):
 // 1. Apply Sobel operator for edge magnitudes, normalize with Softplus.
 // 2. Optionally apply Gabor for texture enhancement.
 // 3. Average into gridDepths per cell.
-// 4. Send { type: 'depthCues', result: { gridDepths, timestamp } }
+// 4. Send via worker-contract.js with DEPTH_MAP capability
 //
 // GPU Acceleration:
 // - WebGPU convolution compute shader for efficient conv2d operations (WGSL).
 // - Graceful fallback to CPU implementation if WebGPU unavailable or fails.
 // - Structured logging for performance monitoring and debugging.
+
+import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
 
 let prevData = null;
 let depthPath = 'pseudo'; // Default to pseudo-depth
@@ -549,17 +551,27 @@ self.onmessage = (e) => {
           }
         }
 
-        self.postMessage({ 
-          type: 'depthCues', 
-          result: { 
-            gridDepths, 
-            timestamp: Date.now(),
-            gridConfig: config,
-            mode
-          } 
-        });
+        self.postMessage(
+          WorkerContract.createResult(
+            WORKER_TYPES.DEPTH,
+            mode || 'focus',
+            [CAPABILITIES.DEPTH_MAP, CAPABILITIES.DEPTH_CONFIDENCE],
+            {
+              gridDepths, 
+              timestamp: Date.now(),
+              gridConfig: config,
+              mode
+            }
+          )
+        );
       } catch (error) {
-        self.postMessage({ type: 'error', error: error.message });
+        self.postMessage(
+          WorkerContract.createError(
+            WORKER_TYPES.DEPTH,
+            `Depth processing failed: ${error.message}`,
+            error
+          )
+        );
       }
     })();
   }

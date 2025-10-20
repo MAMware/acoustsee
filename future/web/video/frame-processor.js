@@ -7,6 +7,7 @@ import {
   AccessibilityError, 
   showCriticalError 
 } from '../utils/error-handling.js';
+import { WorkerContract } from './workers/worker-contract.js';
 
 // --- Module State ---
 let _config = {};
@@ -14,6 +15,13 @@ let frameProviderWorker = null;
 let motionWorker = null;
 let depthWorker = null;
 let previousDepthPath = null; // Track depth computation path changes (used to avoid redundant reconfigurations)
+
+// Flow Mode Workers (Phase 2)
+let flowModeWorkers = {
+  fastMotion: null,
+  gridAggregator: null,
+  panIntensityMapper: null
+};
 
 // Current mode and grid config are derived from engine state, not stored locally
 // This keeps frame-processor stateless for configuration
@@ -73,6 +81,266 @@ function startDepthWorker() {
     structuredLog('INFO', 'Depth Specialist worker started.');
   } catch (e) {
     structuredLog('ERROR', 'Failed to start Depth Specialist worker.', { error: e });
+  }
+}
+
+/**
+ * Initialize Flow mode workers (Phase 2)
+ * Creates instances of fast-motion-worker, fast-grid-aggregator, and pan-intensity-mapper
+ */
+function startFlowModeWorkers() {
+  try {
+    if (!flowModeWorkers.fastMotion) {
+      flowModeWorkers.fastMotion = new Worker(
+        new URL('./workers/fast-motion-worker.js', import.meta.url),
+        { type: 'module' }
+      );
+      if (_config.registerWorker) _config.registerWorker(flowModeWorkers.fastMotion, 'FastMotionWorker');
+      
+      flowModeWorkers.fastMotion.onerror = (error) => {
+        structuredLog('ERROR', 'Fast motion worker error', {
+          message: error.message,
+          filename: error.filename,
+          lineno: error.lineno
+        });
+      };
+      
+      structuredLog('INFO', 'Fast motion worker started.');
+    }
+
+    if (!flowModeWorkers.gridAggregator) {
+      flowModeWorkers.gridAggregator = new Worker(
+        new URL('./workers/fast-grid-aggregator.js', import.meta.url),
+        { type: 'module' }
+      );
+      if (_config.registerWorker) _config.registerWorker(flowModeWorkers.gridAggregator, 'GridAggregatorWorker');
+      
+      flowModeWorkers.gridAggregator.onerror = (error) => {
+        structuredLog('ERROR', 'Grid aggregator worker error', {
+          message: error.message,
+          filename: error.filename,
+          lineno: error.lineno
+        });
+      };
+      
+      structuredLog('INFO', 'Grid aggregator worker started.');
+    }
+
+    if (!flowModeWorkers.panIntensityMapper) {
+      flowModeWorkers.panIntensityMapper = new Worker(
+        new URL('./workers/pan-intensity-mapper.js', import.meta.url),
+        { type: 'module' }
+      );
+      if (_config.registerWorker) _config.registerWorker(flowModeWorkers.panIntensityMapper, 'PanIntensityMapperWorker');
+      
+      flowModeWorkers.panIntensityMapper.onerror = (error) => {
+        structuredLog('ERROR', 'Pan-intensity mapper worker error', {
+          message: error.message,
+          filename: error.filename,
+          lineno: error.lineno
+        });
+      };
+      
+      structuredLog('INFO', 'Pan-intensity mapper worker started.');
+    }
+  } catch (e) {
+    structuredLog('ERROR', 'Failed to start Flow mode workers', { error: e });
+  }
+}
+
+/**
+ * Process frame using Flow mode worker chain (Phase 2)
+ * Sequential processing: motion → grid → params → audio
+ */
+function processFlowMode(frameData, width, height, state) {
+  return new Promise((resolve) => {
+    try {
+      // Step 1: Extract Y-plane and send to motion worker
+      let motionRegions = null;
+      let gridData = null;
+      let panIntensity = null;
+      let resolved = false;
+
+      const gridConfig = getGridConfig('flow');
+      const yBuffer = rgbaToY(frameData, width, height);
+
+      // Motion worker handler
+      const motionHandler = (e) => {
+        try {
+          // Validate message per Phase 1.5 pattern
+          const validation = WorkerContract.validate(e.data);
+          if (!validation.valid) {
+            structuredLog('WARN', 'Fast motion worker validation failed', {
+              error: validation.error,
+              workerName: e.data.workerName
+            });
+            motionRegions = { coords: new Uint16Array(0), intens: new Uint8Array(0), count: 0 };
+          } else {
+            const result = WorkerContract.getResult(e.data);
+            motionRegions = result;
+          }
+
+          // Proceed to grid aggregator
+          if (motionRegions && motionRegions.coords) {
+            flowModeWorkers.gridAggregator.postMessage({
+              type: 'processFrame',
+              motionRegions,
+              gridConfig
+            });
+          }
+        } catch (error) {
+          structuredLog('ERROR', 'Motion handler exception', { error: error.message });
+          motionRegions = { coords: new Uint16Array(0), intens: new Uint8Array(0), count: 0 };
+          flowModeWorkers.gridAggregator.postMessage({
+            type: 'processFrame',
+            motionRegions,
+            gridConfig
+          });
+        }
+      };
+
+      // Grid aggregator handler
+      const gridHandler = (e) => {
+        try {
+          // Validate message per Phase 1.5 pattern
+          const validation = WorkerContract.validate(e.data);
+          if (!validation.valid) {
+            structuredLog('WARN', 'Grid aggregator validation failed', {
+              error: validation.error,
+              workerName: e.data.workerName
+            });
+            gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
+          } else {
+            const result = WorkerContract.getResult(e.data);
+            gridData = result.grid;
+          }
+
+          // Proceed to pan-intensity mapper
+          if (gridData) {
+            flowModeWorkers.panIntensityMapper.postMessage({
+              type: 'processFrame',
+              grid: gridData,
+              gridConfig
+            });
+          }
+        } catch (error) {
+          structuredLog('ERROR', 'Grid handler exception', { error: error.message });
+          gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
+          flowModeWorkers.panIntensityMapper.postMessage({
+            type: 'processFrame',
+            grid: gridData,
+            gridConfig
+          });
+        }
+      };
+
+      // Pan-intensity mapper handler (final in chain)
+      const panIntensityHandler = (e) => {
+        try {
+          // Validate message per Phase 1.5 pattern
+          const validation = WorkerContract.validate(e.data);
+          if (!validation.valid) {
+            structuredLog('WARN', 'Pan-intensity mapper validation failed', {
+              error: validation.error,
+              workerName: e.data.workerName
+            });
+            panIntensity = { pan: 0, intensity: 0 };
+          } else {
+            const result = WorkerContract.getResult(e.data);
+            panIntensity = { pan: result.pan, intensity: result.intensity };
+          }
+
+          // Remove handlers
+          flowModeWorkers.fastMotion.removeEventListener('message', motionHandler);
+          flowModeWorkers.gridAggregator.removeEventListener('message', gridHandler);
+          flowModeWorkers.panIntensityMapper.removeEventListener('message', panIntensityHandler);
+
+          // Convert audio params to cues
+          const cues = createCuesFromAudioParams(panIntensity, state);
+          
+          if (!resolved) {
+            resolved = true;
+            resolve({ cues, panIntensity });
+          }
+        } catch (error) {
+          structuredLog('ERROR', 'Pan-intensity handler exception', { error: error.message });
+          
+          if (!resolved) {
+            resolved = true;
+            resolve({ cues: [], panIntensity: { pan: 0, intensity: 0 } });
+          }
+        }
+      };
+
+      // Setup message listeners
+      flowModeWorkers.fastMotion.addEventListener('message', motionHandler);
+      flowModeWorkers.gridAggregator.addEventListener('message', gridHandler);
+      flowModeWorkers.panIntensityMapper.addEventListener('message', panIntensityHandler);
+
+      // Start the chain: send frame to motion worker
+      flowModeWorkers.fastMotion.postMessage(
+        {
+          type: 'frame',
+          ts: Date.now(),
+          w: width,
+          h: height,
+          yBuffer: yBuffer.buffer,
+          threshold: state.motionThreshold || 0.5,
+          maxRegions: 64,
+          gridConfig,
+          mode: 'flow'
+        },
+        [yBuffer.buffer]
+      );
+
+      // Set timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          structuredLog('WARN', 'Flow mode chain timeout', { gridConfig });
+          flowModeWorkers.fastMotion.removeEventListener('message', motionHandler);
+          flowModeWorkers.gridAggregator.removeEventListener('message', gridHandler);
+          flowModeWorkers.panIntensityMapper.removeEventListener('message', panIntensityHandler);
+          resolve({ cues: [], panIntensity: { pan: 0, intensity: 0 } });
+        }
+      }, 100); // 100ms timeout for entire chain (should complete in ~22ms)
+    } catch (error) {
+      structuredLog('ERROR', 'processFlowMode exception', { error: error.message });
+      resolve({ cues: [], panIntensity: { pan: 0, intensity: 0 } });
+    }
+  });
+}
+
+/**
+ * Convert audio parameters (pan, intensity) to audio cues
+ */
+function createCuesFromAudioParams(params, state) {
+  try {
+    const baseFreq = state.baseFrequency || 440;
+    const { pan, intensity } = params;
+
+    // If no motion, return empty cues
+    if (intensity === 0 || intensity < 0.01) {
+      return [];
+    }
+
+    // Create single cue with pan and intensity for Flow mode
+    const cue = {
+      objectType: 'flow_motion',
+      pitch: baseFreq,
+      pan: Math.max(-1, Math.min(1, pan)),
+      intensity: Math.max(0, Math.min(1, intensity)),
+      position: {
+        x: Math.max(-1, Math.min(1, pan)),
+        y: 0.5,
+        z: 0
+      }
+    };
+
+    return [cue];
+  } catch (error) {
+    structuredLog('WARN', 'createCuesFromAudioParams failed', { error: error.message });
+    return [];
   }
 }
 
@@ -215,6 +483,9 @@ export async function initializeVideo(config) {
   // Pass current mode from engine state to startMotionWorker
   const currentMode = config.engine?.getState?.()?.currentMode || 'flow';
   startMotionWorker(currentMode);
+  
+  // Initialize Flow mode workers (Phase 2)
+  startFlowModeWorkers();
 
   return await executeCriticalOperation('video-processing', async () => {
     const { videoElement, engine } = config;
@@ -301,6 +572,28 @@ export async function initializeVideo(config) {
       }
 
       if (state.currentMode === 'flow') {
+        // Use new Flow mode worker chain (Phase 2)
+        const flowResult = await processFlowMode(frameData, payload.width, payload.height, state);
+        
+        if (flowResult.cues && flowResult.cues.length > 0) {
+          dispatchPayload = flowResult;
+          
+          // Sample log
+          if (payload.frameId && payload.frameId % 30 === 0) {
+            structuredLog('DEBUG', 'Frame processor: Flow mode cues generated', {
+              cuesCount: flowResult.cues.length,
+              pan: flowResult.panIntensity?.pan.toFixed(2),
+              intensity: flowResult.panIntensity?.intensity.toFixed(2)
+            });
+          }
+        } else {
+          // Fallback: no motion detected
+          if (payload.frameId && payload.frameId % 100 === 0) {
+            structuredLog('DEBUG', 'Frame processor: No motion in Flow mode', { frameId: payload.frameId });
+          }
+        }
+      } else if (state.currentMode === 'flow-legacy') {
+        // Legacy Flow mode using existing motion worker (fallback)
         const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height, state);
         
         // Dispatch new cues

@@ -1,8 +1,10 @@
-// Enhanced motion-worker with Lucas-Kanade optical flow: receives Y-plane ArrayBuffer and returns compact moving regions with direction.
+// Enhanced fast-motion-worker with Lucas-Kanade optical flow: receives Y-plane ArrayBuffer and returns compact moving regions with direction.
+// Flow Mode optimized: Y-plane only, minimal latency (<15ms target)
 // Integrates basic optical flow for direction estimation (u, v) alongside intensity, enhancing motion detection for applications like AcoustSee.
 // Uses vanilla JavaScript convolution and matrix solving for compatibility and performance in web workers.
 // Maintains adaptive thresholding for robustness in varying conditions.
 // Outputs coords, intensity (based on flow magnitude), u (horizontal flow), and v (vertical flow) as transferable buffers.
+// v1.0 (2025-10-19): Flow mode variant for Phase 2. Created for responsive audio synthesis.
 // v0.6 (2025-10-17): Added paradigm-aware gridSize support and dynamic grid configuration. By Claude Haiku 4.5
 // v0.5 Created by MAMware and Grok (xAI.com)
 // Enhanced with Lucas-Kanade optical flow based on research in motion-worker.js.md, REV 2025-10-05.
@@ -184,10 +186,10 @@ self.onmessage = (ev) => {
         maxRegions = 64, 
         windowSize = 5,
         gridConfig = { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 },
-        mode = 'hybrid'
+        mode = 'flow'
       } = msg;
       
-      structuredLog('DEBUG', 'Motion worker received frame', { 
+      structuredLog('DEBUG', 'Fast motion worker received frame', { 
         width: w, 
         height: h, 
         threshold, 
@@ -196,7 +198,7 @@ self.onmessage = (ev) => {
       });
       
       if (!yBuffer) {
-        structuredLog('WARN', 'Motion worker: No yBuffer received');
+        structuredLog('WARN', 'Fast motion worker: No yBuffer received');
         self.postMessage(
           WorkerContract.createResult(
             WORKER_TYPES.FAST_MOTION,
@@ -218,7 +220,7 @@ self.onmessage = (ev) => {
       }
       
       const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
-      structuredLog('DEBUG', 'Motion detection complete', { 
+      structuredLog('DEBUG', 'Fast motion detection complete', { 
         count: res.count, 
         threshold, 
         adaptiveThreshold: _adaptiveThreshold,
@@ -248,7 +250,7 @@ self.onmessage = (ev) => {
       );
       self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
     } catch (e) {
-      structuredLog('ERROR', 'Motion worker exception', { 
+      structuredLog('ERROR', 'Fast motion worker exception', { 
         message: e.message, 
         stack: e.stack,
         name: e.name
@@ -263,10 +265,12 @@ self.onmessage = (ev) => {
       );
     }
   } else if (msg.type === 'handshake') {
-    structuredLog('INFO', 'Motion worker initialized');
-    self.postMessage({ type: 'ready', features: ['motion', 'flow', 'gridConfig'] });
+    structuredLog('INFO', 'Fast motion worker initialized');
+    self.postMessage({ type: 'ready', features: ['motion', 'flow', 'gridConfig'], mode: 'flow' });
   } else if (msg.type === 'simulate') {
-    structuredLog('INFO', 'Motion worker simulation mode');
-    self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true });
+    structuredLog('INFO', 'Fast motion worker simulation mode');
+    self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true, mode: 'flow' });
   }
 };
+
+export default {};
