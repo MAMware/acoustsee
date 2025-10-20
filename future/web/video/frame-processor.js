@@ -212,7 +212,16 @@ function processFlowMode(frameData, width, height, state) {
             gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
           } else {
             const result = WorkerContract.getResult(e.data);
-            gridData = result.grid;
+            // Guard against null result (safety check)
+            if (!result || typeof result.grid === 'undefined') {
+              structuredLog('WARN', 'Grid aggregator returned invalid/empty result', {
+                hasResult: !!result,
+                hasGrid: result ? typeof result.grid : 'N/A'
+              });
+              gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
+            } else {
+              gridData = result.grid;
+            }
           }
 
           // Proceed to pan-intensity mapper
@@ -320,7 +329,9 @@ function createCuesFromAudioParams(params, state) {
     const { pan, intensity } = params;
 
     // If no motion, return empty cues
-    if (intensity === 0 || intensity < 0.01) {
+    // Threshold: 0.001 (1% of max intensity) allows very subtle motion
+    // This prevents spurious audio but allows real motion detection
+    if (intensity === 0 || intensity < 0.001) {
       return [];
     }
 
@@ -575,22 +586,32 @@ export async function initializeVideo(config) {
         // Use new Flow mode worker chain (Phase 2)
         const flowResult = await processFlowMode(frameData, payload.width, payload.height, state);
         
-        if (flowResult.cues && flowResult.cues.length > 0) {
-          dispatchPayload = flowResult;
-          
-          // Sample log
-          if (payload.frameId && payload.frameId % 30 === 0) {
-            structuredLog('DEBUG', 'Frame processor: Flow mode cues generated', {
-              cuesCount: flowResult.cues.length,
-              pan: flowResult.panIntensity?.pan.toFixed(2),
-              intensity: flowResult.panIntensity?.intensity.toFixed(2)
-            });
+        // Always set dispatchPayload, even if cues are empty (important for audio state)
+        if (flowResult && flowResult.cues) {
+          if (flowResult.cues.length > 0) {
+            dispatchPayload = flowResult;
+            
+            // Sample log for successful motion detection
+            if (payload.frameId && payload.frameId % 30 === 0) {
+              structuredLog('DEBUG', 'Frame processor: Flow mode cues generated', {
+                cuesCount: flowResult.cues.length,
+                pan: flowResult.panIntensity?.pan.toFixed(2),
+                intensity: flowResult.panIntensity?.intensity.toFixed(2)
+              });
+            }
+          } else {
+            // Motion detected but intensity too low - still dispatch empty
+            dispatchPayload = { cues: [], panIntensity: flowResult.panIntensity };
+            
+            if (payload.frameId && payload.frameId % 100 === 0) {
+              structuredLog('DEBUG', 'Frame processor: Flow mode - no motion or intensity too low', {
+                panIntensity: flowResult.panIntensity
+              });
+            }
           }
         } else {
-          // Fallback: no motion detected
-          if (payload.frameId && payload.frameId % 100 === 0) {
-            structuredLog('DEBUG', 'Frame processor: No motion in Flow mode', { frameId: payload.frameId });
-          }
+          // Timeout or error - dispatch empty safely
+          dispatchPayload = { cues: [], panIntensity: { pan: 0, intensity: 0 } };
         }
       } else if (state.currentMode === 'flow-legacy') {
         // Legacy Flow mode using existing motion worker (fallback)

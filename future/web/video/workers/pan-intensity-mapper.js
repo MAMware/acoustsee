@@ -40,7 +40,6 @@ self.onmessage = (e) => {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
-          'flow',
           `Invalid message type: ${type}. Expected 'processFrame'`
         )
       );
@@ -52,7 +51,6 @@ self.onmessage = (e) => {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
-          'flow',
           'Missing grid or gridConfig'
         )
       );
@@ -65,7 +63,6 @@ self.onmessage = (e) => {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
-          'flow',
           `Invalid grid dimensions: ${rows}x${cols}`
         )
       );
@@ -76,7 +73,6 @@ self.onmessage = (e) => {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
-          'flow',
           `Grid size mismatch: expected ${rows * cols}, got ${grid.length}`
         )
       );
@@ -105,7 +101,6 @@ self.onmessage = (e) => {
     self.postMessage(
       WorkerContract.createError(
         WORKER_TYPES.PAN_INTENSITY_MAPPER,
-        'flow',
         `Processing error: ${error.message}`
       )
     );

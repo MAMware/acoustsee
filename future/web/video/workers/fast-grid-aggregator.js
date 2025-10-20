@@ -37,7 +37,6 @@ self.onmessage = (e) => {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.GRID_AGGREGATOR,
-          'flow',
           `Invalid message type: ${type}. Expected 'processFrame'`
         )
       );
@@ -49,7 +48,6 @@ self.onmessage = (e) => {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.GRID_AGGREGATOR,
-          'flow',
           'Missing motionRegions or gridConfig'
         )
       );
@@ -63,7 +61,6 @@ self.onmessage = (e) => {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.GRID_AGGREGATOR,
-          'flow',
           `Invalid grid dimensions: ${rows}x${cols}`
         )
       );
@@ -74,7 +71,6 @@ self.onmessage = (e) => {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.GRID_AGGREGATOR,
-          'flow',
           `Invalid frame dimensions: ${frameWidth}x${frameHeight}`
         )
       );
@@ -110,7 +106,6 @@ self.onmessage = (e) => {
     self.postMessage(
       WorkerContract.createError(
         WORKER_TYPES.GRID_AGGREGATOR,
-        'flow',
         `Processing error: ${error.message}`
       )
     );
