@@ -290,6 +290,7 @@ function processFlowMode(frameData, width, height, state) {
           } else {
             const result = WorkerContract.getResult(e.data);
             panIntensity = { pan: result.pan, intensity: result.intensity };
+            structuredLog('DEBUG', 'panIntensityHandler: Received pan-intensity result', { pan: result.pan, intensity: result.intensity }, false, Math.random() < 0.05);
           }
 
           // Remove handlers
@@ -297,8 +298,40 @@ function processFlowMode(frameData, width, height, state) {
           flowModeWorkers.gridAggregator.removeEventListener('message', gridHandler);
           flowModeWorkers.panIntensityMapper.removeEventListener('message', panIntensityHandler);
 
-          // Convert audio params to cues
-          const cues = createCuesFromAudioParams(panIntensity, state);
+          // CRITICAL: Apply grid mapping to shape the melody
+          // Motion data → Grid mapping → Cues (as per architecture)
+          let cues = [];
+          const grid = _config.getCurrentGrid();
+          
+          if (grid && grid.mapFunction && motionRegions && motionRegions.coords && motionRegions.coords.length > 0) {
+            // Convert motionRegions to movingRegions format that grids expect
+            const movingRegions = [];
+            for (let i = 0; i < motionRegions.count && i < motionRegions.coords.length / 2; i++) {
+              const x = motionRegions.coords[i * 2];
+              const y = motionRegions.coords[i * 2 + 1];
+              const intensity = motionRegions.intens[i] || 0;
+              movingRegions.push({ x, y, intensity });
+            }
+            
+            // Let the grid shape the melody based on motion data
+            const gridOutput = grid.mapFunction(frameData, width, height, null, { movingRegions });
+            if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
+              cues = gridOutput.cues;
+              structuredLog('DEBUG', 'Flow mode: Grid mapped motion to cues', { 
+                gridId: grid.id, 
+                cuesCount: cues.length, 
+                motionRegionsCount: movingRegions.length 
+              }, false, Math.random() < 0.05);
+            }
+          }
+          
+          // Fallback: If grid didn't produce cues, use pan-intensity to create basic cues
+          if (cues.length === 0 && panIntensity.intensity > 0.001) {
+            cues = createCuesFromAudioParams(panIntensity, state);
+            structuredLog('DEBUG', 'Flow mode: Fallback to pan-intensity cues', { 
+              intensity: panIntensity.intensity 
+            }, false, Math.random() < 0.05);
+          }
           
           if (!resolved) {
             resolved = true;
@@ -365,8 +398,11 @@ function createCuesFromAudioParams(params, state) {
     // Threshold: 0.001 (1% of max intensity) allows very subtle motion
     // This prevents spurious audio but allows real motion detection
     if (intensity === 0 || intensity < 0.001) {
+      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', { intensity, threshold: 0.001 }, false, Math.random() < 0.05);
       return [];
     }
+    
+    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', { intensity, pan }, false, Math.random() < 0.05);
 
     // Create single cue with pan and intensity for Flow mode
     const cue = {
@@ -416,8 +452,8 @@ function processWithMotionWorker(frameData, width, height, state) {
     const frame = { data: frameData, width, height };
     const prevFrame = prevFrameData ? { data: prevFrameData, width, height } : frame;
     
-    // Derive grid config from current engine state (stateless pattern)
-    const gridConfig = getGridConfig(state.currentMode || 'hybrid');
+    // ✅ CRITICAL FIX: Pass frame dimensions to gridConfig (same fix as Flow mode)
+    const gridConfig = getGridConfig(state.currentMode || 'hybrid', width, height);
     
     // For image-worker: pass enableSemanticDetection from state
     motionWorker.postMessage({

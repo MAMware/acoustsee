@@ -26,8 +26,10 @@ export function registerSonificationCommands(engine) {
     }
 
     const cuesToProcess = payload.cues;
+    structuredLog('DEBUG', 'sonification: audioCuesReady handler received', { cuesCount: cuesToProcess ? cuesToProcess.length : 'undefined', isArray: Array.isArray(cuesToProcess) }, false, Math.random() < 0.1);
 
     if (!cuesToProcess || !Array.isArray(cuesToProcess) || cuesToProcess.length === 0) {
+      structuredLog('DEBUG', 'sonification: No cues to process', { cuesToProcess: !!cuesToProcess, isArray: Array.isArray(cuesToProcess), length: cuesToProcess?.length }, false, Math.random() < 0.1);
       return; // Nothing to play
     }
     
@@ -35,10 +37,10 @@ export function registerSonificationCommands(engine) {
     // the initialized API attached to the engine to ensure we use the active
     // AudioContext and oscillator pool.
     if (engine.audioApi && typeof engine.audioApi.playCues === 'function') {
-      structuredLog('DEBUG', 'audioCuesReady -> invoking playCues', { hasAudioApi: !!engine.audioApi, playCuesIsFunction: typeof engine.audioApi.playCues });
+      structuredLog('DEBUG', 'audioCuesReady -> invoking playCues', { hasAudioApi: !!engine.audioApi, playCuesIsFunction: typeof engine.audioApi.playCues, cuesCount: cuesToProcess.length }, false, Math.random() < 0.1);
       engine.audioApi.playCues(cuesToProcess);
     } else {
-      structuredLog('ERROR', 'Audio API not initialized on engine. Cannot play cues.');
+      structuredLog('ERROR', 'Audio API not initialized on engine. Cannot play cues.', { hasAudioApi: !!engine.audioApi, hasPlayCues: engine.audioApi ? typeof engine.audioApi.playCues : 'N/A' });
     }
   });
 }

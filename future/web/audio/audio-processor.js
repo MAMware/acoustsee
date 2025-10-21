@@ -462,6 +462,7 @@ export function playCues(cues) { // The argument is now just the cues array
   // The rest of the function remains the same, executing the synths.
   for (const [playFunction, notes] of notesBySynth.entries()) {
     try {
+      structuredLog('DEBUG', 'playCues: Calling synth function', { notesCount: notes.length, synthName: playFunction.name || 'anonymous' }, false, Math.random() < 0.1);
       const synthContext = { 
         audioContext: context, 
         getOscillator, 

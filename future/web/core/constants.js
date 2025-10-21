@@ -13,7 +13,7 @@ export const LOG_LEVELS = {
 // Version constants for different modules
 export const BUILD_VERSION = '0.9.4-flowOrchestration';
 export const AUDIO_VERSION = '0.8.3-BPM';
-export const VIDEO_VERSION = '0.8.2-flowOrchestration';
+export const VIDEO_VERSION = '0.8.3-flowOrchestration';
 export const UI_VERSION = '0.7.0-touchPad';
 export const LANGUAGES_VERSION = '0.2-spaEng';
-export const UTILS_VERSION = '0.9.5-improvedLogging';
+export const UTILS_VERSION = '0.9.5.1-improvedLogging';
