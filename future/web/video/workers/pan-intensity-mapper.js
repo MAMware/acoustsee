@@ -33,20 +33,22 @@ import { structuredLog } from '../utils/logging.js';
  *   gridConfig: { rows, cols, frameWidth, frameHeight }
  * }
  */
+console.log('[PanMapper] Worker script loaded, setting up message handler');
+
 self.onmessage = (e) => {
+  console.log('[PanMapper] Received message, type:', e.data?.type);
   try {
     const { type, grid, gridConfig } = e.data;
 
     // Debug: log what we received
-    if (type === 'processFrame') {
-      structuredLog('DEBUG', '[PanMapper] Received processFrame', {
+    if (type === 'processFrame' && Math.random() < 0.01) {
+      console.debug('[PanMapper] Received processFrame:', {
         hasGrid: !!grid,
         gridLength: grid ? grid.length : null,
         hasGridConfig: !!gridConfig,
-        gridConfigKeys: gridConfig ? Object.keys(gridConfig) : null,
         gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
         frameWidthHeight: gridConfig ? `${gridConfig.frameWidth}x${gridConfig.frameHeight}` : 'missing'
-      }, false, Math.random() < 0.01);
+      });
     }
 
     if (type !== 'processFrame') {
@@ -111,16 +113,21 @@ self.onmessage = (e) => {
       )
     );
   } catch (error) {
-    structuredLog('ERROR', 'Pan mapper: Processing error', {
+    console.error('[PanMapper] Worker exception:', {
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
+      name: error.name
     });
-    self.postMessage(
-      WorkerContract.createError(
-        WORKER_TYPES.PAN_INTENSITY_MAPPER,
-        `Processing error: ${error.message}`
-      )
-    );
+    try {
+      self.postMessage(
+        WorkerContract.createError(
+          WORKER_TYPES.PAN_INTENSITY_MAPPER,
+          `Processing error: ${error.message}`
+        )
+      );
+    } catch (e2) {
+      console.error('[PanMapper] Failed to postMessage error:', e2.message);
+    }
   }
 };
 

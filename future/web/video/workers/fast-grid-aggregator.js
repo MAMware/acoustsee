@@ -30,20 +30,21 @@ import { structuredLog } from '../utils/logging.js';
  *   gridConfig: { rows, cols, frameWidth, frameHeight }
  * }
  */
+console.log('[GridAgg] Worker script loaded, setting up message handler');
+
 self.onmessage = (e) => {
+  console.log('[GridAgg] Received message, type:', e.data?.type);
   try {
     const { type, motionRegions, gridConfig } = e.data;
 
     // Debug: log what we received
-    if (type === 'processFrame') {
-      structuredLog('DEBUG', '[GridAgg] Received processFrame', {
+    if (type === 'processFrame' && Math.random() < 0.01) {
+      console.debug('[GridAgg] Received processFrame:', {
         hasMotionRegions: !!motionRegions,
-        motionRegionsKeys: motionRegions ? Object.keys(motionRegions) : null,
         hasGridConfig: !!gridConfig,
-        gridConfigKeys: gridConfig ? Object.keys(gridConfig) : null,
         gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
         frameWidthHeight: gridConfig ? `${gridConfig.frameWidth}x${gridConfig.frameHeight}` : 'missing'
-      }, false, Math.random() < 0.01);
+      });
     }
 
     if (type !== 'processFrame') {
@@ -81,7 +82,7 @@ self.onmessage = (e) => {
     }
 
     if (!frameWidth || !frameHeight || frameWidth <= 0 || frameHeight <= 0) {
-      structuredLog('ERROR', '[GridAgg] Invalid frame dimensions', {
+      console.error('[GridAgg] Invalid frame dimensions:', {
         frameWidth,
         frameHeight,
         configKeys: Object.keys(gridConfig)
@@ -121,16 +122,21 @@ self.onmessage = (e) => {
       )
     );
   } catch (error) {
-    structuredLog('ERROR', 'Grid aggregator: Processing error', {
+    console.error('[GridAgg] Worker exception:', {
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
+      name: error.name
     });
-    self.postMessage(
-      WorkerContract.createError(
-        WORKER_TYPES.GRID_AGGREGATOR,
-        `Processing error: ${error.message}`
-      )
-    );
+    try {
+      self.postMessage(
+        WorkerContract.createError(
+          WORKER_TYPES.GRID_AGGREGATOR,
+          `Processing error: ${error.message}`
+        )
+      );
+    } catch (e2) {
+      console.error('[GridAgg] Failed to postMessage error:', e2.message);
+    }
   }
 };
 
