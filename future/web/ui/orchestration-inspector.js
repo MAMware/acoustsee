@@ -417,5 +417,4 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
   };
 }
 
-// Export the initializer
-export { initializeOrchestrationInspector };
+
