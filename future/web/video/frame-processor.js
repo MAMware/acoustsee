@@ -168,11 +168,12 @@ function processFlowMode(frameData, width, height, state) {
       // Motion worker handler
       const motionHandler = (e) => {
         try {
-          structuredLog('DEBUG', 'Motion handler: Received message', {
-            messageType: e.data?.type,
-            hasResult: !!e.data?.result,
-            resultKeys: e.data?.result ? Object.keys(e.data.result) : null
-          }, false, Math.random() < 0.01); // Sample: ~1% of frames
+          // DEBUG: Disabled per-frame logging (even 1% sampling causes issues at 60fps)
+          // structuredLog('DEBUG', 'Motion handler: Received message', {
+          //   messageType: e.data?.type,
+          //   hasResult: !!e.data?.result,
+          //   resultKeys: e.data?.result ? Object.keys(e.data.result) : null
+          // }, false, Math.random() < 0.01);
           
           // Validate message per Phase 1.5 pattern
           const validation = WorkerContract.validate(e.data);
@@ -184,21 +185,23 @@ function processFlowMode(frameData, width, height, state) {
             motionRegions = { coords: new Uint16Array(0), intens: new Uint8Array(0), count: 0 };
           } else {
             const result = WorkerContract.getResult(e.data);
-            structuredLog('DEBUG', 'Motion handler: Extracted result', {
-              hasCoords: result?.coords ? true : false,
-              coordsType: result?.coords?.constructor?.name,
-              hasIntens: result?.intens ? true : false,
-              count: result?.count
-            }, false, Math.random() < 0.01);
+            // DEBUG: Disabled per-frame logging
+            // structuredLog('DEBUG', 'Motion handler: Extracted result', {
+            //   hasCoords: result?.coords ? true : false,
+            //   coordsType: result?.coords?.constructor?.name,
+            //   hasIntens: result?.intens ? true : false,
+            //   count: result?.count
+            // }, false, Math.random() < 0.01);
             motionRegions = result;
           }
 
           // Proceed to grid aggregator
           if (motionRegions && motionRegions.coords) {
-            structuredLog('DEBUG', 'Motion handler: Sending to gridAggregator', {
-              regionCount: motionRegions.count,
-              coordsLength: motionRegions.coords.length
-            }, false, Math.random() < 0.01);
+            // DEBUG: Disabled per-frame logging
+            // structuredLog('DEBUG', 'Motion handler: Sending to gridAggregator', {
+            //   regionCount: motionRegions.count,
+            //   coordsLength: motionRegions.coords.length
+            // }, false, Math.random() < 0.01);
             flowModeWorkers.gridAggregator.postMessage({
               type: 'processFrame',
               motionRegions,
@@ -219,11 +222,12 @@ function processFlowMode(frameData, width, height, state) {
             // Grid aggregator handler
       const gridHandler = (e) => {
         try {
-          structuredLog('DEBUG', 'Grid handler: Received message', {
-            messageType: e.data?.type,
-            hasResult: !!e.data?.result,
-            resultKeys: e.data?.result ? Object.keys(e.data.result) : null
-          }, false, Math.random() < 0.01);
+          // DEBUG: Disabled per-frame logging
+          // structuredLog('DEBUG', 'Grid handler: Received message', {
+          //   messageType: e.data?.type,
+          //   hasResult: !!e.data?.result,
+          //   resultKeys: e.data?.result ? Object.keys(e.data.result) : null
+          // }, false, Math.random() < 0.01);
           
           // Validate message per Phase 1.5 pattern
           const validation = WorkerContract.validate(e.data);
@@ -235,11 +239,12 @@ function processFlowMode(frameData, width, height, state) {
             gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
           } else {
             const result = WorkerContract.getResult(e.data);
-            structuredLog('DEBUG', 'Grid handler: Extracted result', {
-              hasResult: !!result,
-              hasGrid: result ? 'grid' in result : false,
-              resultKeys: result ? Object.keys(result) : null
-            }, false, Math.random() < 0.01);
+            // DEBUG: Disabled per-frame logging
+            // structuredLog('DEBUG', 'Grid handler: Extracted result', {
+            //   hasResult: !!result,
+            //   hasGrid: result ? 'grid' in result : false,
+            //   resultKeys: result ? Object.keys(result) : null
+            // }, false, Math.random() < 0.01);
             
             // ✅ Guard before accessing
             if (!result || typeof result.grid === 'undefined') {
@@ -255,10 +260,11 @@ function processFlowMode(frameData, width, height, state) {
 
           // Proceed to pan-intensity mapper
           if (gridData) {
-            structuredLog('DEBUG', 'Grid handler: Sending to panIntensityMapper', {
-              gridLength: gridData.length,
-              gridType: gridData.constructor.name
-            }, false, Math.random() < 0.01);
+            // DEBUG: Disabled per-frame logging
+            // structuredLog('DEBUG', 'Grid handler: Sending to panIntensityMapper', {
+            //   gridLength: gridData.length,
+            //   gridType: gridData.constructor.name
+            // }, false, Math.random() < 0.01);
             flowModeWorkers.panIntensityMapper.postMessage({
               type: 'processFrame',
               grid: gridData,
@@ -290,7 +296,8 @@ function processFlowMode(frameData, width, height, state) {
           } else {
             const result = WorkerContract.getResult(e.data);
             panIntensity = { pan: result.pan, intensity: result.intensity };
-            structuredLog('DEBUG', 'panIntensityHandler: Received pan-intensity result', { pan: result.pan, intensity: result.intensity }, false, Math.random() < 0.05);
+            // DEBUG: Disabled per-frame logging (causes performance issues at 60fps)
+            // structuredLog('DEBUG', 'panIntensityHandler: Received pan-intensity result', { pan: result.pan, intensity: result.intensity }, false, Math.random() < 0.05);
           }
 
           // Remove handlers
@@ -317,20 +324,22 @@ function processFlowMode(frameData, width, height, state) {
             const gridOutput = grid.mapFunction(frameData, width, height, null, { movingRegions });
             if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
               cues = gridOutput.cues;
-              structuredLog('DEBUG', 'Flow mode: Grid mapped motion to cues', { 
-                gridId: grid.id, 
-                cuesCount: cues.length, 
-                motionRegionsCount: movingRegions.length 
-              }, false, Math.random() < 0.05);
+              // DEBUG: Disabled per-frame logging (causes performance issues at 60fps)
+              // structuredLog('DEBUG', 'Flow mode: Grid mapped motion to cues', { 
+              //   gridId: grid.id, 
+              //   cuesCount: cues.length, 
+              //   motionRegionsCount: movingRegions.length 
+              // }, false, Math.random() < 0.05);
             }
           }
           
           // Fallback: If grid didn't produce cues, use pan-intensity to create basic cues
           if (cues.length === 0 && panIntensity.intensity > 0.001) {
             cues = createCuesFromAudioParams(panIntensity, state);
-            structuredLog('DEBUG', 'Flow mode: Fallback to pan-intensity cues', { 
-              intensity: panIntensity.intensity 
-            }, false, Math.random() < 0.05);
+            // DEBUG: Disabled per-frame logging (causes performance issues at 60fps)
+            // structuredLog('DEBUG', 'Flow mode: Fallback to pan-intensity cues', { 
+            //   intensity: panIntensity.intensity 
+            // }, false, Math.random() < 0.05);
           }
           
           if (!resolved) {
@@ -398,11 +407,13 @@ function createCuesFromAudioParams(params, state) {
     // Threshold: 0.001 (1% of max intensity) allows very subtle motion
     // This prevents spurious audio but allows real motion detection
     if (intensity === 0 || intensity < 0.001) {
-      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', { intensity, threshold: 0.001 }, false, Math.random() < 0.05);
+      // DEBUG: Disabled per-frame logging (causes performance issues at 60fps)
+      // structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', { intensity, threshold: 0.001 }, false, Math.random() < 0.05);
       return [];
     }
     
-    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', { intensity, pan }, false, Math.random() < 0.05);
+    // DEBUG: Disabled per-frame logging (causes performance issues at 60fps)
+    // structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', { intensity, pan }, false, Math.random() < 0.05);
 
     // Create single cue with pan and intensity for Flow mode
     const cue = {
