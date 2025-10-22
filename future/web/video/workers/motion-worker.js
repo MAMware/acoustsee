@@ -8,7 +8,7 @@
 // Enhanced with Lucas-Kanade optical flow based on research in motion-worker.js.md, REV 2025-10-05.
 
 // Add this import at the top if not present
-import { structuredLog } from '../../utils/logging.js';
+import { structuredLog } from '../../utils/worker-logger.js';
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
 
 let _prevY = null;
