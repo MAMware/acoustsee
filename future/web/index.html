@@ -12,10 +12,17 @@
 </head>
 <body>
   <div id="splashScreen" class="splash-screen">
-    <button id="powerOn" class="power-on-button" role="button" data-i18n-aria="powerOn.aria" aria-pressed="false" aria-label="Power">
-      <span class="power-label" data-i18n="powerOn.text">Power</span>
-      <span class="sr-only" data-i18n="powerOn.sr">Power on</span>
-    </button>
+    <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
+      <button id="powerOn" class="power-on-button" role="button" data-i18n-aria="powerOn.aria" aria-pressed="false" aria-label="Power">
+        <span class="power-label" data-i18n="powerOn.text">Power</span>
+        <span class="sr-only" data-i18n="powerOn.sr">Power on</span>
+      </button>
+      <!-- Export Early Logs Button (Phase 2A Task 2.2) -->
+      <button id="exportEarlyLogsBtn" class="export-logs-button" role="button" title="Download early logs as JSON" aria-label="Export early logs">
+        <span style="font-size: 1.2rem; margin-right: 0.5rem;">📥</span>
+        <span>Export Logs</span>
+      </button>
+    </div>
   </div>
 
   <div id="mainContainer" class="main-container" style="display: none;">

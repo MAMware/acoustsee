@@ -7,6 +7,7 @@ import { getAudioDiagnostics } from '../../audio/audio-processor.js';
 import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
 import { structuredLog } from '../../utils/logging.js';
 import { executeNonCriticalOperation, createMinimalFallback } from '../../utils/error-handling.js';
+import { injectEarlyLogsToDevPanel, markDevPanelInitTime } from '../../utils/early-logs.js'; // Phase 2A Task 2.2
 import { createAndWireActions } from './dev-panel.actions.js';
 import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
@@ -584,6 +585,23 @@ export function initializeDevPanel(arg1, arg2) {
     // --- Wire Log Viewer Controls ---
     const logView = panel.querySelector('#devpanel-log-view');
     setLogView(logView);
+    
+    // --- Inject Early Logs (Phase 2A Task 2.2) ---
+    try {
+      markDevPanelInitTime();
+      const earlyLogCount = await injectEarlyLogsToDevPanel(logView);
+      structuredLog('INFO', 'dev-panel', { 
+        message: 'Early logs injected to dev panel',
+        count: earlyLogCount 
+      });
+    } catch (err) {
+      structuredLog('WARN', 'dev-panel', { 
+        message: 'Failed to inject early logs',
+        error: err?.message || String(err)
+      });
+      // Continue - this is non-critical
+    }
+    
     panel.querySelector('#log-pause-btn').addEventListener('click', (e) => {
         const isPaused = e.target.textContent === 'Pause';
         setPaused(!isPaused);

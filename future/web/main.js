@@ -49,6 +49,7 @@ const DOM = {
   frameCanvas: document.getElementById('frameCanvas'),  
   button1: document.getElementById('button1'),
   powerOn: document.getElementById('powerOn'),
+  exportEarlyLogsBtn: document.getElementById('exportEarlyLogsBtn'), // Phase 2A Task 2.2
   splashScreen: document.getElementById('splashScreen'),
   mainContainer: document.getElementById('mainContainer'),
   debugPanel: document.getElementById('debugPanel'),
@@ -339,6 +340,51 @@ export async function init() {
           try { window.__acoustseePowerGesture = false; } catch (e) {}
         }
       }, { once: false });
+    }
+
+    // Export Early Logs Button Handler (Phase 2A Task 2.2)
+    if (DOM.exportEarlyLogsBtn) {
+      DOM.exportEarlyLogsBtn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try {
+          DOM.exportEarlyLogsBtn.disabled = true;
+          const origText = DOM.exportEarlyLogsBtn.textContent;
+          DOM.exportEarlyLogsBtn.textContent = '⏳ Exporting...';
+          
+          // Dynamically import early-logs utility
+          const { downloadEarlyLogsAsJson, getEarlyLogsSummary } = await import('./utils/early-logs.js');
+          
+          // Get summary for user feedback
+          const summary = await getEarlyLogsSummary();
+          structuredLog('INFO', 'init', { 
+            message: 'User triggered early logs export',
+            logsCount: summary.total 
+          });
+          
+          // Trigger download
+          await downloadEarlyLogsAsJson();
+          
+          DOM.exportEarlyLogsBtn.textContent = '✓ Exported';
+          setTimeout(() => {
+            if (DOM.exportEarlyLogsBtn) {
+              DOM.exportEarlyLogsBtn.textContent = origText;
+              DOM.exportEarlyLogsBtn.disabled = false;
+            }
+          }, 2000);
+        } catch (err) {
+          structuredLog('ERROR', 'init', { 
+            message: 'Failed to export early logs',
+            error: err?.message || String(err)
+          });
+          DOM.exportEarlyLogsBtn.textContent = '✗ Failed';
+          DOM.exportEarlyLogsBtn.disabled = false;
+          setTimeout(() => {
+            if (DOM.exportEarlyLogsBtn) {
+              DOM.exportEarlyLogsBtn.textContent = origText;
+            }
+          }, 2000);
+        }
+      });
     }
 
     // Video -> Canvas sizing
