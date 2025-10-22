@@ -1,6 +1,6 @@
 {
-  "exported_at": "2025-10-22T05:08:17.379Z",
-  "log_count": 68,
+  "exported_at": "2025-10-22T05:29:56.606Z",
+  "log_count": 75,
   "app_version": "unknown",
   "app_env": "development",
   "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0",
@@ -892,6 +892,66 @@
       "data": {
         "message": "Dev panel init time not set; returning all logs",
         "count": 67
+      }
+    },
+    {
+      "timestamp": "2025-10-22T05:08:17.379Z",
+      "level": "WARN",
+      "message": "early-logs",
+      "data": {
+        "message": "Dev panel init time not set; returning all logs",
+        "count": 68
+      }
+    },
+    {
+      "timestamp": "2025-10-22T05:29:44.250Z",
+      "level": "WARN",
+      "message": "Failed to load dev panel UI",
+      "data": {
+        "error": "error loading dynamically imported module: https://mamware.github.io/acoustsee/future/web/ui/dev-panel/dev-panel.js"
+      }
+    },
+    {
+      "timestamp": "2025-10-22T05:29:48.751Z",
+      "level": "WARN",
+      "message": "early-logs",
+      "data": {
+        "message": "Dev panel init time not set; returning all logs",
+        "count": 70
+      }
+    },
+    {
+      "timestamp": "2025-10-22T05:29:48.765Z",
+      "level": "WARN",
+      "message": "early-logs",
+      "data": {
+        "message": "Dev panel init time not set; returning all logs",
+        "count": 71
+      }
+    },
+    {
+      "timestamp": "2025-10-22T05:29:52.732Z",
+      "level": "WARN",
+      "message": "onStateChange: attempted to register non-function listener",
+      "data": {
+        "listenerType": "string"
+      }
+    },
+    {
+      "timestamp": "2025-10-22T05:29:52.732Z",
+      "level": "WARN",
+      "message": "onStateChange: attempted to register non-function listener",
+      "data": {
+        "listenerType": "string"
+      }
+    },
+    {
+      "timestamp": "2025-10-22T05:29:56.594Z",
+      "level": "WARN",
+      "message": "early-logs",
+      "data": {
+        "message": "Dev panel init time not set; returning all logs",
+        "count": 74
       }
     }
   ]

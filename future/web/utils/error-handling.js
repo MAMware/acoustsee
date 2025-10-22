@@ -286,7 +286,8 @@ export async function executeCriticalOperation(systemName, operation, context = 
     } catch (error) {
       retryCount++;
       
-      structuredLog('WARN', systemName, `Critical operation failed, retry ${retryCount}/${maxRetries}`, {
+      structuredLog('WARN', systemName, {
+        message: `Critical operation failed, retry ${retryCount}/${maxRetries}`,
         error: error.message,
         stack: error.stack,
         retryCount,
