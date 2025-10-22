@@ -77,67 +77,87 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
    */
   function buildInspectorHTML(state) {
     return `
-      <div class="orch-inspector">
+      <a href="#orchestration-main-content" class="orch-skip-link">Skip to main content</a>
+      <div class="orch-inspector" role="region" aria-label="Orchestration Inspector">
         <!-- Header -->
         <div class="orch-header">
-          <h3 class="orch-title">🎵 Orchestration Visibility</h3>
-          <div class="orch-header-buttons">
-            <button class="orch-btn orch-btn-refresh" title="Refresh metrics">⟳</button>
-            <button class="orch-btn orch-btn-export" title="Export as JSON">↓</button>
-            <button class="orch-btn orch-btn-toggle" title="Minimize">−</button>
+          <h3 class="orch-title" id="orchestration-title">🎵 Orchestration Visibility</h3>
+          <div class="orch-header-buttons" role="toolbar" aria-label="Inspector controls">
+            <button 
+              class="orch-btn orch-btn-refresh" 
+              aria-label="Refresh metrics" 
+              title="Refresh metrics (R)"
+              tabindex="0"
+            >⟳</button>
+            <button 
+              class="orch-btn orch-btn-export" 
+              aria-label="Export metrics as JSON" 
+              title="Export metrics as JSON (E)"
+              tabindex="0"
+            >↓</button>
+            <button 
+              class="orch-btn orch-btn-toggle" 
+              aria-label="Minimize inspector" 
+              title="Minimize inspector (M)"
+              aria-expanded="true"
+              aria-controls="orchestration-content"
+              tabindex="0"
+            >−</button>
           </div>
         </div>
         
-        <!-- Active Extractor Section -->
-        <div class="orch-section">
-          <h4 class="orch-section-title">ACTIVE EXTRACTOR</h4>
-          <div class="orch-extractor-display">
-            ${buildExtractorIndicator(state.activeExtractor, state.capabilities)}
-          </div>
-        </div>
-        
-        <!-- Capabilities Matrix -->
-        <div class="orch-section">
-          <h4 class="orch-section-title">BROWSER CAPABILITIES</h4>
-          <div class="orch-capabilities-grid">
-            ${buildCapabilitiesGrid(state.capabilities)}
-          </div>
-        </div>
-        
-        <!-- Real-Time Metrics -->
-        <div class="orch-section">
-          <h4 class="orch-section-title">REAL-TIME METRICS</h4>
-          <div class="orch-metrics-display">
-            ${buildMetricsDisplay(state.metrics)}
-          </div>
-        </div>
-        
-        <!-- Utilization Bars -->
-        <div class="orch-section orch-utilization">
-          <h4 class="orch-section-title">UTILIZATION</h4>
-          <div class="orch-util-bars">
-            ${buildUtilizationBars(state.metrics)}
-          </div>
-        </div>
-        
-        <!-- Decision Log -->
-        <div class="orch-section orch-log-section">
-          <h4 class="orch-section-title">DECISION LOG (Last 5 Events)</h4>
-          <div class="orch-decision-log">
-            ${buildDecisionLog(state.decisionLog)}
-          </div>
-        </div>
-        
-        <!-- Current Mode -->
-        <div class="orch-section orch-mode-footer">
-          <div class="orch-mode-item">
-            <span class="orch-label">Mode:</span>
-            <span class="orch-value">${state.currentMode || 'unknown'}</span>
-          </div>
-          <div class="orch-mode-item">
-            <span class="orch-label">Memory:</span>
-            <span class="orch-value">${(state.metrics?.memoryUsageMB || 0).toFixed(1)} MB</span>
-          </div>
+        <div id="orchestration-main-content">
+          <!-- Active Extractor Section -->
+          <section class="orch-section" aria-labelledby="extractor-heading">
+            <h4 class="orch-section-title" id="extractor-heading">ACTIVE EXTRACTOR</h4>
+            <div class="orch-extractor-display">
+              ${buildExtractorIndicator(state.activeExtractor, state.capabilities)}
+            </div>
+          </section>
+          
+          <!-- Capabilities Matrix -->
+          <section class="orch-section" aria-labelledby="capabilities-heading">
+            <h4 class="orch-section-title" id="capabilities-heading">BROWSER CAPABILITIES</h4>
+            <div class="orch-capabilities-grid" role="list">
+              ${buildCapabilitiesGrid(state.capabilities)}
+            </div>
+          </section>
+          
+          <!-- Real-Time Metrics -->
+          <section class="orch-section" aria-labelledby="metrics-heading">
+            <h4 class="orch-section-title" id="metrics-heading">REAL-TIME METRICS</h4>
+            <div class="orch-metrics-display">
+              ${buildMetricsDisplay(state.metrics)}
+            </div>
+          </section>
+          
+          <!-- Utilization Bars -->
+          <section class="orch-section orch-utilization" aria-labelledby="utilization-heading">
+            <h4 class="orch-section-title" id="utilization-heading">UTILIZATION</h4>
+            <div class="orch-util-bars">
+              ${buildUtilizationBars(state.metrics)}
+            </div>
+          </section>
+          
+          <!-- Decision Log -->
+          <section class="orch-section orch-log-section" aria-labelledby="log-heading">
+            <h4 class="orch-section-title" id="log-heading">DECISION LOG (Last 5 Events)</h4>
+            <div class="orch-decision-log" role="log" aria-live="polite" aria-label="Decision log">
+              ${buildDecisionLog(state.decisionLog)}
+            </div>
+          </section>
+          
+          <!-- Current Mode -->
+          <footer class="orch-section orch-mode-footer" aria-label="Current system state">
+            <div class="orch-mode-item">
+              <span class="orch-label">Mode:</span>
+              <span class="orch-value" aria-label="Current mode">${state.currentMode || 'unknown'}</span>
+            </div>
+            <div class="orch-mode-item">
+              <span class="orch-label">Memory:</span>
+              <span class="orch-value" aria-label="Memory usage">${(state.metrics?.memoryUsageMB || 0).toFixed(1)} MB</span>
+            </div>
+          </footer>
         </div>
       </div>
     `;
@@ -190,9 +210,15 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
       const available = capabilities?.[key] || false;
       const className = available ? 'orch-cap-available' : 'orch-cap-unavailable';
       const icon = available ? '✓' : '✗';
+      const statusText = available ? 'available' : 'unavailable';
       return `
-        <div class="orch-capability ${className}" title="${label}">
-          <span class="orch-cap-icon">${icon}</span>
+        <div 
+          class="orch-capability ${className}" 
+          role="listitem"
+          aria-label="${label}: ${statusText}"
+          title="${label}: ${statusText}"
+        >
+          <span class="orch-cap-icon" aria-hidden="true">${icon}</span>
           <span class="orch-cap-label">${label}</span>
         </div>
       `;
@@ -332,20 +358,48 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
     if (toggleBtn) {
       let isCollapsed = false;
       toggleBtn.addEventListener('click', () => {
-        const inspector = container.querySelector('.orch-inspector');
-        const sections = container.querySelectorAll('.orch-section');
+        const mainContent = container.querySelector('#orchestration-main-content');
         
         if (isCollapsed) {
-          sections.forEach(s => s.style.display = '');
+          mainContent.style.display = '';
           toggleBtn.textContent = '−';
+          toggleBtn.setAttribute('aria-expanded', 'true');
           isCollapsed = false;
         } else {
-          sections.forEach(s => s.style.display = 'none');
+          mainContent.style.display = 'none';
           toggleBtn.textContent = '+';
+          toggleBtn.setAttribute('aria-expanded', 'false');
           isCollapsed = true;
         }
       });
     }
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Don't interfere with text input
+      if (e.target.matches('input, textarea')) return;
+      
+      switch (e.key.toUpperCase()) {
+        case 'R':
+          if (refreshBtn) {
+            refreshBtn.click();
+            e.preventDefault();
+          }
+          break;
+        case 'E':
+          if (exportBtn) {
+            exportBtn.click();
+            e.preventDefault();
+          }
+          break;
+        case 'M':
+          if (toggleBtn) {
+            toggleBtn.click();
+            e.preventDefault();
+          }
+          break;
+      }
+    });
   }
   
   /**

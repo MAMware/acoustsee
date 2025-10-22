@@ -31,6 +31,7 @@
   margin: 0;
   padding: 0;
   overflow: hidden;
+  position: relative;
 }
 
 /* Header */
@@ -153,7 +154,7 @@
 
 .orch-extractor-desc {
   font-size: 11px;
-  color: #7f8c8d;
+  color: #555;
   margin-top: 2px;
 }
 
@@ -240,7 +241,7 @@
 .orch-metrics-empty {
   padding: 12px;
   text-align: center;
-  color: #95a5a6;
+  color: #555;
   font-style: italic;
 }
 
@@ -346,14 +347,14 @@
 }
 
 .orch-log-reason {
-  color: #95a5a6;
+  color: #666;
   font-style: italic;
 }
 
 .orch-log-empty {
   padding: 12px;
   text-align: center;
-  color: #95a5a6;
+  color: #555;
   font-style: italic;
 }
 
@@ -394,16 +395,69 @@
 }
 
 /* Accessibility - Focus States */
+button:focus-visible,
+.orch-btn:focus-visible {
+  outline: 3px solid #f39c12;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(243, 156, 18, 0.2);
+}
+
 button:focus,
 .orch-btn:focus {
-  outline: 2px solid #f1c40f;
+  outline: 3px solid #f39c12;
   outline-offset: 2px;
 }
 
 /* Keyboard Navigation - Visible focus indicator */
 .orchestration-inspector:focus-visible {
-  outline: 2px solid #3498db;
-  outline-offset: -2px;
+  outline: 3px solid #3498db;
+  outline-offset: -3px;
+}
+
+/* Skip to content link (for screen readers) */
+.orch-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 100;
+}
+
+.orch-skip-link:focus {
+  top: 0;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  .orch-btn {
+    border-width: 2px;
+  }
+  
+  .orch-extractor-item.orch-status-active,
+  .orch-capability.orch-cap-available {
+    border-left-width: 4px;
+  }
+  
+  .orch-util-bar-container {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .orch-btn,
+  .orch-util-bar,
+  .orch-metric-row,
+  .orch-capability {
+    transition: none;
+  }
+  
+  .orch-btn:active {
+    transform: none;
+  }
 }
 
 /* Responsive Design - Mobile */

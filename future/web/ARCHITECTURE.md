@@ -637,6 +637,177 @@ ALL UI modules must provide disposal cleanup:
 ---
 This file is authoritative. Follow it to prevent regressions and circular rework.
 
+## Logging & Debugging Architecture
+
+### Ring Buffer Logging System
+
+AcoustSee uses a unified **ring buffer logging system** (`utils/core-logger.js`) that consolidates all diagnostic output into a single, memory-efficient stream. This replaces traditional multi-stream logging and provides both in-memory and persistent storage.
+
+**Key Features:**
+- **Memory-Efficient**: Fixed circular buffer (default 2000 entries) prevents unbounded memory growth
+- **Unified Stream**: All log sources feed into one output, eliminating synchronization issues
+- **JSON-Serializable**: All entries JSON-serializable for export and analysis
+- **Developer-Friendly**: Real-time in-panel viewing with filtering and search
+- **Performance-Conscious**: Minimal overhead (<5%) on core pipelines
+
+### Log Levels
+
+AcoughtSee defines four log levels, controllable at runtime via URL parameter or programmatically:
+
+| Level  | Purpose | Use Case | Sampling |
+|--------|---------|----------|----------|
+| ERROR  | Critical failures that impede functionality | Worker crashes, IndexedDB errors, auth failures | Always logged |
+| WARN   | Conditions that degrade quality or performance | Timeouts, fallbacks, resource exhaustion | Always logged |
+| INFO   | State transitions and significant events | Boot complete, mode switches, synth selections | Always logged |
+| DEBUG  | Detailed diagnostic data for troubleshooting | Frame timing, grid aggregation steps, worker init | **Sampled (1%)** to prevent log spam |
+
+**URL Control:**
+```
+http://localhost:8000/?logLevel=DEBUG    # Verbose (includes 1% DEBUG sampling)
+http://localhost:8000/?logLevel=INFO     # Standard (INFO, WARN, ERROR only)
+http://localhost:8000/?logLevel=WARN     # Quiet (WARN, ERROR only)
+http://localhost:8000/?logLevel=ERROR    # Silent (ERROR only)
+```
+
+### Structured Logging API
+
+All modules use `structuredLog()` from `utils/logging.js` or `utils/worker-logger.js` (for Web Workers):
+
+```javascript
+import { structuredLog } from '../utils/logging.js';
+
+// Simple message
+structuredLog('INFO', 'my-module', { message: 'Boot complete' });
+
+// With metadata
+structuredLog('DEBUG', 'motion-handler', {
+  message: 'Motion detected',
+  regionCount: 64,
+  intensity: 0.75
+});
+
+// With stack trace (for errors)
+structuredLog('ERROR', 'audio-processor', {
+  message: 'Oscillator failed',
+  errorCode: 'OSC_INIT_FAIL'
+}, /* addStack= */ true);
+
+// With sampling (for high-frequency events)
+if (Math.random() < 0.01) { // 1% sampling
+  structuredLog('DEBUG', 'frame-processor', {
+    message: 'Frame processed',
+    fps: 29.5
+  });
+}
+```
+
+### Worker-Safe Logging
+
+Web Workers cannot access `window.indexedDB` or the DOM. The `worker-logger.js` module provides the same `structuredLog()` API but:
+- Logs to `console` (visible in DevTools)
+- Posts messages back to main thread via `self.postMessage()`
+- Skips IndexedDB integration
+
+**Use in Workers:**
+```javascript
+// In motion-worker.js, pan-intensity-mapper.js, etc.
+import { structuredLog } from '../utils/worker-logger.js';
+
+self.onmessage = (e) => {
+  structuredLog('DEBUG', 'motion-worker', { message: 'Processing frame' });
+  // ... do work ...
+};
+```
+
+### Accessing Logs in Development
+
+**In-Browser Console:**
+```javascript
+// Get the ring buffer (if logging initialized)
+console.log(window.__acoustsee_logs); // Array of all log entries
+```
+
+**Via Dev Panel:**
+1. Open app with `?debug=true`
+2. Click the floatingexport button (lower right)
+3. Choose "Export Live Logs" or "Export Early Logs"
+4. Logs download as JSON with full metadata
+
+**Via Early Logs Export:**
+```javascript
+// Captures logs from app boot to first user interaction
+// Exported separately from live logs to prevent buffer overflow
+```
+
+### Debugging Best Practices
+
+**For Audio Pipelines:**
+```
+?logLevel=DEBUG&includeProcessFrameLogs=false
+```
+Shows audio playback events without verbose frame-by-frame noise.
+
+**For Video Processing:**
+```
+?logLevel=DEBUG&logLevel=INFO
+```
+Focus on motion detection, grid aggregation, and audio cue dispatch.
+
+**For Worker Issues:**
+```
+?logLevel=DEBUG
+```
+Check console for worker initialization errors and postMessage routing.
+
+### Performance Considerations
+
+- **DEBUG logs are sampled at 1%** to prevent ~15ms/frame logging overhead
+- **High-frequency events** (frame processing, oscillator lifecycle) use sampling:
+  ```javascript
+  if (Math.random() < 0.01) {
+    structuredLog('DEBUG', 'module', { /* data */ });
+  }
+  ```
+- **Ring buffer never exceeds 2000 entries** (configurable in core-logger.js)
+- **Export is lazy**: logs written to disk only when user clicks "Export"
+
+### Common Log Patterns
+
+**Module Initialization:**
+```javascript
+structuredLog('INFO', 'my-module', { message: 'Initialized successfully' });
+```
+
+**Error Recovery:**
+```javascript
+structuredLog('WARN', 'audio-processor', {
+  message: 'Oscillator pool exhausted, refilling',
+  deficit: 5
+});
+```
+
+**State Transitions:**
+```javascript
+structuredLog('INFO', 'orchestration', {
+  message: 'Switching mode',
+  from: 'flow',
+  to: 'focus'
+});
+```
+
+**Performance Markers:**
+```javascript
+const start = performance.now();
+// ... do work ...
+const elapsed = performance.now() - start;
+structuredLog('DEBUG', 'frame-processor', {
+  message: 'Frame processing complete',
+  elapsedMs: elapsed.toFixed(2)
+});
+```
+
+---
+
 ## Runtime basePath detection (hosting compatibility)
 
 When AcoustSee is deployed under a repository subpath (for example on GitHub Pages
