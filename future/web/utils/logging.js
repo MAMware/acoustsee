@@ -275,13 +275,21 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     // NOTE: Translation removed from hot path. Move i18n logic to UI/presentation layer post-hoc.
     const finalMessage = message;
     
+    // CRITICAL FIX: Validate data parameter - must be object
+    // If a string/non-object is passed, wrap it to prevent character-by-character serialization
+    let validatedData = data;
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+      console.warn(`[logging.js] structuredLog: data must be object, got ${typeof data}. Wrapping as _rawData.`);
+      validatedData = { _rawData: String(data) };
+    }
+    
     // Auto-generate metadata and merge with provided data (pass level and callStack for accurate source location)
     const metadata = generateMetadata(level, callStack);
     
     // Add rich telemetry data for D1 ingestion, including traceId for correlation // R171025 the correlation is only for D1 ingestion? it might be usefull to have it at "Live logs"
     const telemetryData = {
       ...metadata,
-      ...data, // Allow overrides or additions
+      ...validatedData, // Allow overrides or additions
     };
     
     // Add traceId if available for log correlation
