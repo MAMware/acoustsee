@@ -171,9 +171,22 @@ export async function init() {
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
 
-    // --- UI LOADER LOGIC (dynamic import to avoid duplicate initialization) ---
+    // --- LOG LEVEL CONFIGURATION (from URL parameter) ---
     const urlParams = new URLSearchParams(window.location.search);
-    const isDebugMode = urlParams.get('debug') === 'true';
+    const logLevelFromUrl = urlParams.get('logLevel');
+    if (logLevelFromUrl) {
+      const { setLogLevel } = await import('./utils/logging.js');
+      setLogLevel(logLevelFromUrl);
+      structuredLog('INFO', 'init: Log level set from URL', { logLevel: logLevelFromUrl });
+    } else {
+      // Default to INFO level (hide DEBUG logs)
+      const { setLogLevel } = await import('./utils/logging.js');
+      setLogLevel('INFO');
+      structuredLog('INFO', 'init: Log level set to default', { logLevel: 'INFO' });
+    }
+
+    // --- UI LOADER LOGIC (dynamic import to avoid duplicate initialization) ---
+    const isDebugMode = logLevelFromUrl ? logLevelFromUrl === 'debug' || urlParams.get('debug') === 'true' : urlParams.get('debug') === 'true';
     if (isDebugMode) {
       // userAgent has been disabled (commented out) even in debug mode as per MAMware request, it seem they do add any usefull info
       // loggingConfig.includeUserAgent = true;

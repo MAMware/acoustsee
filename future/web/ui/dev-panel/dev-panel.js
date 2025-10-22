@@ -630,6 +630,31 @@ export function initializeDevPanel(arg1, arg2) {
         URL.revokeObjectURL(url);
     });
 
+    // --- Wire Logging Configuration Controls ---
+    const { loggingConfig } = await import('../../utils/logging.js');
+    const logLevelSelect = panel.querySelector('#log-level-select');
+    const loggingApplyBtn = panel.querySelector('#logging-apply-btn');
+    const metadataToggle = panel.querySelector('#logging-metadata-toggle');
+    const stackToggle = panel.querySelector('#logging-stack-toggle');
+
+    if (logLevelSelect && loggingApplyBtn) {
+      loggingApplyBtn.addEventListener('click', () => {
+        try {
+          const newLogLevel = logLevelSelect.value;
+          setLogLevel(newLogLevel);
+          loggingConfig.includeMetadata = metadataToggle.checked;
+          loggingConfig.includeStack = stackToggle.checked;
+          structuredLog('INFO', 'Dev Panel: Logging configuration applied', {
+            logLevel: newLogLevel,
+            includeMetadata: metadataToggle.checked,
+            includeStack: stackToggle.checked
+          });
+        } catch (e) {
+          structuredLog('ERROR', 'Dev Panel: Failed to apply logging config', { error: e?.message });
+        }
+      });
+    }
+
     // --- Dynamically Populate Grid and Synth Dropdowns from Central State ---
     try {
       const state = engine.getState(); // Get the current application state

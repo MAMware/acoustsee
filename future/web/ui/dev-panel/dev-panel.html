@@ -268,6 +268,41 @@
     </div>
   </div>
 
+  <!-- Logging Configuration: Control debug output (Phase 2B) -->
+  <div class="devpanel-section logging-section">
+    <h2 class="section-header">
+      <span>Logging Configuration</span>
+      <button class="collapse-btn" data-target="logging-content" aria-expanded="true" title="Collapse Logging Config">-</button>
+    </h2>
+    <div id="logging-content" class="section-content">
+      <div class="controls-grid-2col">
+        <div class="control-column">
+          <label>Log Level</label>
+          <select id="log-level-select">
+            <option value="ERROR">Error Only</option>
+            <option value="WARN">Warnings + Errors</option>
+            <option value="INFO" selected>Info + Warnings (Default)</option>
+            <option value="DEBUG">Debug (All Logs) - ⚠️ High Volume</option>
+          </select>
+          <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 0;">Higher levels show more diagnostic info. DEBUG may produce per-frame logs (60fps).</p>
+        </div>
+        <div class="control-column">
+          <label style="display: flex; align-items: center; margin-top: 12px;">
+            <input type="checkbox" id="logging-metadata-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;" checked>
+            <span>Include Metadata (source location, filename)</span>
+          </label>
+          <label style="display: flex; align-items: center; margin-top: 12px;">
+            <input type="checkbox" id="logging-stack-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;">
+            <span>Include Stack Traces (WARN/ERROR only)</span>
+          </label>
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <button id="logging-apply-btn" type="button">Apply Logging Settings</button>
+      </div>
+    </div>
+  </div>
+
   <div class="devpanel-section logs-section">
     <h2 class="section-header"><span>Live Logs</span></h2>
     <div class="section-content">
