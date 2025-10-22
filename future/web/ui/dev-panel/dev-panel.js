@@ -11,6 +11,7 @@ import { createAndWireActions } from './dev-panel.actions.js';
 import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
 import { StateInspector } from './state-inspector.js';
+import { initializeOrchestrationInspector } from '../orchestration-inspector.js'; // Phase 2A: Orchestration visibility
 // Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
 
@@ -667,6 +668,25 @@ export function initializeDevPanel(arg1, arg2) {
       }
     }
 
+    // --- Initialize OrchestrationInspector (Phase 2A) ---
+    try {
+      const orchestrationSection = panel.querySelector('#orchestration-content');
+      if (orchestrationSection) {
+        // Initialize the orchestration inspector component
+        const orchestrationInspector = initializeOrchestrationInspector(engine, DOM, {});
+        // Store reference for cleanup
+        panel.__orchestrationInspector = orchestrationInspector;
+        structuredLog('INFO', 'dev-panel', { message: 'OrchestrationInspector initialized' });
+      }
+    } catch (e) {
+      structuredLog('ERROR', 'dev-panel', { message: 'Failed to initialize orchestration inspector', error: e.message });
+      // Fallback error message
+      const orchestrationSection = panel.querySelector('#orchestration-content');
+      if (orchestrationSection) {
+        orchestrationSection.innerHTML = '<div style="color: #e74c3c; padding: 8px;">Orchestration inspector failed to load. Check console for details.</div>';
+      }
+    }
+
     // --- Control Synchronization ---
     const gridTypeSelect = panel.querySelector('#grid-type-select');
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
@@ -877,6 +897,13 @@ export function initializeDevPanel(arg1, arg2) {
       try {
         if (panel.__stateInspector && typeof panel.__stateInspector.dispose === 'function') {
           panel.__stateInspector.dispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 1.5. Dispose of OrchestrationInspector (Phase 2A)
+      try {
+        if (panel.__orchestrationInspector && typeof panel.__orchestrationInspector.dispose === 'function') {
+          panel.__orchestrationInspector.dispose();
         }
       } catch (e) { /* swallow */ }
 

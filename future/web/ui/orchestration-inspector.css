@@ -1,0 +1,483 @@
+/**
+ * orchestration-inspector.css
+ * 
+ * Styles for the OrchestrationInspector UI component
+ * 
+ * Design Goals:
+ * - Clean, professional dev-panel style
+ * - WCAG AA accessible (contrast ratios, keyboard nav)
+ * - Responsive (fits in dev panel without breaking layout)
+ * - Easy to scan (clear visual hierarchy)
+ * - Color-coded for quick understanding
+ * 
+ * Color Scheme:
+ * - Active/Good: #27ae60 (green)
+ * - Warning: #f39c12 (orange)
+ * - Error/Unavailable: #e74c3c (red)
+ * - Info: #3498db (blue)
+ * - Background: #ecf0f1 (light gray)
+ * - Text: #2c3e50 (dark gray)
+ */
+
+/* Main Container */
+.orchestration-inspector {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  color: #2c3e50;
+  line-height: 1.5;
+  background: #fafafa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Header */
+.orch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(to right, #34495e, #2c3e50);
+  color: white;
+  border-bottom: 2px solid #1a252f;
+}
+
+.orch-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.orch-header-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.orch-btn {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.orch-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.orch-btn:active {
+  transform: scale(0.95);
+}
+
+.orch-btn:focus {
+  outline: 2px solid #f1c40f;
+  outline-offset: 2px;
+}
+
+/* Sections */
+.orch-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid #ddd;
+}
+
+.orch-section:last-of-type {
+  border-bottom: none;
+}
+
+.orch-section-title {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #34495e;
+  text-transform: uppercase;
+}
+
+/* Active Extractor Section */
+.orch-extractor-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.orch-extractor-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.orch-extractor-item.orch-status-active {
+  background: #d5f4e6;
+  border-left: 3px solid #27ae60;
+}
+
+.orch-extractor-item.orch-status-inactive {
+  background: #fadbd8;
+  border-left: 3px solid #e74c3c;
+}
+
+.orch-status-icon {
+  font-size: 16px;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
+}
+
+.orch-extractor-item.orch-status-active .orch-status-icon {
+  color: #27ae60;
+}
+
+.orch-extractor-item.orch-status-inactive .orch-status-icon {
+  color: #e74c3c;
+}
+
+.orch-extractor-info {
+  flex: 1;
+}
+
+.orch-extractor-name {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.orch-extractor-desc {
+  font-size: 11px;
+  color: #7f8c8d;
+  margin-top: 2px;
+}
+
+/* Capabilities Grid */
+.orch-capabilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.orch-capability {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 4px;
+  text-align: center;
+  border: 1px solid #bdc3c7;
+  transition: all 0.2s ease;
+}
+
+.orch-capability.orch-cap-available {
+  background: #d5f4e6;
+  border-color: #27ae60;
+  color: #27ae60;
+}
+
+.orch-capability.orch-cap-unavailable {
+  background: #fadbd8;
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.orch-cap-icon {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.orch-cap-label {
+  font-size: 11px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+/* Metrics Display */
+.orch-metrics-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #ecf0f1;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.orch-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 3px;
+  background: #f8f9fa;
+}
+
+.orch-metric-row:hover {
+  background: #ecf0f1;
+}
+
+.orch-metric-label {
+  font-weight: 600;
+  color: #34495e;
+  min-width: 100px;
+}
+
+.orch-metric-value {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  color: #2980b9;
+  font-weight: 600;
+  text-align: right;
+}
+
+.orch-metrics-empty {
+  padding: 12px;
+  text-align: center;
+  color: #95a5a6;
+  font-style: italic;
+}
+
+/* Utilization Bars */
+.orch-utilization {
+  background: #fafafa;
+}
+
+.orch-util-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.orch-util-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.orch-util-label {
+  min-width: 80px;
+  font-weight: 600;
+  color: #34495e;
+  text-align: right;
+}
+
+.orch-util-bar-container {
+  flex: 1;
+  height: 24px;
+  background: #ecf0f1;
+  border-radius: 3px;
+  border: 1px solid #bdc3c7;
+  overflow: hidden;
+}
+
+.orch-util-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.orch-util-bar.orch-util-low {
+  background: linear-gradient(to right, #27ae60, #2ecc71);
+}
+
+.orch-util-bar.orch-util-medium {
+  background: linear-gradient(to right, #f39c12, #f1c40f);
+}
+
+.orch-util-bar.orch-util-high {
+  background: linear-gradient(to right, #e74c3c, #e67e22);
+}
+
+.orch-util-percent {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+  color: #2c3e50;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* Decision Log */
+.orch-log-section {
+  background: #fafafa;
+}
+
+.orch-decision-log {
+  background: #fff;
+  border: 1px solid #ecf0f1;
+  border-radius: 4px;
+  overflow-y: auto;
+  max-height: 150px;
+  padding: 0;
+}
+
+.orch-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.orch-log-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #ecf0f1;
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.orch-log-item:last-child {
+  border-bottom: none;
+}
+
+.orch-log-item:hover {
+  background: #f8f9fa;
+}
+
+.orch-log-event {
+  font-weight: 600;
+  color: #2980b9;
+  flex: 1;
+  word-break: break-word;
+}
+
+.orch-log-reason {
+  color: #95a5a6;
+  font-style: italic;
+}
+
+.orch-log-empty {
+  padding: 12px;
+  text-align: center;
+  color: #95a5a6;
+  font-style: italic;
+}
+
+/* Mode Footer */
+.orch-mode-footer {
+  background: #ecf0f1;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.orch-mode-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.orch-label {
+  font-weight: 600;
+  color: #34495e;
+}
+
+.orch-value {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  color: #2980b9;
+  font-weight: 600;
+}
+
+/* Error State */
+.orch-error {
+  padding: 16px;
+  background: #fadbd8;
+  border-left: 3px solid #e74c3c;
+  color: #c0392b;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Accessibility - Focus States */
+button:focus,
+.orch-btn:focus {
+  outline: 2px solid #f1c40f;
+  outline-offset: 2px;
+}
+
+/* Keyboard Navigation - Visible focus indicator */
+.orchestration-inspector:focus-visible {
+  outline: 2px solid #3498db;
+  outline-offset: -2px;
+}
+
+/* Responsive Design - Mobile */
+@media (max-width: 600px) {
+  .orchestration-inspector {
+    font-size: 12px;
+  }
+  
+  .orch-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .orch-header-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .orch-capabilities-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .orch-section {
+    padding: 10px 12px;
+  }
+  
+  .orch-metric-label {
+    min-width: 80px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .orchestration-inspector {
+    border: 2px solid #2c3e50;
+    page-break-inside: avoid;
+  }
+  
+  .orch-btn {
+    display: none;
+  }
+}
+
+/* Dark Mode Support (future-ready) */
+@media (prefers-color-scheme: dark) {
+  .orchestration-inspector {
+    background: #1e1e1e;
+    color: #e0e0e0;
+  }
+  
+  .orch-header {
+    background: #1a1a1a;
+    border-bottom-color: #333;
+  }
+  
+  .orch-section {
+    border-bottom-color: #333;
+  }
+  
+  .orch-section-title {
+    color: #b0b0b0;
+  }
+  
+  .orch-metric-row {
+    background: #2a2a2a;
+  }
+  
+  .orch-metric-row:hover {
+    background: #333;
+  }
+  
+  .orch-metric-label,
+  .orch-label {
+    color: #b0b0b0;
+  }
+}

@@ -23,8 +23,27 @@ This document tracks active and future development tasks to provide a clear proj
 
 ## Completed Tasks
 
-
 -   **[x] `ARCH-1`:** Consolidate `microphone-controller.js` into `media-controller.js` per ADR-0001. _(Completed 2025-10-13)_
+
+## Phase 2A: Orchestration Visibility (Week 1-2)
+
+### Week 1: Foundation (✅ APPROVED)
+
+-   **[x] `ORCH-1.1`:** Orchestration State Structure - `orchestration-state.js` (180 lines). State schema with extractor types, capabilities, metrics. _(Completed 2025-10-21)_
+
+-   **[x] `ORCH-1.2`:** Capability Detection - `capability-detector.js` (165 lines). Detects 6 device capabilities (MSTP, Canvas2D, WebGL, WebGPU, Offscreen Canvas, WASM). _(Completed 2025-10-21)_
+
+-   **[x] `ORCH-1.3`:** Metrics Collection - `metrics-collector.js` (290 lines). Real-time metrics with circular buffer, <5% CPU overhead, phase timing. _(Completed 2025-10-21)_
+
+### Week 2: UI Component
+
+-   **[x] `ORCH-2.1`:** OrchestrationInspector UI Component - `orchestration-inspector.js` (350+ lines) + `orchestration-inspector.css` (200+ lines). Visual display in dev panel with 7 sections: header, extractor, capabilities grid, metrics, utilization bars, decision log, mode footer. Event handlers (refresh/export/toggle). Integration into dev-panel.js complete. _(Completed 2025-10-21)_
+
+-   **[ ] `ORCH-2.2`:** Integration Verification - Load app with `?debug=true`, verify component renders, test all buttons, validate state updates, smoke test in runtime-shims. _(Pending)_
+
+-   **[ ] `ORCH-2.3`:** Styling & Accessibility Polish - WCAG AA compliance review, keyboard navigation testing, responsive design validation on mobile/tablet. _(Pending)_
+
+-   **[ ] `ORCH-2.4`:** Documentation & Testing - Update ARCHITECTURE.md, add runtime smoke test, document state schema. _(Pending)_
 
 ## Future Goals (Backlog)
 

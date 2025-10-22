@@ -552,6 +552,201 @@ async function simulateShapeAnalysis(detectedObject = {}) {
 }
 
 /**
+ * Canvas-based fallback for video frame capture (no MediaStreamTrackProcessor required).
+ * This runs frame capture in the main thread and processes frames through the audio pipeline.
+ * Slower than MediaStreamTrackProcessor but works in all browsers (Firefox, Safari, iOS).
+ * 
+ * NOTE: Frame processing logic (Flow/Flow-legacy/Focus mode handling) is intentionally
+ * duplicated from the worker-based handler in frameProviderWorker.onmessage. Both
+ * implementations call the same core functions (processFlowMode, processWithMotionWorker)
+ * so they produce identical results. The duplication keeps the fallback self-contained
+ * and simplifies debugging.
+ * 
+ * @param {HTMLVideoElement} videoElement - The video element to capture from
+ * @param {object} engine - The state engine
+ * @returns {Promise<object>} Control interface { start, stop, dispose }
+ */
+async function initializeVideoCanvasFallback(videoElement, engine) {
+  structuredLog('INFO', 'Using canvas-based video capture (fallback mode)');
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = videoElement.videoWidth || 640;
+  canvas.height = videoElement.videoHeight || 480;
+  
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) {
+    throw new Error('Canvas 2D context not available');
+  }
+  
+  let frameCounter = 0;
+  let isRunning = false;
+  let lastFrameTime = 0;
+  const minFrameInterval = 33; // ~30fps target
+  
+  // Main frame capture loop
+  async function captureFrame() {
+    if (!isRunning) return;
+    
+    const now = performance.now();
+    if (now - lastFrameTime < minFrameInterval) {
+      requestAnimationFrame(captureFrame);
+      return;
+    }
+    lastFrameTime = now;
+    
+    try {
+      // Update canvas if video element size changed
+      if (canvas.width !== videoElement.videoWidth || canvas.height !== videoElement.videoHeight) {
+        canvas.width = videoElement.videoWidth || 640;
+        canvas.height = videoElement.videoHeight || 480;
+        structuredLog('DEBUG', 'Canvas fallback: Video size changed', {
+          width: canvas.width,
+          height: canvas.height
+        });
+      }
+      
+      // Draw current video frame to canvas
+      ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+      
+      // Extract image data
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      frameCounter++;
+      
+      // Simulate frame processing (same interface as worker-based approach)
+      const state = engine.getState();
+      const frameData = new Uint8ClampedArray(imageData.data);
+      const grid = _config.getCurrentGrid();
+      let dispatchPayload = null;
+      
+      // Only log every 30th frame to avoid flooding console
+      if (frameCounter % 30 === 0) {
+        structuredLog('DEBUG', 'Canvas fallback: Frame captured', {
+          frameId: frameCounter,
+          mode: state.currentMode,
+          hasGrid: !!grid,
+          width: canvas.width,
+          height: canvas.height
+        });
+      }
+      
+      if (state.currentMode === 'flow') {
+        const flowResult = await processFlowMode(frameData, canvas.width, canvas.height, state);
+        
+        if (flowResult && flowResult.cues) {
+          if (flowResult.cues.length > 0) {
+            dispatchPayload = flowResult;
+            if (frameCounter % 30 === 0) {
+              structuredLog('DEBUG', 'Canvas fallback: Flow mode cues generated', {
+                cuesCount: flowResult.cues.length,
+                pan: flowResult.panIntensity?.pan.toFixed(2),
+                intensity: flowResult.panIntensity?.intensity.toFixed(2)
+              });
+            }
+          } else {
+            dispatchPayload = { cues: [], panIntensity: flowResult.panIntensity };
+            if (frameCounter % 100 === 0) {
+              structuredLog('DEBUG', 'Canvas fallback: No motion or intensity too low', {
+                panIntensity: flowResult.panIntensity
+              });
+            }
+          }
+        } else {
+          dispatchPayload = { cues: [], panIntensity: { pan: 0, intensity: 0 } };
+        }
+      } else if (state.currentMode === 'flow-legacy') {
+        const motionResults = await processWithMotionWorker(frameData, canvas.width, canvas.height, state);
+        
+        engine.dispatch('flowCuesReady', motionResults);
+        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
+          engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
+        }
+        
+        if (grid && grid.mapFunction) {
+          const gridOutput = grid.mapFunction(frameData, canvas.width, canvas.height, null, motionResults);
+          if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
+            dispatchPayload = { cues: gridOutput.cues };
+          } else {
+            if (motionResults.movingRegions && motionResults.movingRegions.length > 0) {
+              const defaultCues = motionResults.movingRegions.slice(0, 1).map(region => ({
+                objectType: 'default_motion',
+                pitch: 440 + (region.y || 0) * 400,
+                intensity: Math.min(1.0, (region.intensity || 50) / 100),
+                position: { x: region.x || 0, y: region.y || 0, z: 0 }
+              }));
+              dispatchPayload = { cues: defaultCues };
+            }
+          }
+        } else {
+          if (motionResults.movingRegions && motionResults.movingRegions.length > 0) {
+            const defaultCues = motionResults.movingRegions.slice(0, 1).map(region => ({
+              objectType: 'default_motion',
+              pitch: 440 + (region.y || 0) * 400,
+              intensity: Math.min(1.0, (region.intensity || 50) / 100),
+              position: { x: region.x || 0, y: region.y || 0, z: 0 }
+            }));
+            dispatchPayload = { cues: defaultCues };
+          }
+        }
+      } else if (state.currentMode === 'focus') {
+        const motionResults = await processWithMotionWorker(frameData, canvas.width, canvas.height, state);
+        
+        const specialists = {
+          depth: await processWithDepthWorker(frameData, canvas.width, canvas.height, state),
+          objects: await simulateObjectDetection(frameData, canvas.width, canvas.height)
+        };
+        
+        dispatchPayload = {
+          cues: motionResults.objects || [],
+          motion: motionResults,
+          specialists
+        };
+      }
+      
+      // Dispatch audio cues if we have them
+      if (dispatchPayload && dispatchPayload.cues && dispatchPayload.cues.length > 0) {
+        engine.dispatch('audioCuesReady', dispatchPayload);
+      }
+      
+    } catch (e) {
+      structuredLog('ERROR', 'Canvas fallback frame capture error', {
+        error: e?.message || String(e),
+        frameId: frameCounter
+      });
+    }
+    
+    if (isRunning) {
+      requestAnimationFrame(captureFrame);
+    }
+  }
+  
+  // Start the frame capture loop
+  isRunning = true;
+  requestAnimationFrame(captureFrame);
+  
+  structuredLog('INFO', 'Canvas fallback video capture started');
+  
+  return {
+    start: () => {
+      isRunning = true;
+      requestAnimationFrame(captureFrame);
+      structuredLog('DEBUG', 'Canvas fallback: Capture resumed');
+    },
+    stop: () => {
+      isRunning = false;
+      structuredLog('DEBUG', 'Canvas fallback: Capture stopped');
+    },
+    dispose: () => {
+      isRunning = false;
+      ctx = null;
+      canvas = null;
+      structuredLog('DEBUG', 'Canvas fallback: Disposed');
+    }
+  };
+}
+
+/**
  * Initializes the modern, off-thread video processing pipeline.
  * This is the single, correct entry point for video processing.
  */
@@ -598,9 +793,9 @@ export async function initializeVideo(config) {
     }
     
     if (!hasMediaStreamTrackProcessor) {
-      structuredLog('WARN', 'MediaStreamTrackProcessor not supported, trying alternative approach');
-      // We could implement a Canvas2D fallback here, but for now let's see if this is the issue
-      throw new Error('MediaStreamTrackProcessor is required but not supported in this browser');
+      structuredLog('WARN', 'MediaStreamTrackProcessor not supported, using canvas-based fallback');
+      // Use canvas-based frame capture as fallback
+      return await initializeVideoCanvasFallback(videoElement, engine);
     }
     
     structuredLog('DEBUG', 'initializeVideo: Starting frame provider worker...');
