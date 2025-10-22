@@ -64,7 +64,7 @@ body.accessible-mode #mainContainer {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  display: flex;
+  display: none; /* Hidden - using floating button instead */
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
@@ -147,3 +147,133 @@ body.accessible-mode #mainContainer {
 }
 
 /* Dev Panel styles moved to web/ui/dev-panel/dev-panel.css */
+
+/* ===== Floating Export Button (Phase 2A Task 2.2 Enhancement) ===== */
+/* Persistent overlay button for exporting early logs, always visible */
+
+#floating-export-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999999;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  pointer-events: auto;
+}
+
+.floating-export-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  position: relative;
+  z-index: 999999;
+}
+
+.floating-export-btn:hover {
+  background-color: #1976D2;
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.5);
+}
+
+.floating-export-btn:active {
+  background-color: #1565C0;
+  transform: scale(0.98);
+}
+
+.floating-export-btn:disabled {
+  background-color: #9E9E9E;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.floating-export-btn:focus {
+  outline: 2px solid #FFC107;
+  outline-offset: 2px;
+}
+
+.floating-export-btn .export-btn-text {
+  font-weight: 500;
+}
+
+#floating-export-collapsed {
+  display: none;
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+  transition: all 0.2s ease;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 999999;
+}
+
+#floating-export-collapsed:hover {
+  background-color: #1976D2;
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.5);
+}
+
+#floating-export-collapsed:active {
+  background-color: #1565C0;
+  transform: scale(0.95);
+}
+
+#floating-export-collapsed:focus {
+  outline: 2px solid #FFC107;
+  outline-offset: 2px;
+}
+
+/* Responsive floating button for mobile */
+@media (max-width: 600px) {
+  #floating-export-container {
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .floating-export-btn {
+    padding: 0.6rem 0.8rem;
+    font-size: 13px;
+  }
+
+  #floating-export-collapsed {
+    width: 45px;
+    height: 45px;
+    font-size: 1.3rem;
+  }
+}
+
+/* Landscape mode adjustment */
+@media (max-height: 500px) {
+  #floating-export-container {
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .floating-export-btn {
+    padding: 0.5rem 0.7rem;
+    font-size: 12px;
+  }
+
+  .floating-export-btn span:first-child {
+    font-size: 1rem;
+  }
+}
