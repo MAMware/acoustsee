@@ -1,15 +1,93 @@
 // web/utils/core-logger.js
-// Simple console-based output for logs, used to decouple logging concerns from persistence.
-// Now includes log level filtering to respect DEFAULT_LOG_LEVEL for dev panel output.
+// Consolidated logging core: Ring buffer stores ALL logs in real-time.
+// Single source of truth regardless of platform (mobile, desktop, etc).
+// All structuredLog() calls route through this buffer for:
+//   - Browser console output
+//   - Dev panel Live Logs display
+//   - Early logs export
+//   - Analytics ingestion
+//   - IDB persistence (WARN+ only)
 
 import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
+
+// ============================================================================
+// RING BUFFER: Single source of truth for all logs
+// ============================================================================
+
+const DEFAULT_BUFFER_SIZE = 1000; // Same as log-viewer.js default
+let ringBuffer = [];
+let bufferIndex = 0;
+let bufferFull = false;
+
+/**
+ * Ring buffer entry: {timestamp, level, text, data}
+ * Stores the complete formatted log + metadata for all consumers.
+ */
+function addToRingBuffer(level, text, data = {}) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    level: level.toUpperCase(),
+    text: text,
+    data: data
+  };
+
+  if (ringBuffer.length < DEFAULT_BUFFER_SIZE) {
+    ringBuffer.push(entry);
+  } else {
+    // Ring behavior: overwrite oldest entries
+    ringBuffer[bufferIndex] = entry;
+    bufferIndex = (bufferIndex + 1) % DEFAULT_BUFFER_SIZE;
+    bufferFull = true;
+  }
+
+  return entry;
+}
+
+/**
+ * Retrieve all logs from ring buffer in chronological order.
+ * Used by early-logs.js, exports, and dev panel initialization.
+ * @returns {Array} Array of {timestamp, level, text, data}
+ */
+export function getRingBufferLogs() {
+  if (!bufferFull) {
+    // Buffer not yet full, return in order
+    return ringBuffer.map(e => ({ ...e }));
+  }
+  // Buffer full: start from oldest (bufferIndex) and wrap around
+  const result = [];
+  for (let i = 0; i < ringBuffer.length; i++) {
+    result.push({ ...ringBuffer[(bufferIndex + i) % ringBuffer.length] });
+  }
+  return result;
+}
+
+/**
+ * Clear all logs from ring buffer.
+ * Called on app reset or explicit user action.
+ */
+export function clearRingBuffer() {
+  ringBuffer = [];
+  bufferIndex = 0;
+  bufferFull = false;
+}
+
+/**
+ * Get count of logs in ring buffer.
+ */
+export function getRingBufferCount() {
+  return ringBuffer.length;
+}
+
+// ============================================================================
+// OUTPUT CALLBACKS & LOG LEVEL FILTERING
+// ============================================================================
 
 let outputCallback = null;
 let currentLogLevel = LOG_LEVELS[DEFAULT_LOG_LEVEL] || LOG_LEVELS.INFO;
 
 /**
  * Sets a callback function to be invoked for every log output.
- * Used by the debug UI to display logs in its own panel.
+ * Used by the dev panel to display logs in real-time.
  * @param {Function|null} cb - The callback function `(level, text) => {}` or null to clear.
  */
 export function setOutputCallback(cb) {
@@ -28,22 +106,40 @@ export function setLogLevel(level) {
 }
 
 /**
- * Output a text message using the appropriate console method.
- * Now respects log level filtering for both console and dev panel output.
- * @param {string} level - one of 'debug', 'info', 'warn', 'error'.
- * @param {string} text - the fully formatted log string.
+ * Get the current log level threshold.
+ * @returns {number} Numeric log level
  */
-export function output(level, text) {
+export function getCurrentLogLevel() {
+  return currentLogLevel;
+}
+
+// ============================================================================
+// MAIN OUTPUT FUNCTION: Routes to buffer + console + callbacks
+// ============================================================================
+
+/**
+ * Output a structured log entry.
+ * Routes through ring buffer to ensure single source of truth for all consumers.
+ * @param {string} level - one of 'debug', 'info', 'warn', 'error'.
+ * @param {string} text - the fully formatted log string (e.g., "[2025-10-22T...] INFO: message")
+ * @param {Object} data - structured data object with metadata
+ */
+export function output(level, text, data = {}) {
   // Convert level to uppercase for comparison
   const upperLevel = level.toUpperCase();
   const numericLevel = LOG_LEVELS[upperLevel] || LOG_LEVELS.INFO;
   
-  // Respect log level filtering for ALL outputs (console AND dev panel)
+  // Respect log level filtering for ALL outputs
   if (numericLevel < currentLogLevel) return;
   
+  // ===== Add to ring buffer (single source of truth) =====
+  addToRingBuffer(upperLevel, text, data);
+  
+  // ===== Output to browser console =====
   const method = console[level] || console.log;
   method(text);
 
+  // ===== Notify dev panel callback (log-viewer.js) =====
   if (outputCallback) {
     try {
       outputCallback(level, text);

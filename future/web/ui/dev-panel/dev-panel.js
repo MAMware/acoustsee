@@ -4,7 +4,7 @@
 let _config = {};
 import { setOutputCallback, setLogLevel } from '../../utils/core-logger.js';
 import { getAudioDiagnostics } from '../../audio/audio-processor.js';
-import { debugLog, setLogView, clearLogs, exportLogs, setPaused } from '../log-viewer.js';
+import { debugLog, setLogView, clearLogs, exportLogs, setPaused, initializeFromRingBuffer } from '../log-viewer.js';
 import { structuredLog } from '../../utils/logging.js';
 import { executeNonCriticalOperation, createMinimalFallback } from '../../utils/error-handling.js';
 import { injectEarlyLogsToDevPanel, markDevPanelInitTime } from '../../utils/early-logs.js'; // Phase 2A Task 2.2
@@ -585,6 +585,20 @@ export function initializeDevPanel(arg1, arg2) {
     // --- Wire Log Viewer Controls ---
     const logView = panel.querySelector('#devpanel-log-view');
     setLogView(logView);
+    
+    // Initialize log-viewer from ring buffer to show all logs before dev panel init
+    try {
+      const backfilledCount = initializeFromRingBuffer();
+      structuredLog('DEBUG', 'dev-panel', {
+        message: 'Log viewer initialized from ring buffer',
+        count: backfilledCount
+      });
+    } catch (err) {
+      structuredLog('WARN', 'dev-panel', {
+        message: 'Failed to initialize log viewer from ring buffer',
+        error: err?.message || String(err)
+      });
+    }
     
     // --- Inject Early Logs (Phase 2A Task 2.2) ---
     try {

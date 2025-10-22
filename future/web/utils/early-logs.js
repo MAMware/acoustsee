@@ -2,10 +2,10 @@
  * early-logs.js
  *
  * Utility for capturing and exporting logs that occur before dev panel initialization.
- * Logs are already persisted to IndexedDB via idb-logger.js, so this module
- * provides methods to retrieve and filter them for export and dev panel integration.
+ * NOW: Queries from the consolidated ring buffer (core-logger.js) instead of IDB.
+ * This ensures fresh, up-to-date logs without stale data pollution.
  *
- * Purpose (Phase 2A Task 2.2):
+ * Purpose:
  * - Capture logs generated during boot and main.js execution
  * - Export logs as JSON for manual download at splash screen
  * - Inject logs into dev panel Live Logs section on init
@@ -13,16 +13,16 @@
  *
  * Design:
  * - Non-blocking: Uses async/await
- * - Fallback-safe: Returns empty array if IDB unavailable
+ * - Fallback-safe: Returns empty array on errors
  * - Memory-efficient: Filters by timestamp to avoid duplication
- * - Integrates with existing logging infrastructure (idb-logger.js)
+ * - Single source of truth: Queries ring buffer (not IDB)
  */
 
-import { getAllIdbLogs } from './idb-logger.js';
+import { getRingBufferLogs } from './core-logger.js';
 import { structuredLog } from './logging.js';
 
 /**
- * Timestamp of when the early logs collection period ends.
+ * Timestamp of when the early logs collection period ends (in ms).
  * Set when dev panel is about to initialize.
  * Logs before this timestamp are considered "early".
  */
@@ -44,21 +44,23 @@ export function markDevPanelInitTime() {
 }
 
 /**
- * Retrieve all early logs from IndexedDB.
+ * Retrieve all early logs from the ring buffer.
  * Early logs are those created before dev panel initialization.
+ * Fresh data, no stale IDB pollution.
  *
- * @returns {Promise<Array>} Array of log entry objects
+ * @returns {Promise<Array>} Array of log entry objects {timestamp, level, text, data}
  * @example
  * const earlyLogs = await captureEarlyLogs();
  * // Returns: [
- * //   { level: 'INFO', timestamp: 1729..., message: 'Boot started' },
- * //   { level: 'DEBUG', timestamp: 1729..., message: 'Engine created' },
+ * //   { level: 'INFO', timestamp: '2025-10-22T...', text: '...', data: {...} },
+ * //   { level: 'DEBUG', timestamp: '2025-10-22T...', text: '...', data: {...} },
  * //   ...
  * // ]
  */
 export async function captureEarlyLogs() {
   try {
-    const allLogs = await getAllIdbLogs();
+    // Get all logs from ring buffer (single source of truth)
+    const allLogs = getRingBufferLogs();
 
     // If dev panel init time not set, return all logs
     if (!devPanelInitTime) {
@@ -71,7 +73,7 @@ export async function captureEarlyLogs() {
 
     // Filter logs that occurred before dev panel initialization
     const earlyLogs = allLogs.filter(log => {
-      // Handle logs with various timestamp formats
+      // Ring buffer stores ISO timestamp strings
       const logTime = log.timestamp
         ? (typeof log.timestamp === 'string'
           ? new Date(log.timestamp).getTime()
@@ -206,22 +208,12 @@ export async function downloadEarlyLogsAsJson(filename = null) {
  * // ]
  */
 export function formatEarlyLogsForDisplay(logs) {
+  // Ring buffer stores pre-formatted text: "[timestamp] LEVEL: message data"
+  // Just extract and return it as-is
   return logs.map(log => {
-    // Extract timestamp
-    const timestamp = log.timestamp
-      ? (typeof log.timestamp === 'string'
-        ? log.timestamp.slice(11, 19)  // HH:MM:SS from ISO string
-        : new Date(log.timestamp).toLocaleTimeString())
-      : 'unknown';
-
-    // Extract level (uppercase, padded)
-    const level = (log.level || 'LOG').toUpperCase().padEnd(5);
-
-    // Extract message
-    const message = log.message || JSON.stringify(log);
-
-    // Format as: [LEVEL] HH:MM:SS message
-    return `[${level}] ${timestamp} ${message}`;
+    // Ring buffer entry has: {timestamp, level, text, data}
+    // The text field is already formatted by logging.js
+    return log.text || JSON.stringify(log);
   });
 }
 

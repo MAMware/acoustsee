@@ -318,7 +318,13 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
         payload = ' [Unserializable data]';
       }
     }
-    output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${finalMessage}${callerInfo}${payload}`);
+    // Pass structured data to core-logger so it's stored in ring buffer
+    output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${finalMessage}${callerInfo}${payload}`, {
+      timestamp,
+      message: finalMessage,
+      callerInfo,
+      ...telemetryData
+    });
     
     // Accessibility features (opt-in)
     if (announce && announceMessageFn) {

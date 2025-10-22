@@ -1,5 +1,9 @@
 // Renamed from debug-log.js -> log-viewer.js
 // Centralized log viewer core: buffering, view-binding, export/clear, pause, and compatibility shim
+// NOW: Can initialize from consolidated ring buffer (core-logger.js) on dev panel startup
+
+import { getRingBufferLogs } from '../utils/core-logger.js';
+
 const DEFAULT_MAX = 1000;
 let maxEntries = DEFAULT_MAX;
 const buffer = [];
@@ -56,6 +60,46 @@ function flushPendingEntries() {
 
   flushScheduled = false;
   try { if (typeof onCountChange === 'function') onCountChange({ filtered: getFilteredCount(), total: getTotalCount() }); } catch (e) {}
+}
+
+/**
+ * Initialize log-viewer from consolidated ring buffer on dev panel startup.
+ * Ensures all pre-dev-panel logs are visible without relying on IDB.
+ * Called once during dev-panel init to backfill existing logs.
+ *
+ * @returns {number} Count of logs imported from ring buffer
+ */
+export function initializeFromRingBuffer() {
+  try {
+    const ringLogs = getRingBufferLogs();
+    
+    // Convert ring buffer format {timestamp, level, text, data} to log-viewer format {t, level, text}
+    let imported = 0;
+    ringLogs.forEach(ringEntry => {
+      if (!ringEntry || !ringEntry.text) return;
+      
+      const entry = {
+        t: ringEntry.timestamp ? new Date(ringEntry.timestamp).getTime() : Date.now(),
+        level: (ringEntry.level || 'INFO').toUpperCase(),
+        text: ringEntry.text
+      };
+      
+      buffer.push(entry);
+      if (buffer.length > maxEntries) buffer.shift();
+      imported++;
+    });
+    
+    // Trigger display if view is already set
+    if (logView) {
+      pendingEntries.push(...buffer);
+      scheduleFlush();
+    }
+    
+    return imported;
+  } catch (error) {
+    console.warn('Failed to initialize log-viewer from ring buffer:', error);
+    return 0;
+  }
 }
 
 export function debugLog(level, text) {
