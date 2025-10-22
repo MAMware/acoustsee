@@ -15,7 +15,7 @@
  * - No external npm dependencies
  */
 
-import { structuredLog } from '../../utils/logging.js';
+import { structuredLog } from '../utils/logging.js';
 
 /**
  * Initializes the OrchestrationInspector UI component
