@@ -21,6 +21,7 @@ import { registerSonificationCommands } from './commands/sonification-commands.j
 import { registerModeCommands } from './commands/mode-commands.js';
 import { initializeScheduler } from './scheduler.js'; 
 import { registerDiagnosticsCommands } from './commands/diagnostics-commands.js'; 
+import { mergeOrchestrationState } from './orchestration-state.js';
 
 // Core engine state and functionality
 
@@ -40,7 +41,11 @@ function _resolveStateModule() {
 }
 
 export function createEngine() {
-  const state = _resolveStateModule().settings; // legacy shared settings object for incremental migration
+  let state = _resolveStateModule().settings; // legacy shared settings object for incremental migration
+  
+  // Initialize orchestration state on engine creation
+  state = mergeOrchestrationState(state);
+  
   const listeners = new Set();
   const handlers = Object.create(null);
   const benchmarkListeners = new Set();

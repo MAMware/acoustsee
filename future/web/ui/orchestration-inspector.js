@@ -408,7 +408,11 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
   function attachToDOM() {
     const root = (DOM && DOM.uiPanelRoot) || document.body;
     root.appendChild(container);
-    structuredLog('DEBUG', 'orchestration-inspector', { message: 'Container attached to DOM' });
+    structuredLog('DEBUG', 'orchestration-inspector', { 
+      message: 'Container attached to DOM', 
+      rootId: root.id,
+      containerHasContent: container.innerHTML.length > 0
+    });
   }
   
   /**
@@ -420,6 +424,9 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
       const state = engine.getState();
       if (state && state.orchestration) {
         updateUI(state.orchestration);
+      } else {
+        // Show loading state if orchestration not yet available
+        container.innerHTML = '<div class="orch-error" style="padding: 12px;">Orchestration state initializing...</div>';
       }
       
       // Subscribe to state changes

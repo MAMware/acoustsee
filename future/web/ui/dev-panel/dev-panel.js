@@ -730,7 +730,8 @@ export function initializeDevPanel(arg1, arg2) {
       const orchestrationSection = panel.querySelector('#orchestration-content');
       if (orchestrationSection) {
         // Initialize the orchestration inspector component
-        const orchestrationInspector = initializeOrchestrationInspector(engine, DOM, {});
+        // Pass orchestrationSection as the target DOM root
+        const orchestrationInspector = initializeOrchestrationInspector(engine, { uiPanelRoot: orchestrationSection }, {});
         // Store reference for cleanup
         panel.__orchestrationInspector = orchestrationInspector;
         structuredLog('INFO', 'dev-panel', { message: 'OrchestrationInspector initialized' });
