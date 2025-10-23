@@ -298,6 +298,264 @@ How to load it (URL param, mode, etc.)
 
 ---
 
+## Dev Panel Special Patterns
+
+The dev-panel is a special "meta" UI used exclusively for diagnostics and debugging. It has unique requirements compared to regular UIs.
+
+### Dev Panel State Access
+
+Unlike regular UIs, the dev-panel can access **internal diagnostic state structures**:
+
+✅ **ALLOWED (in dev-panel only):**
+```javascript
+// dev-panel/dev-panel.js can access orchestration state
+const diagnostics = engine.getState().orchestration;     // ✅ Allowed
+const capabilities = diagnostics.capabilities;            // ✅ Allowed
+const metrics = diagnostics.metrics;                      // ✅ Allowed
+const activeWorker = diagnostics.activeExtractor;         // ✅ Allowed
+```
+
+❌ **NOT ALLOWED (in regular UIs):**
+```javascript
+// touch-gestures/touch-gestures-ui.js CANNOT do this
+const diagnostics = engine.getState().orchestration;     // ❌ Regular UI shouldn't access
+const metrics = diagnostics.metrics;                     // ❌ User shouldn't see internals
+```
+
+**Why?** The dev-panel is for developers only. Regular UIs should be user-focused and not depend on diagnostic details.
+
+### Dev Panel Initialization Timing
+
+Dev-panel is only initialized AFTER:
+1. ✅ Engine created and state loaded
+2. ✅ All command handlers registered
+3. ✅ All subsystems initialized
+4. ✅ App is "powered on" (user clicked start)
+
+This means:
+- ✅ All state exists when dev-panel loads
+- ✅ All commands are available for testing
+- ✅ Workers have been initialized
+- ❌ BUT: Dev panel should NOT assume specific state values
+
+**Defensive coding pattern:**
+
+```javascript
+export function initializeDeveloperPanel(engine, DOM) {
+  const container = document.createElement('div');
+  
+  function render(state) {
+    // ✅ Always check state exists before accessing
+    const capabilities = state?.orchestration?.capabilities ?? {};
+    const metrics = state?.orchestration?.metrics ?? { fps: 0 };
+    
+    container.innerHTML = `
+      <div>Capabilities: ${JSON.stringify(capabilities)}</div>
+      <div>FPS: ${metrics.fps}</div>
+    `;
+  }
+  
+  // Get initial state (might be empty)
+  const initialState = engine.getState();
+  render(initialState);
+  
+  // Subscribe to updates
+  engine.onStateChange(state => render(state));
+  
+  DOM.uiPanelRoot?.appendChild(container);
+  
+  return {
+    dispose() {
+      container.remove();
+    }
+  };
+}
+```
+
+### Adding New Sections to Dev Panel
+
+When adding a new section (e.g., "Network Monitor", "ML Model Status"):
+
+**Step 1:** Create corresponding state in `core/orchestration-state.js`
+
+```javascript
+// In createInitialOrchestrationState()
+networkStatus: {
+  connected: false,
+  latency: 0,
+  packetsLost: 0,
+}
+```
+
+**Step 2:** Create update handler in `core/commands/diagnostics-commands.js`
+
+```javascript
+engine.registerCommandHandler('updateNetworkStatus', (payload) => {
+  const state = engine.getState();
+  Object.assign(state.orchestration.networkStatus, payload);
+  engine.setState({ orchestration: state.orchestration });
+});
+```
+
+**Step 3:** Create inspector component (follows orchestration-inspector.js pattern)
+
+```javascript
+export function initializeNetworkInspector(engine, DOM) {
+  const container = document.createElement('div');
+  container.className = 'dev-panel-network-inspector';
+  
+  function updateUI(status) {
+    container.innerHTML = `
+      <div class="status">
+        <span>${status.connected ? '✓ Connected' : '✗ Offline'}</span>
+        <span>Latency: ${status.latency}ms</span>
+      </div>
+    `;
+  }
+  
+  // Render initial state
+  const state = engine.getState();
+  if (state?.orchestration?.networkStatus) {
+    updateUI(state.orchestration.networkStatus);
+  } else {
+    container.innerHTML = '<p>Network status initializing...</p>';
+  }
+  
+  // Subscribe to updates
+  engine.onStateChange(state => {
+    if (state?.orchestration?.networkStatus) {
+      updateUI(state.orchestration.networkStatus);
+    }
+  });
+  
+  DOM.uiPanelRoot?.appendChild(container);
+  
+  return {
+    dispose() {
+      container.remove();
+    }
+  };
+}
+```
+
+**Step 4:** Register in dev-panel.js
+
+```javascript
+// In dev-panel.js init
+const networkInspector = initializeNetworkInspector(engine, DOM);
+panel.__networkInspector = networkInspector;
+```
+
+**Step 5:** Add cleanup to dev-panel disposal
+
+```javascript
+export function initializeDeveloperPanel(engine, DOM) {
+  // ... existing code ...
+  
+  return {
+    dispose() {
+      // Cleanup all sub-inspectors
+      if (panel.__orchestrationInspector?.dispose) {
+        panel.__orchestrationInspector.dispose();
+      }
+      if (panel.__networkInspector?.dispose) {
+        panel.__networkInspector.dispose();
+      }
+      // ... etc for all inspectors ...
+      
+      container.remove();
+    }
+  };
+}
+```
+
+### Orchestration Inspector Pattern
+
+The orchestration-inspector is an excellent model for diagnostic UIs:
+
+**Pattern 1: Subscribe and Update**
+```javascript
+engine.onStateChange(state => {
+  // Re-render UI with new state
+  updateUI(state.orchestration);
+});
+```
+
+**Pattern 2: Handle Initial State**
+```javascript
+// Render immediately with current state
+const state = engine.getState();
+if (state && state.orchestration) {
+  updateUI(state.orchestration);
+} else {
+  showLoadingMessage();  // State not yet populated
+}
+```
+
+**Pattern 3: Show Meaningful Fallbacks**
+```javascript
+function updateUI(orchestration) {
+  if (!orchestration?.capabilities) {
+    container.innerHTML = '<p>Capabilities not yet detected...</p>';
+    return;
+  }
+  
+  // Render full UI
+  buildCapabilitiesGrid(orchestration.capabilities);
+}
+```
+
+**Pattern 4: Keyboard Accessibility for Dev Panel**
+```javascript
+// Keyboard shortcuts for developers
+document.addEventListener('keydown', e => {
+  if (!isDevPanelOpen) return;
+  
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'r') {
+      e.preventDefault();
+      refreshMetrics();  // Ctrl+R: Refresh
+    }
+    if (e.key === 'e') {
+      e.preventDefault();
+      exportMetrics();   // Ctrl+E: Export
+    }
+    if (e.key === 'm') {
+      e.preventDefault();
+      toggleMinimize();  // Ctrl+M: Minimize
+    }
+  }
+});
+```
+
+### Dev Panel Testing
+
+Special considerations when testing the dev-panel:
+
+```javascript
+// ✅ DO check that dev-panel respects state immutability
+const state1 = engine.getState();
+// ... dev-panel renders ...
+const state2 = engine.getState();
+assert(state1 === state2);  // Same object reference
+
+// ✅ DO verify disposal removes all traces
+const beforeDispose = DOM.uiPanelRoot.children.length;
+devPanel.dispose();
+const afterDispose = DOM.uiPanelRoot.children.length;
+assert(afterDispose < beforeDispose);
+
+// ✅ DO test with incomplete state
+const partialState = { orchestration: {} };  // No capabilities yet
+engine.setState(partialState);
+// Dev-panel should show "initializing..." not crash
+
+// ❌ DON'T assume specific state values at init time
+// Dev-panel should gracefully handle missing data
+```
+
+---
+
 ## Common Anti-Patterns to Avoid
 
 ### ❌ The Global Polluter

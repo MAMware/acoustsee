@@ -82,17 +82,21 @@ function createInitialOrchestrationState() {
  * Merges orchestration state into the full app state
  * This ensures orchestration data is always available via engine.getState()
  * 
+ * IMPORTANT: This mutates the existing state object rather than creating
+ * a new one, to preserve object identity with the imported settings module.
+ * This ensures that modifications to settings.availableGrids remain accessible.
+ * 
  * @param {Object} existingState - Current app state
- * @returns {Object} Updated state with orchestration merged in
+ * @returns {Object} The same state object with orchestration merged in
  */
 function mergeOrchestrationState(existingState) {
-  return {
-    ...existingState,
-    orchestration: {
-      ...createInitialOrchestrationState(),
-      ...(existingState.orchestration || {}),
-    },
-  };
+  // Initialize orchestration if not present
+  if (!existingState.orchestration) {
+    existingState.orchestration = createInitialOrchestrationState();
+  }
+  
+  // Return the same object (mutated) to preserve identity
+  return existingState;
 }
 
 /**

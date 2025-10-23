@@ -74,6 +74,67 @@ The application is built on a decoupled, headless architecture.
 - **`audio/audio-processor.js`:** Manages the Web Audio API, sound profiles, and synths.
 - **`ui/` directory:** Contains pluggable UI modules (e.g., `touch-gestures/` for accessible UI, `dev-panel/` for debugging).
 
+## Critical Integration Rules
+
+**These rules prevent bugs. Read ARCHITECTURE_RULES.md for detailed explanations.**
+
+### Module Import Rules (Dependency Flow)
+
+| Module | ✅ Can Import From | ❌ Cannot Import From |
+|--------|------------------|----------------------|
+| `main.js` | core/, audio/, video/, ui/, utils/ | (entry point) |
+| `core/` | utils/, state.js | audio/, video/, ui/ |
+| `audio/` | utils/, core/state.js | video/, ui/, core/* (except state.js) |
+| `video/` | utils/, core/state.js | audio/, ui/, core/* (except state.js) |
+| `ui/` | utils/ (injected), engine (injected) | core/, audio/, video/ |
+
+**Why?** Prevents circular dependencies and maintains clean separation of concerns.
+
+### Object Identity (CRITICAL)
+
+Never use spread operator (`...`) on state objects. State mutations must preserve object identity:
+
+```javascript
+// ❌ WRONG:
+return { ...existingState, newField };  // Creates new object
+
+// ✅ CORRECT:
+existingState.newField = value;
+return existingState;  // Same object
+```
+
+**Recent Bug:** Grid Type dropdown was empty because `mergeOrchestrationState()` created a new object with spread operator. When `main.js` set `settings.availableGrids`, the engine didn't see it (different object).
+
+### Initialization Order (CRITICAL)
+
+In `main.js`, follow this sequence exactly:
+
+1. Create engine
+2. Merge orchestration state
+3. Load async resources (grids, capabilities)
+4. **Register ALL command handlers**
+5. Initialize subsystems (audio, video)
+6. Initialize UI modules
+7. Setup event listeners
+
+**Why?** Resources must be in state before UI init. Handlers must be registered before dispatch calls.
+
+### Dependency Injection (REQUIRED for UI Modules)
+
+UI modules must receive dependencies as parameters, not import them:
+
+```javascript
+// ❌ WRONG:
+import { engine } from '../core/engine.js';
+
+// ✅ CORRECT:
+export function initializeMyUI(engine, DOM) {
+  // Use injected engine
+}
+```
+
+For detailed information, see **`ARCHITECTURE_RULES.md`** in this directory.
+
 ## Contributing
 
 This project is open-source and contributions are welcome. To add a new grid, synth, or language, add the corresponding file in the `video/grids/`, `audio/synths/`, or `utils/` directory and ensure it integrates with the command handlers and registries.

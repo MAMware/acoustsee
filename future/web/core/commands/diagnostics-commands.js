@@ -109,6 +109,18 @@ export function registerDiagnosticsCommands(engine) {
     const currentState = engine.getState();
     const currentOrchestration = currentState.orchestration || {};
     
+    // Log what we're updating for debugging
+    if (payload.capabilities) {
+      structuredLog('DEBUG', 'updateOrchestration: Updating capabilities', {
+        mediaStreamTrackProcessor: payload.capabilities.mediaStreamTrackProcessor,
+        canvas2D: payload.capabilities.canvas2D,
+        webGL: payload.capabilities.webGL,
+        webGPU: payload.capabilities.webGPU,
+        offscreenCanvas: payload.capabilities.offscreenCanvas,
+        wasm: payload.capabilities.wasm,
+      });
+    }
+    
     // Merge the updates into the orchestration state
     const updatedOrchestration = {
       ...currentOrchestration,
@@ -118,6 +130,12 @@ export function registerDiagnosticsCommands(engine) {
     
     engine.setState({
       orchestration: updatedOrchestration,
+    });
+    
+    // Log confirmation
+    structuredLog('DEBUG', 'updateOrchestration: State updated', {
+      hasCapabilities: !!updatedOrchestration.capabilities,
+      timestamp: updatedOrchestration.lastUpdateTimestamp,
     });
   });
 }

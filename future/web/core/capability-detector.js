@@ -31,11 +31,17 @@ function detectMediaStreamTrackProcessor() {
   if (!navigator?.mediaDevices?.getUserMedia) return false;
   
   try {
-    // Try to access the processor constructor
-    // (Note: can't actually instantiate without a stream, so we just check existence)
-    if (typeof AudioWorkletProcessor !== 'undefined') {
-      // If AudioWorkletProcessor exists, we have the Web Audio API foundation
-      // MediaStreamTrackProcessor typically available too
+    // MediaStreamTrackProcessor is available if MediaStreamTrack has a transform method
+    // or if the constructor exists on MediaStreamTrackProcessor
+    // Since we can't instantiate without a stream, check for the class/constructor
+    if (typeof MediaStreamTrackProcessor !== 'undefined') {
+      return true;
+    }
+    
+    // Alternative: check if we can use transform on a track
+    // This would be more accurate but requires a stream
+    // For now, if AudioWorkletProcessor exists, we likely have the foundation
+    if (typeof AudioWorkletProcessor !== 'undefined' && typeof AudioWorklet !== 'undefined') {
       return true;
     }
   } catch (e) {

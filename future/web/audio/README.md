@@ -145,6 +145,207 @@ export const synthMeta = {
 
 ---
 
+## Oscillator Pool Management
+
+### Pool Sizing & Device Capability
+
+The oscillator pool is created at startup with a device-aware size:
+
+```javascript
+// In audio-processor.js - initializeAudio()
+const poolSize = getOptimalPoolSize();  // Device-dependent
+
+function getOptimalPoolSize() {
+  // Desktop/Laptop: 32 oscillators (support 32 simultaneous notes)
+  // Tablet: 24 oscillators
+  // Mobile: 16 oscillators (conserve memory and CPU)
+  
+  if (navigator.hardwareConcurrency >= 6) return 32;   // Desktop
+  if (navigator.hardwareConcurrency >= 4) return 24;   // Tablet
+  return 16;  // Mobile
+}
+```
+
+### What Happens When Pool Is Exhausted?
+
+When all oscillators are active and more notes arrive:
+
+```javascript
+function getOscillator() {
+  // Try to get from available pool
+  if (availablePool.length > 0) {
+    return availablePool.pop();  // ✅ Reuse existing
+  }
+  
+  // Pool empty - fallback options (in order of preference):
+  
+  // Option 1: Create NEW oscillator (⚠️ Warning: memory risk)
+  const fallback = createFreshOscillator();
+  console.warn('Pool exhausted - creating fallback oscillator');
+  return fallback;
+  
+  // Option 2: Stop oldest active oscillator and reuse
+  // (Not currently implemented, but could be added)
+  
+  // Option 3: Return null (drop note silently)
+  // return null;
+}
+```
+
+### When Pool Gets Exhausted (Symptoms):
+
+| Symptom | Cause | Solution |
+|---------|-------|----------|
+| "Pool exhausted" warnings in console | More simultaneous notes than pool size | Reduce max cues in grid's mapFunction |
+| Silent notes that don't play | getOscillator() returned null | Increase pool size if device allows |
+| Memory usage grows unexpectedly | Creating fallback oscillators | Check grid output (cues array too large) |
+| Audio becomes sporadic/choppy | CPU hitting limits with fallback creation | Optimize grid or reduce synthesizer complexity |
+
+### Preventing Pool Exhaustion
+
+**1. Limit cues array size in Grid's `mapFunction`:**
+
+```javascript
+// In a grid's mapFunction
+export function mapMotion(analysisResult, context) {
+  const regions = analysisResult.regions;
+  
+  // ✅ GOOD: Filter and limit
+  const cues = regions
+    .slice(0, 12)  // ← Limit to 12 regions
+    .map(region => ({
+      objectType: 'motion',
+      pitch: frequencyFromRegion(region),
+      intensity: region.energy * 0.8,
+      duration: 0.5
+    }));
+  
+  return { cues };
+}
+
+// ❌ BAD: No limit
+export function mapMotion(analysisResult, context) {
+  const cues = analysisResult.regions.map(region => ({
+    // Every region becomes a note - can exceed 32!
+  }));
+  return { cues };
+}
+```
+
+**2. Synth should handle `null` oscillator gracefully:**
+
+```javascript
+// In synth code
+notes.forEach(note => {
+  const oscData = getOscillator();
+  
+  if (!oscData) {
+    // ✅ Graceful fallback
+    console.warn('Oscillator not available - skipping note');
+    return;  // Drop note silently, don't crash
+  }
+  
+  // Continue with valid oscillator
+  const { osc, gain } = oscData;
+  // ...
+});
+```
+
+**3. Monitor pool utilization:**
+
+```javascript
+// In diagnostics or dev panel
+function getPoolMetrics() {
+  const available = availablePool.length;
+  const active = totalPoolSize - available;
+  const utilization = active / totalPoolSize;
+  
+  return {
+    available,
+    active,
+    totalSize: totalPoolSize,
+    utilizationPercent: Math.round(utilization * 100),
+    warning: utilization > 0.9  // Alert if >90% used
+  };
+}
+
+// Log periodically
+if (Math.random() < 0.01) {  // 1% sample
+  const metrics = getPoolMetrics();
+  if (metrics.warning) {
+    structuredLog('WARN', 'Pool utilization critical', metrics);
+  }
+}
+```
+
+### Resizing the Pool
+
+To support more simultaneous notes:
+
+**Step 1:** Update pool size in `audio-processor.js`:
+```javascript
+const poolSize = 48;  // Increased from 32
+```
+
+**Step 2:** Test on target device:
+```javascript
+// In browser console with ?debug=true
+const metrics = window.engine.getPoolMetrics?.();
+console.log('Pool metrics:', metrics);
+// Monitor memory: DevTools → Memory → Take heap snapshot
+```
+
+**Step 3:** Document the change:
+```javascript
+// POOL SIZE DECISION LOG (in comments)
+// 2025-10-23: Increased from 32 to 48
+// Reason: Support up to 16 regions per frame in 3-region grids
+// Device baseline: Tested on iPhone 15 (4-core), iPad Pro (6-core)
+// Memory impact: ~2.8MB additional (48 * ~58KB per oscillator + nodes)
+// CPU impact: +3-5% when pool fully utilized
+```
+
+### Common Pool-Related Issues
+
+**Issue 1: "Cannot set property 'type' of null"**
+```
+Cause: getOscillator() returned null (pool exhausted)
+Debug: 
+  1. Check pool size via getPoolMetrics()
+  2. Check cues array length (grid.mapFunction output)
+  3. Check if grid is limiting output properly
+Fix: 
+  - Reduce cues or increase pool size
+  - Add null check in synth
+```
+
+**Issue 2: Pool grows unbounded**
+```
+Cause: Creating fallback oscillators constantly
+Debug:
+  1. Check console for "Pool exhausted" warnings
+  2. Count frequency of warnings
+  3. Check grid output with grid.mapFunction
+Fix:
+  - Limit cues in grid's mapFunction
+  - Don't create fallbacks, return null instead
+```
+
+**Issue 3: Memory leaks after extended use**
+```
+Cause: Oscillators not being disconnected properly
+Debug:
+  1. Take heap snapshot at start and after 5 mins
+  2. Compare memory usage
+  3. Check if availablePool.length grows or shrinks
+Fix:
+  - Verify synth calls osc.disconnect()
+  - Check releaseOscillator() is called
+  - Look for setTimeout that doesn't fire
+```
+
+---
+
 ## Special Case: Karplus-Strong Synthesis (Strings)
 
 The `strings.js` synth uses Karplus-Strong (plucked string) synthesis, which is more complex:

@@ -94,6 +94,213 @@ loggingConfig.includeUserAgent = false;
 - Debug logs in production code without `?debug=true` check
 - Sensitive user data (PII, credentials)
 
+### Logging Strategy & Performance Implications
+
+#### The Logging Pipeline
+
+```javascript
+structuredLog('ERROR', 'Something failed', { detail: 'value' })
+    ↓
+console.log/warn/error (via core-logger.js) 
+    ├─ Visible immediately in browser console
+    └─ Displayed in dev-panel log viewer
+    ↓
+RingBuffer (in-memory, ~1000 entries)
+    ├─ Kept for debugging
+    └─ Discarded when full (newest replaces oldest)
+    ↓
+IndexedDB (if level is WARN or ERROR)
+    ├─ Persisted to disk
+    └─ Survives page reload
+    ↓
+Analytics Ingest (optional, if enabled)
+    └─ Sent to performance tracking server
+```
+
+#### When To Use Each Level
+
+**DEBUG** - Development only, no performance impact
+```javascript
+if (urlSearchParams.get('debug')) {
+  structuredLog('DEBUG', 'Detailed state', { 
+    complexObject: largeDataStructure,
+    allDetails: 'everything'
+  });
+}
+```
+- ✅ Only visible with `?debug=true`
+- ✅ Disabled in production
+- ✅ NO performance cost when disabled
+- ❌ Never use for per-frame logs
+
+**INFO** - General milestones and user actions
+```javascript
+structuredLog('INFO', 'User started processing');
+structuredLog('INFO', 'Grid selected: hex-tonnetz');
+structuredLog('INFO', 'Audio context unlocked');
+```
+- ✅ Important milestones
+- ✅ User actions
+- ✅ State transitions
+- ✅ NOT persisted (console only)
+- ❌ Don't use for every state change
+
+**WARN** - Important but recoverable issues
+```javascript
+structuredLog('WARN', 'Grid not available', { 
+  requestedId: 'foo',
+  fallback: 'square'
+});
+structuredLog('WARN', 'Oscillator pool exhausted', { 
+  requested: 5,
+  available: 0
+});
+```
+- ✅ Persisted to IndexedDB
+- ✅ Visible in dev-panel
+- ✅ Sent to analytics
+- ✅ Doesn't crash the app
+- ❌ Should NOT happen frequently
+
+**ERROR** - Critical issues that need attention
+```javascript
+structuredLog('ERROR', 'Audio initialization failed', { 
+  error: e.message,
+  audioContext: ac?.state
+});
+structuredLog('ERROR', 'Worker failed to load', { 
+  worker: 'motion-worker.js',
+  path: workerPath
+});
+```
+- ✅ Always persisted
+- ✅ High priority in analytics
+- ✅ Triggers recovery (if handler exists)
+- ✅ User should be aware
+- ❌ Performance implications OK (errors are exceptional)
+
+#### Performance Implications of Logging
+
+**Per-frame logging in main loop:**
+```javascript
+// ❌ BAD - 60 logs per second, 3600 per minute!
+function processFrame(frame) {
+  structuredLog('INFO', 'Processing frame', { frameId: frame.id });
+  // ... processing ...
+}
+
+// ✅ GOOD - Sampled, ~1 log per second
+function processFrame(frame) {
+  if (Math.random() < 0.01) {  // 1% sampling
+    structuredLog('DEBUG', 'Processing frame', { frameId: frame.id });
+  }
+  // ... processing ...
+}
+
+// ✅ BETTER - Periodic, every Nth frame
+let frameCount = 0;
+function processFrame(frame) {
+  frameCount++;
+  if (frameCount % 60 === 0) {  // Every 60th frame at 60fps
+    structuredLog('DEBUG', 'Frame batch', { 
+      frameCount,
+      averageTime: getAverageFrameTime()
+    });
+  }
+}
+```
+
+**High-frequency locations that need sampling:**
+```javascript
+// Frame processor (60fps)
+// ⚠️ Cap logs to ~1 per second
+if (frameCount % 60 === 0) {
+  structuredLog('DEBUG', 'Frame processed', { ... });
+}
+
+// Motion worker (60fps per frame)
+// ⚠️ Only log on ERROR, not per-frame
+if (regions.length > expectedMax) {
+  structuredLog('WARN', 'Too many motion regions', { ... });
+}
+
+// Audio synthesis (per note)
+// ✅ Don't log per-note, aggregate
+if (totalNotesGenerated % 100 === 0) {
+  structuredLog('DEBUG', 'Notes generated', { total: totalNotesGenerated });
+}
+
+// State changes (variable frequency)
+// ✅ OK to log all (usually rare)
+structuredLog('INFO', 'State changed: ' + newState);
+```
+
+#### Structured Logging Best Practices
+
+```javascript
+// ✅ DO THIS - Structured with context
+structuredLog('INFO', 'Audio context created', {
+  sampleRate: audioContext.sampleRate,
+  state: audioContext.state,
+  timestamp: Date.now()
+});
+
+// ✅ DO THIS - Clear message + selective data
+structuredLog('WARN', 'Grid mapping slow', {
+  duration: gridTime,
+  gridId: grid.id,
+  cuesCount: cues.length
+});
+
+// ❌ DON'T DO THIS - Unstructured
+console.log('Audio OK');
+
+// ❌ DON'T DO THIS - Too much data
+console.log('Audio', audioContext);  // Entire object
+
+// ❌ DON'T DO THIS - Serialization issues
+structuredLog('INFO', `Audio: ${JSON.stringify(audioContext)}`);  // Circular!
+
+// ❌ DON'T DO THIS - Sensitive data
+structuredLog('INFO', 'User email: ' + userEmail);  // PII leak
+```
+
+#### Debugging with Structured Logs
+
+**Find performance issues:**
+```javascript
+// All logs with duration > 100ms
+const logs = await getAllIdbLogs();
+const slow = logs.filter(log => log.data?.duration > 100);
+
+// Correlate with errors
+const errors = logs.filter(log => log.level === 'ERROR');
+errors.forEach(err => {
+  console.log('Error context:', err);
+});
+```
+
+**Monitor device performance:**
+```javascript
+// Collect FPS data
+let frameCount = 0;
+const fps = [];
+
+function trackFrame(duration) {
+  frameCount++;
+  if (frameCount % 60 === 0) {
+    const currentFPS = 1000 / (duration / 60);
+    fps.push(currentFPS);
+    
+    if (currentFPS < 10) {  // Critical
+      structuredLog('ERROR', 'Low FPS detected', { fps: currentFPS });
+    } else if (currentFPS < 15) {  // Warning
+      structuredLog('WARN', 'FPS dropping', { fps: currentFPS });
+    }
+  }
+}
+```
+
 ---
 
 ## 2. `core-logger.js` - Console Output with Levels

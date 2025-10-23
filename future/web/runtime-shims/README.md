@@ -1,14 +1,20 @@
-# Runtime Shims for Isolated Module Testing````markdown
+# Runtime Shims - Module Smoke Testing
 
-Runtime shims for isolated module debugging
+**Version:** 2025-10-23  
+**Purpose:** Test individual modules in isolation using Node.js, without needing a browser or the full application.
 
-## Purpose
+---
 
-Purpose
+## Quick Start
 
-This folder contains **minimal, well-documented stubs** that allow you to run or test individual subsystem modules (audio, video, or UI) in isolation, without requiring the full application stack. These shims are essential for:
+### Use Case
+When working with a coding agent or remote tester, include these shims alongside your module so they can:
+1. Run smoke tests immediately
+2. Verify the module doesn't have circular dependencies
+3. Check the module's dependencies are met
+4. Test initialization logic
 
-This folder contains tiny, well-documented stubs that let you run or test a single module (audio, video, or ui) without uploading the entire app. Include these files alongside the module you send to an LLM or tester so it can run smoke tests locally.
+**NOT for:** Production use. These are test approximations only.
 
 1. **LLM-assisted development** - Include these with module code to enable smoke testing in remote environments
 

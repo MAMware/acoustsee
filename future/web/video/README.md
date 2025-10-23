@@ -193,6 +193,296 @@ startTime (FrameProvider)
 
 ---
 
+## Frame Timing & Performance Measurement
+
+### The Timing Flow
+
+Every frame carries timing metadata used for end-to-end performance diagnostics:
+
+```javascript
+// In frame-provider-worker.js
+const startTime = performance.now();  // ← Captured at frame grab
+const imageData = captureFrame();
+
+postMessage({
+  type: 'frame',
+  imageData,
+  startTime,    // ← Sent with frame
+  timestamp: now
+});
+
+// In frame-processor.js (main thread)
+handleFrameMessage(msg) {
+  const analysisStart = performance.now();
+  
+  // Route through specialists and grid...
+  const cues = await processFrame(msg.imageData);
+  
+  const analysisEnd = performance.now();
+  const totalDuration = analysisEnd - msg.startTime;  // End-to-end!
+  
+  // Dispatch for diagnostics
+  engine.dispatch('logFrameBenchmark', { 
+    duration: totalDuration,
+    frameId: msg.timestamp
+  });
+}
+```
+
+### Timing Assumptions (CRITICAL for Debugging)
+
+⚠️ **Assumption 1: startTime is captured accurately**
+- `startTime` should be measured BEFORE frame encoding
+- If timestamp is captured too late, total duration is wrong
+- If FrameProvider logs wrong time, diagnostics are misleading
+- **Verify:** startTime should be ~0-5ms, not 20ms+
+
+```javascript
+// ❌ WRONG - captured too late:
+const imageData = captureFrame();
+const startTime = performance.now();  // Captured AFTER capture
+postMessage({ type: 'frame', imageData, startTime });  // Wrong!
+
+// ✅ CORRECT - captured first:
+const startTime = performance.now();  // Captured FIRST
+const imageData = captureFrame();
+postMessage({ type: 'frame', imageData, startTime });
+```
+
+⚠️ **Assumption 2: Frames arrive in order**
+- If Worker messages are reordered, timing appears wrong
+- If frame N arrives after frame N+2, diagnostics get confused
+- **Verify:** Check frame sequence numbers if added
+
+```javascript
+// In frame-processor.js
+let lastFrameTimestamp = 0;
+handleFrameMessage(msg) {
+  if (msg.timestamp < lastFrameTimestamp) {
+    structuredLog('WARN', 'Frame arrived out of order', {
+      lastTimestamp: lastFrameTimestamp,
+      currentTimestamp: msg.timestamp
+    });
+  }
+  lastFrameTimestamp = msg.timestamp;
+}
+```
+
+⚠️ **Assumption 3: CPU time is NOT linear**
+- High device load affects frame processing unpredictably
+- P90 (90th percentile) is used, not average, for a reason
+- Outlier frames (garbage collection, etc.) happen
+- **Verify:** If P90 looks wrong, check for outlier frames
+
+```javascript
+// In diagnostics
+const durations = [5, 6, 7, 8, 8, 9, 250];  // Note the 250ms spike
+const average = durations.reduce((a,b) => a+b) / durations.length;  // 41.7ms
+const p90 = calculatePercentile(durations, 90);  // ~250ms (outlier)
+
+// P90 is actually more useful for real-time systems!
+```
+
+### Performance Measurement Patterns
+
+**Pattern 1: End-to-End Frame Timing**
+
+```javascript
+// Simplest pattern - what we currently do:
+const analysisStart = performance.now();
+// ... all processing ...
+const analysisEnd = performance.now();
+const duration = analysisEnd - analysisStart;
+
+engine.dispatch('logFrameBenchmark', { duration });
+```
+
+**Pattern 2: Segment Timing (Advanced)**
+
+```javascript
+// Breaking down where time goes:
+const times = {
+  captureSent: msg.startTime,
+  orchestratorReceived: performance.now(),
+  specialistStart: null,
+  specialistEnd: null,
+  gridStart: null,
+  gridEnd: null,
+  dispatchTime: null
+};
+
+// Time specialist work
+times.specialistStart = performance.now();
+const analysis = await processWithSpecialist(msg.imageData);
+times.specialistEnd = performance.now();
+
+// Time grid work
+times.gridStart = performance.now();
+const cues = grid.mapFunction(analysis);
+times.gridEnd = performance.now();
+
+// Log with breakdown
+const total = performance.now() - times.captureSent;
+engine.dispatch('logFrameBenchmark', {
+  total,
+  captureToOrch: times.orchestratorReceived - times.captureSent,
+  specialistTime: times.specialistEnd - times.specialistStart,
+  gridTime: times.gridEnd - times.gridStart,
+  dispatchTime: performance.now() - times.gridEnd
+});
+```
+
+### Debugging Slow Frames
+
+When diagnostics show 500ms+ per frame:
+
+**Step 1: Identify the bottleneck**
+
+```javascript
+// Sample breakdown table:
+┌─────────────────────┬────────┬───────────┐
+│ Component           │ Time   │ Status    │
+├─────────────────────┼────────┼───────────┤
+│ Frame capture       │ 5ms    │ ✓ Good    │
+│ Worker post delay   │ 2ms    │ ✓ Good    │
+│ Specialist analysis │ 450ms  │ ✗ SLOW    │  ← Problem here!
+│ Grid mapping        │ 10ms   │ ✓ Good    │
+│ Audio generation    │ 20ms   │ ✓ Good    │
+│ Dispatch/listeners  │ 5ms    │ ✓ Good    │
+├─────────────────────┼────────┼───────────┤
+│ TOTAL               │ 492ms  │ 🔴 BAD    │
+└─────────────────────┴────────┴───────────┘
+```
+
+**Step 2: Measure within worker**
+
+```javascript
+// In specialist-worker.js
+self.onmessage = (e) => {
+  const { type, imageData, width, height } = e.data;
+  
+  if (type === 'processFrame') {
+    const workerStart = performance.now();
+    
+    // Task 1: Prepare data
+    const prepStart = performance.now();
+    const data = new Uint8ClampedArray(imageData.data);
+    const prepTime = performance.now() - prepStart;
+    
+    // Task 2: Analysis
+    const analysisStart = performance.now();
+    const regions = analyzeMotion(data, width, height);
+    const analysisTime = performance.now() - analysisStart;
+    
+    // Task 3: Format output
+    const formatStart = performance.now();
+    const results = { movingRegions: regions };
+    const formatTime = performance.now() - formatStart;
+    
+    const workerTotal = performance.now() - workerStart;
+    
+    // Send with timing breakdown
+    self.postMessage({
+      type: 'motionDetected',
+      movingRegions: regions,
+      timing: {
+        total: workerTotal,
+        prepare: prepTime,
+        analysis: analysisTime,
+        format: formatTime
+      }
+    });
+  }
+};
+```
+
+**Step 3: Check for specific problems**
+
+```javascript
+// Problem 1: ImageData is huge
+if (width * height > 1920 * 1080) {
+  structuredLog('WARN', 'Analyzing HD+ resolution', { width, height });
+  // Solution: Reduce resolution in FrameProvider
+}
+
+// Problem 2: Motion detection over-threshold
+if (regions.length > 50) {
+  structuredLog('WARN', 'Too many motion regions', { 
+    count: regions.length,
+    threshold: currentThreshold
+  });
+  // Solution: Increase threshold or cluster regions
+}
+
+// Problem 3: Grid mapping too complex
+const gridStart = performance.now();
+const cues = grid.mapFunction(analysis);
+const gridTime = performance.now() - gridStart;
+if (gridTime > 10) {
+  structuredLog('WARN', 'Grid mapping slow', { 
+    gridId: grid.id,
+    duration: gridTime,
+    cuesGenerated: cues.length
+  });
+  // Solution: Optimize grid logic or limit output
+}
+```
+
+### Frame Drop Scenarios
+
+| Symptom | Likely Cause | Root Cause Check | Fix |
+|---------|------------|-----------------|-----|
+| Consistent 500ms+ per frame | Specialist too slow | Check worker timing breakdown | Optimize algorithm or reduce resolution |
+| Occasional spikes (50ms → 1000ms) | Garbage collection | Look for heap snapshot growth | Reduce object allocation in loops |
+| Frames skip sequence numbers | Worker thread blocked | Check browser DevTools performance | Move heavy work to separate worker |
+| Audio context buffer underruns | Main thread stealing audio time | Check if video processing blocks audio | Use Web Worker for frame processing |
+| Intermittent frame loss | Network/system load | Correlate with system CPU | Graceful degradation (skip frames) |
+| Starting slow, then ok | Specialist initialization | Check worker startup | Lazy-load specialists only when needed |
+
+### AutoFPS Feedback Loop
+
+```javascript
+// How the system adapts to performance:
+
+class AutoFPS {
+  constructor() {
+    this.measurements = [];  // Rolling buffer of last 60 frames
+    this.targetFPS = 20;     // Try to hit 20 FPS
+    this.maxFrameTime = 1000 / this.targetFPS;  // 50ms
+  }
+  
+  recordFrameTime(duration) {
+    this.measurements.push(duration);
+    if (this.measurements.length > 60) {
+      this.measurements.shift();  // Keep last 60
+    }
+    
+    // Analyze using P90 (90th percentile)
+    const sorted = this.measurements.sort((a, b) => a - b);
+    const p90Index = Math.floor(sorted.length * 0.9);
+    const p90Duration = sorted[p90Index];
+    
+    // Adapt if needed
+    if (p90Duration > this.maxFrameTime) {
+      this.skipFrames++;  // Process fewer frames
+      structuredLog('INFO', 'AutoFPS: Increasing skip rate', {
+        p90Duration,
+        skipFrames: this.skipFrames,
+        targetFPS: 1000 / (this.maxFrameTime * (this.skipFrames + 1))
+      });
+    } else if (p90Duration < this.maxFrameTime * 0.5 && this.skipFrames > 0) {
+      this.skipFrames--;  // Can afford more frames
+      structuredLog('INFO', 'AutoFPS: Decreasing skip rate', {
+        p90Duration,
+        skipFrames: this.skipFrames
+      });
+    }
+  }
+}
+```
+
+---
+
 ## Performance Considerations
 
 ### The AutoFPS Feedback Loop
