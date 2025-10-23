@@ -103,4 +103,21 @@ export function registerDiagnosticsCommands(engine) {
     }
     engine.setState(newState);
   });
+
+  // Handler to update orchestration state (capabilities, metrics, decision log, etc.)
+  engine.registerCommandHandler('updateOrchestration', (payload) => {
+    const currentState = engine.getState();
+    const currentOrchestration = currentState.orchestration || {};
+    
+    // Merge the updates into the orchestration state
+    const updatedOrchestration = {
+      ...currentOrchestration,
+      ...payload,
+      lastUpdateTimestamp: performance.now(),
+    };
+    
+    engine.setState({
+      orchestration: updatedOrchestration,
+    });
+  });
 }

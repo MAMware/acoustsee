@@ -24,6 +24,7 @@ import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { getComponent } from './ui/ui-registry.js';
 import { createIngestInterceptor, setupIngestErrorTracking } from './utils/ingest.js';
+import { detectAllCapabilities, generateCapabilityReport } from './core/capability-detector.js';
 
 // UI modules are loaded dynamically below to ensure only one UI initializes
 // at runtime (debug vs accessible). Dynamic import prevents duplicate IDs
@@ -141,6 +142,27 @@ export async function init() {
       }
     } catch (e) {
       structuredLog('ERROR', 'init: Failed to load video grids', { error: e?.message || String(e) });
+    }
+
+    // STEP 1A: Detect browser capabilities and update orchestration state
+    try {
+      const capabilities = detectAllCapabilities();
+      engine.dispatch('updateOrchestration', { capabilities });
+      structuredLog('INFO', 'init: Browser capabilities detected', {
+        mediaStreamTrackProcessor: capabilities.mediaStreamTrackProcessor,
+        canvas2D: capabilities.canvas2D,
+        webGL: capabilities.webGL,
+        webGPU: capabilities.webGPU,
+        offscreenCanvas: capabilities.offscreenCanvas,
+        wasm: capabilities.wasm,
+      });
+      // Log the full report if in debug mode
+      if (window.location.search.includes('debug=true')) {
+        const report = generateCapabilityReport(capabilities);
+        structuredLog('DEBUG', 'Capability Report:\n' + report, {});
+      }
+    } catch (e) {
+      structuredLog('WARN', 'init: Failed to detect capabilities', { error: e?.message || String(e) });
     }
 
     // STEP 2: Now that all configs are loaded, log and check them.
