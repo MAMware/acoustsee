@@ -585,6 +585,62 @@ export function registerAudioListeners(engine) {
     cueSchedulerId = requestAnimationFrame(scheduleCues);
   };
 
+  // Mode-aware audio bridge: Handle Flow mode cues
+  engine.onStateChange('flowCuesReady', (flowCues) => {
+    try {
+      structuredLog('DEBUG', 'flowCuesReady: received flow cues', { 
+        hasGridFlows: !!flowCues.gridFlows, 
+        inferredBPM: flowCues.inferredBPM 
+      }, false, Math.random() < 0.1);
+      
+      // Convert motion regions to audio cues using soundProfileManifest
+      const cues = [];
+      if (flowCues.gridFlows && Array.isArray(flowCues.gridFlows)) {
+        flowCues.gridFlows.forEach((flowCell, idx) => {
+          if (flowCell.mag > 0.1) {
+            const profile = soundProfileManifest.flow?.motion || { profile: 'sine', freq: 440, gain: 0.3 };
+            const pitch = 220 + (flowCell.mag * 440); // Motion magnitude scales frequency
+            cues.push({ pitch, intensity: flowCell.mag, profile, cellIndex: idx });
+          }
+        });
+      }
+      
+      if (cues.length > 0) {
+        playCues(cues);
+      }
+    } catch (e) {
+      structuredLog('WARN', 'flowCuesReady handler failed', { error: e?.message || String(e) });
+    }
+  });
+
+  // Mode-aware audio bridge: Handle Focus mode depth cues
+  engine.onStateChange('depthCuesReady', (depthCues) => {
+    try {
+      structuredLog('DEBUG', 'depthCuesReady: received depth cues', { 
+        hasGridDepths: !!depthCues.gridDepths,
+        mode: depthCues.mode 
+      }, false, Math.random() < 0.1);
+      
+      // Convert depth to audio using HRTF for spatial rendering
+      const cues = [];
+      if (depthCues.gridDepths && Array.isArray(depthCues.gridDepths)) {
+        depthCues.gridDepths.forEach((depth, idx) => {
+          if (depth > 0.1) {
+            const profile = soundProfileManifest.focus?.spatial || { profile: 'pad', freq: 220, gain: 0.2 };
+            const pitch = 110 + (depth * 220); // Depth maps to pitch range (110-330 Hz)
+            cues.push({ pitch, intensity: depth, profile, cellIndex: idx, spatial: true });
+          }
+        });
+      }
+      
+      if (cues.length > 0) {
+        playCues(cues);
+      }
+    } catch (e) {
+      structuredLog('WARN', 'depthCuesReady handler failed', { error: e?.message || String(e) });
+    }
+  });
+
   engine.onStateChange('objectCuesReady', (cues) => {
     const { objects } = cues;
     objects.forEach(obj => {

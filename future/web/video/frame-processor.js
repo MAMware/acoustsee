@@ -74,8 +74,12 @@ function startDepthWorker() {
     };
     
     depthWorker.onmessage = (e) => {
-      if (e.data.type === 'depthCues') {
-        engine.dispatch('depthCuesReady', e.data.result);
+      const validation = WorkerContract.validate(e.data);
+      if (validation.valid) {
+        const result = WorkerContract.getResult(e.data);
+        engine.dispatch('depthCuesReady', result);
+      } else {
+        structuredLog('WARN', 'Depth worker message validation failed', { error: validation.error });
       }
     };
     structuredLog('INFO', 'Depth Specialist worker started.');
@@ -431,23 +435,26 @@ function processWithMotionWorker(frameData, width, height, state) {
     if (!motionWorker) return resolve({ movingRegions: [], textureGrid: [], objects: [], inferredBPM: 100 });
 
     const messageHandler = (event) => {
-      const data = event.detail;
-      if (data.type === 'flowCues') {
-        motionWorker.removeEventListener('motionResult', messageHandler);
-        const { result } = data;
+      const data = event.data;
+      const validation = WorkerContract.validate(data);
+      if (validation.valid) {
+        motionWorker.removeEventListener('message', messageHandler);
+        const result = WorkerContract.getResult(data);
         // Convert to old format for compatibility
-        const movingRegions = result.gridFlows.flat().map(f => ({ x: 0, y: 0, intensity: f.mag * 10 })); // Placeholder
+        const movingRegions = result.gridFlows?.flat()?.map(f => ({ x: 0, y: 0, intensity: f.mag * 10 })) || []; // Placeholder
         const motionResults = { ...result, movingRegions };
         // Dispatch new cues
         engine.dispatch('flowCuesReady', motionResults);
-        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        if (motionResults.objects?.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
         if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
           engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
         }
         resolve(motionResults);
+      } else {
+        structuredLog('WARN', 'Motion worker message validation failed', { error: validation.error });
       }
     };
-    motionWorker.addEventListener('motionResult', messageHandler);
+    motionWorker.addEventListener('message', messageHandler);
 
     const frame = { data: frameData, width, height };
     const prevFrame = prevFrameData ? { data: prevFrameData, width, height } : frame;

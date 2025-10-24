@@ -226,9 +226,12 @@ self.onmessage = (ev) => {
         mode,
       });
       
-      const toSend = {
-        type: 'motionCues',
-        result: {
+      // Create contract-compliant result
+      const contractMessage = WorkerContract.createResult(
+        WORKER_TYPES.FAST_MOTION,
+        mode,
+        [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
+        {
           coords: res.coords,
           intens: res.intens,
           uFlow: res.uFlow,
@@ -238,13 +241,6 @@ self.onmessage = (ev) => {
           gridConfig,
           mode,
         }
-      };
-      // Create contract-compliant result
-      const contractMessage = WorkerContract.createResult(
-        WORKER_TYPES.FAST_MOTION,
-        mode,
-        [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
-        toSend.result
       );
       self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
     } catch (e) {
@@ -264,9 +260,23 @@ self.onmessage = (ev) => {
     }
   } else if (msg.type === 'handshake') {
     structuredLog('INFO', 'Motion worker initialized');
-    self.postMessage({ type: 'ready', features: ['motion', 'flow', 'gridConfig'] });
+    self.postMessage(
+      WorkerContract.createResult(
+        WORKER_TYPES.FAST_MOTION,
+        'initialization',
+        [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
+        { ready: true, features: ['motion', 'flow', 'gridConfig'] }
+      )
+    );
   } else if (msg.type === 'simulate') {
     structuredLog('INFO', 'Motion worker simulation mode');
-    self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true });
+    self.postMessage(
+      WorkerContract.createResult(
+        WORKER_TYPES.FAST_MOTION,
+        'initialization',
+        [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
+        { ready: true, features: ['motion', 'flow'], simulated: true }
+      )
+    );
   }
 };

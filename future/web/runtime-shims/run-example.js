@@ -151,10 +151,31 @@ global.document = global.document || { visibilityState: 'visible', addEventListe
       // ignore demo errors in shim
     }
 
+    // Run Phase 2B integration tests (NEW)
+    try {
+      const phase2bTests = await import(path.join(__dirname, 'test-phase-2b-pipeline.js'));
+      const engineMod = await import(path.join(__dirname, '..', 'core', 'engine.js'));
+      const workerContractMod = await import(path.join(__dirname, '..', 'video', 'workers', 'worker-contract.js'));
+      
+      const engine4 = engineMod.createEngine();
+      const result = await phase2bTests.runPhase2BTests(engine4, workerContractMod);
+      
+      if (!result.passed) {
+        console.error('Phase 2B tests failed:', result.error);
+        process.exitCode = 1;
+      } else {
+        console.log('✅ Phase 2B integration tests passed');
+      }
+    } catch (e) {
+      console.error('Phase 2B tests error', e);
+      process.exitCode = 1;
+    }
+
     // Success
-    process.exitCode = 0;
+    if (process.exitCode !== 1) process.exitCode = 0;
 
   } catch (e) {
     console.error('run-example failed', e);
+    process.exitCode = 1;
   }
 })();

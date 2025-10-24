@@ -228,26 +228,26 @@ self.onmessage = (ev) => {
         mode,
       });
       
-      const toSend = {
-        type: 'motionCues',
-        result: {
-          coords: res.coords,
-          intens: res.intens,
-          uFlow: res.uFlow,
-          vFlow: res.vFlow,
-          count: res.count,
-          timestamp: Date.now(),
-          gridConfig,
-          mode,
-        }
+      // Create contract-compliant result with transferable buffers
+      const resultData = {
+        coords: res.coords,
+        intens: res.intens,
+        uFlow: res.uFlow,
+        vFlow: res.vFlow,
+        count: res.count,
+        timestamp: Date.now(),
+        gridConfig,
+        mode,
       };
-      // Create contract-compliant result
+      
       const contractMessage = WorkerContract.createResult(
         WORKER_TYPES.FAST_MOTION,
         mode,
         [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
-        toSend.result
+        resultData
       );
+      
+      // Transfer buffer ownership to main thread for zero-copy performance
       self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
     } catch (e) {
       structuredLog('ERROR', 'Fast motion worker exception', { 
