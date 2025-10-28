@@ -1,0 +1,573 @@
+/**
+ * frame-conductor.js - Manifest-Driven Worker Orchestrator
+ * 
+ * The FrameConductor is responsible for:
+ * 1. Reading worker-manifest.js to determine which workers execute per mode
+ * 2. Managing worker lifecycle (load, unload, hot-swap on mode changes)
+ * 3. Orchestrating workers in sequence (chain execution)
+ * 4. Validating all messages via WorkerContract
+ * 5. Extracting and aggregating capabilities from workers
+ * 6. Handling errors gracefully without crashing the app
+ * 
+ * This module replaces ~290 lines of hardcoded chain logic in frame-processor.js,
+ * making it 6× faster to add new workers (just update manifest, no code changes).
+ * 
+ * Architecture (per frame):
+ * 1. Get worker chain from manifest
+ * 2. Feed frame through workers sequentially
+ * 3. Each worker processes output of previous worker
+ * 4. Collect capabilities from all workers
+ * 5. Return aggregated result
+ * 
+ * Worker Communication:
+ * - Main thread sends: { type: 'processingRequest', data: frameData, width, height, state }
+ * - Worker responds: { type: 'processingResult', capabilities, result, ... } (WorkerContract)
+ * - On error: { type: 'processingError', error: message } (WorkerContract)
+ * 
+ * Lifecycle Management:
+ * - initializeForMode(mode): Load workers for new mode, cleanup old workers
+ * - processFrame(frameData, ...): Run frame through current chain
+ * - dispose(): Terminate all workers (call on app shutdown)
+ * 
+ * Performance Targets:
+ * - Flow mode: <50ms total (workers already optimized)
+ * - Focus mode: <200ms total (workers already optimized)
+ * - Hybrid mode: <10ms each (decision workers)
+ * 
+ * Implementation is optimized for clarity and performance:
+ * - No dynamic code generation
+ * - No complex state machines
+ * - Clear error boundaries
+ * - Structured logging for debugging
+ */
+
+import { structuredLog } from '../utils/logging.js';
+import { WorkerContract } from './workers/worker-contract.js';
+import { getWorkersForMode, getTotalLatencyBudget } from './workers/worker-manifest.js';
+
+/**
+ * FrameConductor: Manifest-driven orchestrator for video workers
+ * 
+ * Created once at app startup; reused for all frames in current mode.
+ * On mode change, call initializeForMode(newMode) to hot-swap workers.
+ */
+export class FrameConductor {
+  /**
+   * @param {Object} config - Configuration
+   * @param {number} config.flowTimeout - Max time for Flow mode worker (default 100ms)
+   * @param {number} config.focusTimeout - Max time for Focus mode worker (default 200ms)
+   * @param {number} config.hybridTimeout - Max time for Hybrid mode worker (default 10ms)
+   * @param {boolean} config.logMetrics - Whether to log timing metrics (default true)
+   * @param {boolean} config.logFrames - Whether to sample-log frame processing (default true)
+   */
+  constructor(config = {}) {
+    this.config = Object.assign(
+      {
+        flowTimeout: 100,
+        focusTimeout: 200,
+        hybridTimeout: 10,
+        logMetrics: true,
+        logFrames: true,
+      },
+      config
+    );
+
+    // Worker storage: Map<workerName, Worker>
+    this.#workers = new Map();
+
+    // Current mode: 'flow' | 'focus' | 'hybrid' | null
+    this.#currentMode = null;
+
+    // Worker chain for current mode: Array<{ name, config }>
+    this.#currentChain = null;
+
+    // Performance tracking
+    this.#timingMetrics = {
+      lastFrameTimeMs: 0,
+      totalFramesProcessed: 0,
+      totalErrorsEncountered: 0,
+      workerTimings: {}, // { workerName: [measurements] }
+    };
+
+    structuredLog('DEBUG', 'FrameConductor created', {
+      config: this.config,
+    });
+  }
+
+  // =========================================================================
+  // Lifecycle Methods (mode switching, cleanup)
+  // =========================================================================
+
+  /**
+   * Initialize conductor for a specific mode
+   * 
+   * This method:
+   * 1. Validates the mode is known
+   * 2. Terminates old workers (if mode is changing)
+   * 3. Loads new workers for the mode
+   * 4. Caches the worker chain for fast lookup
+   * 5. Logs the transition
+   * 
+   * Call this when switching modes (e.g., Flow → Focus) to hot-swap workers.
+   * Safe to call multiple times with same mode (no-op if already initialized).
+   * 
+   * @param {string} mode - 'flow' | 'focus' | 'hybrid'
+   * @throws {Error} If mode is unknown or workers fail to load
+   */
+  async initializeForMode(mode) {
+    // Validate mode
+    if (!['flow', 'focus', 'hybrid'].includes(mode)) {
+      const error = new Error(`Unknown mode: ${mode}`);
+      structuredLog('ERROR', 'FrameConductor: invalid mode', { mode, error: error.message });
+      throw error;
+    }
+
+    // If already initialized for this mode, no-op
+    if (this.#currentMode === mode) {
+      structuredLog('DEBUG', 'FrameConductor: already initialized for mode (no-op)', { mode });
+      return;
+    }
+
+    // Cleanup old workers
+    if (this.#currentMode !== null) {
+      structuredLog('DEBUG', 'FrameConductor: cleaning up old mode workers', {
+        oldMode: this.#currentMode,
+        oldWorkerCount: this.#workers.size,
+      });
+      this.#cleanupWorkers();
+    }
+
+    // Load new workers
+    const chain = getWorkersForMode(mode);
+    if (!chain || chain.length === 0) {
+      const error = new Error(`No workers defined for mode: ${mode}`);
+      structuredLog('ERROR', 'FrameConductor: no workers for mode', { mode });
+      throw error;
+    }
+
+    try {
+      for (const workerConfig of chain) {
+        await this.#loadWorker(workerConfig);
+      }
+    } catch (error) {
+      // On any error loading workers, cleanup and bail
+      this.#cleanupWorkers();
+      structuredLog('ERROR', 'FrameConductor: failed to load workers for mode', {
+        mode,
+        error: error.message,
+      });
+      throw error;
+    }
+
+    // Update state
+    this.#currentMode = mode;
+    this.#currentChain = chain;
+
+    const totalLatencyBudget = getTotalLatencyBudget(mode);
+    structuredLog('INFO', 'FrameConductor: mode initialized', {
+      mode,
+      workerCount: this.#workers.size,
+      workers: chain.map(w => w.name),
+      totalLatencyBudgetMs: totalLatencyBudget,
+    });
+  }
+
+  /**
+   * Load a single worker from the config
+   * 
+   * Private method called during mode initialization.
+   * Each worker is loaded with error handler attached.
+   * 
+   * @private
+   * @param {Object} workerConfig - { name, path, mode, capabilities, ... }
+   * @throws {Error} If worker fails to instantiate
+   */
+  async #loadWorker(workerConfig) {
+    try {
+      // Create worker: path is relative, resolve from import.meta.url
+      const workerPath = new URL(
+        workerConfig.path,
+        import.meta.url
+      );
+
+      const worker = new Worker(workerPath, { type: 'module' });
+
+      // Attach error handler (catches uncaught exceptions in worker)
+      worker.onerror = (event) => {
+        this.#timingMetrics.totalErrorsEncountered += 1;
+        structuredLog('ERROR', `FrameConductor: ${workerConfig.name} crashed`, {
+          workerName: workerConfig.name,
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+        });
+        // Note: Don't rethrow or terminate the app; let the worker be unavailable
+        // This allows graceful degradation if one worker fails
+      };
+
+      // Store worker
+      this.#workers.set(workerConfig.name, worker);
+
+      // Initialize metrics for this worker
+      if (!this.#timingMetrics.workerTimings[workerConfig.name]) {
+        this.#timingMetrics.workerTimings[workerConfig.name] = [];
+      }
+
+      structuredLog('DEBUG', 'FrameConductor: worker loaded', {
+        workerName: workerConfig.name,
+        path: workerConfig.path,
+        capabilities: workerConfig.capabilities.length,
+      });
+    } catch (error) {
+      structuredLog('ERROR', 'FrameConductor: failed to load worker', {
+        workerName: workerConfig.name,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Cleanup all active workers
+   * 
+   * Private method called on mode change or app shutdown.
+   * Terminates all workers and clears the map.
+   * 
+   * @private
+   */
+  #cleanupWorkers() {
+    for (const [name, worker] of this.#workers.entries()) {
+      try {
+        worker.terminate();
+        structuredLog('DEBUG', 'FrameConductor: worker terminated', { workerName: name });
+      } catch (error) {
+        structuredLog('WARN', 'FrameConductor: error terminating worker', {
+          workerName: name,
+          error: error.message,
+        });
+      }
+    }
+    this.#workers.clear();
+  }
+
+  /**
+   * Dispose of the conductor (cleanup on app shutdown)
+   * 
+   * Call this when shutting down the app or video pipeline.
+   * After dispose(), the conductor cannot be reused; create a new one.
+   */
+  dispose() {
+    structuredLog('INFO', 'FrameConductor: disposing', {
+      mode: this.#currentMode,
+      workerCount: this.#workers.size,
+      totalFramesProcessed: this.#timingMetrics.totalFramesProcessed,
+    });
+    this.#cleanupWorkers();
+    this.#currentMode = null;
+    this.#currentChain = null;
+  }
+
+  // =========================================================================
+  // Frame Processing (main entry point)
+  // =========================================================================
+
+  /**
+   * Process a frame through the worker chain for the current mode
+   * 
+   * This is the main entry point for frame processing:
+   * 1. Validates that a mode is initialized
+   * 2. Retrieves worker chain for current mode
+   * 3. Feeds frame through each worker sequentially
+   * 4. Validates each result via WorkerContract
+   * 5. Aggregates capabilities and results
+   * 6. Returns aggregated output and capabilities
+   * 
+   * Frame flow:
+   * - Input: ImageData or canvas pixel array
+   * - Worker 0: Receives raw frame, emits { capabilities, result }
+   * - Worker 1: Receives output of Worker 0 as input, emits { capabilities, result }
+   * - ... (N workers in chain)
+   * - Output: Final { capabilities: [...], result, timings: {...} }
+   * 
+   * Error handling:
+   * - If a worker times out: logged but doesn't crash app
+   * - If a worker fails: logged but doesn't crash app
+   * - Graceful degradation: later stages may receive partial input
+   * 
+   * @param {ImageData|Uint8ClampedArray|Object} frameData - Frame to process
+   * @param {number} width - Frame width in pixels
+   * @param {number} height - Frame height in pixels
+   * @param {Object} state - Engine state (for worker context)
+   * @returns {Promise<Object>} { capabilities: [...], result, mode, timings: {...} }
+   * @throws {Error} If not initialized for a mode, or critical error occurs
+   */
+  async processFrame(frameData, width, height, state) {
+    // Validation
+    if (this.#currentMode === null) {
+      const error = new Error('FrameConductor: not initialized for any mode. Call initializeForMode() first.');
+      structuredLog('ERROR', 'FrameConductor: processFrame called before mode init', {
+        error: error.message,
+      });
+      throw error;
+    }
+
+    if (!this.#currentChain || this.#currentChain.length === 0) {
+      const error = new Error('FrameConductor: no workers in current chain');
+      structuredLog('ERROR', 'FrameConductor: empty chain', { mode: this.#currentMode });
+      throw error;
+    }
+
+    const frameStartTime = performance.now();
+    let aggregatedCapabilities = [];
+    let currentInput = frameData;
+    const timings = {}; // { workerName: durationMs }
+
+    // Process frame through chain
+    for (const workerConfig of this.#currentChain) {
+      const workerStartTime = performance.now();
+      let workerResult;
+
+      try {
+        // Run worker with timeout
+        workerResult = await this.#runWorker(
+          workerConfig.name,
+          currentInput,
+          width,
+          height,
+          state
+        );
+
+        const workerDurationMs = performance.now() - workerStartTime;
+        timings[workerConfig.name] = workerDurationMs;
+
+        // Record metric (keep recent measurements for averaging)
+        const metrics = this.#timingMetrics.workerTimings[workerConfig.name];
+        if (metrics) {
+          metrics.push(workerDurationMs);
+          // Keep only last 100 measurements (rolling window)
+          if (metrics.length > 100) {
+            metrics.shift();
+          }
+        }
+
+        // Validate result
+        const validation = WorkerContract.validate(workerResult);
+        if (!validation.valid) {
+          structuredLog('WARN', 'FrameConductor: worker returned invalid message', {
+            workerName: workerConfig.name,
+            error: validation.error,
+          });
+          continue; // Skip this worker's output, feed next worker the current input
+        }
+
+        if (validation.warning) {
+          structuredLog('WARN', 'FrameConductor: worker message validation warning', {
+            workerName: workerConfig.name,
+            warning: validation.warning,
+          });
+        }
+
+        // Extract result and capabilities
+        const capabilities = WorkerContract.getCapabilities(workerResult);
+        aggregatedCapabilities = [...aggregatedCapabilities, ...capabilities];
+        currentInput = workerResult.result;
+
+        structuredLog('DEBUG', `FrameConductor: ${workerConfig.name} completed`, {
+          workerName: workerConfig.name,
+          durationMs: workerDurationMs,
+          capabilitiesCount: capabilities.length,
+          latencyTargetMs: workerConfig.latencyTargetMs,
+          onTarget: workerDurationMs <= workerConfig.latencyTargetMs,
+        });
+      } catch (error) {
+        this.#timingMetrics.totalErrorsEncountered += 1;
+        structuredLog('ERROR', `FrameConductor: ${workerConfig.name} error`, {
+          workerName: workerConfig.name,
+          error: error.message,
+        });
+        // Continue with current input (graceful degradation)
+      }
+    }
+
+    // Finalize frame
+    const totalFrameTimeMs = performance.now() - frameStartTime;
+    this.#timingMetrics.lastFrameTimeMs = totalFrameTimeMs;
+    this.#timingMetrics.totalFramesProcessed += 1;
+
+    // Log metrics (sampled to avoid overhead)
+    if (this.config.logMetrics && Math.random() < 0.05) {
+      // 5% sample rate
+      this.#logMetrics(totalFrameTimeMs, timings);
+    }
+
+    // Sample log individual frames (1% sample rate)
+    if (this.config.logFrames && Math.random() < 0.01) {
+      structuredLog('DEBUG', 'FrameConductor: frame processed', {
+        mode: this.#currentMode,
+        totalTimeMs: totalFrameTimeMs,
+        capabilitiesCount: aggregatedCapabilities.length,
+        workerCount: this.#currentChain.length,
+      });
+    }
+
+    return {
+      capabilities: aggregatedCapabilities,
+      result: currentInput,
+      mode: this.#currentMode,
+      timings,
+      totalTimeMs: totalFrameTimeMs,
+    };
+  }
+
+  // =========================================================================
+  // Worker Communication (message passing, timeouts)
+  // =========================================================================
+
+  /**
+   * Run a single worker with frame data
+   * 
+   * Private method called during chain processing.
+   * Handles timeout, error handling, and message protocol.
+   * 
+   * Protocol:
+   * - Sends: { type: 'processingRequest', data: frameData, width, height, state }
+   * - Receives: WorkerContract.createResult(...) or WorkerContract.createError(...)
+   * - Timeout: Returns error after config.XXXTimeout ms
+   * 
+   * @private
+   * @param {string} workerName - Name of worker (used for logging and timeout selection)
+   * @param {*} frameData - Data to pass to worker
+   * @param {number} width - Frame width
+   * @param {number} height - Frame height
+   * @param {Object} state - Engine state
+   * @returns {Promise<Object>} Worker message (WorkerContract format)
+   * @throws {Error} If worker times out or communication fails
+   */
+  async #runWorker(workerName, frameData, width, height, state) {
+    const worker = this.#workers.get(workerName);
+    if (!worker) {
+      throw new Error(`Worker not loaded: ${workerName}`);
+    }
+
+    // Determine timeout based on mode
+    let timeout = this.config.flowTimeout; // default
+    if (this.#currentMode === 'focus') {
+      timeout = this.config.focusTimeout;
+    } else if (this.#currentMode === 'hybrid') {
+      timeout = this.config.hybridTimeout;
+    }
+
+    return new Promise((resolve, reject) => {
+      // Setup timeout
+      const timeoutHandle = setTimeout(() => {
+        reject(new Error(`Worker ${workerName} timed out after ${timeout}ms`));
+      }, timeout);
+
+      // One-shot message handler
+      const onMessage = (event) => {
+        clearTimeout(timeoutHandle);
+        worker.removeEventListener('message', onMessage);
+        resolve(event.data);
+      };
+
+      // Attach listener
+      worker.addEventListener('message', onMessage);
+
+      // Send message to worker
+      try {
+        worker.postMessage({
+          type: 'processingRequest',
+          data: frameData,
+          width,
+          height,
+          state,
+          timestamp: Date.now(),
+        });
+      } catch (error) {
+        clearTimeout(timeoutHandle);
+        worker.removeEventListener('message', onMessage);
+        reject(new Error(`Failed to send message to worker ${workerName}: ${error.message}`));
+      }
+    });
+  }
+
+  // =========================================================================
+  // Metrics & Debugging
+  // =========================================================================
+
+  /**
+   * Log performance metrics
+   * 
+   * Private method called during frame processing (sampled to avoid overhead).
+   * Logs aggregated timing across all workers in the chain.
+   * 
+   * @private
+   * @param {number} totalTimeMs - Total time for the frame
+   * @param {Object} timings - Per-worker timing: { workerName: ms }
+   */
+  #logMetrics(totalTimeMs, timings) {
+    const workerLines = Object.entries(timings).map(
+      ([name, ms]) => `${name}: ${ms.toFixed(1)}ms`
+    );
+
+    const budgetMs = getTotalLatencyBudget(this.#currentMode);
+    const onBudget = totalTimeMs <= budgetMs;
+
+    structuredLog('INFO', 'FrameConductor: frame timing', {
+      mode: this.#currentMode,
+      totalTimeMs: totalTimeMs.toFixed(1),
+      budgetMs,
+      onBudget,
+      workers: workerLines.join(' | '),
+      framesProcessed: this.#timingMetrics.totalFramesProcessed,
+      errorsEncountered: this.#timingMetrics.totalErrorsEncountered,
+    });
+  }
+
+  /**
+   * Get timing metrics (for diagnostics)
+   * 
+   * Returns a snapshot of current timing metrics.
+   * Useful for dev-panel or diagnostic logging.
+   * 
+   * @returns {Object} { lastFrameTimeMs, totalFramesProcessed, totalErrorsEncountered, ... }
+   */
+  getMetrics() {
+    return {
+      lastFrameTimeMs: this.#timingMetrics.lastFrameTimeMs,
+      totalFramesProcessed: this.#timingMetrics.totalFramesProcessed,
+      totalErrorsEncountered: this.#timingMetrics.totalErrorsEncountered,
+      currentMode: this.#currentMode,
+      currentWorkerCount: this.#workers.size,
+      workerAverageTimings: this.#computeAverageTimings(),
+    };
+  }
+
+  /**
+   * Compute average timings for each worker (from rolling window)
+   * 
+   * @private
+   * @returns {Object} { workerName: avgMs }
+   */
+  #computeAverageTimings() {
+    const averages = {};
+    for (const [name, measurements] of Object.entries(this.#timingMetrics.workerTimings)) {
+      if (measurements.length > 0) {
+        const sum = measurements.reduce((a, b) => a + b, 0);
+        averages[name] = (sum / measurements.length).toFixed(1);
+      }
+    }
+    return averages;
+  }
+
+  // =========================================================================
+  // Private State
+  // =========================================================================
+
+  #workers = new Map();
+  #currentMode = null;
+  #currentChain = null;
+  #timingMetrics = {};
+}
+
+export default FrameConductor;

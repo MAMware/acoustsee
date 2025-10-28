@@ -43,27 +43,89 @@ This directory contains all logic for video capture, processing, and analysis. T
 
 **Purpose:** Central coordination point that delegates analysis tasks based on application mode.
 
+**Phase 3.1b Update:** Now uses `FrameConductor` for manifest-driven worker orchestration instead of hardcoded chain logic.
+
 **Initialization:** Called via `initializeVideo(videoElement, engine, motionThreshold)`
 
 **Responsibilities:**
 - Receives frames from `FrameProvider`
-- Determines which Specialist workers to activate based on `state.currentMode`
-- Routes frame data to appropriate Specialists
-- Collects analysis results from Specialists
-- Passes results to the active Grid's `mapFunction`
+- Delegates to `FrameConductor` to route frames through the appropriate worker chain
+- FrameConductor determines which Specialist workers to activate based on `state.currentMode`
+- Collects analysis results from workers
+- Routes results to the active Grid's `mapFunction`
 - Dispatches the final `cues` array via `'audioCuesReady'` event
-
-**Mode-Specific Behavior:**
-
-| Mode | Specialists Used | Grid Purpose | Output Type |
-|------|-----------------|--------------|-------------|
-| **Flow** | `motion-worker.js` | Map spatial motion → soundscape | Textural, ambient cues |
-| **Focus** | (Future: `segment-worker.js`, `depth-worker.js`) | Map semantic objects → sonic signatures | Discrete, recognizable cues |
 
 **Key Points:**
 - The Orchestrator is STATELESS - it doesn't remember previous frames
-- It does NOT make musical decisions - that's the Grid's job
-- It does NOT directly create cues - it delegates to the Grid
+- Worker chains are now defined in `workers/worker-manifest.js` (not hardcoded)
+- Mode changes trigger automatic worker hot-swap via `FrameConductor.initializeForMode(newMode)`
+- Adding new workers: just update the manifest, no code changes needed
+
+**Lifecycle:**
+```javascript
+// Initialization (once at startup)
+await initializeVideo({ videoElement, engine, ... });
+
+// Mode changes (hot-swap workers via FrameConductor)
+engine.onStateChange(state => {
+  // FrameConductor automatically swaps workers when state.currentMode changes
+});
+
+// Cleanup (on app shutdown)
+disposeVideo(); // Terminates all workers
+```
+
+---
+
+### 2a. `frame-conductor.js` (Phase 3.1b - Manifest-Driven Orchestrator)
+
+**Purpose:** Manifest-driven orchestrator that manages worker lifecycle and chains per mode.
+
+**Key Features (Phase 3.1b):**
+- Reads worker manifest (`workers/worker-manifest.js`) to determine workers per mode
+- Manages worker loading/unloading with hot-swap support
+- Executes workers in sequence (chain execution per mode)
+- Validates all messages via `WorkerContract`
+- Extracts capabilities from workers for audio pipeline feedback
+- Handles errors gracefully without crashing
+
+**Modes Supported:**
+- `'flow'`: Real-time motion detection (<50ms latency target)
+- `'focus'`: Semantic object detection (<200ms latency target)
+- `'hybrid'`: Decision workers for mode detection (<10ms latency target)
+
+**API:**
+```javascript
+// Create once at startup
+const conductor = new FrameConductor({ 
+  flowTimeout: 100, 
+  focusTimeout: 200, 
+  hybridTimeout: 10 
+});
+
+// Initialize for a mode
+await conductor.initializeForMode('flow'); // Loads Flow mode workers
+
+// Process frames through current mode
+const result = await conductor.processFrame(frameData, width, height, state);
+
+// Get performance metrics
+const metrics = conductor.getMetrics();
+console.log(metrics.currentMode, metrics.lastFrameTimeMs);
+
+// Hot-swap to new mode
+await conductor.initializeForMode('focus'); // Unloads Flow workers, loads Focus workers
+
+// Cleanup on shutdown
+conductor.dispose(); // Terminates all workers
+```
+
+**Benefits Over Hardcoded Logic:**
+- 43% line count reduction (290+ lines of duplicate chain code removed)
+- Adding new workers: update manifest only, no frame-processor changes
+- Clear separation of concerns
+- Full validation via WorkerContract
+- Performance metrics exposed for diagnostics
 
 ---
 

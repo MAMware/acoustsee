@@ -8,7 +8,6 @@ import {
   showCriticalError 
 } from '../utils/error-handling.js';
 import { WorkerContract } from './workers/worker-contract.js';
-import { FrameConductor } from './frame-conductor.js';
 
 // --- Module State ---
 let _config = {};
@@ -17,8 +16,12 @@ let motionWorker = null;
 let depthWorker = null;
 let previousDepthPath = null; // Track depth computation path changes (used to avoid redundant reconfigurations)
 
-// FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
-let frameConductor = null;
+// Flow Mode Workers (Phase 2)
+let flowModeWorkers = {
+  fastMotion: null,
+  gridAggregator: null,
+  panIntensityMapper: null
+};
 
 // Current mode and grid config are derived from engine state, not stored locally
 // This keeps frame-processor stateless for configuration
@@ -86,57 +89,305 @@ function startDepthWorker() {
 }
 
 /**
- * Process frame using Flow mode worker chain via FrameConductor (Phase 3.1b)
+ * Initialize Flow mode workers (Phase 2)
+ * Creates instances of fast-motion-worker, fast-grid-aggregator, and pan-intensity-mapper
+ */
+function startFlowModeWorkers() {
+  try {
+    if (!flowModeWorkers.fastMotion) {
+      flowModeWorkers.fastMotion = new Worker(
+        new URL('./workers/fast-motion-worker.js', import.meta.url),
+        { type: 'module' }
+      );
+      if (_config.registerWorker) _config.registerWorker(flowModeWorkers.fastMotion, 'FastMotionWorker');
+      
+      flowModeWorkers.fastMotion.onerror = (error) => {
+        structuredLog('ERROR', 'Fast motion worker error', {
+          message: error.message,
+          filename: error.filename,
+          lineno: error.lineno
+        });
+      };
+      
+      structuredLog('INFO', 'Fast motion worker started.');
+    }
+
+    if (!flowModeWorkers.gridAggregator) {
+      flowModeWorkers.gridAggregator = new Worker(
+        new URL('./workers/fast-grid-aggregator.js', import.meta.url),
+        { type: 'module' }
+      );
+      if (_config.registerWorker) _config.registerWorker(flowModeWorkers.gridAggregator, 'GridAggregatorWorker');
+      
+      flowModeWorkers.gridAggregator.onerror = (error) => {
+        structuredLog('ERROR', 'Grid aggregator worker error', {
+          message: error.message,
+          filename: error.filename,
+          lineno: error.lineno
+        });
+      };
+      
+      structuredLog('INFO', 'Grid aggregator worker started.');
+    }
+
+    if (!flowModeWorkers.panIntensityMapper) {
+      flowModeWorkers.panIntensityMapper = new Worker(
+        new URL('./workers/pan-intensity-mapper.js', import.meta.url),
+        { type: 'module' }
+      );
+      if (_config.registerWorker) _config.registerWorker(flowModeWorkers.panIntensityMapper, 'PanIntensityMapperWorker');
+      
+      flowModeWorkers.panIntensityMapper.onerror = (error) => {
+        structuredLog('ERROR', 'Pan-intensity mapper worker error', {
+          message: error.message,
+          filename: error.filename,
+          lineno: error.lineno
+        });
+      };
+      
+      structuredLog('INFO', 'Pan-intensity mapper worker started.');
+    }
+  } catch (e) {
+    structuredLog('ERROR', 'Failed to start Flow mode workers', { error: e });
+  }
+}
+
+/**
+ * Process frame using Flow mode worker chain (Phase 2)
  * Sequential processing: motion → grid → params → audio
  */
-async function processFlowMode(frameData, width, height, state) {
-  if (!frameConductor) {
-    structuredLog('ERROR', 'FrameConductor not initialized', {});
-    return { cues: [], panIntensity: { pan: 0, intensity: 0 } };
-  }
+function processFlowMode(frameData, width, height, state) {
+  return new Promise((resolve) => {
+    try {
+      // Step 1: Extract Y-plane and send to motion worker
+      let motionRegions = null;
+      let gridData = null;
+      let panIntensity = null;
+      let resolved = false;
 
-  try {
-    // Use FrameConductor for orchestration
-    const result = await frameConductor.processFrame(frameData, width, height, state);
-    
-    // Extract motion regions from conductor result
-    let cues = [];
-    const grid = _config.getCurrentGrid();
-    
-    if (grid && grid.mapFunction && result.result?.coords?.length > 0) {
-      // Convert result to movingRegions format that grids expect
-      const movingRegions = [];
-      const regions = result.result;
-      for (let i = 0; i < regions.count && i < regions.coords.length / 2; i++) {
-        movingRegions.push({
-          x: regions.coords[i * 2],
-          y: regions.coords[i * 2 + 1],
-          intensity: regions.intens[i] || 0
-        });
-      }
-      
-      // Map via grid
-      const gridOutput = grid.mapFunction(frameData, width, height, null, { movingRegions });
-      if (gridOutput?.cues?.length > 0) {
-        cues = gridOutput.cues;
-        structuredLog('DEBUG', 'Flow mode: Grid mapped motion to cues', { 
-          gridId: grid.id, 
-          cuesCount: cues.length, 
-          motionRegionsCount: movingRegions.length 
-        }, false, Math.random() < 0.05);
-      }
+      // ✅ CRITICAL FIX: Pass frame dimensions to gridConfig so workers can map coordinates → cells
+      const gridConfig = getGridConfig('flow', width, height);
+      const yBuffer = rgbaToY(frameData, width, height);
+
+      // Motion worker handler
+      const motionHandler = (e) => {
+        try {
+          structuredLog('DEBUG', 'Motion handler: Received message', {
+            messageType: e.data?.type,
+            hasResult: !!e.data?.result,
+            resultKeys: e.data?.result ? Object.keys(e.data.result) : null
+          }, false, Math.random() < 0.01);
+          
+          // Validate message per Phase 1.5 pattern
+          const validation = WorkerContract.validate(e.data);
+          if (!validation.valid) {
+            structuredLog('WARN', 'Fast motion worker validation failed', {
+              error: validation.error,
+              workerName: e.data.workerName
+            });
+            motionRegions = { coords: new Uint16Array(0), intens: new Uint8Array(0), count: 0 };
+          } else {
+            const result = WorkerContract.getResult(e.data);
+            structuredLog('DEBUG', 'Motion handler: Extracted result', {
+              hasCoords: result?.coords ? true : false,
+              coordsType: result?.coords?.constructor?.name,
+              hasIntens: result?.intens ? true : false,
+              count: result?.count
+            }, false, Math.random() < 0.01);
+            motionRegions = result;
+          }
+
+          // Proceed to grid aggregator
+          if (motionRegions && motionRegions.coords) {
+            structuredLog('DEBUG', 'Motion handler: Sending to gridAggregator', {
+              regionCount: motionRegions.count,
+              coordsLength: motionRegions.coords.length
+            }, false, Math.random() < 0.01);
+            flowModeWorkers.gridAggregator.postMessage({
+              type: 'processFrame',
+              motionRegions,
+              gridConfig
+            });
+          }
+        } catch (error) {
+          structuredLog('ERROR', 'Motion handler exception', { error: error.message });
+          motionRegions = { coords: new Uint16Array(0), intens: new Uint8Array(0), count: 0 };
+          flowModeWorkers.gridAggregator.postMessage({
+            type: 'processFrame',
+            motionRegions,
+            gridConfig
+          });
+        }
+      };
+
+            // Grid aggregator handler
+      const gridHandler = (e) => {
+        try {
+          structuredLog('DEBUG', 'Grid handler: Received message', {
+            messageType: e.data?.type,
+            hasResult: !!e.data?.result,
+            resultKeys: e.data?.result ? Object.keys(e.data.result) : null
+          }, false, Math.random() < 0.01);
+          
+          // Validate message per Phase 1.5 pattern
+          const validation = WorkerContract.validate(e.data);
+          if (!validation.valid) {
+            structuredLog('WARN', 'Grid aggregator validation failed', {
+              error: validation.error,
+              workerName: e.data.workerName
+            });
+            gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
+          } else {
+            const result = WorkerContract.getResult(e.data);
+            structuredLog('DEBUG', 'Grid handler: Extracted result', {
+              hasResult: !!result,
+              hasGrid: result ? 'grid' in result : false,
+              resultKeys: result ? Object.keys(result) : null
+            }, false, Math.random() < 0.01);
+            
+            // ✅ Guard before accessing
+            if (!result || typeof result.grid === 'undefined') {
+              structuredLog('WARN', 'Grid aggregator returned invalid/empty result', {
+                hasResult: !!result,
+                hasGrid: result ? 'grid' in result : 'N/A'
+              });
+              gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
+            } else {
+              gridData = result.grid;
+            }
+          }
+
+          // Proceed to pan-intensity mapper
+          if (gridData) {
+            structuredLog('DEBUG', 'Grid handler: Sending to panIntensityMapper', {
+              gridLength: gridData.length,
+              gridType: gridData.constructor.name
+            }, false, Math.random() < 0.01);
+            flowModeWorkers.panIntensityMapper.postMessage({
+              type: 'processFrame',
+              grid: gridData,
+              gridConfig
+            });
+          }
+        } catch (error) {
+          structuredLog('ERROR', 'Grid handler exception', { error: error.message });
+          gridData = new Float32Array(gridConfig.rows * gridConfig.cols);
+          flowModeWorkers.panIntensityMapper.postMessage({
+            type: 'processFrame',
+            grid: gridData,
+            gridConfig
+          });
+        }
+      };
+
+      // Pan-intensity mapper handler (final in chain)
+      const panIntensityHandler = (e) => {
+        try {
+          // Validate message per Phase 1.5 pattern
+          const validation = WorkerContract.validate(e.data);
+          if (!validation.valid) {
+            structuredLog('WARN', 'Pan-intensity mapper validation failed', {
+              error: validation.error,
+              workerName: e.data.workerName
+            });
+            panIntensity = { pan: 0, intensity: 0 };
+          } else {
+            const result = WorkerContract.getResult(e.data);
+            panIntensity = { pan: result.pan, intensity: result.intensity };
+            structuredLog('DEBUG', 'panIntensityHandler: Received pan-intensity result', { pan: result.pan, intensity: result.intensity }, false, Math.random() < 0.05);
+          }
+
+          // Remove handlers
+          flowModeWorkers.fastMotion.removeEventListener('message', motionHandler);
+          flowModeWorkers.gridAggregator.removeEventListener('message', gridHandler);
+          flowModeWorkers.panIntensityMapper.removeEventListener('message', panIntensityHandler);
+
+          // CRITICAL: Apply grid mapping to shape the melody
+          // Motion data → Grid mapping → Cues (as per architecture)
+          let cues = [];
+          const grid = _config.getCurrentGrid();
+          
+          if (grid && grid.mapFunction && motionRegions && motionRegions.coords && motionRegions.coords.length > 0) {
+            // Convert motionRegions to movingRegions format that grids expect
+            const movingRegions = [];
+            for (let i = 0; i < motionRegions.count && i < motionRegions.coords.length / 2; i++) {
+              const x = motionRegions.coords[i * 2];
+              const y = motionRegions.coords[i * 2 + 1];
+              const intensity = motionRegions.intens[i] || 0;
+              movingRegions.push({ x, y, intensity });
+            }
+            
+            // Let the grid shape the melody based on motion data
+            const gridOutput = grid.mapFunction(frameData, width, height, null, { movingRegions });
+            if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
+              cues = gridOutput.cues;
+              structuredLog('DEBUG', 'Flow mode: Grid mapped motion to cues', { 
+                gridId: grid.id, 
+                cuesCount: cues.length, 
+                motionRegionsCount: movingRegions.length 
+              }, false, Math.random() < 0.05);
+            }
+          }
+          
+          // Fallback: If grid didn't produce cues, use pan-intensity to create basic cues
+          if (cues.length === 0 && panIntensity.intensity > 0.001) {
+            cues = createCuesFromAudioParams(panIntensity, state);
+            structuredLog('DEBUG', 'Flow mode: Fallback to pan-intensity cues', { 
+              intensity: panIntensity.intensity 
+            }, false, Math.random() < 0.05);
+          }
+          
+          if (!resolved) {
+            resolved = true;
+            resolve({ cues, panIntensity });
+          }
+        } catch (error) {
+          structuredLog('ERROR', 'Pan-intensity handler exception', { error: error.message });
+          
+          if (!resolved) {
+            resolved = true;
+            resolve({ cues: [], panIntensity: { pan: 0, intensity: 0 } });
+          }
+        }
+      };
+
+      // Setup message listeners
+      flowModeWorkers.fastMotion.addEventListener('message', motionHandler);
+      flowModeWorkers.gridAggregator.addEventListener('message', gridHandler);
+      flowModeWorkers.panIntensityMapper.addEventListener('message', panIntensityHandler);
+
+      // Start the chain: send frame to motion worker
+      flowModeWorkers.fastMotion.postMessage(
+        {
+          type: 'frame',
+          ts: Date.now(),
+          w: width,
+          h: height,
+          yBuffer: yBuffer.buffer,
+          threshold: state.motionThreshold || 0.5,
+          maxRegions: 64,
+          gridConfig,
+          mode: 'flow'
+        },
+        [yBuffer.buffer]
+      );
+
+      // Set timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          structuredLog('WARN', 'Flow mode chain timeout', { gridConfig });
+          flowModeWorkers.fastMotion.removeEventListener('message', motionHandler);
+          flowModeWorkers.gridAggregator.removeEventListener('message', gridHandler);
+          flowModeWorkers.panIntensityMapper.removeEventListener('message', panIntensityHandler);
+          resolve({ cues: [], panIntensity: { pan: 0, intensity: 0 } });
+        }
+      }, 100); // 100ms timeout for entire chain (should complete in ~22ms)
+    } catch (error) {
+      structuredLog('ERROR', 'processFlowMode exception', { error: error.message });
+      resolve({ cues: [], panIntensity: { pan: 0, intensity: 0 } });
     }
-    
-    // Fallback
-    if (cues.length === 0) {
-      cues = createCuesFromAudioParams({ pan: 0, intensity: 0 }, state);
-    }
-    
-    return { cues, panIntensity: { pan: 0, intensity: 0 } };
-  } catch (error) {
-    structuredLog('ERROR', 'processFlowMode error', { error: error.message });
-    return { cues: [], panIntensity: { pan: 0, intensity: 0 } };
-  }
+  });
 }
 
 /**
@@ -177,54 +428,60 @@ function createCuesFromAudioParams(params, state) {
   }
 }
 
-/**
- * Process frame using FrameConductor (Phase 3.1b)
- * Replaces hardcoded Focus/Hybrid mode worker chain with manifest-driven orchestration
- * 
- * For Focus/Hybrid modes, delegates to frameConductor.processFrame() instead of
- * manually managing motionWorker and depthWorker. This simplifies code and makes
- * adding new workers faster (just update manifest, no code changes needed).
- */
-async function processWithMotionWorker(frameData, width, height, state) {
-  if (!frameConductor) {
-    structuredLog('WARN', 'FrameConductor not initialized, returning empty results');
-    return { movingRegions: [], textureGrid: [], objects: [], inferredBPM: 100 };
-  }
+let prevFrameData = null;
 
-  try {
-    // Use FrameConductor for Focus/Hybrid orchestration (Phase 3.1b)
-    const result = await frameConductor.processFrame(frameData, width, height, state);
-    
-    // Convert conductor result to legacy motion worker format for compatibility
-    const movingRegions = result.result?.gridFlows?.flat()?.map(f => ({ 
-      x: 0, y: 0, intensity: f.mag * 10 
-    })) || [];
-    
-    const motionResults = {
-      ...result.result,
-      movingRegions,
-      textureGrid: result.result?.textureGrid || [],
-      objects: result.result?.objects || [],
-      inferredBPM: result.result?.inferredBPM || 100
+function processWithMotionWorker(frameData, width, height, state) {
+  return new Promise(resolve => {
+    if (!motionWorker) return resolve({ movingRegions: [], textureGrid: [], objects: [], inferredBPM: 100 });
+
+    const messageHandler = (event) => {
+      const data = event.data;
+      const validation = WorkerContract.validate(data);
+      if (validation.valid) {
+        motionWorker.removeEventListener('message', messageHandler);
+        const result = WorkerContract.getResult(data);
+        // Convert to old format for compatibility
+        const movingRegions = result.gridFlows?.flat()?.map(f => ({ x: 0, y: 0, intensity: f.mag * 10 })) || []; // Placeholder
+        const motionResults = { ...result, movingRegions };
+        // Dispatch new cues
+        engine.dispatch('flowCuesReady', motionResults);
+        if (motionResults.objects?.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
+          engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
+        }
+        resolve(motionResults);
+      } else {
+        structuredLog('WARN', 'Motion worker message validation failed', { error: validation.error });
+      }
     };
+    motionWorker.addEventListener('message', messageHandler);
+
+    const frame = { data: frameData, width, height };
+    const prevFrame = prevFrameData ? { data: prevFrameData, width, height } : frame;
     
-    // Dispatch state change events for compatibility with existing subscribers
-    engine.dispatch('flowCuesReady', motionResults);
-    if (motionResults.objects?.length > 0) {
-      engine.dispatch('objectCuesReady', { objects: motionResults.objects });
-    }
-    if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
-      engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
-    }
+    // ✅ CRITICAL FIX: Pass frame dimensions to gridConfig (same fix as Flow mode)
+    const gridConfig = getGridConfig(state.currentMode || 'hybrid', width, height);
     
-    return motionResults;
-  } catch (error) {
-    structuredLog('ERROR', 'processWithMotionWorker error', { 
-      error: error.message,
-      mode: state.currentMode
+    // For image-worker: pass enableSemanticDetection from state
+    motionWorker.postMessage({
+      type: 'processFrame', 
+      frame, 
+      prevFrame, 
+      gridConfig,
+      mode: state.currentMode || 'hybrid',
+      enableSemantic: state.enableSemanticDetection || false
     });
-    return { movingRegions: [], textureGrid: [], objects: [], inferredBPM: 100 };
-  }
+    if (depthWorker && (state.currentMode === 'hybrid' || state.currentMode === 'focus')) {
+      depthWorker.postMessage({
+        type: 'processFrame', 
+        frame, 
+        prevFrame, 
+        gridConfig,
+        mode: state.currentMode || 'hybrid'
+      });
+    }
+    prevFrameData = frameData.slice();
+  });
 }
 
 /**
@@ -509,22 +766,8 @@ export async function initializeVideo(config) {
   const currentMode = config.engine?.getState?.()?.currentMode || 'flow';
   startMotionWorker(currentMode);
   
-  // Initialize FrameConductor (Phase 3.1b - replaces startFlowModeWorkers)
-  frameConductor = new FrameConductor({
-    flowTimeout: 100,
-    focusTimeout: 200,
-    hybridTimeout: 10,
-    logMetrics: true,
-    logFrames: true
-  });
-  
-  // Initialize conductor for default mode
-  try {
-    await frameConductor.initializeForMode(currentMode);
-    structuredLog('INFO', 'FrameConductor initialized', { mode: currentMode });
-  } catch (error) {
-    structuredLog('ERROR', 'FrameConductor initialization failed', { mode: currentMode, error: error.message });
-  }
+  // Initialize Flow mode workers (Phase 2)
+  startFlowModeWorkers();
 
   return await executeCriticalOperation('video-processing', async () => {
     const { videoElement, engine } = config;
@@ -783,41 +1026,19 @@ export async function initializeVideo(config) {
         frameProviderWorker.postMessage({ type: 'stop' });
       }
       
-      // Phase 3.1b: Hot-swap workers when mode changes via FrameConductor
-      if (state.currentMode && frameConductor) {
-        // Check if mode has actually changed by comparing with conductor's current mode
-        const metrics = frameConductor.getMetrics?.();
-        const currentConductorMode = metrics?.currentMode;
-        if (currentConductorMode !== state.currentMode) {
-          frameConductor.initializeForMode(state.currentMode).then(() => {
-            structuredLog('INFO', 'Mode switched via FrameConductor', { 
-              newMode: state.currentMode,
-              previousMode: currentConductorMode
-            });
-          }).catch((error) => {
-            structuredLog('ERROR', 'Failed to switch mode in FrameConductor', { 
-              mode: state.currentMode, 
-              error: error.message 
-            });
-          });
-        }
-      }
-      
       // Check for depth path changes
       if (state.depthPath && state.depthPath !== previousDepthPath) {
-        // Depth path updates are now handled via FrameConductor if available
-        if (frameConductor && frameConductor.updateDepthPath) {
-          frameConductor.updateDepthPath(state.depthPath);
-        } else if (depthWorker) {
+        if (depthWorker) {
           depthWorker.postMessage({ type: 'setPath', path: state.depthPath });
-          structuredLog('INFO', 'Depth path updated (legacy)', { path: state.depthPath });
+          structuredLog('INFO', 'Depth path updated', { path: state.depthPath });
         }
         previousDepthPath = state.depthPath;
       }
       
-      // Grid configuration is embedded in every frame message (stateless pattern)
+      // Note: Grid configuration is embedded in every frame message (stateless pattern)
+      // Mode changes automatically take effect on the next frame processing
       if (state.currentMode) {
-        structuredLog('DEBUG', 'Operating mode active', { mode: state.currentMode });
+        structuredLog('DEBUG', 'Paradigm mode active', { mode: state.currentMode });
       }
     });
     
@@ -827,54 +1048,4 @@ export async function initializeVideo(config) {
     videoElement: config?.videoElement, 
     hasCamera: !!config?.videoElement?.srcObject 
   });
-}
-
-/**
- * Dispose video processor and clean up all resources (Phase 3.1b).
- * Call this on app shutdown to terminate workers and free memory.
- * 
- * This function:
- * - Terminates frame provider worker
- * - Terminates motion and depth workers (if still running)
- * - Disposes FrameConductor and all its managed workers
- * - Clears module state
- */
-export function disposeVideo() {
-  try {
-    // Terminate legacy workers (cleanup for any remaining direct references)
-    if (frameProviderWorker) {
-      frameProviderWorker.terminate();
-      frameProviderWorker = null;
-      structuredLog('INFO', 'Frame provider worker terminated');
-    }
-    
-    if (motionWorker) {
-      motionWorker.terminate();
-      motionWorker = null;
-      structuredLog('INFO', 'Motion worker terminated');
-    }
-    
-    if (depthWorker) {
-      depthWorker.terminate();
-      depthWorker = null;
-      structuredLog('INFO', 'Depth worker terminated');
-    }
-    
-    // Phase 3.1b: Dispose FrameConductor (terminates all manifest-managed workers)
-    if (frameConductor) {
-      frameConductor.dispose();
-      frameConductor = null;
-      structuredLog('INFO', 'FrameConductor disposed (all workers terminated)');
-    }
-    
-    // Reset module state
-    _config = {};
-    previousDepthPath = null;
-    
-    structuredLog('INFO', 'Video processor fully disposed');
-  } catch (error) {
-    structuredLog('ERROR', 'Error during video processor disposal', { 
-      error: error.message 
-    });
-  }
 }
