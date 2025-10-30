@@ -162,7 +162,19 @@ export async function exportEarlyLogsAsJson() {
 export async function downloadEarlyLogsAsJson(filename = null) {
   try {
     const exportData = await exportEarlyLogsAsJson();
-    const json = JSON.stringify(exportData, null, 2);
+    
+    // Phase 3.1b-Hotfix: Use safe stringify with circular reference detection
+    const seen = new WeakSet();
+    const json = JSON.stringify(exportData, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular Reference: ' + key + ']';
+        }
+        seen.add(value);
+      }
+      return value;
+    }, 2);
+    
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 

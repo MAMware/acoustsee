@@ -121,10 +121,15 @@ export function registerDiagnosticsCommands(engine) {
       });
     }
     
+    // Phase 3.1b-Hotfix: Ensure orchestration never contains circular references
+    // Remove 'state' property if accidentally included (Rule 1 violation)
+    const sanitizedPayload = { ...payload };
+    delete sanitizedPayload.state;  // Never store state inside orchestration
+    
     // Merge the updates into the orchestration state
     const updatedOrchestration = {
       ...currentOrchestration,
-      ...payload,
+      ...sanitizedPayload,
       lastUpdateTimestamp: performance.now(),
     };
     
