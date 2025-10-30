@@ -62,10 +62,10 @@ export async function captureEarlyLogs() {
     // Get all logs from ring buffer (single source of truth)
     const allLogs = getRingBufferLogs();
 
-    // If dev panel init time not set, return all logs
+    // If dev panel init time not set, return all logs (expected during early export from splash screen)
     if (!devPanelInitTime) {
-      structuredLog('WARN', 'early-logs', {
-        message: 'Dev panel init time not set; returning all logs',
+      structuredLog('DEBUG', 'early-logs', {
+        message: 'Dev panel init time not set (expected before app:poweredOn); returning all logs',
         count: allLogs.length
       });
       return allLogs;

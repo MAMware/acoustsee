@@ -193,7 +193,16 @@ function initializeDefaults() {
     }
   }
   
-  structuredLog('INFO', 'Settings initialized', { settings });
+  // Log settings with sanitized grids/engines (remove large meta objects to keep logs lean)
+  // Also exclude orchestration from settings logging (it's a separate state field, not settings)
+  const sanitizedSettings = {
+    ...settings,
+    availableGrids: settings.availableGrids.map(g => ({ id: g.id })),
+    availableEngines: settings.availableEngines.map(e => ({ id: e.id })),
+    availableLanguages: settings.availableLanguages.map(l => ({ id: l.id }))
+  };
+  delete sanitizedSettings.orchestration; // orchestration is NOT part of settings
+  structuredLog('INFO', 'Settings initialized', { settings: sanitizedSettings });
 
   try {
     const t = localStorage.getItem('ingestEnabled');
