@@ -121,10 +121,10 @@ export function getCurrentLogLevel() {
  * Output a structured log entry.
  * Routes through ring buffer to ensure single source of truth for all consumers.
  * @param {string} level - one of 'debug', 'info', 'warn', 'error'.
- * @param {string} text - the fully formatted log string (e.g., "[2025-10-22T...] INFO: message")
- * @param {Object} data - structured data object with metadata
+ * @param {Object|string} entry - structured log entry {timestamp, level, message, metadata, data} OR legacy formatted string
+ * @param {Object} [legacyData] - (deprecated) only used if entry is a string for backward compat
  */
-export function output(level, text, data = {}) {
+export function output(level, entry, legacyData = {}) {
   // Convert level to uppercase for comparison
   const upperLevel = level.toUpperCase();
   const numericLevel = LOG_LEVELS[upperLevel] || LOG_LEVELS.INFO;
@@ -132,17 +132,56 @@ export function output(level, text, data = {}) {
   // Respect log level filtering for ALL outputs
   if (numericLevel < currentLogLevel) return;
   
+  // Handle both new structured format and legacy string format
+  let logEntry, consoleText;
+  
+  if (typeof entry === 'object' && entry !== null && !Array.isArray(entry)) {
+    // New structured format from logging.js
+    const { timestamp, message, metadata = {}, data = {}, ingestionKey } = entry;
+    
+    logEntry = {
+      timestamp,
+      level: upperLevel,
+      message,
+      metadata,
+      data,
+      ingestionKey
+    };
+    
+    // Format for console output: compact but readable
+    // Don't embed filename:lineno here - browser console will add its own prefix anyway
+    consoleText = `[${timestamp}] ${upperLevel}: ${message}`;
+    
+    // Add metadata summary only if available (to minimize console clutter)
+    if (metadata.filename && metadata.lineno) {
+      consoleText += ` (${metadata.filename}:${metadata.lineno})`;
+    }
+  } else {
+    // Legacy string format (for backward compatibility)
+    consoleText = entry;
+    logEntry = {
+      timestamp: new Date().toISOString(),
+      level: upperLevel,
+      message: entry,
+      metadata: {},
+      data: legacyData
+    };
+  }
+  
   // ===== Add to ring buffer (single source of truth) =====
-  addToRingBuffer(upperLevel, text, data);
+  // Store the STRUCTURED entry, not the formatted string
+  addToRingBuffer(upperLevel, consoleText, logEntry);
   
   // ===== Output to browser console =====
+  // Only output the formatted text, let browser add its own location prefix
   const method = console[level] || console.log;
-  method(text);
+  method(consoleText);
 
   // ===== Notify dev panel callback (log-viewer.js) =====
   if (outputCallback) {
     try {
-      outputCallback(level, text);
+      // Pass formatted text for display, but callback could also use logEntry if needed
+      outputCallback(level, consoleText);
     } catch (e) {
       // Prevent callback errors from crashing the logger
       console.warn('Log output callback failed', e);

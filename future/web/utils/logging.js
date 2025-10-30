@@ -303,54 +303,52 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     const finalMessage = message;
     
     // Auto-generate metadata and merge with provided data (pass level and callStack for accurate source location)
-    const metadata = generateMetadata(level, callStack);
+    const sourceMetadata = generateMetadata(level, callStack);
     
-    // Add rich telemetry data for D1 ingestion, including traceId for correlation // R171025 the correlation is only for D1 ingestion? it might be usefull to have it at "Live logs"
-    const telemetryData = {
-      ...metadata,
+    // Combine caller metadata with provided data for ingest pipeline
+    // NOTE: Renamed from "telemetryData" to "ingestData" to:
+    // 1. Avoid browser ad-blockers (some block "telemetry" keywords)
+    // 2. Better reflect its purpose (data for analytics ingestion, not just telemetry)
+    const ingestData = {
+      ...sourceMetadata,
       ...data, // Allow overrides or additions
     };
     
     // Add traceId if available for log correlation
     if (traceId) {
-      telemetryData.traceId = traceId;
+      ingestData.traceId = traceId;
     }
     
     // Extract error info if available
     if (data.error && data.error instanceof Error) {
-      telemetryData.filename = data.error.fileName || '';
-      telemetryData.lineno = data.error.lineNumber || 0;
-      telemetryData.colno = data.error.columnNumber || 0;
-      telemetryData.stack = data.error.stack || '';
+      ingestData.filename = data.error.fileName || '';
+      ingestData.lineno = data.error.lineNumber || 0;
+      ingestData.colno = data.error.columnNumber || 0;
+      ingestData.stack = data.error.stack || '';
     }
     
-    const logEntry = { timestamp, level: level.toUpperCase(), message: finalMessage, data: telemetryData };
+    const logEntry = { timestamp, level: level.toUpperCase(), message: finalMessage, data: ingestData };
     
     // Add explicit ingestion category if provided
     if (persistAs) {
       logEntry.ingestionKey = persistAs;
     }
     
-    // Use core-logger to output formatted message
-    // Extract caller location if available for display
-    const callerInfo = telemetryData.filename && telemetryData.lineno 
-      ? ` ${telemetryData.filename}:${telemetryData.lineno}:${telemetryData.colno || 0}`
-      : '';
-    
-    let payload = '';
-    if (Object.keys(telemetryData).length) {
-      try {
-        payload = ' ' + safeStringify(telemetryData);
-      } catch (e) {
-        payload = ' [Unserializable data]';
-      }
-    }
-    // Pass structured data to core-logger so it's stored in ring buffer
-    output(level.toLowerCase(), `[${timestamp}] ${logEntry.level}: ${finalMessage}${callerInfo}${payload}`, {
+    // Use core-logger to output structured log entry
+    // Do NOT format here - let core-logger handle presentation
+    // This prevents duplication and allows different consumers to format appropriately
+    output(level.toLowerCase(), {
       timestamp,
+      level: logEntry.level,
       message: finalMessage,
-      callerInfo,
-      ...telemetryData
+      metadata: {
+        filename: ingestData.filename,
+        lineno: ingestData.lineno,
+        colno: ingestData.colno,
+        traceId: traceId || null
+      },
+      data: ingestData,
+      ingestionKey: persistAs || null
     });
     
     // Accessibility features (opt-in)
@@ -417,8 +415,8 @@ const defaultAdapter = {
       const message = typeof payload === 'string' ? payload : (payload && payload.message) || String(payload || '');
       const data = (payload && payload.data) || (typeof payload === 'object' ? payload : {});
       
-      // Ensure we have complete telemetry data (conditionally added based on log level)
-      const telemetryData = {
+      // Ensure we have complete ingest data (conditionally added based on log level)
+      const ingestData = {
         filename: payload?.filename || '',
         lineno: payload?.lineno || 0,
         colno: payload?.colno || 0,
@@ -427,7 +425,7 @@ const defaultAdapter = {
       };
       
       // structuredLog is synchronous; do not await a non-Promise to avoid misleading callers
-      structuredLog(level, message, telemetryData, true, true);
+      structuredLog(level, message, ingestData, true, true);
     } catch (err) {
       // Best-effort: avoid throwing from logger
       try { console.warn('logging.defaultAdapter.log failed', err); } catch (e) {}
