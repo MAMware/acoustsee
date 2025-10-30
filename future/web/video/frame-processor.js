@@ -1,5 +1,5 @@
 // filepath: future/web/video/frame-processor.js
-import { structuredLog } from '../utils/logging.js';
+import { structuredLog, shouldSample } from '../utils/logging.js';
 import { rgbaToY } from './videoframe-helper.js';
 import { getGridConfig } from './grids/grid-config.js';
 import { 
@@ -123,7 +123,7 @@ async function processFlowMode(frameData, width, height, state) {
           gridId: grid.id, 
           cuesCount: cues.length, 
           motionRegionsCount: movingRegions.length 
-        }, false, Math.random() < 0.05);
+        }, false, shouldSample('cueGeneration'));
       }
     }
     
@@ -151,11 +151,11 @@ function createCuesFromAudioParams(params, state) {
     // Threshold: 0.001 (1% of max intensity) allows very subtle motion
     // This prevents spurious audio but allows real motion detection
     if (intensity === 0 || intensity < 0.001) {
-      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', { intensity, threshold: 0.001 }, false, Math.random() < 0.05);
+      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', { intensity, threshold: 0.001 }, false, shouldSample('cueGeneration'));
       return [];
     }
     
-    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', { intensity, pan }, false, Math.random() < 0.05);
+    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', { intensity, pan }, false, shouldSample('cueGeneration'));
 
     // Create single cue with pan and intensity for Flow mode
     const cue = {
@@ -193,20 +193,11 @@ async function processWithMotionWorker(frameData, width, height, state) {
 
   try {
     // Use FrameConductor for Focus/Hybrid orchestration (Phase 3.1b)
+    // Phase 3.1b-Hotfix: Remove legacy format conversion — return conductor result directly
     const result = await frameConductor.processFrame(frameData, width, height, state);
     
-    // Convert conductor result to legacy motion worker format for compatibility
-    const movingRegions = result.result?.gridFlows?.flat()?.map(f => ({ 
-      x: 0, y: 0, intensity: f.mag * 10 
-    })) || [];
-    
-    const motionResults = {
-      ...result.result,
-      movingRegions,
-      textureGrid: result.result?.textureGrid || [],
-      objects: result.result?.objects || [],
-      inferredBPM: result.result?.inferredBPM || 100
-    };
+    // Return conductor result directly (no legacy format conversion)
+    const motionResults = result.result || { cues: [], textureGrid: [], objects: [], inferredBPM: 100 };
     
     // Dispatch state change events for compatibility with existing subscribers
     engine.dispatch('flowCuesReady', motionResults);
@@ -331,7 +322,7 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
   let frameCounter = 0;
   let isRunning = false;
   let lastFrameTime = 0;
-  const minFrameInterval = 33; // ~30fps target
+  const minFrameInterval = 66; // ~15fps target #is this const value in ms?, confirm R281025
   
   // Main frame capture loop
   async function captureFrame() {
@@ -347,8 +338,8 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
     try {
       // Update canvas if video element size changed
       if (canvas.width !== videoElement.videoWidth || canvas.height !== videoElement.videoHeight) {
-        canvas.width = videoElement.videoWidth || 640;
-        canvas.height = videoElement.videoHeight || 480;
+        canvas.width = videoElement.videoWidth || 320;
+        canvas.height = videoElement.videoHeight || 240;
         structuredLog('DEBUG', 'Canvas fallback: Video size changed', {
           width: canvas.width,
           height: canvas.height
@@ -498,7 +489,7 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
 
 /**
  * Initializes the modern, off-thread video processing pipeline.
- * This is the single, correct entry point for video processing.
+ * This is the single, correct entry point for video processing. //single? R281025
  */
 export async function initializeVideo(config) {
   _config = { ..._config, ...config };
@@ -537,7 +528,7 @@ export async function initializeVideo(config) {
     }
     
     // Only log video validation occasionally to reduce dev panel spam
-    if (Math.random() < 0.1) {
+    if (shouldSample('frameProcessing')) {
       structuredLog('DEBUG', 'initializeVideo: Video element validated', { 
         hasVideoElement: !!videoElement, 
         hasSrcObject: !!videoElement.srcObject,
@@ -785,7 +776,8 @@ export async function initializeVideo(config) {
       
       // Phase 3.1b: Hot-swap workers when mode changes via FrameConductor
       if (state.currentMode && frameConductor) {
-        // Check if mode has actually changed by comparing with conductor's current mode
+        // Mode change detection is efficient (getMetrics is O(1))
+        // Only calls initializeForMode if mode actually changed (cached comparison)
         const metrics = frameConductor.getMetrics?.();
         const currentConductorMode = metrics?.currentMode;
         if (currentConductorMode !== state.currentMode) {
@@ -805,7 +797,8 @@ export async function initializeVideo(config) {
       
       // Check for depth path changes
       if (state.depthPath && state.depthPath !== previousDepthPath) {
-        // Depth path updates are now handled via FrameConductor if available
+        // "FrameConductor updates its internal depth worker state" via the updateDepthPath 
+        // method (semantic: pass new path config to depth computation)
         if (frameConductor && frameConductor.updateDepthPath) {
           frameConductor.updateDepthPath(state.depthPath);
         } else if (depthWorker) {
@@ -815,7 +808,9 @@ export async function initializeVideo(config) {
         previousDepthPath = state.depthPath;
       }
       
-      // Grid configuration is embedded in every frame message (stateless pattern)
+      // Grid configuration IS embedded in frame message (stateless by design)
+      // This keeps frame-processor lean (no per-frame grid state) and lets frame-provider
+      // stream independent of orchestration concerns. See docs: "stateless pattern"
       if (state.currentMode) {
         structuredLog('DEBUG', 'Operating mode active', { mode: state.currentMode });
       }

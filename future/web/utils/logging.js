@@ -54,8 +54,18 @@ const loggingConfig = {
   enableThrottling: true, // Global throttling enable/disable
 };
 
-// Export config for runtime control
-export { loggingConfig };
+// Phase 3.1b-Hotfix: Sampling rates for different event types (configurable from dev-panel)
+// Use these instead of hardcoded Math.random() < 0.1 values scattered throughout code
+const SAMPLING_RATES = {
+  frameProcessing: 0.01,      // 1% of frames (very high frequency)
+  workerProcessing: 0.05,     // 5% of worker events
+  audioSynthesis: 0.1,        // 10% of audio synthesis events
+  modeChanges: 0.5,           // 50% of mode changes (less frequent)
+  cueGeneration: 0.1,         // 10% of cue generation
+};
+
+// Export configs for runtime control (e.g., from dev-panel)
+export { loggingConfig, SAMPLING_RATES };
 
 // Auto-generate metadata from stack trace (conditional based on log level)
 function generateMetadata(level = 'INFO', callStack = '') {
@@ -134,6 +144,23 @@ export function setSampleRate(rate) {
   } else {
     structuredLog('WARN', 'Invalid sample rate attempted', { rate });
   }
+}
+
+// Phase 3.1b-Hotfix: Helper to check if an event should be sampled (replaces hardcoded Math.random() < 0.1)
+// Usage: if (shouldSample('cueGeneration')) { log(...) }
+export function shouldSample(eventType = 'frameProcessing') {
+  const rate = SAMPLING_RATES[eventType] ?? 0.1; // Default to 10% if unknown event type
+  return Math.random() < rate;
+}
+
+// Helper to set a specific sampling rate for an event type (callable from dev-panel)
+export function setSamplingRate(eventType, rate) {
+  if (typeof rate !== 'number' || rate < 0 || rate > 1) {
+    structuredLog('WARN', 'Invalid sampling rate for event type', { eventType, rate });
+    return;
+  }
+  SAMPLING_RATES[eventType] = rate;
+  structuredLog('INFO', 'Sampling rate updated', { eventType, rate });
 }
 
 /**

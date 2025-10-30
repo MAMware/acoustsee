@@ -1,7 +1,7 @@
 // filepath: future/web/core/commands/sonification-commands.js
 // MODIFIED - Calculates duration and dispatches benchmark log. /R24925: Validate and clarify
 
-import { structuredLog } from '../../utils/logging.js';
+import { structuredLog, shouldSample } from '../../utils/logging.js';
 
 /**
  * Registers the command handler that bridges the video and audio pipelines.
@@ -26,10 +26,10 @@ export function registerSonificationCommands(engine) {
     }
 
     const cuesToProcess = payload.cues;
-    structuredLog('DEBUG', 'sonification: audioCuesReady handler received', { cuesCount: cuesToProcess ? cuesToProcess.length : 'undefined', isArray: Array.isArray(cuesToProcess) }, false, Math.random() < 0.1);
+    structuredLog('DEBUG', 'sonification: audioCuesReady handler received', { cuesCount: cuesToProcess ? cuesToProcess.length : 'undefined', isArray: Array.isArray(cuesToProcess) }, false, shouldSample('cueGeneration'));
 
     if (!cuesToProcess || !Array.isArray(cuesToProcess) || cuesToProcess.length === 0) {
-      structuredLog('DEBUG', 'sonification: No cues to process', { cuesToProcess: !!cuesToProcess, isArray: Array.isArray(cuesToProcess), length: cuesToProcess?.length }, false, Math.random() < 0.1);
+      structuredLog('DEBUG', 'sonification: No cues to process', { cuesToProcess: !!cuesToProcess, isArray: Array.isArray(cuesToProcess), length: cuesToProcess?.length }, false, shouldSample('cueGeneration'));
       return; // Nothing to play
     }
     
@@ -37,7 +37,7 @@ export function registerSonificationCommands(engine) {
     // the initialized API attached to the engine to ensure we use the active
     // AudioContext and oscillator pool.
     if (engine.audioApi && typeof engine.audioApi.playCues === 'function') {
-      structuredLog('DEBUG', 'audioCuesReady -> invoking playCues', { hasAudioApi: !!engine.audioApi, playCuesIsFunction: typeof engine.audioApi.playCues, cuesCount: cuesToProcess.length }, false, Math.random() < 0.1);
+      structuredLog('DEBUG', 'audioCuesReady -> invoking playCues', { hasAudioApi: !!engine.audioApi, playCuesIsFunction: typeof engine.audioApi.playCues, cuesCount: cuesToProcess.length }, false, shouldSample('cueGeneration'));
       engine.audioApi.playCues(cuesToProcess);
     } else {
       structuredLog('ERROR', 'Audio API not initialized on engine. Cannot play cues.', { hasAudioApi: !!engine.audioApi, hasPlayCues: engine.audioApi ? typeof engine.audioApi.playCues : 'N/A' });

@@ -50,13 +50,23 @@ import { getWorkersForMode, getTotalLatencyBudget } from './workers/worker-manif
  * 
  * Created once at app startup; reused for all frames in current mode.
  * On mode change, call initializeForMode(newMode) to hot-swap workers.
+ * 
+ * IMPORTANT: Latency Targets are DIAGNOSTIC SLAs, not hard timeouts.
+ * - latencyTargetMs from worker-manifest.js helps identify bottlenecks
+ * - If worker exceeds target, we log it but continue processing (no crash)
+ * - Flow mode targets <50ms; Focus targets <200ms; Hybrid targets <10ms
+ * 
+ * Phase 3.1b-Hotfix: Mode switching is now graceful via #isTransitioning flag.
+ * - When switching modes, initializeForMode sets #isTransitioning = true
+ * - This causes processFrame() to return empty results instead of crashing
+ * - Prevents audio dropout during the ~50-200ms worker swap window
  */
 export class FrameConductor {
   /**
    * @param {Object} config - Configuration
-   * @param {number} config.flowTimeout - Max time for Flow mode worker (default 100ms)
-   * @param {number} config.focusTimeout - Max time for Focus mode worker (default 200ms)
-   * @param {number} config.hybridTimeout - Max time for Hybrid mode worker (default 10ms)
+   * @param {number} config.flowTimeout - Diagnostic SLA for Flow mode (default 100ms, not a hard timeout)
+   * @param {number} config.focusTimeout - Diagnostic SLA for Focus mode (default 200ms, not a hard timeout)
+   * @param {number} config.hybridTimeout - Diagnostic SLA for Hybrid mode (default 10ms, not a hard timeout)
    * @param {boolean} config.logMetrics - Whether to log timing metrics (default true)
    * @param {boolean} config.logFrames - Whether to sample-log frame processing (default true)
    */
@@ -128,9 +138,13 @@ export class FrameConductor {
       return;
     }
 
+    // Phase 3.1b-hotfix: Mark transition start (prevents frame processing during switch)
+    // This prevents audio dropout by returning empty results instead of crashes
+    this.#isTransitioning = true;
+
     // Cleanup old workers
     if (this.#currentMode !== null) {
-      structuredLog('DEBUG', 'FrameConductor: cleaning up old mode workers', {
+      structuredLog('DEBUG', 'FrameConductor: cleaning up old mode workers (transition start)', {
         oldMode: this.#currentMode,
         oldWorkerCount: this.#workers.size,
       });
@@ -162,6 +176,9 @@ export class FrameConductor {
     // Update state
     this.#currentMode = mode;
     this.#currentChain = chain;
+
+    // Phase 3.1b-hotfix: Mark transition complete (resume frame processing)
+    this.#isTransitioning = false;
 
     const totalLatencyBudget = getTotalLatencyBudget(mode);
     structuredLog('INFO', 'FrameConductor: mode initialized', {
@@ -309,6 +326,18 @@ export class FrameConductor {
         error: error.message,
       });
       throw error;
+    }
+
+    // Phase 3.1b-hotfix: Check transition state
+    // During mode switch, return empty result instead of crashing
+    // This prevents audio dropout (silence is better than error)
+    if (this.#isTransitioning) {
+      return {
+        type: 'processingResult',
+        capabilities: [],
+        result: { empty: true, reason: 'conductor_transitioning' },
+        timing: { totalMs: 0 },
+      };
     }
 
     if (!this.#currentChain || this.#currentChain.length === 0) {
@@ -567,6 +596,7 @@ export class FrameConductor {
   #workers = new Map();
   #currentMode = null;
   #currentChain = null;
+  #isTransitioning = false;  // Phase 3.1b-hotfix: Graceful mode transition to prevent audio dropout
   #timingMetrics = {};
 }
 

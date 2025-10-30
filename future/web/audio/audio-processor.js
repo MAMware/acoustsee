@@ -1,6 +1,6 @@
 // File: web/audio/audio-processor.js
 
-import { structuredLog } from '../utils/logging.js';
+import { structuredLog, shouldSample } from '../utils/logging.js';
 import { soundProfileManifest } from './sound-profiles.js'; // <-- NEW IMPORT
 import { 
   executeCriticalOperation, 
@@ -329,7 +329,7 @@ function getOscillator() {
     oscObj.state = 'active'; // Mark as now being used
     
     // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
-    if (Math.random() < 0.01) {
+    if (shouldSample('frameProcessing')) {
       const freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
       structuredLog('DEBUG', 'getOscillator: Retrieved fresh oscillator from pool', { 
         freshCount,
@@ -407,7 +407,7 @@ export function playCues(cues) { // The argument is now just the cues array
   } catch (e) { /* best-effort logging */ }
 
   // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
-  if (Math.random() < 0.01) {
+  if (shouldSample('audioSynthesis')) {
     structuredLog('DEBUG', 'playCues called', { 
       hasContext: !!context, 
       contextState: context?.state,
@@ -460,9 +460,9 @@ export function playCues(cues) { // The argument is now just the cues array
   }
 
   // The rest of the function remains the same, executing the synths.
-  for (const [playFunction, notes] of notesBySynth.entries()) {
+  for (const [playFunction, notes] of notesBySynth.entries()) { // TODO R291025 Clarify "notesBySynth" implementatio we might not have proper documentation, check audio pipeline README.md and confirm.
     try {
-      structuredLog('DEBUG', 'playCues: Calling synth function', { notesCount: notes.length, synthName: playFunction.name || 'anonymous' }, false, Math.random() < 0.1);
+      structuredLog('DEBUG', 'playCues: Calling synth function', { notesCount: notes.length, synthName: playFunction.name || 'anonymous' }, false, shouldSample('audioSynthesis'));
       const synthContext = { 
         audioContext: context, 
         getOscillator, 
@@ -504,7 +504,7 @@ export function playCues(cues) { // The argument is now just the cues array
       const panner = createPannerNode(context);
       oscillatorPool.push({ osc, gain, panner, state: 'fresh' });
     }
-    if (Math.random() < 0.1) { // Sample this log
+    if (shouldSample('audioSynthesis')) { // Sample this log
       structuredLog('DEBUG', 'Refilled oscillator pool', { 
           added: toAdd, 
           newTotalSize: oscillatorPool.length,
@@ -591,7 +591,7 @@ export function registerAudioListeners(engine) {
       structuredLog('DEBUG', 'flowCuesReady: received flow cues', { 
         hasGridFlows: !!flowCues.gridFlows, 
         inferredBPM: flowCues.inferredBPM 
-      }, false, Math.random() < 0.1);
+      }, false, shouldSample('audioSynthesis'));
       
       // Convert motion regions to audio cues using soundProfileManifest
       const cues = [];
@@ -619,7 +619,7 @@ export function registerAudioListeners(engine) {
       structuredLog('DEBUG', 'depthCuesReady: received depth cues', { 
         hasGridDepths: !!depthCues.gridDepths,
         mode: depthCues.mode 
-      }, false, Math.random() < 0.1);
+      }, false, shouldSample('audioSynthesis'));
       
       // Convert depth to audio using HRTF for spatial rendering
       const cues = [];

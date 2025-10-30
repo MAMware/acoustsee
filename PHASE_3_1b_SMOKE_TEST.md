@@ -1,6 +1,13 @@
-# Phase 3.1b Smoke Test Checklist
+# Phase 3.1b Smoke Test Checklist (DEPRECATED - USE REVISED VERSION)
 
-// R291025 This document as been review by MAMware and is cosidered UNFIT since it does not pass quality checks. E. g.: is full of ambiguity and mentions features that are not present at AcoustSee, @Copilot please improve.
+**⚠️ DEPRECATED**: This document has been reviewed and is no longer used.  
+**✅ USE INSTEAD**: See `PHASE_3_1b_SMOKE_TEST_REVISED.md` for the rewritten version.
+
+**Old Document Note**: The original document was marked UNFIT for quality issues including:
+- Ambiguous language ("or similar")
+- References to non-existent features
+- Vague pass/fail criteria
+- Phase 3.1b-Hotfix: Removed and replaced with concrete, unambiguous test suite.
 
 
 **Status**: 🔄 **READY FOR TESTING**  

@@ -1,10 +1,11 @@
 // File: web/core/engine.js
+// R291025 if unused import are not needed anymore, remove.
 // R24925: A cleanup is observerd as needed 
 // R29925: too much leftovers, clean ASAP
 // Minimal headless engine: owns state and exposes a dispatch API for commands.
 
 import { settings } from './state.js';
-import { structuredLog, throttleError } from '../utils/logging.js';
+import { structuredLog, throttleError, shouldSample } from '../utils/logging.js';
 import logger from '../utils/logging.js';
 import { getText, speakText, announceMessage } from '../utils/utils.js'; // <-- REDUCED IMPORTS
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive, startMic, stopMic } from './media-controller.js';
@@ -183,11 +184,11 @@ export function createEngine() {
       // Performance commands are now handled by ingest system, so reduce their direct logging
       let shouldLog = false;
       if (isPerformanceCommand) {
-        shouldLog = Math.random() < 0.05; // Only 5% chance for performance commands (ingest handles them)
+        shouldLog = shouldSample('workerProcessing'); // Only 5% chance for performance commands (ingest handles them)
       } else if (isHighFrequencyCommand) {
         shouldLog = Math.random() < 0.02; // Only 2% chance for high-frequency commands
       } else {
-        shouldLog = Math.random() < 0.1; // 10% chance for other commands
+        shouldLog = shouldSample('audioSynthesis'); // 10% chance for other commands
       }
       
       if (shouldLog) {

@@ -55,11 +55,33 @@ This directory contains all logic for video capture, processing, and analysis. T
 - Routes results to the active Grid's `mapFunction`
 - Dispatches the final `cues` array via `'audioCuesReady'` event
 
+**Mode-Specific Behavior:**
+
+| Mode | Specialists Used | Grid Purpose | Output Type |
+|------|-----------------|--------------|-------------|
+| **Flow** | `motion-worker.js` | Map spatial motion → soundscape | Textural, ambient cues |
+| **Focus** | (Future: `segment-worker.js`, `depth-worker.js`) | Map semantic objects → sonic signatures | Discrete, recognizable cues |
+
 **Key Points:**
 - The Orchestrator is STATELESS - it doesn't remember previous frames
+- We should not make musical/sound(cues) decisions - that's the Grid's job
+- We do not create the the cues, we delegate to the Grid
 - Worker chains are now defined in `workers/worker-manifest.js` (not hardcoded)
 - Mode changes trigger automatic worker hot-swap via `FrameConductor.initializeForMode(newMode)`
-- Adding new workers: just update the manifest, no code changes needed
+- Adding new workers: just update the manifest, no code changes needed.
+  - **Adding Workers Guide:** Edit `workers/worker-manifest.js` to add a new worker entry:
+    ```javascript
+    // workers/worker-manifest.js
+    const WORKER_MANIFEST = {
+      flow: [
+        { worker: new Worker('workers/motion-detector.js'), timeout: 50, name: 'motion' },
+        // Add new worker here:
+        // { worker: new Worker('workers/my-custom-processor.js'), timeout: 30, name: 'custom' }
+      ]
+    };
+    ```
+  - FrameConductor reads this manifest on `initializeForMode()` and loads workers in sequence.
+  - No code changes needed in `frame-conductor.js` or `frame-processor.js`.
 
 **Lifecycle:**
 ```javascript
@@ -96,7 +118,9 @@ disposeVideo(); // Terminates all workers
 
 **API:**
 ```javascript
-// Create once at startup
+// Create once at startup (latency budgets are diagnostic SLAs, not hard limits)
+// These timeouts are configurable from dev-panel:
+// Use `engine.dispatch('updateOrchestratorConfig', { flowTimeout: 100, focusTimeout: 200 })`
 const conductor = new FrameConductor({ 
   flowTimeout: 100, 
   focusTimeout: 200, 
@@ -114,7 +138,7 @@ const metrics = conductor.getMetrics();
 console.log(metrics.currentMode, metrics.lastFrameTimeMs);
 
 // Hot-swap to new mode
-await conductor.initializeForMode('focus'); // Unloads Flow workers, loads Focus workers
+await conductor.initializeForMode('focus'); // Unloads Flow workers, loads Focus workers 
 
 // Cleanup on shutdown
 conductor.dispose(); // Terminates all workers
