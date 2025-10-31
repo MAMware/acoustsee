@@ -820,7 +820,8 @@ export function initializeDevPanel(arg1, arg2) {
     if (fpsModeSelect) {
       fpsModeSelect.addEventListener('change', (e) => {
         const enabled = e.target.value === 'auto';
-        engine.dispatch('setAutoFps', { enabled });
+        const traceId = generateTraceId ? generateTraceId() : null;
+        engine.dispatch('setAutoFps', { enabled }, { traceId });
       });
     }
     if (gridTypeSelect) {
@@ -831,17 +832,21 @@ export function initializeDevPanel(arg1, arg2) {
         const selectedIndex = e.target.selectedIndex;
         const selectedOption = e.target.options[selectedIndex];
         
+        // Generate traceId for user action
+        const traceId = generateTraceId ? generateTraceId() : null;
+        
         structuredLog('DEBUG', 'Grid dropdown changed', {
           selectedValue,
           selectedIndex,
           optionsCount,
           optionValue: selectedOption?.value,
-          optionText: selectedOption?.textContent
+          optionText: selectedOption?.textContent,
+          traceId
         });
         
         const payloadToSend = { gridType: selectedValue };
-        structuredLog('DEBUG', 'About to dispatch setGridType', { payload: payloadToSend });
-        engine.dispatch('setGridType', payloadToSend);
+        structuredLog('DEBUG', 'About to dispatch setGridType', { payload: payloadToSend, traceId });
+        engine.dispatch('setGridType', payloadToSend, { traceId });
       });
     }
     if (synthEngineSelect) {
@@ -852,25 +857,30 @@ export function initializeDevPanel(arg1, arg2) {
         const selectedIndex = e.target.selectedIndex;
         const selectedOption = e.target.options[selectedIndex];
         
+        // Generate traceId for user action
+        const traceId = generateTraceId ? generateTraceId() : null;
+        
         structuredLog('DEBUG', 'Synth dropdown changed', {
           selectedValue,
           selectedIndex,
           optionsCount,
           optionValue: selectedOption?.value,
-          optionText: selectedOption?.textContent
+          optionText: selectedOption?.textContent,
+          traceId
         });
         
         const payloadToSend = { synthesisEngine: selectedValue };
-        structuredLog('DEBUG', 'About to dispatch setSynthEngine', { payload: payloadToSend });
-        engine.dispatch('setSynthEngine', payloadToSend);
+        structuredLog('DEBUG', 'About to dispatch setSynthEngine', { payload: payloadToSend, traceId });
+        engine.dispatch('setSynthEngine', payloadToSend, { traceId });
       });
     }
 
     if (modeSelect) {
       modeSelect.addEventListener('change', (e) => {
         const selectedValue = e.target.value;
-        structuredLog('DEBUG', 'Mode dropdown changed', { mode: selectedValue });
-        engine.dispatch('setMode', { mode: selectedValue });
+        const traceId = generateTraceId ? generateTraceId() : null;
+        structuredLog('DEBUG', 'Mode dropdown changed', { mode: selectedValue, traceId });
+        engine.dispatch('setMode', { mode: selectedValue }, { traceId });
       });
     }
     
@@ -888,8 +898,9 @@ export function initializeDevPanel(arg1, arg2) {
       motionThresholdSlider.addEventListener('input', (e) => {
         const value = parseInt(e.target.value, 10);
         if (motionThresholdValue) motionThresholdValue.textContent = value;
-        structuredLog('DEBUG', 'Motion threshold slider changed', { value });
-        engine.dispatch('setMotionThreshold', { motionThreshold: value });
+        const traceId = generateTraceId ? generateTraceId() : null;
+        structuredLog('DEBUG', 'Motion threshold slider changed', { value, traceId });
+        engine.dispatch('setMotionThreshold', { motionThreshold: value }, { traceId });
       });
     }
     
@@ -897,18 +908,20 @@ export function initializeDevPanel(arg1, arg2) {
     if (ingestEnabledCheckbox) {
       ingestEnabledCheckbox.addEventListener('change', (e) => {
         console.log('=== INGEST ENABLED CHECKBOX CHANGED ===');
-        structuredLog('DEBUG', 'Ingest enabled changed', { checked: e.target.checked });
-        engine.dispatch('setIngestEnabled', { enabled: e.target.checked });
+        const traceId = generateTraceId ? generateTraceId() : null;
+        structuredLog('DEBUG', 'Ingest enabled changed', { checked: e.target.checked, traceId });
+        engine.dispatch('setIngestEnabled', { enabled: e.target.checked }, { traceId });
       });
     }
     
     if (batteryOptimizationCheckbox) {
       batteryOptimizationCheckbox.addEventListener('change', (e) => {
         console.log('=== BATTERY OPTIMIZATION CHECKBOX CHANGED ===');
-        structuredLog('DEBUG', 'Battery optimization changed', { checked: e.target.checked });
+        const traceId = generateTraceId ? generateTraceId() : null;
+        structuredLog('DEBUG', 'Battery optimization changed', { checked: e.target.checked, traceId });
         engine.dispatch('setIngestPreferences', { 
           preferences: { useIdleCallback: e.target.checked }
-        });
+        }, { traceId });
       });
     }
     
@@ -916,13 +929,15 @@ export function initializeDevPanel(arg1, arg2) {
       ingestRateSelect.addEventListener('change', (e) => {
         console.log('=== INGEST RATE SELECT CHANGED ===');
         const rate = parseInt(e.target.value);
+        const traceId = generateTraceId ? generateTraceId() : null;
         structuredLog('DEBUG', 'Ingest rate changed', { 
           selectedValue: e.target.value,
-          parsedRate: rate 
+          parsedRate: rate,
+          traceId
         });
         engine.dispatch('setIngestPreferences', { 
           preferences: { maxEventsPerSecond: rate }
-        });
+        }, { traceId });
       });
     }
     

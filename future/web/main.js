@@ -354,7 +354,7 @@ export async function init() {
 
     if (DOM.powerOn) {
       // Helper: unlock audio and initialize audio subsystems inside user gesture
-      async function handleAudioUnlock(event) {
+      async function handleAudioUnlock(event, traceId) {
         // Show initializing feedback
         const initLabel = await getText('powerOn.initializing', {}, settings).catch(() => 'Initializing...');
         if (DOM.powerOn.querySelector('.power-label')) {
@@ -375,6 +375,7 @@ export async function init() {
           engine.audioApi = audioApi;
           // Register audio listeners for object and BPM cues
           registerAudioListeners(engine);
+          structuredLog('INFO', 'main', 'Audio system initialized', { traceId });
         } catch (initErr) {
           // Handle critical audio system failures appropriately
           if (initErr instanceof AccessibilityError) {
@@ -385,37 +386,39 @@ export async function init() {
                 error: initErr.message,
                 code: initErr.code,
                 context: initErr.context,
-                troubleshooting: 'Audio is required for visual-to-audio conversion'
+                troubleshooting: 'Audio is required for visual-to-audio conversion',
+                traceId
               }
             );
             throw initErr; // Re-throw to prevent incomplete initialization
           } else {
-            structuredLog('ERROR', 'initializeAudio failed', { error: initErr?.message || String(initErr) });
+            structuredLog('ERROR', 'initializeAudio failed', { error: initErr?.message || String(initErr), traceId });
             throw initErr;
           }
         }
       }
 
       // Helper: show main UI and optional debug panel R17925 why optional debug panel? dont we have a ?debug=true param to show it?
-      async function transitionToMainUI() {
+      async function transitionToMainUI(traceId) {
         if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
         if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';
         DOM.powerOn.setAttribute('aria-pressed', 'true');
         const onMsg = await getText('audioOn', {}, settings).catch(() => 'Audio enabled');
   speakText(settings, onMsg, 'tts');
-        try { trackFeatureUse('power-on', { success: true }); } catch (e) {}
+        try { trackFeatureUse('power-on', { success: true, traceId }); } catch (e) {}
 
         try {
           // Dev panel is initialized at startup when ?debug=true. No autoOpen needed here.
           // No direct action required here; the Dev Panel manages its own visibility
           // via the engine lifecycle event. main.js should not assume UI state.
         } catch (e) { console.warn('showing debugUI failed', e); }
+        structuredLog('INFO', 'main', 'Transitioned to main UI', { traceId });
       }
 
       // Helper: centralize error handling and UI reset for power-on failures
-      async function handlePowerOnError(error, originalLabel) {
-        addSessionError({ message: 'power-on-failed', error: error?.message || String(error) });
-        structuredLog('ERROR', 'Power on handler failed', { error: error?.message || String(error) });
+      async function handlePowerOnError(error, originalLabel, traceId) {
+        addSessionError({ message: 'power-on-failed', error: error?.message || String(error), traceId });
+        structuredLog('ERROR', 'Power on handler failed', { error: error?.message || String(error), traceId });
         const failMsg = await getText('audio.unavailable', {}, settings).catch(() => 'Audio unavailable. Tap to try again.');
         announceMessage(failMsg);
   speakText(settings, failMsg, 'tts');
@@ -431,13 +434,18 @@ export async function init() {
         ev.preventDefault();
         DOM.powerOn.disabled = true;
         const origLabel = DOM.powerOn.querySelector('.power-label')?.textContent || DOM.powerOn.textContent || 'Power On';
+        
+        // Generate traceId for user action (power-on)
+        const traceId = generateTraceId();
+        structuredLog('INFO', 'main', 'Power-on button clicked', { traceId });
+        
         try {
-          await handleAudioUnlock(ev);
+          await handleAudioUnlock(ev, traceId);
             // Emit global lifecycle event so UI modules can self-activate
-            try { engine.emit && engine.emit('app:poweredOn'); } catch (e) { structuredLog('WARN', 'engine.emit failed', { error: e?.message }); }
-            await transitionToMainUI();
+            try { engine.emit && engine.emit('app:poweredOn', { traceId }); } catch (e) { structuredLog('WARN', 'engine.emit failed', { error: e?.message, traceId }); }
+            await transitionToMainUI(traceId);
         } catch (err) {
-          await handlePowerOnError(err, origLabel);
+          await handlePowerOnError(err, origLabel, traceId);
         } finally {
           try { window.__acoustseePowerGesture = false; } catch (e) {}
         }
