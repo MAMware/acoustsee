@@ -41,7 +41,7 @@
  * - Structured logging for debugging
  */
 
-import { structuredLog } from '../utils/logging.js';
+import { structuredLog, throttleError } from '../utils/logging.js';
 import { WorkerContract } from './workers/worker-contract.js';
 import { getWorkersForMode, getTotalLatencyBudget } from './workers/worker-manifest.js';
 
@@ -410,10 +410,20 @@ export class FrameConductor {
         });
       } catch (error) {
         this.#timingMetrics.totalErrorsEncountered += 1;
-        structuredLog('ERROR', `FrameConductor: ${workerConfig.name} error`, {
-          workerName: workerConfig.name,
-          error: error.message,
+        
+        // Throttle worker errors to prevent log spam (first occurrence + every 50th)
+        const throttle = throttleError(error, { 
+          key: `worker:${workerConfig.name}:${error.message}`,
+          sampleEvery: 50 
         });
+        
+        if (throttle.log) {
+          structuredLog('ERROR', `FrameConductor: ${workerConfig.name} error`, {
+            workerName: workerConfig.name,
+            error: error.message,
+            occurrences: throttle.occurrences,
+          });
+        }
         // Continue with current input (graceful degradation)
       }
     }
