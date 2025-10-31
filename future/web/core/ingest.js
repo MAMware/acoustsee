@@ -130,4 +130,139 @@ export function pingIngest() {
   }
 }
 
+/**
+ * Send enriched analytics event with traceId correlation support.
+ * This is called by event-bus-analytics.js to forward events to D1.
+ * 
+ * @param {object} event - Event object from EventBus
+ * @param {string} event.traceId - TraceId for correlation
+ * @param {string} event.type - Event type (log, command, error)
+ * @param {string} event.category - Event category (INFO, DEBUG, etc.)
+ * @param {number} event.timestamp - Unix timestamp (ms)
+ * @param {object} event.data - Event payload
+ */
+export async function sendToUnifiedAnalytics(event) {
+  if (!shouldSendIngest()) {
+    return;
+  }
+
+  try {
+    // Extract action timestamp from traceId (first 13 chars are milliseconds)
+    let actionTimestamp = null;
+    if (event.traceId && !event.traceId.startsWith('frame-')) {
+      const timestampStr = event.traceId.split('-')[0];
+      actionTimestamp = parseInt(timestampStr, 10);
+    }
+
+    // Determine action type from event data
+    const actionType = determineActionType(event);
+
+    // Get device type from capabilities
+    const deviceType = getDeviceType();
+
+    // Get current mode from state
+    const mode = getCurrentMode();
+
+    // Get session ID (or generate one)
+    const sessionId = getSessionId();
+
+    const payload = {
+      type: 'analytics', // Routes to unified_analytics table
+      trace_id: event.traceId || null,
+      session_id: sessionId,
+      timestamp: Math.floor(event.timestamp / 1000), // Convert ms to seconds
+      action_timestamp: actionTimestamp,
+      event_type: event.type,
+      category: event.category,
+      action_type: actionType,
+      device_type: deviceType,
+      mode: mode,
+      message: event.data?.message || null,
+      data: event.data,
+      filename: event.data?.filename || null,
+      lineno: event.data?.lineno || null,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+    };
+
+    await fetch(INGEST_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error('Unified analytics send failed:', err);
+  }
+}
+
+// --- Helper Functions ---
+
+function determineActionType(event) {
+  // Map event data to human-readable action types
+  const message = event.data?.message || '';
+  const category = event.category || '';
+
+  if (message.includes('Synth') || message.includes('synth')) return 'synth_change';
+  if (message.includes('Grid') || message.includes('grid')) return 'grid_change';
+  if (message.includes('Mode') || message.includes('mode')) return 'mode_change';
+  if (message.includes('Power') || message.includes('power')) return 'power_on';
+  if (message.includes('Camera') || message.includes('camera')) return 'camera_action';
+  if (message.includes('Motion threshold')) return 'threshold_change';
+  if (message.includes('Ingest')) return 'analytics_setting';
+  if (category === 'audioCuesReady') return 'audio_cues';
+  if (event.type === 'error') return 'error';
+  
+  return event.type; // Fallback to event type
+}
+
+function getDeviceType() {
+  try {
+    const device = deviceSummary();
+    if (device.isMobile) return 'mobile';
+    if (device.isTablet) return 'tablet';
+    return 'desktop';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+function getCurrentMode() {
+  try {
+    return settings?.mode || 'unknown';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+// Session ID management (persists across page reloads)
+let sessionId = null;
+function getSessionId() {
+  if (sessionId) return sessionId;
+  
+  try {
+    // Try to get from sessionStorage (persists across page reloads in same tab)
+    if (typeof sessionStorage !== 'undefined') {
+      sessionId = sessionStorage.getItem('acoustsee_session_id');
+      if (!sessionId) {
+        sessionId = generateSessionId();
+        sessionStorage.setItem('acoustsee_session_id', sessionId);
+      }
+      return sessionId;
+    }
+  } catch (e) {
+    // Fallback if sessionStorage not available
+  }
+  
+  sessionId = generateSessionId();
+  return sessionId;
+}
+
+function generateSessionId() {
+  // Generate short session ID: timestamp + random
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${random}`;
+}
+
+
 
