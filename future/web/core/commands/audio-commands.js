@@ -9,7 +9,8 @@ export function registerAudioCommands(engine) {
   const { registerCommandHandler } = engine;
 
   // Play cues handler - invokes audio subsystem to render cues
-  registerCommandHandler('audioPlayCues', ({ state: s, payload }) => {
+  registerCommandHandler('audioPlayCues', ({ state: s, payload, metadata }) => {
+    const traceId = metadata?.traceId;
     try {
       const cues = payload?.cues || [];
       if (!Array.isArray(cues) || cues.length === 0) return { played: false };
@@ -17,12 +18,12 @@ export function registerAudioCommands(engine) {
       if (api && typeof api.playCues === 'function') {
         api.playCues(cues);
       } else {
-        structuredLog('WARN', 'audioPlayCues handler failed: audioApi not initialized');
+        structuredLog('WARN', 'audioPlayCues handler failed: audioApi not initialized', {}, { traceId });
         return { played: false };
       }
       return { played: true, count: cues.length };
     } catch (e) {
-      structuredLog('WARN', 'audioPlayCues handler failed', { error: e?.message || String(e) });
+      structuredLog('WARN', 'audioPlayCues handler failed', { error: e?.message || String(e) }, { traceId });
       try { logger.logError && logger.logError(e); } catch (_) {}
       return { played: false };
     }

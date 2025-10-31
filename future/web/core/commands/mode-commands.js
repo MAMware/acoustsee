@@ -8,46 +8,48 @@ import { structuredLog } from '../../utils/logging.js';
 export function registerModeCommands(engine) {
   const { registerCommandHandler } = engine;
   
-  registerCommandHandler('setMode', ({ payload }) => {
+  registerCommandHandler('setMode', ({ payload, metadata }) => {
+    const traceId = metadata?.traceId;
     const { mode } = payload;
     const validModes = ['flow', 'focus'];
     if (!validModes.includes(mode)) {
-      structuredLog('WARN', 'Invalid mode requested', { mode, validModes });
+      structuredLog('WARN', 'Invalid mode requested', { mode, validModes }, { traceId });
       return;
     }
     
     const currentState = engine.getState();
     if (currentState.currentMode === mode) {
-      structuredLog('DEBUG', 'Mode already set', { mode });
+      structuredLog('DEBUG', 'Mode already set', { mode }, { traceId });
       return;
     }
     
     structuredLog('INFO', 'Switching operating mode', { 
       from: currentState.currentMode, 
       to: mode 
-    });
+    }, { traceId });
     
     engine.setState({ currentMode: mode });
   });
   
-  registerCommandHandler('setDepthPath', ({ payload }) => {
+  registerCommandHandler('setDepthPath', ({ payload, metadata }) => {
+    const traceId = metadata?.traceId;
     const { path } = payload;
     const validPaths = ['pseudo', 'cnn'];
     if (!validPaths.includes(path)) {
-      structuredLog('WARN', 'Invalid depth path requested', { path, validPaths });
+      structuredLog('WARN', 'Invalid depth path requested', { path, validPaths }, { traceId });
       return;
     }
     
     const currentState = engine.getState();
     if (currentState.depthPath === path) {
-      structuredLog('DEBUG', 'Depth path already set', { path });
+      structuredLog('DEBUG', 'Depth path already set', { path }, { traceId });
       return;
     }
     
     structuredLog('INFO', 'Switching depth estimation path', { 
       from: currentState.depthPath, 
       to: path 
-    });
+    }, { traceId });
     
     engine.setState({ depthPath: path });
     
