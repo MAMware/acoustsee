@@ -14,6 +14,7 @@ import { createEventBus } from './core/event-bus.js';
 import { initializeAnalytics } from './core/event-bus-analytics.js';
 import { settings } from './core/state.js';
 import { structuredLog, loggingConfig, initializeLogging } from './utils/logging.js';
+import { generateTraceId } from './utils/trace-id.js';
 import { 
   AccessibilityError, 
   showCriticalError, 
