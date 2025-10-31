@@ -168,6 +168,8 @@ export function createEventBus(config) {
    * @param {object} [filter] - Optional filter
    * @param {string} [filter.type] - Filter by event type
    * @param {string} [filter.category] - Filter by category
+   * @param {string} [filter.traceId] - Filter by traceId (exact match)
+   * @param {string} [filter.parentTrace] - Filter by parentTrace (for frame traces)
    * @param {number} [filter.since] - Filter by timestamp (get events after this)
    * @param {number} [filter.limit] - Maximum number of events to return
    * @returns {Array} Filtered events
@@ -181,6 +183,18 @@ export function createEventBus(config) {
     
     if (filter.category) {
       filtered = filtered.filter(e => e.category === filter.category);
+    }
+    
+    // Filter by traceId (exact match)
+    if (filter.traceId) {
+      filtered = filtered.filter(e => e.traceId === filter.traceId);
+    }
+    
+    // Filter by parentTrace (for finding all events related to a user action)
+    if (filter.parentTrace) {
+      filtered = filtered.filter(e => 
+        e.traceId === filter.parentTrace || e.data?.parentTrace === filter.parentTrace
+      );
     }
     
     if (filter.since) {

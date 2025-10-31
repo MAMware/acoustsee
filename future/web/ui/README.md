@@ -2,6 +2,8 @@
 
 This directory contains all user interface modules. The project uses a **pluggable UI architecture**, allowing different UIs to be loaded based on the application's mode and URL parameters.
 
+**📘 NEW UI DEVELOPERS: Start with [UI_DEVELOPMENT.md](./UI_DEVELOPMENT.md)** for a complete guide with templates and examples.
+
 **⚠️ CRITICAL ARCHITECTURAL RULES:**
 1. **UI modules MUST NOT import from `core/`.** Use the injected `engine` instance only.
 2. **UI modules communicate with core ONLY via `engine.dispatch()`.** No direct function calls.
@@ -10,24 +12,108 @@ This directory contains all user interface modules. The project uses a **pluggab
 
 ---
 
+## Quick Start (v0.10.0+)
+
+**New plug-and-play UI contract:**
+
+```javascript
+import { registerComponent } from '../ui-registry.js';
+import { withUserActionTrace } from '../ui-trace-helper.js';
+
+export function initializeMyUI(uiContext) {
+  const { engine, DOM, eventBus, generateTraceId, structuredLog } = uiContext;
+  
+  // Your UI logic with automatic tracing
+  DOM.myButton.addEventListener('click',
+    withUserActionTrace('myAction', (traceId) => {
+      engine.dispatch('myCommand', { data: 'value' }, { traceId });
+    })
+  );
+  
+  return function dispose() {
+    // Cleanup
+  };
+}
+
+registerComponent('my-ui', initializeMyUI);
+```
+
+**What you get:**
+- ✅ EventBus integrated automatically
+- ✅ TraceId generation via helpers
+- ✅ Structured logging included
+- ✅ Single `uiContext` object with all dependencies
+
+**See [UI_DEVELOPMENT.md](./UI_DEVELOPMENT.md) for complete examples and patterns.**
+
+---
+
 ## Key Files & Concepts
+
+### `ui-context.js`: Standardized UI Context Factory (v0.10.0+)
+
+Creates a consistent initialization object for all UI modules:
+
+```javascript
+import { createUIContext } from './ui-context.js';
+
+const uiContext = createUIContext({
+  engine,      // Required
+  DOM,         // Required
+  eventBus,    // Required
+  settings,    // Optional
+  basePath,    // Optional
+  importMetaUrl // Optional
+});
+```
+
+**Returns:** `{ engine, DOM, eventBus, generateTraceId, structuredLog, dispatch, getState, onStateChange, ... }`
+
+### `ui-trace-helper.js`: Automatic Tracing Helpers (v0.10.0+)
+
+Simplifies traceId generation for common UI patterns:
+
+```javascript
+import { withUserActionTrace, createTraceBatch } from '../ui-trace-helper.js';
+
+// Single action
+button.addEventListener('click', 
+  withUserActionTrace('startCamera', (traceId) => {
+    engine.dispatch('startCamera', null, { traceId });
+  })
+);
+
+// Batch operations
+const batch = createTraceBatch('init-workflow');
+engine.dispatch('cmd1', null, { traceId: batch.child('step1') });
+engine.dispatch('cmd2', null, { traceId: batch.child('step2') });
+```
 
 ### `ui-registry.js`: Central UI Registry
 
 This is the discovery mechanism that allows UI modules to register themselves without creating global exports.
 
-**API:**
+**API (v0.10.0+):**
 ```javascript
 // In your UI module:
 import { registerComponent } from '../ui-registry.js';
 
-export function initializeMyUI(engine, DOM) {
+export function initializeMyUI(uiContext) {
+  const { engine, DOM, eventBus } = uiContext;
   // Your UI logic...
-  return { dispose() { /* cleanup */ } };
+  return function dispose() { /* cleanup */ };
 }
 
 // Register at module load time:
 registerComponent('my-ui', initializeMyUI);
+```
+
+**Legacy API (still supported):**
+```javascript
+export function initializeMyUI(engine, DOM) {
+  // Your UI logic...
+  return { dispose() { /* cleanup */ } };
+}
 ```
 
 **Why?**

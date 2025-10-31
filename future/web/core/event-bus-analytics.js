@@ -8,6 +8,7 @@
 // TODO we have two ingest.js, the oter is at utils, lets try to improve
 import { trackFeatureUse } from './ingest.js';
 import { structuredLog } from '../utils/logging.js';
+import { isFrameTrace } from '../utils/trace-id.js';
 
 /**
  * Initialize analytics subscribers on the EventBus.
@@ -20,6 +21,11 @@ export function initializeAnalytics(eventBus, state) {
   // Subscribe to command events that need analytics tracking
   const unsubscribeCommands = eventBus.subscribe('command', (event) => {
     try {
+      // Filter out frame traces - they're for local debugging only
+      if (event.traceId && isFrameTrace(event.traceId)) {
+        return;
+      }
+      
       const categoryConfig = state.eventCategories?.[event.category];
       
       // Only send to analytics if configured
@@ -56,6 +62,11 @@ export function initializeAnalytics(eventBus, state) {
   // Subscribe to ERROR-level logs for analytics tracking
   const unsubscribeErrors = eventBus.subscribe('log:ERROR', (event) => {
     try {
+      // Filter out frame traces - they're for local debugging only
+      if (event.traceId && isFrameTrace(event.traceId)) {
+        return;
+      }
+      
       const categoryConfig = state.eventCategories?.['ERROR'];
       
       if (!categoryConfig || !categoryConfig.destinations?.includes('analytics')) {

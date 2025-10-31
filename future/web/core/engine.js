@@ -6,6 +6,7 @@
 
 import { settings } from './state.js';
 import { structuredLog, throttleError, shouldSample } from '../utils/logging.js';
+import { generateTraceId } from '../utils/trace-id.js';
 import logger from '../utils/logging.js';
 import { getText, speakText, announceMessage } from '../utils/utils.js'; // <-- REDUCED IMPORTS
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive, startMic, stopMic } from './media-controller.js';
@@ -166,7 +167,7 @@ export function createEngine() {
     }
   }
 
-  async function dispatch(commandName, payload = {}) {
+  async function dispatch(commandName, payload = {}, options = {}) {
     const handler = handlers[commandName];
     
     if (!handler) {
@@ -174,6 +175,9 @@ export function createEngine() {
       return { ok: false, error: `no handler: ${commandName}` };
     }
     try {
+      // Generate or inherit traceId for event correlation
+      const traceId = options.traceId || payload.traceId || generateTraceId();
+      
       // Emit to unified EventBus before executing handler
       if (unifiedEventBus) {
         try {
@@ -182,7 +186,7 @@ export function createEngine() {
             category: commandName,
             timestamp: Date.now(),
             data: payload,
-            traceId: payload.traceId || null
+            traceId: traceId
           });
         } catch (err) {
           // Silently fail - don't break command dispatch if EventBus has issues R311025 id rather do no have silent fails
@@ -194,7 +198,8 @@ export function createEngine() {
       const handlerInfo = {
         command: commandName,
         handlerExists: !!handler,
-        availableHandlers: Object.keys(handlers).filter(k => k.includes(commandName))
+        availableHandlers: Object.keys(handlers).filter(k => k.includes(commandName)),
+        traceId: traceId
       };
       
       // Aggressive sampling for DEBUG logs to reduce dev panel spam
@@ -214,13 +219,16 @@ export function createEngine() {
       if (shouldLog) {
         structuredLog('DEBUG', `Engine dispatch ${commandName}`, { payload, ...handlerInfo });
       }
-    const result = await handler({ state, payload, dispatch, emit });
+      
+      // Pass traceId to handler via context
+      const result = await handler({ state, payload, dispatch, emit, traceId });
+      
       // notify after handler runs in case it mutated shared state
       notifyListeners();
       return { ok: true, result };
     } catch (err) {
-  structuredLog('ERROR', `Engine handler ${commandName} failed`, { message: err?.message || String(err) });
-  try { logger.logError && logger.logError(err); } catch (er) {}
+      structuredLog('ERROR', `Engine handler ${commandName} failed`, { message: err?.message || String(err) });
+      try { logger.logError && logger.logError(err); } catch (er) {}
       return { ok: false, error: err?.message || String(err) };
     }
   }
@@ -242,7 +250,9 @@ export function createEngine() {
     setEventBus: (eventBusRef) => {
       unifiedEventBus = eventBusRef;
       structuredLog('DEBUG', 'Engine: unified EventBus injected', {});
-    }
+    },
+    // Expose traceId generator for explicit use
+    generateTraceId: generateTraceId
   };
 
   // Expose event bus methods

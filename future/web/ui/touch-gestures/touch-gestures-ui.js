@@ -3,20 +3,45 @@
 let _uiConfig = {};
 
 export function initializeAccessibleUI(arg1, arg2) {
-  // Support legacy signature initializeAccessibleUI(engine, DOM)
-  // and DI signature initializeAccessibleUI({ engine, engineDispatch, dom, getEngineState })
+  // Support both signatures:
+  // - New (v0.10.0+): initializeAccessibleUI(uiContext)
+  // - Legacy: initializeAccessibleUI(engine, DOM)
+  
   let engine = null;
   let DOM = null;
-  if (arg1 && typeof arg1.getState === 'function') {
+  let eventBus = null;
+  let generateTraceId = null;
+  
+  // Detect new signature (uiContext object with standardized properties)
+  if (arg1 && arg1.engine && arg1.DOM && arg1.eventBus) {
+    // New standardized signature
+    engine = arg1.engine;
+    DOM = arg1.DOM;
+    eventBus = arg1.eventBus;
+    generateTraceId = arg1.generateTraceId;
+    _uiConfig = Object.assign({}, _uiConfig, {
+      settings: arg1.settings,
+      basePath: arg1.basePath,
+      importMetaUrl: arg1.importMetaUrl
+    });
+  } else if (arg1 && typeof arg1.getState === 'function') {
+    // Legacy signature: initializeAccessibleUI(engine, DOM)
     engine = arg1;
     DOM = arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
     _uiConfig = Object.assign({}, _uiConfig, (typeof arg2 === 'object' ? arg2 : {}));
+    
+    // Import helpers manually for legacy mode
+    import('../utils/trace-id.js').then(mod => {
+      generateTraceId = mod.generateTraceId;
+    });
   } else {
+    // Old DI signature (deprecated)
     const cfg = arg1 || {};
     engine = cfg.engine || (cfg.engineDispatch ? { dispatch: cfg.engineDispatch, getState: cfg.getEngineState || (()=>({})) } : null);
     DOM = cfg.dom || arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
     _uiConfig = Object.assign({}, _uiConfig, cfg || {});
   }
+  
   engine = engine || { dispatch: () => {}, getState: () => ({}) };
   DOM = DOM || (typeof window !== 'undefined' ? window.DOM : undefined);
   console.log('Initializing Accessible UI...');
@@ -43,10 +68,13 @@ export function initializeAccessibleUI(arg1, arg2) {
         }
         lastClickTime = now;
         
+        // Generate traceId for user action (if available)
+        const traceId = generateTraceId ? generateTraceId() : undefined;
+        
         const isProcessing = engine.getState().isProcessing;
         if (isProcessing) {
-          engine.dispatch('stopProcessing', { videoEl: DOM && DOM.videoFeed });
-          engine.dispatch('announceMessage', { message: 'Stopping' }); // Placeholder for proper getText
+          engine.dispatch('stopProcessing', { videoEl: DOM && DOM.videoFeed }, { traceId });
+          engine.dispatch('announceMessage', { message: 'Stopping' }, { traceId }); // Placeholder for proper getText
         } else {
           engine.dispatch('startProcessing', { videoEl: DOM && DOM.videoFeed, canvasEl: DOM && DOM.frameCanvas });
           engine.dispatch('announceMessage', { message: 'Starting' });

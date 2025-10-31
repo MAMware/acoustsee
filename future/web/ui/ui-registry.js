@@ -5,19 +5,41 @@ const componentRegistry = new Map();
 
 /**
  * Register a UI component initializer with the central UI registry.
- * Components registered here should be idempotent initializers that accept an
- * options/context object and return an object with a `dispose()` method when
- * applicable.
- *
- * Contract:
- * - name: unique string key for the component.
- * - initializer: function(ctx?: Object) => { init(), dispose?(): void }
- *
- * Error modes: if `initializer` is not a function the call is ignored and a
- * warning is logged.
- *
- * @param {string} name - Unique component identifier.
- * @param {Function} initializer - Component initializer function.
+ * 
+ * **PLUG-AND-PLAY CONTRACT (v0.10.0+):**
+ * 
+ * All UI initializers MUST accept a standardized `uiContext` object as their
+ * first parameter. This context is created by `createUIContext()` from 
+ * `ui/ui-context.js` and provides:
+ * 
+ * - `engine`: Engine instance (dispatch, getState, onStateChange)
+ * - `DOM`: Pre-cached DOM elements
+ * - `eventBus`: Unified EventBus for logs/commands
+ * - `generateTraceId`: Function to generate traceIds for user actions
+ * - `structuredLog`: Logging utility
+ * - `settings`: Application settings (convenience accessor)
+ * - `dispatch`, `getState`, `onStateChange`: Convenience wrappers
+ * 
+ * **Required signature:**
+ * ```javascript
+ * function initMyUI(uiContext) {
+ *   const { engine, DOM, eventBus, generateTraceId } = uiContext;
+ *   // ... initialization code ...
+ *   return function dispose() {
+ *     // ... cleanup code ...
+ *   };
+ * }
+ * ```
+ * 
+ * **Return value:**
+ * Initializers SHOULD return a `dispose()` function for cleanup (removing
+ * event listeners, clearing intervals, terminating workers).
+ * 
+ * **Error modes:**
+ * If `initializer` is not a function, the call is ignored and a warning is logged.
+ * 
+ * @param {string} name - Unique component identifier (e.g., 'dev-panel', 'accessible-ui')
+ * @param {function(uiContext): function|void} initializer - Component initializer function
  */
 export function registerComponent(name, initializer) {
   if (typeof initializer !== 'function') {

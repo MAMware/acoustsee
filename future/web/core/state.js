@@ -1,5 +1,5 @@
 // File: web/core/state.js
-//
+// TODO
 // R151025: This file needs cleanup, it seems to have unfished work and need for detail where ambiguity arises,
 // each line will be taged with R151025 once issues are addressed please remove the comments that prompted them.
 //
@@ -14,10 +14,14 @@ import { availableLanguagesData } from '../languages/available-languages.js';
 import { computeDefaultUpdateInterval, computeDefaultMaxNotes, deviceSummary } from '../utils/performance.js';
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION, UTILS_VERSION } from './constants.js';
 
-// R151025: Why so many nulls? are they any usefull being null? 
-// R151025: Dont be a lot more usefull being able to set the values for parameters from the developer-panel State impoestor?
+
 export let settings = {
   debugLogging: true,
+  // Debug configuration for tracing and diagnostics
+  debugConfig: {
+    traceFrames: false,  // Enable frame-by-frame tracing (performance impact, dev-panel only)
+    traceUserActions: true,  // Always trace user actions for analytics
+  },
   stream: null,
   availableGrids: availableGridsData || [],
   availableEngines: availableEnginesData || [],
@@ -32,7 +36,7 @@ export let settings = {
   // When true, transfer ArrayBuffer ownership to the worker to avoid copies
   // and prefer a reusable buffer allocation (main thread should allocate once).
   // Enabled by default for higher-performance paths.
-  // R151925: Describe in detail the "paths"
+  // TODO R151925: Describe in detail the "paths"
   workerTransferEnabled: false,
   // Stores the most recent auto-FPS benchmark results (measured interval in ms and metadata)
   autoFpsBenchmark: {

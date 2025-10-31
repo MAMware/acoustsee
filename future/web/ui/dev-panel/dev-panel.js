@@ -20,14 +20,30 @@ import { registerComponent } from '../ui-registry.js';
 console.log('dev-panel module loaded. Version info will be read from engine state at runtime.');
 
 export function initializeDevPanel(arg1, arg2) {
-  // R24925 Support two call patterns for migration:
-  //  - initializeDevPanel(engine, DOM)  (legacy)
-  //  - initializeDevPanel({ engine, engineDispatch, dom, getEngineState }) (DI)
+  // Support both signatures:
+  //  - New (v0.10.0+): initializeDevPanel(uiContext)
+  //  - Legacy: initializeDevPanel(engine, DOM, { eventBus, ... })
+  
   let engine = null;
   let DOM = null;
   let eventBus = null;
+  let generateTraceId = null;
   const skipDiagnostics = false;
-  if (arg1 && typeof arg1.getState === 'function') {
+  
+  // Detect new signature (uiContext object with standardized properties)
+  if (arg1 && arg1.engine && arg1.DOM && arg1.eventBus) {
+    // New standardized signature
+    engine = arg1.engine;
+    DOM = arg1.DOM;
+    eventBus = arg1.eventBus;
+    generateTraceId = arg1.generateTraceId;
+    _config = Object.assign({}, _config, {
+      settings: arg1.settings,
+      basePath: arg1.basePath,
+      importMetaUrl: arg1.importMetaUrl
+    });
+  } else if (arg1 && typeof arg1.getState === 'function') {
+    // Legacy signature: initializeDevPanel(engine, DOM, { eventBus, ... })
     engine = arg1;
     DOM = arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
     // Check if third argument has eventBus
@@ -36,11 +52,13 @@ export function initializeDevPanel(arg1, arg2) {
       eventBus = thirdArg.eventBus;
     }
   } else {
+    // Old DI signature (deprecated)
     const cfg = arg1 || {};
     engine = cfg.engine || (cfg.engineDispatch ? { dispatch: cfg.engineDispatch, getState: cfg.getEngineState || (()=>({})), onStateChange: cfg.onStateChange || (()=>{}) } : null);
     DOM = cfg.dom || arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
     eventBus = cfg.eventBus || null;
   }
+  
   // Ensure safe engine / DOM defaults to avoid crashing during migration
   engine = engine || { dispatch: () => {}, getState: () => ({}), onStateChange: () => {} };
   DOM = DOM || (typeof window !== 'undefined' ? window.DOM : undefined);

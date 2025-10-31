@@ -260,6 +260,20 @@ export async function init() {
 
     // --- UI LOADER LOGIC (dynamic import to avoid duplicate initialization) ---
     const isDebugMode = logLevelFromUrl ? logLevelFromUrl === 'debug' || urlParams.get('debug') === 'true' : urlParams.get('debug') === 'true';
+    
+    // Import UI context factory for standardized initialization
+    const { createUIContext } = await import('./ui/ui-context.js');
+    
+    // Create standardized UI context (plug-and-play contract)
+    const uiContext = createUIContext({
+      engine,
+      DOM,
+      eventBus,
+      settings,
+      basePath,
+      importMetaUrl: import.meta.url
+    });
+    
     if (isDebugMode) {
       // userAgent has been disabled (commented out) even in debug mode as per MAMware request, it seem they do add any usefull info
       // loggingConfig.includeUserAgent = true;
@@ -271,8 +285,9 @@ export async function init() {
         try {
           const devPanelInitializer = getComponent('dev-panel');
           if (typeof devPanelInitializer === 'function') {
-            devPanelInitializer(engine, DOM, { importMetaUrl: import.meta.url, settings, basePath, eventBus });
-            structuredLog('INFO', 'Dev Panel initialized via registry.');
+            // Pass standardized uiContext
+            devPanelInitializer(uiContext);
+            structuredLog('INFO', 'Dev Panel initialized via registry with standardized context.');
           } else {
             structuredLog('ERROR', 'Dev Panel module loaded but did not register an initializer.');
           }
@@ -285,8 +300,9 @@ export async function init() {
       try {
         const mod = await import('./ui/touch-gestures/touch-gestures-ui.js');
         if (mod && typeof mod.initializeAccessibleUI === 'function') {
-          mod.initializeAccessibleUI(engine, DOM);
-          structuredLog('INFO', 'Initialized in Accessible UI mode.');
+          // Pass standardized uiContext (supports legacy signature too)
+          mod.initializeAccessibleUI(uiContext);
+          structuredLog('INFO', 'Initialized in Accessible UI mode with standardized context.');
         }
       } catch (e) { structuredLog('WARN', 'Failed to load accessible UI', { error: e?.message || String(e) }); }
     }
