@@ -25,14 +25,21 @@ export function initializeDevPanel(arg1, arg2) {
   //  - initializeDevPanel({ engine, engineDispatch, dom, getEngineState }) (DI)
   let engine = null;
   let DOM = null;
+  let eventBus = null;
   const skipDiagnostics = false;
   if (arg1 && typeof arg1.getState === 'function') {
     engine = arg1;
     DOM = arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+    // Check if third argument has eventBus
+    const thirdArg = arguments[2];
+    if (thirdArg && thirdArg.eventBus) {
+      eventBus = thirdArg.eventBus;
+    }
   } else {
     const cfg = arg1 || {};
     engine = cfg.engine || (cfg.engineDispatch ? { dispatch: cfg.engineDispatch, getState: cfg.getEngineState || (()=>({})), onStateChange: cfg.onStateChange || (()=>{}) } : null);
     DOM = cfg.dom || arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+    eventBus = cfg.eventBus || null;
   }
   // Ensure safe engine / DOM defaults to avoid crashing during migration
   engine = engine || { dispatch: () => {}, getState: () => ({}), onStateChange: () => {} };
@@ -40,6 +47,13 @@ export function initializeDevPanel(arg1, arg2) {
   // Merge config for use in internal helpers
   _config = Object.assign({}, _config, (typeof arg1 === 'object' && !arg1.getState) ? arg1 : (arg2 && typeof arg2 === 'object' ? arg2 : {}));
   console.log('initializeDevPanel called (visible)');
+  
+  // If eventBus is available, subscribe to it for unified event viewing
+  if (eventBus) {
+    console.log('Dev Panel: EventBus available, can add unified event viewer');
+    // Future enhancement: Add a tab to view all EventBus events (logs + commands)
+    // For now, the existing setOutputCallback still works via core-logger
+  }
 
   const panel = document.createElement('div');
   panel.id = 'acoustsee-dev-panel';

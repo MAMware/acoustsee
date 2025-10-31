@@ -7,10 +7,13 @@
 // Architecture:
 // - Uses modern browser features (async/await, Web Workers, Web Audio).
 // - Follows a modular, event-driven pattern managed by the core engine.
+// TODO R311025 it seems we have two ingest.js, one at core and other at utils, this is a archituctre smell to me, also we might check consolidating the logging, analytics and performance
 
 import { createEngine } from './core/engine.js';
+import { createEventBus } from './core/event-bus.js';
+import { initializeAnalytics } from './core/event-bus-analytics.js';
 import { settings } from './core/state.js';
-import { structuredLog, loggingConfig } from './utils/logging.js';
+import { structuredLog, loggingConfig, initializeLogging } from './utils/logging.js';
 import { 
   AccessibilityError, 
   showCriticalError, 
@@ -124,6 +127,54 @@ export async function init() {
     // Make engine globally available for UI components
     window.engine = engine;
 
+    // STEP 0.5: Create unified EventBus for logging and command tracking
+    // Must be created after engine but before initializing subsystems that need it
+    const eventBus = createEventBus({
+      state: settings,
+      maxEvents: 200
+    });
+    
+    // Initialize logging module with EventBus
+    initializeLogging(eventBus);
+    
+    // Inject EventBus into engine for command tracking
+    engine.setEventBus(eventBus);
+    
+    // Initialize analytics subscribers (replaces direct ingest tracking)
+    initializeAnalytics(eventBus, settings);
+    
+    // Wire worker logs to EventBus
+    // Workers send { type: 'workerLog', log: { timestamp, level, message, metadata } }
+    // This is a document-level handler for any worker that uses worker-logger.js
+    const workerLogHandler = (event) => {
+      if (event.data?.type === 'workerLog' && event.data.log) {
+        const log = event.data.log;
+        try {
+          eventBus.emit({
+            type: 'log',
+            category: log.level,
+            timestamp: new Date(log.timestamp).getTime(),
+            data: {
+              message: log.message,
+              ...log.metadata,
+              source: 'worker'
+            },
+            traceId: log.metadata?.traceId || null
+          });
+        } catch (err) {
+          console.warn('Failed to emit worker log to EventBus:', err);
+        }
+      }
+    };
+    // Listen for messages from ALL workers
+    window.addEventListener('message', workerLogHandler);
+    
+    // Make eventBus available for debugging
+    if (window.location.search.includes('debug=true')) {
+      window.eventBus = eventBus;
+      structuredLog('DEBUG', 'EventBus created and exposed as window.eventBus', {});
+    }
+
     // Setup ingest error tracking
     setupIngestErrorTracking();
 
@@ -220,7 +271,7 @@ export async function init() {
         try {
           const devPanelInitializer = getComponent('dev-panel');
           if (typeof devPanelInitializer === 'function') {
-            devPanelInitializer(engine, DOM, { importMetaUrl: import.meta.url, settings, basePath });
+            devPanelInitializer(engine, DOM, { importMetaUrl: import.meta.url, settings, basePath, eventBus });
             structuredLog('INFO', 'Dev Panel initialized via registry.');
           } else {
             structuredLog('ERROR', 'Dev Panel module loaded but did not register an initializer.');

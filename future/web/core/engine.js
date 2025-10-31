@@ -52,6 +52,10 @@ export function createEngine() {
   const benchmarkListeners = new Set();
   // Simple event bus for lifecycle and cross-module events
   const eventBus = new Map();
+  
+  // Unified EventBus instance (injected after engine creation)
+  let unifiedEventBus = null;
+  
   // Telemetry counters for buffer fallback events (per-engine instance)
   const _telemetry = {
     fallback_realloc_failed: 0,
@@ -170,6 +174,22 @@ export function createEngine() {
       return { ok: false, error: `no handler: ${commandName}` };
     }
     try {
+      // Emit to unified EventBus before executing handler
+      if (unifiedEventBus) {
+        try {
+          unifiedEventBus.emit({
+            type: 'command',
+            category: commandName,
+            timestamp: Date.now(),
+            data: payload,
+            traceId: payload.traceId || null
+          });
+        } catch (err) {
+          // Silently fail - don't break command dispatch if EventBus has issues R311025 id rather do no have silent fails
+          console.warn('Failed to emit command to EventBus:', err);
+        }
+      }
+      
       // Enhanced debug logging for command dispatch
       const handlerInfo = {
         command: commandName,
@@ -213,10 +233,16 @@ export function createEngine() {
     getState,
     setState,
     onBenchmarkRequired,
-  // Expose telemetry for testing/inspecting fallback counters
-  getTelemetry: () => ({ ..._telemetry }),
-  // Allow external modules to query benchmark listeners for performance tuning R240619: tell me more about this
-  getBenchmarkListeners: () => Array.from(benchmarkListeners)
+    // Expose telemetry for testing/inspecting fallback counters
+    getTelemetry: () => ({ ..._telemetry }),
+    // TODO R311025 address R240619 
+    // Allow external modules to query benchmark listeners for performance tuning R240619: tell me more about this
+    getBenchmarkListeners: () => Array.from(benchmarkListeners),
+    // Inject unified EventBus after engine creation (dependency injection pattern)
+    setEventBus: (eventBusRef) => {
+      unifiedEventBus = eventBusRef;
+      structuredLog('DEBUG', 'Engine: unified EventBus injected', {});
+    }
   };
 
   // Expose event bus methods

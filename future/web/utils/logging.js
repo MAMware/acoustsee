@@ -43,6 +43,19 @@ function safeStringify(obj) {
 let currentLogLevel = LOG_LEVELS[DEFAULT_LOG_LEVEL];
 let sampleRate = detectIsMobile() ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
 
+// EventBus instance (injected during initialization)
+let eventBusInstance = null;
+
+/**
+ * Initialize logging module with EventBus for unified event tracking.
+ * Must be called from main.js during app initialization.
+ * 
+ * @param {object} eventBus - EventBus instance from core/event-bus.js
+ */
+export function initializeLogging(eventBus) {
+  eventBusInstance = eventBus;
+}
+
 // Config for logging behavior, including throttling
 const loggingConfig = {
   includeMetadata: true, // Enable/disable metadata
@@ -374,6 +387,25 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
         showDevToast(finalMessage, { level: level.toUpperCase() });
       } catch (err) {
         console.warn('Failed to show dev toast:', err);
+      }
+    }
+    
+    // Emit to EventBus for unified tracking (if initialized)
+    if (eventBusInstance) {
+      try {
+        eventBusInstance.emit({
+          type: 'log',
+          category: level.toUpperCase(),
+          timestamp: Date.now(),
+          data: {
+            message: finalMessage,
+            ...ingestData
+          },
+          traceId: traceId || null
+        });
+      } catch (err) {
+        // Silently fail - don't break logging if EventBus has issues // TODO R311025 e.g. what issues?
+        console.warn('Failed to emit log to EventBus:', err);
       }
     }
     

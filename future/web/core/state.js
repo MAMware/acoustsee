@@ -77,9 +77,29 @@ export let settings = {
     auto_optimization: ['setFrameInterval', 'diagnosticTick'],
     performance_settings: ['setMaxNotes', 'setMotionThreshold', 'setAutoFPS']
   },
+  // Unified event categorization for EventBus (replaces separate log/ingest systems)
+  // Structure: { category: { sampleRate, destinations } }
+  eventCategories: {
+    // Log levels
+    'DEBUG': { sampleRate: 0.01, destinations: ['console', 'eventBus'] },
+    'INFO': { sampleRate: 1.0, destinations: ['console', 'eventBus', 'indexedDB'] },
+    'WARN': { sampleRate: 1.0, destinations: ['console', 'eventBus', 'indexedDB'] },
+    'ERROR': { sampleRate: 1.0, destinations: ['console', 'eventBus', 'indexedDB', 'analytics'] },
+    // Command categories
+    'user_workflow': { sampleRate: 1.0, destinations: ['eventBus', 'analytics'] },
+    'performance_critical': { sampleRate: 0.1, destinations: ['eventBus'] },
+    'auto_optimization': { sampleRate: 0.05, destinations: ['eventBus'] },
+    'performance_settings': { sampleRate: 1.0, destinations: ['eventBus', 'analytics'] },
+    // Specific commands
+    'startProcessing': { sampleRate: 1.0, destinations: ['eventBus', 'analytics'] },
+    'stopProcessing': { sampleRate: 1.0, destinations: ['eventBus', 'analytics'] },
+    'audioCuesReady': { sampleRate: 0.01, destinations: ['eventBus'] },
+    'setFrameInterval': { sampleRate: 0.1, destinations: ['eventBus'] }
+  },
   dayNightMode: 'day',
   resetStateOnError: true,
-  // --- WIP: ARCH-3 --- 
+  // TODO R311025 update this work inprogress below
+  //  --- WIP: ARCH-3 --- 
   // Dual-mode prototype flags and runtime guard. R151025 WE ARE NOW DEVELOPENT A MULTI PARADGIM 
   // This is an experimental feature. Do not remove or change without referencing TASKS.md ARCH-3.
   // Current operating mode: 'flow' (navigation) or 'focus' (identification) R151025: UPDATE the hybrid approach

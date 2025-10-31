@@ -16,4 +16,4 @@ export const AUDIO_VERSION = '0.8.3-BPM';
 export const VIDEO_VERSION = '0.8.3-flowOrchestration';
 export const UI_VERSION = '0.8.0-orchestrationInstrumentation';
 export const LANGUAGES_VERSION = '0.2-spaEng';
-export const UTILS_VERSION = '0.9.7-capabilityDetector';
+export const UTILS_VERSION = '0.9.8-eventBus';
