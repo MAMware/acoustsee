@@ -13,6 +13,7 @@ import { applyLayoutAndBehaviors } from './dev-panel-layout.js';
 import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed for clarity
 import { StateInspector } from './state-inspector.js';
 import { initializeOrchestrationInspector } from '../orchestration-inspector.js'; // Phase 2A: Orchestration visibility
+import { initEventBusViewer } from './eventbus-viewer.js'; // Phase 2: EventBus viewer
 // Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
 
@@ -777,6 +778,35 @@ export function initializeDevPanel(arg1, arg2) {
       }
     }
 
+    // --- Initialize EventBus Viewer (Phase 2) ---
+    try {
+      const eventBusDOM = {
+        'eventbus-viewer-container': panel.querySelector('#eventbus-viewer-container'),
+        'eventbus-event-list': panel.querySelector('#eventbus-event-list'),
+        'eventbus-correlation-view': panel.querySelector('#eventbus-correlation-view'),
+        'eventbus-filter-type': panel.querySelector('#eventbus-filter-type'),
+        'eventbus-filter-category': panel.querySelector('#eventbus-filter-category'),
+        'eventbus-filter-frames': panel.querySelector('#eventbus-filter-frames'),
+        'eventbus-refresh-btn': panel.querySelector('#eventbus-refresh-btn'),
+        'eventbus-auto-refresh': panel.querySelector('#eventbus-auto-refresh'),
+        'eventbus-clear-btn': panel.querySelector('#eventbus-clear-btn'),
+        'eventbus-export-btn': panel.querySelector('#eventbus-export-btn'),
+        'eventbus-event-count': panel.querySelector('#eventbus-event-count')
+      };
+      
+      const eventBusViewerDispose = initEventBusViewer(engine, eventBusDOM);
+      // Store reference for cleanup
+      panel.__eventBusViewerDispose = eventBusViewerDispose;
+      structuredLog('INFO', 'dev-panel', { message: 'EventBus Viewer initialized' });
+    } catch (e) {
+      structuredLog('ERROR', 'dev-panel', { message: 'Failed to initialize EventBus viewer', error: e.message });
+      // Fallback error message
+      const eventBusContainer = panel.querySelector('#eventbus-viewer-container');
+      if (eventBusContainer) {
+        eventBusContainer.innerHTML = '<div style="color: #e74c3c; padding: 8px;">EventBus viewer failed to load. Check console for details.</div>';
+      }
+    }
+
     // --- Control Synchronization ---
     const gridTypeSelect = panel.querySelector('#grid-type-select');
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
@@ -1009,6 +1039,13 @@ export function initializeDevPanel(arg1, arg2) {
       try {
         if (panel.__orchestrationInspector && typeof panel.__orchestrationInspector.dispose === 'function') {
           panel.__orchestrationInspector.dispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 1.6. Dispose of EventBus Viewer (Phase 2)
+      try {
+        if (panel.__eventBusViewerDispose && typeof panel.__eventBusViewerDispose === 'function') {
+          panel.__eventBusViewerDispose();
         }
       } catch (e) { /* swallow */ }
 

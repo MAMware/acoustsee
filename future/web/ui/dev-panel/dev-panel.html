@@ -50,6 +50,56 @@
     </div>
   </div>
 
+  <!-- EventBus Viewer Section -->
+  <div class="devpanel-section eventbus-viewer-section">
+    <h2 class="section-header">
+      <span>EventBus Viewer</span>
+      <button class="collapse-btn" data-target="eventbus-viewer-content" aria-expanded="true" title="Collapse EventBus Viewer">-</button>
+    </h2>
+    <div id="eventbus-viewer-content" class="section-content">
+      <div id="eventbus-viewer-container">
+        <div class="eventbus-controls">
+          <div class="eventbus-control-group">
+            <label>Event Type</label>
+            <select id="eventbus-filter-type">
+              <option value="all">All Types</option>
+              <option value="log">Log</option>
+              <option value="command">Command</option>
+            </select>
+          </div>
+          <div class="eventbus-control-group">
+            <label>Category</label>
+            <select id="eventbus-filter-category">
+              <option value="all">All Categories</option>
+              <option value="INFO">INFO</option>
+              <option value="DEBUG">DEBUG</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+          </div>
+          <div class="eventbus-control-group">
+            <label>
+              <input type="checkbox" id="eventbus-filter-frames" />
+              Show Frame Traces
+            </label>
+          </div>
+          <div class="eventbus-actions">
+            <button id="eventbus-refresh-btn">Refresh</button>
+            <button id="eventbus-export-btn">Export JSON</button>
+            <button id="eventbus-clear-btn">Clear</button>
+            <label>
+              <input type="checkbox" id="eventbus-auto-refresh" checked />
+              Auto-refresh
+            </label>
+            <span id="eventbus-event-count" class="eventbus-event-count">0 events</span>
+          </div>
+        </div>
+        <div id="eventbus-event-list" class="eventbus-event-list"></div>
+        <div id="eventbus-correlation-view" class="eventbus-correlation-view"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Side-by-side Worker and Video Preview, always aligned -->
   <div class="devpanel-row devpanel-row-balanced">
     <div id="worker-explorer-container" class="devpanel-section worker-section">
