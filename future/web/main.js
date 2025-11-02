@@ -376,7 +376,7 @@ export async function init() {
           engine.audioApi = audioApi;
           // Register audio listeners for object and BPM cues
           registerAudioListeners(engine);
-          structuredLog('INFO', 'main', 'Audio system initialized', { traceId });
+          structuredLog('INFO', 'Audio system initialized', {}, true, true, { traceId });
         } catch (initErr) {
           // Handle critical audio system failures appropriately
           if (initErr instanceof AccessibilityError) {
@@ -413,7 +413,7 @@ export async function init() {
           // No direct action required here; the Dev Panel manages its own visibility
           // via the engine lifecycle event. main.js should not assume UI state.
         } catch (e) { console.warn('showing debugUI failed', e); }
-        structuredLog('INFO', 'main', 'Transitioned to main UI', { traceId });
+        structuredLog('INFO', 'Transitioned to main UI', {}, true, true, { traceId });
       }
 
       // Helper: centralize error handling and UI reset for power-on failures
@@ -438,7 +438,7 @@ export async function init() {
         
         // Generate traceId for user action (power-on)
         const traceId = generateTraceId();
-        structuredLog('INFO', 'main', 'Power-on button clicked', { traceId });
+        structuredLog('INFO', 'Power-on button clicked', {}, true, true, { traceId });
         
         try {
           await handleAudioUnlock(ev, traceId);
