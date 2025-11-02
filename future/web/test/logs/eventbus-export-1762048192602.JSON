@@ -1,0 +1,3248 @@
+[
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047883710,
+    "data": {
+      "message": "Initialized successfully",
+      "filename": "orchestration-inspector.js",
+      "lineno": 442,
+      "colno": 7
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047883710,
+    "data": {
+      "message": "OrchestrationInspector initialized",
+      "filename": "dev-panel.js",
+      "lineno": 770,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047883711,
+    "data": {
+      "message": "EventBusViewer: Auto-refresh enabled",
+      "filename": "eventbus-viewer.js",
+      "lineno": 275,
+      "colno": 7
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047883721,
+    "data": {
+      "message": "EventBusViewer initialized",
+      "filename": "eventbus-viewer.js",
+      "lineno": 303,
+      "colno": 3
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047883721,
+    "data": {
+      "message": "EventBus Viewer initialized",
+      "filename": "dev-panel.js",
+      "lineno": 800,
+      "colno": 7
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047884903,
+    "data": {
+      "message": "CSS loaded",
+      "filename": "orchestration-inspector.js",
+      "lineno": 49,
+      "colno": 5
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047940019,
+    "data": {
+      "message": "Console log",
+      "filename": "main.js",
+      "lineno": 321,
+      "colno": 9,
+      "args": [
+        "=== SYNTH DROPDOWN CHANGE EVENT FIRED ==="
+      ]
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047940021,
+    "data": {
+      "message": "Synth dropdown changed",
+      "filename": "dev-panel.js",
+      "lineno": 893,
+      "colno": 9,
+      "selectedValue": "sine-wave",
+      "selectedIndex": 2,
+      "optionsCount": 4,
+      "optionValue": "sine-wave",
+      "optionText": "Sine Wave",
+      "traceId": "1762047940020-159b-002"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047940021,
+    "data": {
+      "message": "About to dispatch setSynthEngine",
+      "filename": "dev-panel.js",
+      "lineno": 903,
+      "colno": 9,
+      "payload": {
+        "synthesisEngine": "sine-wave"
+      },
+      "traceId": "1762047940020-159b-002"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "setSynthEngine",
+    "timestamp": 1762047940021,
+    "data": {
+      "synthesisEngine": "sine-wave"
+    },
+    "traceId": "1762047940020-159b-002"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047940022,
+    "data": {
+      "message": "setSynthEngine handler ENTRY",
+      "filename": "settings-commands.js",
+      "lineno": 43,
+      "colno": 5,
+      "payloadType": "object",
+      "payloadKeys": [
+        "synthesisEngine"
+      ],
+      "payloadRaw": {
+        "synthesisEngine": "sine-wave"
+      }
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047940022,
+    "data": {
+      "message": "setSynthEngine command received",
+      "filename": "settings-commands.js",
+      "lineno": 53,
+      "colno": 5,
+      "synthesisEngine": "sine-wave"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047940033,
+    "data": {
+      "message": "audio: selected synth engine",
+      "filename": "audio-processor.js",
+      "lineno": 22,
+      "colno": 5,
+      "engineId": "sine-wave",
+      "hasPlayFn": true
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047940033,
+    "data": {
+      "message": "DebugUI: Synth engine set",
+      "filename": "settings-commands.js",
+      "lineno": 66,
+      "colno": 7,
+      "synthesisEngine": "sine-wave"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047951886,
+    "data": {
+      "message": "Console log",
+      "filename": "main.js",
+      "lineno": 321,
+      "colno": 9,
+      "args": [
+        "=== GRID DROPDOWN CHANGE EVENT FIRED ==="
+      ]
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047951888,
+    "data": {
+      "message": "Grid dropdown changed",
+      "filename": "dev-panel.js",
+      "lineno": 868,
+      "colno": 9,
+      "selectedValue": "circle-of-fifths",
+      "selectedIndex": 1,
+      "optionsCount": 3,
+      "optionValue": "circle-of-fifths",
+      "optionText": "Circle of Fifths",
+      "traceId": "1762047951887-367e-003"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047951888,
+    "data": {
+      "message": "About to dispatch setGridType",
+      "filename": "dev-panel.js",
+      "lineno": 878,
+      "colno": 9,
+      "payload": {
+        "gridType": "circle-of-fifths"
+      },
+      "traceId": "1762047951887-367e-003"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "setGridType",
+    "timestamp": 1762047951888,
+    "data": {
+      "gridType": "circle-of-fifths"
+    },
+    "traceId": "1762047951887-367e-003"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047951888,
+    "data": {
+      "message": "Engine dispatch setGridType",
+      "filename": "engine.js",
+      "lineno": 220,
+      "colno": 9,
+      "payload": {
+        "gridType": "circle-of-fifths"
+      },
+      "command": "setGridType",
+      "handlerExists": true,
+      "availableHandlers": [
+        "setGridType"
+      ],
+      "traceId": "1762047951887-367e-003"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047951889,
+    "data": {
+      "message": "setGridType handler ENTRY",
+      "filename": "settings-commands.js",
+      "lineno": 16,
+      "colno": 5,
+      "payloadType": "object",
+      "payloadKeys": [
+        "gridType"
+      ],
+      "payloadRaw": {
+        "gridType": "circle-of-fifths"
+      }
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762047951889,
+    "data": {
+      "message": "setGridType command received",
+      "filename": "settings-commands.js",
+      "lineno": 26,
+      "colno": 5,
+      "gridType": "circle-of-fifths"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762047951907,
+    "data": {
+      "message": "DebugUI: Grid type set",
+      "filename": "settings-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "gridType": "circle-of-fifths"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "toggleProcessing",
+    "timestamp": 1762048080953,
+    "data": {},
+    "traceId": "1762048080953-3e3b-004"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048080955,
+    "data": {
+      "message": "COMMAND: toggleProcessing received",
+      "filename": "media-commands.js",
+      "lineno": 47,
+      "colno": 5
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "startProcessing",
+    "timestamp": 1762048080956,
+    "data": {},
+    "traceId": "1762048080955-8dc1-005"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048080969,
+    "data": {
+      "message": "ASYNC-HANDLER: startProcessing starting",
+      "filename": "media-commands.js",
+      "lineno": 30,
+      "colno": 7,
+      "state": {
+        "debugLogging": true,
+        "debugConfig": {
+          "traceFrames": false,
+          "traceUserActions": true
+        },
+        "stream": null,
+        "availableGrids": [
+          {
+            "id": "linear-pitch",
+            "meta": {
+              "id": "linear-pitch",
+              "name": "Linear Pitch",
+              "description": "Maps the vertical position of motion directly to musical pitch."
+            }
+          },
+          {
+            "id": "circle-of-fifths",
+            "meta": {
+              "id": "circle-of-fifths",
+              "name": "Circle of Fifths",
+              "description": "Maps the angle of motion around the center of the screen to a 12-note scale based on the circle of fifths."
+            }
+          },
+          {
+            "id": "hex-tonnetz",
+            "meta": {
+              "id": "hex-tonnetz",
+              "name": "Hex Tonnetz",
+              "description": "Maps motion to a hexagonal tonnetz network representing harmonic relationships in just intonation."
+            }
+          }
+        ],
+        "availableEngines": [
+          {
+            "id": "fm-synthesis",
+            "meta": {
+              "id": "fm-synthesis",
+              "name": "FM Synthesis",
+              "author": "acoustsee",
+              "description": "Simple FM synthesis engine using modulators and shared oscillator pool.",
+              "version": "0.1.0",
+              "maxNotes": 24
+            }
+          },
+          {
+            "id": "sawtooth-pad",
+            "meta": {
+              "id": "sawtooth-pad",
+              "name": "Sawtooth Pad",
+              "author": "Gemini 2.5 Pro",
+              "description": "A classic polyphonic pad synth using filtered sawtooth waves.",
+              "version": "1.0.0",
+              "maxNotes": 16
+            }
+          },
+          {
+            "id": "sine-wave",
+            "meta": {
+              "id": "sine-wave",
+              "name": "Sine Wave",
+              "author": "acoustsee",
+              "description": "Simple sine-wave engine using the shared oscillator pool",
+              "version": "0.1.0",
+              "maxNotes": 16
+            }
+          },
+          {
+            "id": "strings",
+            "meta": {
+              "id": "strings",
+              "name": "Strings",
+              "author": "GPT-5 mini (preview)",
+              "description": "A lightweight Karplus–Strong plucked-string synth plugin.",
+              "version": "0.1.0",
+              "maxNotes": 8
+            }
+          }
+        ],
+        "availableLanguages": [
+          {
+            "id": "en-US"
+          },
+          {
+            "id": "es-ES"
+          }
+        ],
+        "audioTimerId": null,
+        "updateInterval": 166,
+        "autoFPS": false,
+        "autoFpsDownscale": 0.25,
+        "autoFpsSamples": 2,
+        "enableFrameWorker": true,
+        "workerTransferEnabled": false,
+        "autoFpsBenchmark": {
+          "lastIntervalMs": null,
+          "measuredAt": null,
+          "sampleCount": 0,
+          "safetyFactor": 0.7
+        },
+        "includeProcessFrameLogs": false,
+        "gridType": "circle-of-fifths",
+        "synthesisEngine": "sine-wave",
+        "language": "en-US",
+        "isSettingsMode": false,
+        "settings": {
+          "categories": [
+            "grid",
+            "synth",
+            "language",
+            "maxNotes",
+            "motionThreshold"
+          ],
+          "currentCategoryIndex": 0
+        },
+        "micStream": null,
+        "audioResumeAttempts": 2,
+        "audioResumeDelayMs": 100,
+        "ttsEnabled": false,
+        "ingestEnabled": true,
+        "ingestPreferences": {
+          "useIdleCallback": true,
+          "maxEventsPerSecond": 10,
+          "enableOnLowPerformance": true,
+          "enableOnMobile": true,
+          "performanceThresholds": {
+            "lowCpuCores": 2,
+            "lowMemoryGB": 2,
+            "slowConnectionTypes": [
+              "slow-2g",
+              "2g"
+            ],
+            "mobileOptimization": true
+          }
+        },
+        "ingestCategories": {
+          "user_workflow": [
+            "startProcessing",
+            "stopProcessing",
+            "toggleProcessing",
+            "setMode"
+          ],
+          "performance_critical": [
+            "audioCuesReady",
+            "setFrameProviderThrottle",
+            "logFrameBenchmark"
+          ],
+          "auto_optimization": [
+            "setFrameInterval",
+            "diagnosticTick"
+          ],
+          "performance_settings": [
+            "setMaxNotes",
+            "setMotionThreshold",
+            "setAutoFPS"
+          ]
+        },
+        "eventCategories": {
+          "DEBUG": {
+            "sampleRate": 0.01,
+            "destinations": [
+              "console",
+              "eventBus"
+            ]
+          },
+          "INFO": {
+            "sampleRate": 1,
+            "destinations": [
+              "console",
+              "eventBus",
+              "indexedDB"
+            ]
+          },
+          "WARN": {
+            "sampleRate": 1,
+            "destinations": [
+              "console",
+              "eventBus",
+              "indexedDB"
+            ]
+          },
+          "ERROR": {
+            "sampleRate": 1,
+            "destinations": [
+              "console",
+              "eventBus",
+              "indexedDB",
+              "analytics"
+            ]
+          },
+          "user_workflow": {
+            "sampleRate": 1,
+            "destinations": [
+              "eventBus",
+              "analytics"
+            ]
+          },
+          "performance_critical": {
+            "sampleRate": 0.1,
+            "destinations": [
+              "eventBus"
+            ]
+          },
+          "auto_optimization": {
+            "sampleRate": 0.05,
+            "destinations": [
+              "eventBus"
+            ]
+          },
+          "performance_settings": {
+            "sampleRate": 1,
+            "destinations": [
+              "eventBus",
+              "analytics"
+            ]
+          },
+          "startProcessing": {
+            "sampleRate": 1,
+            "destinations": [
+              "eventBus",
+              "analytics"
+            ]
+          },
+          "stopProcessing": {
+            "sampleRate": 1,
+            "destinations": [
+              "eventBus",
+              "analytics"
+            ]
+          },
+          "audioCuesReady": {
+            "sampleRate": 0.01,
+            "destinations": [
+              "eventBus"
+            ]
+          },
+          "setFrameInterval": {
+            "sampleRate": 0.1,
+            "destinations": [
+              "eventBus"
+            ]
+          }
+        },
+        "dayNightMode": "day",
+        "resetStateOnError": true,
+        "currentMode": "flow",
+        "depthPath": "pseudo",
+        "dualModeWIP": true,
+        "enableSemanticDetection": false,
+        "motionThreshold": 20,
+        "maxNotes": 24,
+        "buildInfo": {
+          "version": "0.9.4-flowOrchestration",
+          "audio_version": "0.8.3-BPM",
+          "video_version": "0.8.3-flowOrchestration",
+          "ui_version": "0.8.0-orchestrationInstrumentation",
+          "languages_version": "0.2-spaEng",
+          "utils_version": "0.9.8-eventBus"
+        },
+        "orchestration": {
+          "activeExtractor": null,
+          "isMonitoring": false,
+          "capabilities": {
+            "mediaStreamTrackProcessor": false,
+            "canvas2D": true,
+            "webGL": false,
+            "webGPU": false,
+            "offscreenCanvas": false,
+            "wasm": false
+          },
+          "metrics": {
+            "fps": 0,
+            "targetFps": 60,
+            "resolutionWidth": 0,
+            "resolutionHeight": 0,
+            "frameExtractionTimeMs": 0,
+            "gridMappingTimeMs": 0,
+            "audioProcessingTimeMs": 0,
+            "totalCycleTimeMs": 0,
+            "underutilization": 0,
+            "gpuUtilization": 0,
+            "memoryUsageMB": 0
+          },
+          "decisionLog": [],
+          "currentMode": null,
+          "qualityProfile": {
+            "name": "auto",
+            "fpsTarget": 60,
+            "resolutionScale": 1
+          },
+          "lastUpdateTimestamp": 10578.5,
+          "payload": {
+            "capabilities": {
+              "mediaStreamTrackProcessor": true,
+              "canvas2D": true,
+              "webGL": true,
+              "webGPU": true,
+              "offscreenCanvas": true,
+              "wasm": true
+            }
+          },
+          "traceId": "1762047862512-0eac-000"
+        }
+      },
+      "payload": {},
+      "traceId": "1762048080955-8dc1-005"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048080973,
+    "data": {
+      "message": "COMMAND: startProcessing handler called",
+      "filename": "media-commands.js",
+      "lineno": 57,
+      "colno": 7,
+      "payload": {}
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048080978,
+    "data": {
+      "message": "COMMAND: Start processing initiated.",
+      "filename": "media-commands.js",
+      "lineno": 65,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048080982,
+    "data": {
+      "message": "COMMAND: Requesting camera permissions...",
+      "filename": "media-commands.js",
+      "lineno": 67,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081095,
+    "data": {
+      "message": "Performance events flushed",
+      "filename": "ingest.js",
+      "lineno": 386,
+      "colno": 3,
+      "batchSize": 2,
+      "events": {
+        "startProcessing": 1,
+        "toggleProcessing": 1
+      },
+      "source": "ingest-system"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081634,
+    "data": {
+      "message": "COMMAND: Camera stream acquired successfully.",
+      "filename": "media-commands.js",
+      "lineno": 70,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048081741,
+    "data": {
+      "message": "Console log",
+      "filename": "main.js",
+      "lineno": 321,
+      "colno": 9,
+      "args": [
+        "ENGINE: setState called to set isProcessing=true"
+      ]
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "initializeVideoPipeline",
+    "timestamp": 1762048081779,
+    "data": {},
+    "traceId": "1762048081779-df99-006"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081786,
+    "data": {
+      "message": "ASYNC-HANDLER: initializeVideoPipeline starting",
+      "filename": "media-commands.js",
+      "lineno": 30,
+      "colno": 7,
+      "state": {
+        "debugLogging": true,
+        "debugConfig": {
+          "traceFrames": false,
+          "traceUserActions": true
+        },
+        "stream": null,
+        "availableGrids": [
+          {
+            "id": "linear-pitch",
+            "meta": {
+              "id": "linear-pitch",
+              "name": "Linear Pitch",
+              "description": "Maps the vertical position of motion directly to musical pitch."
+            }
+          },
+          {
+            "id": "circle-of-fifths",
+            "meta": {
+              "id": "circle-of-fifths",
+              "name": "Circle of Fifths",
+              "description": "Maps the angle of motion around the center of the screen to a 12-note scale based on the circle of fifths."
+            }
+          },
+          {
+            "id": "hex-tonnetz",
+            "meta": {
+              "id": "hex-tonnetz",
+              "name": "Hex Tonnetz",
+              "description": "Maps motion to a hexagonal tonnetz network representing harmonic relationships in just intonation."
+            }
+          }
+        ],
+        "availableEngines": [
+          {
+            "id": "fm-synthesis",
+            "meta": {
+              "id": "fm-synthesis",
+              "name": "FM Synthesis",
+              "author": "acoustsee",
+              "description": "Simple FM synthesis engine using modulators and shared oscillator pool.",
+              "version": "0.1.0",
+              "maxNotes": 24
+            }
+          },
+          {
+            "id": "sawtooth-pad",
+            "meta": {
+              "id": "sawtooth-pad",
+              "name": "Sawtooth Pad",
+              "author": "Gemini 2.5 Pro",
+              "description": "A classic polyphonic pad synth using filtered sawtooth waves.",
+              "version": "1.0.0",
+              "maxNotes": 16
+            }
+          },
+          {
+            "id": "sine-wave",
+            "meta": {
+              "id": "sine-wave",
+              "name": "Sine Wave",
+              "author": "acoustsee",
+              "description": "Simple sine-wave engine using the shared oscillator pool",
+              "version": "0.1.0",
+              "maxNotes": 16
+            }
+          },
+          {
+            "id": "strings",
+            "meta": {
+              "id": "strings",
+              "name": "Strings",
+              "author": "GPT-5 mini (preview)",
+              "description": "A lightweight Karplus–Strong plucked-string synth plugin.",
+              "version": "0.1.0",
+              "maxNotes": 8
+            }
+          }
+        ],
+        "availableLanguages": [
+          {
+            "id": "en-US"
+          },
+          {
+            "id": "es-ES"
+          }
+        ],
+        "audioTimerId": null,
+        "updateInterval": 166,
+        "autoFPS": false,
+        "autoFpsDownscale": 0.25,
+        "autoFpsSamples": 2,
+        "enableFrameWorker": true,
+        "workerTransferEnabled": false,
+        "autoFpsBenchmark": {
+          "lastIntervalMs": null,
+          "measuredAt": null,
+          "sampleCount": 0,
+          "safetyFactor": 0.7
+        },
+        "includeProcessFrameLogs": false,
+        "gridType": "circle-of-fifths",
+        "synthesisEngine": "sine-wave",
+        "language": "en-US",
+        "isSettingsMode": false,
+        "settings": {
+          "categories": [
+            "grid",
+            "synth",
+            "language",
+            "maxNotes",
+            "motionThreshold"
+          ],
+          "currentCategoryIndex": 0
+        },
+        "micStream": null,
+        "audioResumeAttempts": 2,
+        "audioResumeDelayMs": 100,
+        "ttsEnabled": false,
+        "ingestEnabled": true,
+        "ingestPreferences": {
+          "useIdleCallback": true,
+          "maxEventsPerSecond": 10,
+          "enableOnLowPerformance": true,
+          "enableOnMobile": true,
+          "performanceThresholds": {
+            "lowCpuCores": 2,
+            "lowMemoryGB": 2,
+            "slowConnectionTypes": [
+              "slow-2g",
+              "2g"
+            ],
+            "mobileOptimization": true
+          }
+        },
+        "ingestCategories": {
+          "user_workflow": [
+            "startProcessing",
+            "stopProcessing",
+            "toggleProcessing",
+            "setMode"
+          ],
+          "performance_critical": [
+            "audioCuesReady",
+            "setFrameProviderThrottle",
+            "logFrameBenchmark"
+          ],
+          "auto_optimization": [
+            "setFrameInterval",
+            "diagnosticTick"
+          ],
+          "performance_settings": [
+            "setMaxNotes",
+            "setMotionThreshold",
+            "setAutoFPS"
+          ]
+        },
+        "eventCategories": {
+          "DEBUG": {
+            "sampleRate": 0.01,
+            "destinations": [
+              "console",
+              "eventBus"
+            ]
+          },
+          "INFO": {
+            "sampleRate": 1,
+            "destinations": [
+              "console",
+              "eventBus",
+              "indexedDB"
+            ]
+          },
+          "WARN": {
+            "sampleRate": 1,
+            "destinations": [
+              "console",
+              "eventBus",
+              "indexedDB"
+            ]
+          },
+          "ERROR": {
+            "sampleRate": 1,
+            "destinations": [
+              "console",
+              "eventBus",
+              "indexedDB",
+              "analytics"
+            ]
+          },
+          "user_workflow": {
+            "sampleRate": 1,
+            "destinations": [
+              "eventBus",
+              "analytics"
+            ]
+          },
+          "performance_critical": {
+            "sampleRate": 0.1,
+            "destinations": [
+              "eventBus"
+            ]
+          },
+          "auto_optimization": {
+            "sampleRate": 0.05,
+            "destinations": [
+              "eventBus"
+            ]
+          },
+          "performance_settings": {
+            "sampleRate": 1,
+            "destinations": [
+              "eventBus",
+              "analytics"
+            ]
+          },
+          "startProcessing": {
+            "sampleRate": 1,
+            "destinations": [
+              "eventBus",
+              "analytics"
+            ]
+          },
+          "stopProcessing": {
+            "sampleRate": 1,
+            "destinations": [
+              "eventBus",
+              "analytics"
+            ]
+          },
+          "audioCuesReady": {
+            "sampleRate": 0.01,
+            "destinations": [
+              "eventBus"
+            ]
+          },
+          "setFrameInterval": {
+            "sampleRate": 0.1,
+            "destinations": [
+              "eventBus"
+            ]
+          }
+        },
+        "dayNightMode": "day",
+        "resetStateOnError": true,
+        "currentMode": "flow",
+        "depthPath": "pseudo",
+        "dualModeWIP": true,
+        "enableSemanticDetection": false,
+        "motionThreshold": 20,
+        "maxNotes": 24,
+        "buildInfo": {
+          "version": "0.9.4-flowOrchestration",
+          "audio_version": "0.8.3-BPM",
+          "video_version": "0.8.3-flowOrchestration",
+          "ui_version": "0.8.0-orchestrationInstrumentation",
+          "languages_version": "0.2-spaEng",
+          "utils_version": "0.9.8-eventBus"
+        },
+        "orchestration": {
+          "activeExtractor": null,
+          "isMonitoring": false,
+          "capabilities": {
+            "mediaStreamTrackProcessor": false,
+            "canvas2D": true,
+            "webGL": false,
+            "webGPU": false,
+            "offscreenCanvas": false,
+            "wasm": false
+          },
+          "metrics": {
+            "fps": 0,
+            "targetFps": 60,
+            "resolutionWidth": 0,
+            "resolutionHeight": 0,
+            "frameExtractionTimeMs": 0,
+            "gridMappingTimeMs": 0,
+            "audioProcessingTimeMs": 0,
+            "totalCycleTimeMs": 0,
+            "underutilization": 0,
+            "gpuUtilization": 0,
+            "memoryUsageMB": 0
+          },
+          "decisionLog": [],
+          "currentMode": null,
+          "qualityProfile": {
+            "name": "auto",
+            "fpsTarget": 60,
+            "resolutionScale": 1
+          },
+          "lastUpdateTimestamp": 10578.5,
+          "payload": {
+            "capabilities": {
+              "mediaStreamTrackProcessor": true,
+              "canvas2D": true,
+              "webGL": true,
+              "webGPU": true,
+              "offscreenCanvas": true,
+              "wasm": true
+            }
+          },
+          "traceId": "1762047862512-0eac-000"
+        },
+        "isProcessing": true
+      },
+      "payload": {},
+      "traceId": "1762048081779-df99-006"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048081790,
+    "data": {
+      "message": "COMMAND: Initializing video pipeline...",
+      "filename": "media-commands.js",
+      "lineno": 122,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081800,
+    "data": {
+      "message": "initializeVideo: Starting video pipeline initialization",
+      "filename": "frame-processor.js",
+      "lineno": 497,
+      "colno": 3,
+      "engine": {
+        "audioApi": {}
+      },
+      "motionThreshold": 20
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048081803,
+    "data": {
+      "message": "Motion Specialist worker started.",
+      "filename": "frame-processor.js",
+      "lineno": 48,
+      "colno": 5
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081804,
+    "data": {
+      "message": "FrameConductor created",
+      "filename": "frame-conductor.js",
+      "lineno": 102,
+      "colno": 5,
+      "config": {
+        "flowTimeout": 100,
+        "focusTimeout": 200,
+        "hybridTimeout": 10,
+        "logMetrics": true,
+        "logFrames": true
+      }
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081823,
+    "data": {
+      "message": "FrameConductor: worker loaded",
+      "filename": "frame-conductor.js",
+      "lineno": 233,
+      "colno": 7,
+      "workerName": "fast-motion-worker",
+      "path": "./workers/fast-motion-worker.js",
+      "capabilities": 3
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081838,
+    "data": {
+      "message": "FrameConductor: worker loaded",
+      "filename": "frame-conductor.js",
+      "lineno": 233,
+      "colno": 7,
+      "workerName": "fast-grid-aggregator",
+      "path": "./workers/fast-grid-aggregator.js",
+      "capabilities": 1
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081846,
+    "data": {
+      "message": "FrameConductor: worker loaded",
+      "filename": "frame-conductor.js",
+      "lineno": 233,
+      "colno": 7,
+      "workerName": "pan-intensity-mapper",
+      "path": "./workers/pan-intensity-mapper.js",
+      "capabilities": 1
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048081847,
+    "data": {
+      "message": "FrameConductor: mode initialized",
+      "filename": "frame-conductor.js",
+      "lineno": 184,
+      "colno": 5,
+      "mode": "flow",
+      "workerCount": 3,
+      "workers": [
+        "fast-motion-worker",
+        "fast-grid-aggregator",
+        "pan-intensity-mapper"
+      ],
+      "totalLatencyBudgetMs": 22
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048081847,
+    "data": {
+      "message": "FrameConductor initialized",
+      "filename": "frame-processor.js",
+      "lineno": 515,
+      "colno": 5,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081856,
+    "data": {
+      "message": "initializeVideo: Starting frame provider worker...",
+      "filename": "frame-processor.js",
+      "lineno": 556,
+      "colno": 5
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081859,
+    "data": {
+      "message": "initializeVideo: Canvas created",
+      "filename": "frame-processor.js",
+      "lineno": 566,
+      "colno": 5,
+      "width": 640,
+      "height": 480
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081866,
+    "data": {
+      "message": "initializeVideo: Sending init message to frame provider worker...",
+      "filename": "frame-processor.js",
+      "lineno": 578,
+      "colno": 5
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081875,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048081876,
+    "data": {
+      "message": "initializeVideo: Video pipeline initialization completed successfully",
+      "filename": "frame-processor.js",
+      "lineno": 819,
+      "colno": 5
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048081886,
+    "data": {
+      "message": "COMMAND: initializeVideoPipeline COMPLETED successfully.",
+      "filename": "media-commands.js",
+      "lineno": 174,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081895,
+    "data": {
+      "message": "ASYNC-HANDLER: initializeVideoPipeline completed",
+      "filename": "media-commands.js",
+      "lineno": 33,
+      "colno": 9,
+      "result": {
+        "ok": true
+      }
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081930,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048081930,
+    "data": {
+      "message": "COMMAND: startProcessing initiation completed.",
+      "filename": "media-commands.js",
+      "lineno": 99,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081930,
+    "data": {
+      "message": "ASYNC-HANDLER: startProcessing completed",
+      "filename": "media-commands.js",
+      "lineno": 33,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048081937,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "ERROR",
+    "timestamp": 1762048083725,
+    "data": {
+      "message": "FrameConductor: fast-motion-worker error",
+      "filename": "frame-conductor.js",
+      "lineno": 421,
+      "colno": 11,
+      "workerName": "fast-motion-worker",
+      "error": "Failed to send message to worker fast-motion-worker: Failed to execute 'postMessage' on 'Worker': function mapFunction(frameData, width, height, prevFrameData, opts = {}) {\n  const movingRegions = opts.movingR...<omitted>...\n} could not be cloned.",
+      "occurrences": 1
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "ERROR",
+    "timestamp": 1762048083814,
+    "data": {
+      "message": "FrameConductor: fast-grid-aggregator error",
+      "filename": "frame-conductor.js",
+      "lineno": 421,
+      "colno": 11,
+      "workerName": "fast-grid-aggregator",
+      "error": "Failed to send message to worker fast-grid-aggregator: Failed to execute 'postMessage' on 'Worker': function mapFunction(frameData, width, height, prevFrameData, opts = {}) {\n  const movingRegions = opts.movingR...<omitted>...\n} could not be cloned.",
+      "occurrences": 1
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "ERROR",
+    "timestamp": 1762048083908,
+    "data": {
+      "message": "FrameConductor: pan-intensity-mapper error",
+      "filename": "frame-conductor.js",
+      "lineno": 421,
+      "colno": 11,
+      "workerName": "pan-intensity-mapper",
+      "error": "Failed to send message to worker pan-intensity-mapper: Failed to execute 'postMessage' on 'Worker': function mapFunction(frameData, width, height, prevFrameData, opts = {}) {\n  const movingRegions = opts.movingR...<omitted>...\n} could not be cloned.",
+      "occurrences": 1
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048083940,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048083943,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048083944,
+    "data": {
+      "cues": [],
+      "frameId": 1,
+      "startTime": 1360.4000000059605
+    },
+    "traceId": "1762048083944-45c8-007"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048083944,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048083955,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048083955,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048083955-f7ca-008"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048083955,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048083975,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048083984,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "ERROR",
+    "timestamp": 1762048084115,
+    "data": {
+      "colno": 9,
+      "workerName": "fast-grid-aggregator"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084187,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048084190,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048084190,
+    "data": {
+      "cues": [],
+      "frameId": 2,
+      "startTime": 1507.5
+    },
+    "traceId": "1762048084190-f589-009"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084193,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084196,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048084197,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048084197-13fe-010"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084198,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084210,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084222,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "ERROR",
+    "timestamp": 1762048084271,
+    "data": {
+      "colno": 9,
+      "workerName": "pan-intensity-mapper"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048084330,
+    "data": {
+      "message": "FrameConductor: frame timing",
+      "filename": "frame-conductor.js",
+      "lineno": 555,
+      "colno": 5,
+      "mode": "flow",
+      "totalTimeMs": "20.8",
+      "budgetMs": 22,
+      "onBudget": true,
+      "workers": "",
+      "framesProcessed": 3,
+      "errorsEncountered": 11
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084335,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048084339,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048084339,
+    "data": {
+      "cues": [],
+      "frameId": 3,
+      "startTime": 1747.5999999940395
+    },
+    "traceId": "1762048084339-9d37-011"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084342,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084344,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048084344,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048084344-2874-012"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084344,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084351,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084356,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084570,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048084570,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048084570,
+    "data": {
+      "cues": [],
+      "frameId": 4,
+      "startTime": 1878.7000000029802
+    },
+    "traceId": "1762048084570-0a79-013"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084571,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084571,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048084571,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048084571-425a-014"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084571,
+    "data": {
+      "message": "Engine dispatch audioPlayCues",
+      "filename": "engine.js",
+      "lineno": 220,
+      "colno": 9,
+      "payload": {
+        "cues": []
+      },
+      "command": "audioPlayCues",
+      "handlerExists": true,
+      "availableHandlers": [
+        "audioPlayCues"
+      ],
+      "traceId": "1762048084571-425a-014"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084577,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084588,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084597,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084835,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048084840,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048084840,
+    "data": {
+      "cues": [],
+      "frameId": 5,
+      "startTime": 2128.7000000029802
+    },
+    "traceId": "1762048084840-f12f-015"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084845,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084845,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048084845,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048084845-98b2-016"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084845,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084921,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048084982,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085360,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048085362,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048085362,
+    "data": {
+      "cues": [],
+      "frameId": 6,
+      "startTime": 2266.5
+    },
+    "traceId": "1762048085362-25b5-017"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085363,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085364,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048085364,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048085364-8159-018"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085364,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085396,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085403,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085495,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048085495,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048085496,
+    "data": {
+      "cues": [],
+      "frameId": 7,
+      "startTime": 2348.7999999970198
+    },
+    "traceId": "1762048085496-c445-019"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085496,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085498,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048085498,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048085498-9e6f-020"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085499,
+    "data": {
+      "message": "Engine dispatch audioPlayCues",
+      "filename": "engine.js",
+      "lineno": 220,
+      "colno": 9,
+      "payload": {
+        "cues": []
+      },
+      "command": "audioPlayCues",
+      "handlerExists": true,
+      "availableHandlers": [
+        "audioPlayCues"
+      ],
+      "traceId": "1762048085498-9e6f-020"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085500,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085510,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085522,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085667,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048085669,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048085669,
+    "data": {
+      "cues": [],
+      "frameId": 8,
+      "startTime": 2621.7999999970198
+    },
+    "traceId": "1762048085669-94a8-021"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085670,
+    "data": {
+      "message": "Engine dispatch audioCuesReady",
+      "filename": "engine.js",
+      "lineno": 220,
+      "colno": 9,
+      "payload": {
+        "cues": [],
+        "frameId": 8,
+        "startTime": 2621.7999999970198
+      },
+      "command": "audioCuesReady",
+      "handlerExists": true,
+      "availableHandlers": [
+        "audioCuesReady"
+      ],
+      "traceId": "1762048085669-94a8-021"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085671,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085671,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048085672,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048085672-3c3a-022"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085672,
+    "data": {
+      "message": "Engine dispatch audioPlayCues",
+      "filename": "engine.js",
+      "lineno": 220,
+      "colno": 9,
+      "payload": {
+        "cues": []
+      },
+      "command": "audioPlayCues",
+      "handlerExists": true,
+      "availableHandlers": [
+        "audioPlayCues"
+      ],
+      "traceId": "1762048085672-3c3a-022"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085672,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085682,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085688,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085733,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048085734,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048085734,
+    "data": {
+      "cues": [],
+      "frameId": 9,
+      "startTime": 3010.2000000029802
+    },
+    "traceId": "1762048085734-1505-023"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085734,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085734,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048085734,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048085734-03e5-024"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085734,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085740,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085743,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085826,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048085827,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048085827,
+    "data": {
+      "cues": [],
+      "frameId": 10,
+      "startTime": 3214.7000000029802
+    },
+    "traceId": "1762048085827-5515-025"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085827,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085827,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048085828,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048085828-e23f-026"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085828,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085841,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085847,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085871,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048085871,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048085871,
+    "data": {
+      "cues": [],
+      "frameId": 11,
+      "startTime": 3353.2999999970198
+    },
+    "traceId": "1762048085871-9007-027"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085872,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085872,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048085872,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048085872-0590-028"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085872,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085877,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048085880,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086130,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048086137,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048086137,
+    "data": {
+      "cues": [],
+      "frameId": 12,
+      "startTime": 3617.4000000059605
+    },
+    "traceId": "1762048086137-8ba6-029"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086140,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086141,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048086141,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048086141-f375-030"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086141,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086153,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086157,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086507,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048086507,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048086507,
+    "data": {
+      "cues": [],
+      "frameId": 13,
+      "startTime": 3943.9000000059605
+    },
+    "traceId": "1762048086507-5d54-031"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086508,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086508,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048086508,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048086508-9c74-032"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086509,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086515,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086518,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086529,
+    "data": {
+      "message": "createCuesFromAudioParams: No motion (intensity below threshold)",
+      "filename": "frame-processor.js",
+      "lineno": 154,
+      "colno": 7,
+      "intensity": 0,
+      "threshold": 0.001
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048086530,
+    "data": {
+      "message": "Dispatching audioCuesReady",
+      "filename": "frame-processor.js",
+      "lineno": 752,
+      "colno": 9,
+      "cueCount": 0,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioCuesReady",
+    "timestamp": 1762048086530,
+    "data": {
+      "cues": [],
+      "frameId": 14,
+      "startTime": 4070.0999999940395
+    },
+    "traceId": "1762048086530-06ab-033"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086530,
+    "data": {
+      "message": "sonification: audioCuesReady handler received",
+      "filename": "sonification-commands.js",
+      "lineno": 29,
+      "colno": 5,
+      "cuesCount": "undefined",
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086531,
+    "data": {
+      "message": "sonification: No cues to process",
+      "filename": "sonification-commands.js",
+      "lineno": 32,
+      "colno": 7,
+      "cuesToProcess": false,
+      "isArray": false
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "audioPlayCues",
+    "timestamp": 1762048086531,
+    "data": {
+      "cues": []
+    },
+    "traceId": "1762048086531-bb3b-034"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086531,
+    "data": {
+      "message": "Frame processor: Also dispatched audioPlayCues fallback",
+      "filename": "frame-processor.js",
+      "lineno": 762,
+      "colno": 11,
+      "cueCount": 0
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086535,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048086539,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "toggleProcessing",
+    "timestamp": 1762048087655,
+    "data": {},
+    "traceId": "1762048087655-47fb-035"
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048087657,
+    "data": {
+      "message": "COMMAND: toggleProcessing received",
+      "filename": "media-commands.js",
+      "lineno": 47,
+      "colno": 5,
+      "isProcessing": true
+    },
+    "traceId": null
+  },
+  {
+    "type": "command",
+    "category": "stopProcessing",
+    "timestamp": 1762048087657,
+    "data": {},
+    "traceId": "1762048087657-06c0-036"
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048087668,
+    "data": {
+      "message": "COMMAND: stopProcessing begins.",
+      "filename": "media-commands.js",
+      "lineno": 193,
+      "colno": 5,
+      "caller": "at Object.dispatch (https://mamware.github.io/acoustsee/future/web/core/engine.js:224:28)",
+      "hasPayload": true,
+      "isProcessing": true
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048087675,
+    "data": {
+      "message": "playCues entered",
+      "filename": "audio-processor.js",
+      "lineno": 406,
+      "colno": 5,
+      "contextState": "running",
+      "receivedType": "array"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048087675,
+    "data": {
+      "message": "Sent empty cues array to stop synth voices",
+      "filename": "media-commands.js",
+      "lineno": 208,
+      "colno": 9
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "INFO",
+    "timestamp": 1762048087675,
+    "data": {
+      "message": "COMMAND: stopProcessing COMPLETED.",
+      "filename": "media-commands.js",
+      "lineno": 216,
+      "colno": 5
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048087696,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048087702,
+    "data": {
+      "message": "Operating mode active",
+      "filename": "frame-processor.js",
+      "lineno": 815,
+      "colno": 9,
+      "mode": "flow"
+    },
+    "traceId": null
+  },
+  {
+    "type": "log",
+    "category": "DEBUG",
+    "timestamp": 1762048088034,
+    "data": {
+      "message": "Performance events flushed",
+      "filename": "ingest.js",
+      "lineno": 386,
+      "colno": 3,
+      "batchSize": 2,
+      "events": {
+        "stopProcessing": 1,
+        "toggleProcessing": 1
+      },
+      "source": "ingest-system"
+    },
+    "traceId": null
+  }
+]

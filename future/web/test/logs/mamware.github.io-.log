@@ -557,3 +557,322 @@ core-logger.js:178 [2025-11-01T19:15:04.963Z] DEBUG: Operating mode active (fram
 core-logger.js:178 [2025-11-01T19:15:04.971Z] DEBUG: Operating mode active (frame-processor.js:815)
 core-logger.js:178 [2025-11-01T19:15:04.972Z] DEBUG: Operating mode active (frame-processor.js:815)
 core-logger.js:178 [2025-11-01T19:15:05.664Z] DEBUG: Performance events flushed (ingest.js:386)
+favicon.ico:1  GET https://mamware.github.io/favicon.ico 404 (Not Found)
+core-logger.js:178 [2025-11-02T01:44:22.151Z] INFO: Initializing settings from loaded configs. (state.js:199)
+core-logger.js:178 [2025-11-02T01:44:22.155Z] INFO: Settings initialized (state.js:229)
+main.js:91 Application base path established: https://mamware.github.io/acoustsee/future/web/
+main.js:663 Ingest ping function is available. Type `pingIngest()` in the console to test.
+core-logger.js:178 [2025-11-02T01:44:22.181Z] INFO: ENGINE: Attempting to register Sonification commands... (engine.js:357)
+core-logger.js:178 [2025-11-02T01:44:22.182Z] INFO: SONIFICATION-COMMANDS: registerSonificationCommands function has been entered. (sonification-commands.js:11)
+core-logger.js:178 [2025-11-02T01:44:22.182Z] INFO: ENGINE: Sonification commands registration call completed. (engine.js:360)
+core-logger.js:178 [2025-11-02T01:44:22.184Z] INFO: MEDIA-COMMANDS: Registering command handlers... (media-commands.js:25)
+core-logger.js:178 [2025-11-02T01:44:22.184Z] INFO: MEDIA-COMMANDS: All command handlers registered successfully. (media-commands.js:272)
+core-logger.js:178 [2025-11-02T01:44:22.187Z] DEBUG: Mode commands registered (mode-commands.js:59)
+core-logger.js:178 [2025-11-02T01:44:22.189Z] INFO: performance_optimization_applied (ingest.js:221)
+core-logger.js:178 [2025-11-02T01:44:22.190Z] DEBUG: Engine: unified EventBus injected (engine.js:252)
+core-logger.js:178 [2025-11-02T01:44:22.191Z] DEBUG: EventBus created and exposed as window.eventBus (main.js:176)
+core-logger.js:178 [2025-11-02T01:44:22.458Z] INFO: init: Video grids loaded successfully (main.js:191)
+core-logger.js:178 [2025-11-02T01:44:22.513Z] DEBUG: updateOrchestration: State updated (diagnostics-commands.js:141)
+core-logger.js:178 [2025-11-02T01:44:22.514Z] INFO: init: Browser capabilities detected (main.js:203)
+core-logger.js:178 [2025-11-02T01:44:22.516Z] DEBUG: Capability Report:
+=== Browser Capability Report ===
+MediaStreamTrackProcessor: ✓
+Canvas 2D:                 ✓
+WebGL:                     ✓
+WebGPU:                    ✓
+OffscreenCanvas:           ✓
+WebAssembly:               ✓ (main.js:214)
+core-logger.js:178 [2025-11-02T01:44:22.517Z] INFO: init: Configurations loaded (main.js:221)
+core-logger.js:178 [2025-11-02T01:44:22.919Z] INFO: init: Log level set to default (main.js:259)
+dev-panel.js:21 dev-panel module loaded. Version info will be read from engine state at runtime.
+core-logger.js:178 [2025-11-02T01:44:24.566Z] INFO: Dev Panel module loaded. Initializing via registry. (main.js:285)
+dev-panel.js:68 initializeDevPanel called (visible)
+dev-panel.js:72 Dev Panel: EventBus available, can add unified event viewer
+core-logger.js:178 [2025-11-02T01:44:24.568Z] INFO: Dev Panel initialized via registry with standardized context. (main.js:291)
+floating-export-btn.js:363 [FLOATING-BTN] {"level":"DEBUG","text":"Floating export button created","data":{"id":"floating-export-container","zIndex":999999,"position":"bottom-right"}}
+floating-export-btn.js:363 [FLOATING-BTN] {"level":"INFO","text":"Floating export button initialized","data":{"type":"persistent-overlay","always_on_top":true,"works_offline":true}}
+core-logger.js:178 [2025-11-02T01:44:24.964Z] DEBUG: init (main.js:461)
+core-logger.js:178 [2025-11-02T01:44:24.964Z] INFO: init: UI setup complete (main.js:525)
+core-logger.js:178 [2025-11-02T01:44:42.018Z] INFO: main (main.js:441)
+core-logger.js:178 [2025-11-02T01:44:42.020Z] INFO: AudioManager: unlockAudio called (audio-manager.js:46)
+core-logger.js:178 [2025-11-02T01:44:42.032Z] INFO: AudioManager: AudioContext running after unlock (audio-manager.js:69)
+core-logger.js:178 [2025-11-02T01:44:42.062Z] DEBUG: initializeAudio: starting (audio-processor.js:82)
+core-logger.js:178 [2025-11-02T01:44:42.065Z] INFO: AudioContext state changed (audio-processor.js:102)
+core-logger.js:178 [2025-11-02T01:44:42.490Z] DEBUG: initializeAudio: enumerateDevices result (audio-processor.js:121)
+core-logger.js:178 [2025-11-02T01:44:42.491Z] DEBUG: Resizing oscillator pool (audio-processor.js:268)
+core-logger.js:178 [2025-11-02T01:44:42.499Z] DEBUG: Resized oscillator pool (audio-processor.js:290)
+core-logger.js:178 [2025-11-02T01:44:42.499Z] INFO: Audio system initialized successfully (audio-processor.js:152)
+main.js:343 [2025-11-02T01:44:42.502Z] WARN: onStateChange: attempted to register non-function listener (engine.js:111)
+console.warn @ main.js:343
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+onStateChange @ engine.js:111
+registerAudioListeners @ audio-processor.js:589
+handleAudioUnlock @ main.js:378
+await in handleAudioUnlock
+DOM.powerOn.addEventListener.once @ main.js:444
+main.js:343 [2025-11-02T01:44:42.506Z] WARN: onStateChange: attempted to register non-function listener (engine.js:111)
+console.warn @ main.js:343
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+onStateChange @ engine.js:111
+registerAudioListeners @ audio-processor.js:617
+handleAudioUnlock @ main.js:378
+await in handleAudioUnlock
+DOM.powerOn.addEventListener.once @ main.js:444
+main.js:343 [2025-11-02T01:44:42.507Z] WARN: onStateChange: attempted to register non-function listener (engine.js:111)
+console.warn @ main.js:343
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+onStateChange @ engine.js:111
+registerAudioListeners @ audio-processor.js:644
+handleAudioUnlock @ main.js:378
+await in handleAudioUnlock
+DOM.powerOn.addEventListener.once @ main.js:444
+main.js:343 [2025-11-02T01:44:42.509Z] WARN: onStateChange: attempted to register non-function listener (engine.js:111)
+console.warn @ main.js:343
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+onStateChange @ engine.js:111
+registerAudioListeners @ audio-processor.js:661
+handleAudioUnlock @ main.js:378
+await in handleAudioUnlock
+DOM.powerOn.addEventListener.once @ main.js:444
+core-logger.js:178 [2025-11-02T01:44:42.511Z] INFO: main (main.js:379)
+main.js:339 Activating Dev Panel in response to app:poweredOn event.
+core-logger.js:178 [2025-11-02T01:44:42.512Z] INFO: Console log (main.js:321)
+core-logger.js:178 [2025-11-02T01:44:42.514Z] INFO: Dev Panel: Log level set to DEBUG (dev-panel.js:91)
+core-logger.js:178 [2025-11-02T01:44:42.517Z] INFO: main (main.js:416)
+dev-panel.js:253 Dev Panel: attempting to load CSS from https://mamware.github.io/acoustsee/future/web/ui/dev-panel/dev-panel.css
+dev-panel.js:256 Dev Panel CSS loaded: https://mamware.github.io/acoustsee/future/web/ui/dev-panel/dev-panel.css
+core-logger.js:178 [2025-11-02T01:44:43.459Z] INFO: Touch Pad UI wired successfully. (dev-panel.js:217)
+core-logger.js:178 [2025-11-02T01:44:43.636Z] DEBUG: dev-panel (dev-panel.js:625)
+core-logger.js:178 [2025-11-02T01:44:43.642Z] DEBUG: early-logs (early-logs.js:39)
+core-logger.js:178 [2025-11-02T01:44:43.646Z] DEBUG: early-logs (early-logs.js:86)
+core-logger.js:178 [2025-11-02T01:44:43.651Z] INFO: early-logs (early-logs.js:296)
+core-logger.js:178 [2025-11-02T01:44:43.653Z] INFO: dev-panel (dev-panel.js:640)
+core-logger.js:178 [2025-11-02T01:44:43.697Z] INFO: dev-panel (dev-panel.js:750)
+core-logger.js:178 [2025-11-02T01:44:43.708Z] DEBUG: orchestration-inspector (orchestration-inspector.js:411)
+core-logger.js:178 [2025-11-02T01:44:43.710Z] INFO: orchestration-inspector (orchestration-inspector.js:442)
+core-logger.js:178 [2025-11-02T01:44:43.710Z] INFO: dev-panel (dev-panel.js:770)
+core-logger.js:178 [2025-11-02T01:44:43.711Z] DEBUG: EventBusViewer: Auto-refresh enabled (eventbus-viewer.js:275)
+core-logger.js:178 [2025-11-02T01:44:43.719Z] INFO: EventBusViewer initialized (eventbus-viewer.js:303)
+core-logger.js:178 [2025-11-02T01:44:43.721Z] INFO: dev-panel (dev-panel.js:800)
+core-logger.js:178 [2025-11-02T01:44:44.898Z] DEBUG: orchestration-inspector (orchestration-inspector.js:49)
+eventbus-viewer.js:252 [Violation] 'setInterval' handler took 58ms
+main.js:339 === SYNTH DROPDOWN CHANGE EVENT FIRED ===
+core-logger.js:178 [2025-11-02T01:45:40.018Z] INFO: Console log (main.js:321)
+core-logger.js:178 [2025-11-02T01:45:40.021Z] DEBUG: Synth dropdown changed (dev-panel.js:893)
+core-logger.js:178 [2025-11-02T01:45:40.021Z] DEBUG: About to dispatch setSynthEngine (dev-panel.js:903)
+core-logger.js:178 [2025-11-02T01:45:40.022Z] DEBUG: setSynthEngine handler ENTRY (settings-commands.js:43)
+core-logger.js:178 [2025-11-02T01:45:40.022Z] DEBUG: setSynthEngine command received (settings-commands.js:53)
+core-logger.js:178 [2025-11-02T01:45:40.032Z] INFO: audio: selected synth engine (audio-processor.js:22)
+core-logger.js:178 [2025-11-02T01:45:40.033Z] INFO: DebugUI: Synth engine set (settings-commands.js:66)
+main.js:339 === GRID DROPDOWN CHANGE EVENT FIRED ===
+core-logger.js:178 [2025-11-02T01:45:51.885Z] INFO: Console log (main.js:321)
+core-logger.js:178 [2025-11-02T01:45:51.887Z] DEBUG: Grid dropdown changed (dev-panel.js:868)
+core-logger.js:178 [2025-11-02T01:45:51.888Z] DEBUG: About to dispatch setGridType (dev-panel.js:878)
+core-logger.js:178 [2025-11-02T01:45:51.888Z] DEBUG: Engine dispatch setGridType (engine.js:220)
+core-logger.js:178 [2025-11-02T01:45:51.889Z] DEBUG: setGridType handler ENTRY (settings-commands.js:16)
+core-logger.js:178 [2025-11-02T01:45:51.889Z] DEBUG: setGridType command received (settings-commands.js:26)
+core-logger.js:178 [2025-11-02T01:45:51.899Z] INFO: DebugUI: Grid type set (settings-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:00.953Z] DEBUG: COMMAND: toggleProcessing received (media-commands.js:47)
+core-logger.js:178 [2025-11-02T01:48:00.964Z] DEBUG: ASYNC-HANDLER: startProcessing starting (media-commands.js:30)
+core-logger.js:178 [2025-11-02T01:48:00.972Z] DEBUG: COMMAND: startProcessing handler called (media-commands.js:57)
+core-logger.js:178 [2025-11-02T01:48:00.974Z] INFO: COMMAND: Start processing initiated. (media-commands.js:65)
+core-logger.js:178 [2025-11-02T01:48:00.978Z] DEBUG: COMMAND: Requesting camera permissions... (media-commands.js:67)
+core-logger.js:178 [2025-11-02T01:48:01.093Z] DEBUG: Performance events flushed (ingest.js:386)
+core-logger.js:178 [2025-11-02T01:48:01.633Z] DEBUG: COMMAND: Camera stream acquired successfully. (media-commands.js:70)
+main.js:339 ENGINE: setState called to set isProcessing=true
+core-logger.js:178 [2025-11-02T01:48:01.741Z] INFO: Console log (main.js:321)
+engine.js:129 Stack trace for isProcessing change:
+setState @ engine.js:129
+(anonymous) @ media-commands.js:91
+await in (anonymous)
+(anonymous) @ media-commands.js:32
+dispatch @ engine.js:224
+engine.dispatch @ ingest.js:83
+(anonymous) @ media-commands.js:51
+dispatch @ engine.js:224
+engine.dispatch @ ingest.js:83
+delegatedClick @ dev-panel.actions.js:38
+core-logger.js:178 [2025-11-02T01:48:01.780Z] DEBUG: ASYNC-HANDLER: initializeVideoPipeline starting (media-commands.js:30)
+core-logger.js:178 [2025-11-02T01:48:01.789Z] INFO: COMMAND: Initializing video pipeline... (media-commands.js:122)
+core-logger.js:178 [2025-11-02T01:48:01.800Z] DEBUG: initializeVideo: Starting video pipeline initialization (frame-processor.js:497)
+core-logger.js:178 [2025-11-02T01:48:01.801Z] INFO: Motion Specialist worker started. (frame-processor.js:48)
+core-logger.js:178 [2025-11-02T01:48:01.803Z] DEBUG: FrameConductor created (frame-conductor.js:102)
+core-logger.js:178 [2025-11-02T01:48:01.817Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:233)
+core-logger.js:178 [2025-11-02T01:48:01.836Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:233)
+core-logger.js:178 [2025-11-02T01:48:01.845Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:233)
+core-logger.js:178 [2025-11-02T01:48:01.847Z] INFO: FrameConductor: mode initialized (frame-conductor.js:184)
+core-logger.js:178 [2025-11-02T01:48:01.847Z] INFO: FrameConductor initialized (frame-processor.js:515)
+core-logger.js:178 [2025-11-02T01:48:01.852Z] DEBUG: initializeVideo: Starting frame provider worker... (frame-processor.js:556)
+core-logger.js:178 [2025-11-02T01:48:01.859Z] DEBUG: initializeVideo: Canvas created (frame-processor.js:566)
+core-logger.js:178 [2025-11-02T01:48:01.865Z] DEBUG: initializeVideo: Sending init message to frame provider worker... (frame-processor.js:578)
+core-logger.js:178 [2025-11-02T01:48:01.873Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:01.875Z] INFO: initializeVideo: Video pipeline initialization completed successfully (frame-processor.js:819)
+core-logger.js:178 [2025-11-02T01:48:01.882Z] INFO: COMMAND: initializeVideoPipeline COMPLETED successfully. (media-commands.js:174)
+core-logger.js:178 [2025-11-02T01:48:01.886Z] DEBUG: ASYNC-HANDLER: initializeVideoPipeline completed (media-commands.js:33)
+core-logger.js:178 [2025-11-02T01:48:01.929Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:01.930Z] INFO: COMMAND: startProcessing initiation completed. (media-commands.js:99)
+core-logger.js:178 [2025-11-02T01:48:01.930Z] DEBUG: ASYNC-HANDLER: startProcessing completed (media-commands.js:33)
+core-logger.js:178 [2025-11-02T01:48:01.936Z] DEBUG: Operating mode active (frame-processor.js:815)
+eventbus-viewer.js:252 [Violation] 'setInterval' handler took 62ms
+main.js:347 [2025-11-02T01:48:03.702Z] ERROR: FrameConductor: fast-motion-worker error (frame-conductor.js:421)
+console.error @ main.js:347
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+processFrame @ frame-conductor.js:421
+await in processFrame
+processFlowMode @ frame-processor.js:100
+frameProviderWorker.onmessage @ frame-processor.js:606
+frame-provider-worker.js:38 Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently
+provideFrame @ frame-provider-worker.js:38
+await in provideFrame
+loop @ frame-provider-worker.js:64
+requestAnimationFrame
+loop @ frame-provider-worker.js:65
+requestAnimationFrame
+self.onmessage @ frame-provider-worker.js:79
+main.js:347 [2025-11-02T01:48:03.797Z] ERROR: FrameConductor: fast-grid-aggregator error (frame-conductor.js:421)
+console.error @ main.js:347
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+processFrame @ frame-conductor.js:421
+await in processFrame
+processFlowMode @ frame-processor.js:100
+frameProviderWorker.onmessage @ frame-processor.js:606
+main.js:347 [2025-11-02T01:48:03.892Z] ERROR: FrameConductor: pan-intensity-mapper error (frame-conductor.js:421)
+console.error @ main.js:347
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+processFrame @ frame-conductor.js:421
+await in processFrame
+processFlowMode @ frame-processor.js:100
+frameProviderWorker.onmessage @ frame-processor.js:606
+core-logger.js:178 [2025-11-02T01:48:03.938Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:03.942Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:03.944Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:03.944Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:03.955Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:03.974Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:03.983Z] DEBUG: Operating mode active (frame-processor.js:815)
+main.js:347 [2025-11-02T01:48:04.104Z] ERROR: FrameConductor: fast-grid-aggregator crashed
+console.error @ main.js:347
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+worker.onerror @ frame-conductor.js:215
+core-logger.js:178 [2025-11-02T01:48:04.184Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:04.189Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:04.193Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:04.193Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:04.198Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:04.209Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:04.221Z] DEBUG: Operating mode active (frame-processor.js:815)
+main.js:347 [2025-11-02T01:48:04.266Z] ERROR: FrameConductor: pan-intensity-mapper crashed
+console.error @ main.js:347
+output @ core-logger.js:178
+structuredLog @ logging.js:353
+worker.onerror @ frame-conductor.js:215
+core-logger.js:178 [2025-11-02T01:48:04.329Z] INFO: FrameConductor: frame timing (frame-conductor.js:555)
+core-logger.js:178 [2025-11-02T01:48:04.332Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:04.336Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:04.339Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:04.343Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:04.344Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:04.349Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:04.355Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:04.565Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:04.570Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:04.570Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:04.571Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:04.571Z] DEBUG: Engine dispatch audioPlayCues (engine.js:220)
+core-logger.js:178 [2025-11-02T01:48:04.571Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:04.588Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:04.596Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:04.833Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:04.836Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:04.844Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:04.845Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:04.845Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:04.920Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:04.982Z] DEBUG: Operating mode active (frame-processor.js:815)
+log-viewer.js:37 [Violation] 'requestAnimationFrame' handler took 53ms
+[Violation] Forced reflow while executing JavaScript took 52ms
+core-logger.js:178 [2025-11-02T01:48:05.359Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:05.360Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:05.362Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:05.364Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:05.364Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:05.393Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.401Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.495Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:05.495Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:05.496Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:05.497Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:05.498Z] DEBUG: Engine dispatch audioPlayCues (engine.js:220)
+core-logger.js:178 [2025-11-02T01:48:05.499Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:05.509Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.518Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.664Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:05.667Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:05.669Z] DEBUG: Engine dispatch audioCuesReady (engine.js:220)
+core-logger.js:178 [2025-11-02T01:48:05.670Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:05.671Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:05.672Z] DEBUG: Engine dispatch audioPlayCues (engine.js:220)
+core-logger.js:178 [2025-11-02T01:48:05.672Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:05.680Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.686Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.733Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:05.734Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:05.734Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:05.734Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:05.734Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:05.738Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.742Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.826Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:05.827Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:05.827Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:05.827Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:05.828Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:05.841Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.847Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.871Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:05.871Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:05.871Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:05.872Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:05.872Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:05.877Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:05.880Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:06.125Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:06.132Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:06.138Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:06.141Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:06.141Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:06.150Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:06.156Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:06.506Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:06.507Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:06.507Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:06.508Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:06.508Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:06.514Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:06.517Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:06.529Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:154)
+core-logger.js:178 [2025-11-02T01:48:06.529Z] INFO: Dispatching audioCuesReady (frame-processor.js:752)
+core-logger.js:178 [2025-11-02T01:48:06.530Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-02T01:48:06.531Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-02T01:48:06.531Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:762)
+core-logger.js:178 [2025-11-02T01:48:06.534Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:06.538Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:07.655Z] DEBUG: COMMAND: toggleProcessing received (media-commands.js:47)
+core-logger.js:178 [2025-11-02T01:48:07.667Z] INFO: COMMAND: stopProcessing begins. (media-commands.js:193)
+core-logger.js:178 [2025-11-02T01:48:07.674Z] DEBUG: playCues entered (audio-processor.js:406)
+core-logger.js:178 [2025-11-02T01:48:07.675Z] DEBUG: Sent empty cues array to stop synth voices (media-commands.js:208)
+core-logger.js:178 [2025-11-02T01:48:07.675Z] INFO: COMMAND: stopProcessing COMPLETED. (media-commands.js:216)
+core-logger.js:178 [2025-11-02T01:48:07.696Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:07.701Z] DEBUG: Operating mode active (frame-processor.js:815)
+core-logger.js:178 [2025-11-02T01:48:08.033Z] DEBUG: Performance events flushed (ingest.js:386)
+eventbus-viewer.js:252 [Violation] 'setInterval' handler took 54ms
+eventbus-viewer.js:252 [Violation] 'setInterval' handler took 60ms
+core-logger.js:178 [2025-11-02T01:49:52.602Z] INFO: EventBusViewer: Exported events (eventbus-viewer.js:235)

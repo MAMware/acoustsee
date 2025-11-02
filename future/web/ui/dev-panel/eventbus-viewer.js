@@ -5,6 +5,7 @@ import { structuredLog } from '../../utils/logging.js';
 
 /**
  * Initialize EventBus Viewer component
+ * Event-driven architecture: renders only when new events arrive
  * @param {Object} engine - Engine instance with eventBus
  * @param {Object} DOM - DOM cache with eventbus-viewer elements
  * @returns {Function} dispose - Cleanup function
@@ -29,8 +30,7 @@ export function initEventBusViewer(engine, DOM) {
     category: 'all',  // 'all', 'INFO', 'DEBUG', 'WARN', 'ERROR', or command category
     showFrames: false // Whether to show frame traces
   };
-  let autoRefresh = true;
-  let refreshInterval = null;
+  let lastEventCount = 0; // Track if new events arrived
 
   // DOM elements
   const container = DOM['eventbus-viewer-container'];
@@ -247,11 +247,26 @@ export function initEventBusViewer(engine, DOM) {
   }
 
   /**
-   * Refresh display
+   * Smart refresh: only render if new events arrived
    */
-  function refresh() {
+  function smartRefresh() {
+    const currentEvents = getFilteredEvents();
+    
+    // Only render if event count changed
+    if (currentEvents.length !== lastEventCount) {
+      lastEventCount = currentEvents.length;
+      renderEventList();
+      renderCorrelationView(); // Keep correlation view in sync
+    }
+  }
+
+  /**
+   * Manual refresh (explicit user action)
+   */
+  function manualRefresh() {
     renderEventList();
     renderCorrelationView();
+    lastEventCount = getFilteredEvents().length;
   }
 
   /**
@@ -261,61 +276,53 @@ export function initEventBusViewer(engine, DOM) {
     filters.type = filterType?.value || 'all';
     filters.category = filterCategory?.value || 'all';
     filters.showFrames = filterFrames?.checked || false;
-    refresh();
-  }
-
-  /**
-   * Handle auto-refresh toggle
-   */
-  function onAutoRefreshChange() {
-    autoRefresh = autoRefreshCheckbox?.checked || false;
-    
-    if (autoRefresh) {
-      refreshInterval = setInterval(refresh, 1000); // Refresh every second
-      structuredLog('DEBUG', 'EventBusViewer: Auto-refresh enabled');
-    } else {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-      }
-      structuredLog('DEBUG', 'EventBusViewer: Auto-refresh disabled');
-    }
+    manualRefresh(); // Force refresh on filter change
   }
 
   // Attach event listeners
   if (filterType) filterType.addEventListener('change', onFilterChange);
   if (filterCategory) filterCategory.addEventListener('change', onFilterChange);
   if (filterFrames) filterFrames.addEventListener('change', onFilterChange);
-  if (refreshBtn) refreshBtn.addEventListener('click', refresh);
-  if (autoRefreshCheckbox) {
-    autoRefreshCheckbox.addEventListener('change', onAutoRefreshChange);
-    // Start auto-refresh by default if checkbox is checked
-    if (autoRefreshCheckbox.checked) {
-      onAutoRefreshChange();
-    }
-  }
+  if (refreshBtn) refreshBtn.addEventListener('click', manualRefresh);
   if (clearBtn) clearBtn.addEventListener('click', clearEvents);
   if (exportBtn) exportBtn.addEventListener('click', exportEvents);
 
+  // Listen to EventBus for new events - EVENT-DRIVEN architecture
+  // This callback fires whenever a new event is emitted
+  const onNewEvent = () => {
+    smartRefresh(); // Only render if new events arrived
+  };
+
+  // Subscribe to EventBus changes (if eventBus supports callbacks)
+  if (eventBus && typeof eventBus.subscribe === 'function') {
+    eventBus.subscribe('*', onNewEvent); // Subscribe to all events
+    structuredLog('DEBUG', 'EventBusViewer: Subscribed to EventBus events');
+  } else {
+    // Fallback: Poll only if eventBus doesn't support subscriptions
+    // This is rare, but keeps backward compatibility
+    const pollInterval = setInterval(smartRefresh, 2000);
+    structuredLog('DEBUG', 'EventBusViewer: Using fallback polling (2s interval)');
+  }
+
   // Initial render
-  refresh();
+  smartRefresh();
 
   structuredLog('INFO', 'EventBusViewer initialized');
 
   // Cleanup function
   return () => {
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-    }
-    
     // Remove event listeners
     if (filterType) filterType.removeEventListener('change', onFilterChange);
     if (filterCategory) filterCategory.removeEventListener('change', onFilterChange);
     if (filterFrames) filterFrames.removeEventListener('change', onFilterChange);
-    if (refreshBtn) refreshBtn.removeEventListener('click', refresh);
-    if (autoRefreshCheckbox) autoRefreshCheckbox.removeEventListener('change', onAutoRefreshChange);
+    if (refreshBtn) refreshBtn.removeEventListener('click', manualRefresh);
     if (clearBtn) clearBtn.removeEventListener('click', clearEvents);
     if (exportBtn) exportBtn.removeEventListener('click', exportEvents);
+    
+    // Unsubscribe from EventBus
+    if (eventBus && typeof eventBus.unsubscribe === 'function') {
+      eventBus.unsubscribe('*', onNewEvent);
+    }
     
     structuredLog('INFO', 'EventBusViewer disposed');
   };
