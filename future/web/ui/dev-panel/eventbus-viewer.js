@@ -10,10 +10,15 @@ import { structuredLog } from '../../utils/logging.js';
  * @returns {Function} dispose - Cleanup function
  */
 export function initEventBusViewer(engine, DOM) {
-  const { eventBus } = engine;
+  // Try to get eventBus from engine, fall back to global window.eventBus
+  let eventBus = engine?.eventBus;
+  
+  if (!eventBus && typeof window !== 'undefined') {
+    eventBus = window.eventBus;
+  }
   
   if (!eventBus) {
-    structuredLog('WARN', 'EventBusViewer: eventBus not available');
+    structuredLog('WARN', 'EventBusViewer: eventBus not available on engine or window');
     return () => {};
   }
 
