@@ -10,6 +10,77 @@ import {
 import { WorkerContract } from './workers/worker-contract.js';
 import { FrameConductor } from './frame-conductor.js';
 
+// ============================================================================
+// HIGH-FREQUENCY PAYLOAD OPTIMIZATION (Event Bus Performance)
+// ============================================================================
+// Commands like 'audioCuesReady' emit large payloads (motion matrices, specialists).
+// This causes bus overhead. Enable payload capping to reduce event size.
+// Configurable from dev panel (window.__audioSeeDebug.capHighFreqPayloads).
+// See EVENT_BUS_IMPLEMENTATION_AUDIT_ISSUES.md for details.
+
+function shouldCapHighFreqPayloads() {
+  // Check dev panel override first
+  if (window.__audioSeeDebug?.capHighFreqPayloads !== undefined) {
+    return window.__audioSeeDebug.capHighFreqPayloads;
+  }
+  // Default: enabled (safe, reduces bus load)
+  return true;
+}
+
+function getPayloadLimits() {
+  // Allow dev panel to customize limits at runtime
+  if (window.__audioSeeDebug?.payloadLimits) {
+    return window.__audioSeeDebug.payloadLimits;
+  }
+  // Default limits
+  return {
+    'audioCuesReady': { cues: 50, motionRegions: 100 },
+    'flowCuesReady': { objects: 50, regions: 100 },
+    'depthCuesReady': { depthRegions: 50 }
+  };
+}
+
+function capHighFreqPayload(commandName, payload) {
+  if (!shouldCapHighFreqPayloads()) return payload;
+  
+  const limits = getPayloadLimits()[commandName];
+  if (!limits) return payload;  // No cap for this command
+  
+  const capped = { ...payload };
+  
+  switch (commandName) {
+    case 'audioCuesReady':
+      if (limits.cues && Array.isArray(capped.cues)) {
+        capped.cues = capped.cues.slice(0, limits.cues);
+      }
+      if (limits.motionRegions && capped.motion?.movingRegions) {
+        capped.motion = { ...capped.motion };
+        capped.motion.movingRegions = capped.motion.movingRegions.slice(0, limits.motionRegions);
+      }
+      // Note: Don't send full specialists data to reduce payload size
+      capped.specialists = undefined;
+      break;
+      
+    case 'flowCuesReady':
+      if (limits.objects && Array.isArray(capped.objects)) {
+        capped.objects = capped.objects.slice(0, limits.objects);
+      }
+      // Optionally cap regions if present
+      if (limits.regions && capped.regions) {
+        capped.regions = capped.regions.slice(0, limits.regions);
+      }
+      break;
+      
+    case 'depthCuesReady':
+      if (limits.depthRegions && capped.depthRegions) {
+        capped.depthRegions = capped.depthRegions.slice(0, limits.depthRegions);
+      }
+      break;
+  }
+  
+  return capped;
+}
+
 // --- Module State ---
 let _config = {};
 let frameProviderWorker = null;
@@ -74,7 +145,7 @@ function startDepthWorker() {
       const validation = WorkerContract.validate(e.data);
       if (validation.valid) {
         const result = WorkerContract.getResult(e.data);
-        engine.dispatch('depthCuesReady', result);
+        engine.dispatch('depthCuesReady', capHighFreqPayload('depthCuesReady', result));
       } else {
         structuredLog('WARN', 'Depth worker message validation failed', { error: validation.error });
       }
@@ -200,9 +271,9 @@ async function processWithMotionWorker(frameData, width, height, state) {
     const motionResults = result.result || { cues: [], textureGrid: [], objects: [], inferredBPM: 100 };
     
     // Dispatch state change events for compatibility with existing subscribers
-    engine.dispatch('flowCuesReady', motionResults);
+    engine.dispatch('flowCuesReady', capHighFreqPayload('flowCuesReady', motionResults));
     if (motionResults.objects?.length > 0) {
-      engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+      engine.dispatch('objectCuesReady', capHighFreqPayload('objectCuesReady', { objects: motionResults.objects }));
     }
     if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
       engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
@@ -398,8 +469,8 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
       } else if (state.currentMode === 'flow-legacy') {
         const motionResults = await processWithMotionWorker(frameData, canvas.width, canvas.height, state);
         
-        engine.dispatch('flowCuesReady', motionResults);
-        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        engine.dispatch('flowCuesReady', capHighFreqPayload('flowCuesReady', motionResults));
+        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', capHighFreqPayload('objectCuesReady', { objects: motionResults.objects }));
         if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
           engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
         }
@@ -447,7 +518,7 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
       
       // Dispatch audio cues if we have them
       if (dispatchPayload && dispatchPayload.cues && dispatchPayload.cues.length > 0) {
-        engine.dispatch('audioCuesReady', dispatchPayload);
+        engine.dispatch('audioCuesReady', capHighFreqPayload('audioCuesReady', dispatchPayload));
       }
       
     } catch (e) {
@@ -637,8 +708,8 @@ export async function initializeVideo(config) {
         const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height, state);
         
         // Dispatch new cues
-        engine.dispatch('flowCuesReady', motionResults);
-        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        engine.dispatch('flowCuesReady', capHighFreqPayload('flowCuesReady', motionResults));
+        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', capHighFreqPayload('objectCuesReady', { objects: motionResults.objects }));
         if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
           engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
         }
@@ -699,8 +770,8 @@ export async function initializeVideo(config) {
         const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height, state);
         
         // Dispatch new cues
-        engine.dispatch('flowCuesReady', motionResults);
-        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', { objects: motionResults.objects });
+        engine.dispatch('flowCuesReady', capHighFreqPayload('flowCuesReady', motionResults));
+        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', capHighFreqPayload('objectCuesReady', { objects: motionResults.objects }));
         if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
           engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
         }
@@ -750,11 +821,11 @@ export async function initializeVideo(config) {
       
       if (dispatchPayload) {
         structuredLog('INFO', 'Dispatching audioCuesReady', { cueCount: dispatchPayload.cues ? dispatchPayload.cues.length : 0, mode: state.currentMode });
-        engine.dispatch('audioCuesReady', {
+        engine.dispatch('audioCuesReady', capHighFreqPayload('audioCuesReady', {
           cues: dispatchPayload.cues || [],
           frameId: payload.frameId,
           startTime: payload.startTime
-        });
+        }));
         // Robust fallback: also dispatch direct audio play command which may be
         // consumed by older or alternate audio handlers expecting this event.
         try {

@@ -248,6 +248,39 @@
           <button data-action="resetThrottling" type="button">Reset Throttling</button>
           <button data-action="applyThrottling" type="button">Apply Manual Throttling</button>
         </div>
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #555;">
+          <label class="inline-checkbox">
+            <input id="cap-high-freq-payloads-toggle" type="checkbox" checked />
+            <span>Cap High-Frequency Payloads (Performance)</span>
+          </label>
+          <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 26px;">Limits sizes of per-frame events for eventBus performance.</p>
+          <div class="controls-grid-2col" style="margin-top: 8px;">
+            <div class="control-column">
+              <label>Max Audio Cues</label>
+              <div class="slider-container">
+                <input id="cap-audio-cues-slider" type="range" min="1" max="100" step="1" value="50">
+                <span id="cap-audio-cues-value">50</span>
+              </div>
+              <label>Max Motion Regions</label>
+              <div class="slider-container">
+                <input id="cap-motion-regions-slider" type="range" min="1" max="200" step="1" value="100">
+                <span id="cap-motion-regions-value">100</span>
+              </div>
+            </div>
+            <div class="control-column">
+              <label>Max Flow Objects</label>
+              <div class="slider-container">
+                <input id="cap-flow-objects-slider" type="range" min="1" max="100" step="1" value="50">
+                <span id="cap-flow-objects-value">50</span>
+              </div>
+              <label>Max Depth Regions</label>
+              <div class="slider-container">
+                <input id="cap-depth-regions-slider" type="range" min="1" max="200" step="1" value="50">
+                <span id="cap-depth-regions-value">50</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -986,6 +986,90 @@ export function initializeDevPanel(arg1, arg2) {
       });
     }
 
+    // --- Wire High-Frequency Payload Capping Controls ---
+    try {
+      const capToggle = panel.querySelector('#cap-high-freq-payloads-toggle');
+      const capAudioCuesSlider = panel.querySelector('#cap-audio-cues-slider');
+      const capAudioCuesValue = panel.querySelector('#cap-audio-cues-value');
+      const capMotionRegionsSlider = panel.querySelector('#cap-motion-regions-slider');
+      const capMotionRegionsValue = panel.querySelector('#cap-motion-regions-value');
+      const capFlowObjectsSlider = panel.querySelector('#cap-flow-objects-slider');
+      const capFlowObjectsValue = panel.querySelector('#cap-flow-objects-value');
+      const capDepthRegionsSlider = panel.querySelector('#cap-depth-regions-slider');
+      const capDepthRegionsValue = panel.querySelector('#cap-depth-regions-value');
+
+      // Initialize window.__audioSeeDebug if not already present
+      if (!window.__audioSeeDebug) {
+        window.__audioSeeDebug = {};
+      }
+
+      // Apply initial values from window.__audioSeeDebug if present
+      const initialCapEnabled = window.__audioSeeDebug.capHighFreqPayloads !== false;
+      if (capToggle) capToggle.checked = initialCapEnabled;
+
+      const initialLimits = window.__audioSeeDebug.payloadLimits || {};
+      if (capAudioCuesSlider) {
+        capAudioCuesSlider.value = initialLimits.audioCuesLimit || 50;
+        if (capAudioCuesValue) capAudioCuesValue.textContent = capAudioCuesSlider.value;
+      }
+      if (capMotionRegionsSlider) {
+        capMotionRegionsSlider.value = initialLimits.motionRegionsLimit || 100;
+        if (capMotionRegionsValue) capMotionRegionsValue.textContent = capMotionRegionsSlider.value;
+      }
+      if (capFlowObjectsSlider) {
+        capFlowObjectsSlider.value = initialLimits.flowObjectsLimit || 50;
+        if (capFlowObjectsValue) capFlowObjectsValue.textContent = capFlowObjectsSlider.value;
+      }
+      if (capDepthRegionsSlider) {
+        capDepthRegionsSlider.value = initialLimits.depthRegionsLimit || 50;
+        if (capDepthRegionsValue) capDepthRegionsValue.textContent = capDepthRegionsSlider.value;
+      }
+
+      // Wire toggle for enabling/disabling capping
+      if (capToggle) {
+        capToggle.addEventListener('change', (e) => {
+          window.__audioSeeDebug.capHighFreqPayloads = e.target.checked;
+          structuredLog('INFO', 'High-frequency payload capping toggled', { enabled: e.target.checked });
+        }, { passive: true });
+      }
+
+      // Wire sliders to update limits
+      const updateLimits = () => {
+        if (!window.__audioSeeDebug.payloadLimits) {
+          window.__audioSeeDebug.payloadLimits = {};
+        }
+        if (capAudioCuesSlider) {
+          const val = parseInt(capAudioCuesSlider.value, 10);
+          window.__audioSeeDebug.payloadLimits.audioCuesLimit = val;
+          if (capAudioCuesValue) capAudioCuesValue.textContent = val;
+        }
+        if (capMotionRegionsSlider) {
+          const val = parseInt(capMotionRegionsSlider.value, 10);
+          window.__audioSeeDebug.payloadLimits.motionRegionsLimit = val;
+          if (capMotionRegionsValue) capMotionRegionsValue.textContent = val;
+        }
+        if (capFlowObjectsSlider) {
+          const val = parseInt(capFlowObjectsSlider.value, 10);
+          window.__audioSeeDebug.payloadLimits.flowObjectsLimit = val;
+          if (capFlowObjectsValue) capFlowObjectsValue.textContent = val;
+        }
+        if (capDepthRegionsSlider) {
+          const val = parseInt(capDepthRegionsSlider.value, 10);
+          window.__audioSeeDebug.payloadLimits.depthRegionsLimit = val;
+          if (capDepthRegionsValue) capDepthRegionsValue.textContent = val;
+        }
+        structuredLog('DEBUG', 'Payload limits updated', { limits: window.__audioSeeDebug.payloadLimits });
+      };
+
+      if (capAudioCuesSlider) capAudioCuesSlider.addEventListener('input', updateLimits, { passive: true });
+      if (capMotionRegionsSlider) capMotionRegionsSlider.addEventListener('input', updateLimits, { passive: true });
+      if (capFlowObjectsSlider) capFlowObjectsSlider.addEventListener('input', updateLimits, { passive: true });
+      if (capDepthRegionsSlider) capDepthRegionsSlider.addEventListener('input', updateLimits, { passive: true });
+
+    } catch (e) {
+      structuredLog('WARN', 'Failed to wire high-frequency payload capping controls', { error: e?.message || String(e) });
+    }
+
     setOutputCallback((level, text) => debugLog(level, text));
   }
 

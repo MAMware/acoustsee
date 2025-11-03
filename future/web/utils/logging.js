@@ -299,10 +299,12 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
   if (numericLevel < currentLogLevel) return;
   
-  // Apply sampling only for DEBUG level if sample is true (corrected semantics)
-  if (sample && level.toUpperCase() === 'DEBUG' && Math.random() > sampleRate) return;
+  // NOTE: Pre-emit sampling removed. Event bus now handles all sampling based on
+  // category configuration. This ensures unified sampling (single source of truth).
+  // See EVENT_BUS_IMPLEMENTATION_AUDIT_ISSUES.md for details.
   
   // Rate limiting check (unless unthrottled flag is set)
+  // Throttling is KEPT - it prevents high-frequency repeats like "Failed to load: {file}"
   if (!unthrottled && shouldThrottle(level, message)) {
     return;
   }
