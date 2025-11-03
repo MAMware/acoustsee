@@ -463,6 +463,53 @@ export class FrameConductor {
   // =========================================================================
 
   /**
+   * Extract only serializable state fields for worker communication
+   * 
+   * Workers receive state via postMessage(), which uses structured cloning.
+   * Structured cloning cannot serialize functions, class instances, Symbols, etc.
+   * This helper extracts only JSON-serializable fields from the engine state.
+   * 
+   * Fields INCLUDED (safe to serialize):
+   * - orchestration (gridType, maxNotes, dynamicMode, etc.)
+   * - depthPath, motionThreshold, gridScale, etc. (primitives)
+   * 
+   * Fields EXCLUDED (cannot serialize):
+   * - grids (contains mapFunction functions)
+   * - settings (contains class instances)
+   * - audioContext, mediaStream, Worker instances
+   * - Functions, circular references
+   * 
+   * @private
+   * @param {Object} state - Full engine state
+   * @returns {Object} Serializable subset of state
+   */
+  #extractSerializableState(state) {
+    return {
+      // Orchestration config
+      orchestration: state.orchestration ? {
+        gridType: state.orchestration.gridType,
+        maxNotes: state.orchestration.maxNotes,
+        dynamicMode: state.orchestration.dynamicMode,
+        intensityScale: state.orchestration.intensityScale,
+        pitchRangeMin: state.orchestration.pitchRangeMin,
+        pitchRangeMax: state.orchestration.pitchRangeMax,
+      } : {},
+      
+      // Motion/video settings
+      depthPath: state.depthPath,
+      motionThreshold: state.motionThreshold,
+      gridScale: state.gridScale,
+      
+      // Mode info
+      mode: state.mode,
+      
+      // NOTE: grids (with mapFunction) is NOT included
+      // NOTE: settings, audioContext, mediaStream NOT included
+      // Workers receive frame data and parameters, not app-level state
+    };
+  }
+
+  /**
    * Run a single worker with frame data
    * 
    * Private method called during chain processing.
@@ -512,14 +559,16 @@ export class FrameConductor {
       // Attach listener
       worker.addEventListener('message', onMessage);
 
-      // Send message to worker
+      // Send message to worker with SERIALIZABLE state only
+      // (functions like grid.mapFunction cannot be cloned via postMessage)
       try {
+        const serializableState = this.#extractSerializableState(state);
         worker.postMessage({
           type: 'processingRequest',
           data: frameData,
           width,
           height,
-          state,
+          state: serializableState,
           timestamp: Date.now(),
         });
       } catch (error) {
