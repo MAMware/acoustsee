@@ -586,7 +586,9 @@ export function registerAudioListeners(engine) {
   };
 
   // Mode-aware audio bridge: Handle Flow mode cues
-  engine.onStateChange('flowCuesReady', (flowCues) => {
+  engine.onStateChange((state) => {
+    if (!state.flowCuesReady) return;
+    const flowCues = state.flowCuesReady;
     try {
       structuredLog('DEBUG', 'flowCuesReady: received flow cues', { 
         hasGridFlows: !!flowCues.gridFlows, 
@@ -614,7 +616,9 @@ export function registerAudioListeners(engine) {
   });
 
   // Mode-aware audio bridge: Handle Focus mode depth cues
-  engine.onStateChange('depthCuesReady', (depthCues) => {
+  engine.onStateChange((state) => {
+    if (!state.depthCuesReady) return;
+    const depthCues = state.depthCuesReady;
     try {
       structuredLog('DEBUG', 'depthCuesReady: received depth cues', { 
         hasGridDepths: !!depthCues.gridDepths,
@@ -641,7 +645,9 @@ export function registerAudioListeners(engine) {
     }
   });
 
-  engine.onStateChange('objectCuesReady', (cues) => {
+  engine.onStateChange((state) => {
+    if (!state.objectCuesReady) return;
+    const cues = state.objectCuesReady;
     const { objects } = cues;
     objects.forEach(obj => {
       let profile;
@@ -658,7 +664,9 @@ export function registerAudioListeners(engine) {
     });
   });
 
-  engine.onStateChange('bpmUpdate', ({ bpm: newBpm }) => {
+  engine.onStateChange((state) => {
+    if (!state.bpmUpdate) return;
+    const newBpm = state.bpmUpdate.bpm;
     if (Date.now() - lastBpmUpdate < 500) return; // Debounce
     lastBpmUpdate = Date.now();
     bpm = newBpm;
