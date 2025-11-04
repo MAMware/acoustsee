@@ -75,6 +75,73 @@ export function initEventBusViewer(engine, DOM) {
   }
 
   /**
+   * Render event bus metrics (buffer usage, subscribers, etc.)
+   */
+  function renderMetrics() {
+    const metricsContainer = DOM['eventbus-metrics-container'];
+    if (!metricsContainer) return; // Skip if container not in DOM
+
+    const metrics = eventBus.getMetrics?.();
+    if (!metrics) {
+      metricsContainer.innerHTML = '<div class="eventbus-metrics-unavailable">Metrics unavailable</div>';
+      return;
+    }
+
+    // Create visual gauge for buffer usage
+    const gaugeColor = metrics.bufferUsagePercent < 50 
+      ? '#27ae60' // Green
+      : metrics.bufferUsagePercent < 80 
+        ? '#f39c12' // Orange
+        : '#e74c3c'; // Red
+
+    metricsContainer.innerHTML = `
+      <div class="eventbus-metrics-grid">
+        <div class="metrics-card">
+          <div class="metrics-label">Buffer Usage</div>
+          <div class="metrics-gauge" style="--usage: ${metrics.bufferUsagePercent}%; --color: ${gaugeColor};">
+            <div class="gauge-fill"></div>
+            <div class="gauge-text">${metrics.bufferSize}/${metrics.bufferCapacity}</div>
+          </div>
+          <div class="metrics-detail">${metrics.bufferUsagePercent}% full</div>
+        </div>
+
+        <div class="metrics-card">
+          <div class="metrics-label">Subscribers</div>
+          <div class="metrics-value">${metrics.totalSubscribers}</div>
+          <div class="metrics-detail">${metrics.patternsActive} active patterns</div>
+        </div>
+
+        <div class="metrics-card">
+          <div class="metrics-label">Events (by type)</div>
+          <div class="metrics-breakdown">
+            ${Object.entries(metrics.eventCounts.byType).map(([type, count]) => 
+              `<div class="metrics-row"><span>${type}</span><span>${count}</span></div>`
+            ).join('')}
+          </div>
+        </div>
+
+        <div class="metrics-card">
+          <div class="metrics-label">Events (by category)</div>
+          <div class="metrics-breakdown" style="max-height: 120px; overflow-y: auto;">
+            ${Object.entries(metrics.eventCounts.byCategory)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 6)
+              .map(([category, count]) => 
+                `<div class="metrics-row"><span>${category}</span><span>${count}</span></div>`
+              ).join('')}
+          </div>
+        </div>
+
+        <div class="metrics-card">
+          <div class="metrics-label">Time Span</div>
+          <div class="metrics-value">${metrics.timeSpanMs}ms</div>
+          <div class="metrics-detail">${metrics.totalEventsInBuffer} events</div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
    * Render event list
    */
   function renderEventList() {
@@ -252,7 +319,10 @@ export function initEventBusViewer(engine, DOM) {
   function smartRefresh() {
     const currentEvents = getFilteredEvents();
     
-    // Only render if event count changed
+    // Always update metrics (they change even without new filtered events)
+    renderMetrics();
+    
+    // Only render event list if event count changed
     if (currentEvents.length !== lastEventCount) {
       lastEventCount = currentEvents.length;
       renderEventList();
@@ -264,6 +334,7 @@ export function initEventBusViewer(engine, DOM) {
    * Manual refresh (explicit user action)
    */
   function manualRefresh() {
+    renderMetrics();
     renderEventList();
     renderCorrelationView();
     lastEventCount = getFilteredEvents().length;

@@ -236,12 +236,64 @@ export function createEventBus(config) {
   function size() {
     return eventLog.length;
   }
+
+  /**
+   * Get comprehensive metrics about the event bus state.
+   * Useful for dev panel visualization and health monitoring.
+   * 
+   * @returns {object} Metrics object with buffer, subscription, and event stats
+   */
+  function getMetrics() {
+    // Count subscribers per pattern
+    const subscriberCounts = {};
+    let totalSubscribers = 0;
+    
+    for (const [pattern, callbacks] of Object.entries(subscribers)) {
+      subscriberCounts[pattern] = callbacks.length;
+      totalSubscribers += callbacks.length;
+    }
+
+    // Count events by category and type
+    const eventCounts = {
+      byType: {},
+      byCategory: {}
+    };
+
+    eventLog.forEach(event => {
+      eventCounts.byType[event.type] = (eventCounts.byType[event.type] || 0) + 1;
+      eventCounts.byCategory[event.category] = (eventCounts.byCategory[event.category] || 0) + 1;
+    });
+
+    return {
+      // Buffer metrics
+      bufferSize: eventLog.length,
+      bufferCapacity: maxEvents,
+      bufferUsagePercent: Math.round((eventLog.length / maxEvents) * 100),
+
+      // Subscriber metrics
+      totalSubscribers,
+      subscribersByPattern: subscriberCounts,
+      patternsActive: Object.keys(subscribers).length,
+
+      // Event distribution
+      eventCounts,
+      totalEventsInBuffer: eventLog.length,
+
+      // Timestamp of oldest/newest events
+      oldestEventTime: eventLog.length > 0 ? eventLog[0].timestamp : null,
+      newestEventTime: eventLog.length > 0 ? eventLog[eventLog.length - 1].timestamp : null,
+      timeSpanMs: eventLog.length > 1 
+        ? eventLog[eventLog.length - 1].timestamp - eventLog[0].timestamp 
+        : 0
+    };
+  }
   
   return {
     emit,
     subscribe,
     getEvents,
     clear,
-    size
+    size,
+    getMetrics
   };
 }

@@ -782,6 +782,7 @@ export function initializeDevPanel(arg1, arg2) {
     try {
       const eventBusDOM = {
         'eventbus-viewer-container': panel.querySelector('#eventbus-viewer-container'),
+        'eventbus-metrics-container': panel.querySelector('#eventbus-metrics-container'),
         'eventbus-event-list': panel.querySelector('#eventbus-event-list'),
         'eventbus-correlation-view': panel.querySelector('#eventbus-correlation-view'),
         'eventbus-filter-type': panel.querySelector('#eventbus-filter-type'),
