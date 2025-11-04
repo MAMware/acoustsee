@@ -75,6 +75,22 @@ export function initEventBusViewer(engine, DOM) {
   }
 
   /**
+   * Calculate approximate size of an event in bytes
+   */
+  function getEventSizeBytes(event) {
+    return JSON.stringify(event).length;
+  }
+
+  /**
+   * Calculate total buffer size in bytes and convert to kB
+   */
+  function getBufferSizeKB() {
+    const events = eventBus.getEvents?.() || [];
+    const totalBytes = events.reduce((sum, event) => sum + getEventSizeBytes(event), 0);
+    return (totalBytes / 1024).toFixed(1);
+  }
+
+  /**
    * Render event bus metrics (buffer usage, subscribers, etc.)
    */
   function renderMetrics() {
@@ -87,6 +103,9 @@ export function initEventBusViewer(engine, DOM) {
       return;
     }
 
+    // Calculate buffer size in KB
+    const bufferSizeKB = getBufferSizeKB();
+
     // Create visual gauge for buffer usage
     const gaugeColor = metrics.bufferUsagePercent < 50 
       ? '#27ae60' // Green
@@ -97,22 +116,31 @@ export function initEventBusViewer(engine, DOM) {
     metricsContainer.innerHTML = `
       <div class="eventbus-metrics-grid">
         <div class="metrics-card">
-          <div class="metrics-label">Buffer Usage</div>
+          <div class="metrics-label-wrapper">
+            <span class="metrics-label">Buffer Usage</span>
+            <span class="metrics-tooltip" title="Ring buffer capacity: ${metrics.bufferCapacity} events max. Current usage: ${metrics.bufferUsagePercent}% (${bufferSizeKB} kB)">ⓘ</span>
+          </div>
           <div class="metrics-gauge" style="--usage: ${metrics.bufferUsagePercent}%; --color: ${gaugeColor};">
             <div class="gauge-fill"></div>
             <div class="gauge-text">${metrics.bufferSize}/${metrics.bufferCapacity}</div>
           </div>
-          <div class="metrics-detail">${metrics.bufferUsagePercent}% full</div>
+          <div class="metrics-detail">${metrics.bufferUsagePercent}% full • ${bufferSizeKB} kB</div>
         </div>
 
         <div class="metrics-card">
-          <div class="metrics-label">Subscribers</div>
+          <div class="metrics-label-wrapper">
+            <span class="metrics-label">Subscribers</span>
+            <span class="metrics-tooltip" title="Count of active event subscribers and patterns they listen to">ⓘ</span>
+          </div>
           <div class="metrics-value">${metrics.totalSubscribers}</div>
           <div class="metrics-detail">${metrics.patternsActive} active patterns</div>
         </div>
 
         <div class="metrics-card">
-          <div class="metrics-label">Events (by type)</div>
+          <div class="metrics-label-wrapper">
+            <span class="metrics-label">Events (by type)</span>
+            <span class="metrics-tooltip" title="Distribution of log and command events in the buffer">ⓘ</span>
+          </div>
           <div class="metrics-breakdown">
             ${Object.entries(metrics.eventCounts.byType).map(([type, count]) => 
               `<div class="metrics-row"><span>${type}</span><span>${count}</span></div>`
@@ -121,8 +149,11 @@ export function initEventBusViewer(engine, DOM) {
         </div>
 
         <div class="metrics-card">
-          <div class="metrics-label">Events (by category)</div>
-          <div class="metrics-breakdown" style="max-height: 120px; overflow-y: auto;">
+          <div class="metrics-label-wrapper">
+            <span class="metrics-label">Events (by category)</span>
+            <span class="metrics-tooltip" title="Top 6 event categories (INFO, DEBUG, ERROR, etc.) with scroll">ⓘ</span>
+          </div>
+          <div class="metrics-breakdown metrics-breakdown-scrollable">
             ${Object.entries(metrics.eventCounts.byCategory)
               .sort((a, b) => b[1] - a[1])
               .slice(0, 6)
@@ -133,7 +164,10 @@ export function initEventBusViewer(engine, DOM) {
         </div>
 
         <div class="metrics-card">
-          <div class="metrics-label">Time Span</div>
+          <div class="metrics-label-wrapper">
+            <span class="metrics-label">Time Span</span>
+            <span class="metrics-tooltip" title="Duration between oldest and newest event in buffer">ⓘ</span>
+          </div>
           <div class="metrics-value">${metrics.timeSpanMs}ms</div>
           <div class="metrics-detail">${metrics.totalEventsInBuffer} events</div>
         </div>
@@ -232,7 +266,7 @@ export function initEventBusViewer(engine, DOM) {
                   <span class="event-category event-category-${event.category}">${event.category}</span>
                 </div>
                 <div class="correlation-message">${escapeHtml(event.data?.message || event.message || '-')}</div>
-                ${event.data ? `<details class="correlation-data"><summary>Data</summary><pre>${JSON.stringify(event.data, null, 2)}</pre></details>` : ''}
+                ${event.data ? `<details class="correlation-data" open><summary>Data</summary><pre>${JSON.stringify(event.data, null, 2)}</pre></details>` : ''}
               </div>
             </div>
           `;

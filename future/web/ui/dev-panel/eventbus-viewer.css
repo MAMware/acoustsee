@@ -397,6 +397,34 @@
   font-weight: 600;
 }
 
+.metrics-label-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.metrics-tooltip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+  font-size: 10px;
+  cursor: help;
+  border: 1px solid rgba(52, 152, 219, 0.4);
+  transition: all 0.2s ease;
+}
+
+.metrics-tooltip:hover {
+  background: rgba(52, 152, 219, 0.3);
+  border-color: rgba(52, 152, 219, 0.6);
+  transform: scale(1.1);
+}
+
 .metrics-value {
   font-size: 24px;
   font-weight: bold;
@@ -446,6 +474,32 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.metrics-breakdown-scrollable {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Match the main scrollbar styling from dev-panel.css */
+.metrics-breakdown-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.metrics-breakdown-scrollable::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.metrics-breakdown-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(52, 152, 219, 0.4);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.metrics-breakdown-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 152, 219, 0.6);
 }
 
 .metrics-row {

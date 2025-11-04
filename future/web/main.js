@@ -132,7 +132,7 @@ export async function init() {
     // Must be created after engine but before initializing subsystems that need it
     const eventBus = createEventBus({
       state: settings,
-      maxEvents: 200
+      maxEvents: 500
     });
     
     // Initialize logging module with EventBus
