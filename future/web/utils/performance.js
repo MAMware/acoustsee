@@ -80,6 +80,90 @@ export function computeDefaultMaxNotes(base = 24, { isMobile: isMobileOverride, 
   }
 }
 
+/**
+ * Detect device tier for worker timeout adjustment
+ * HAR analysis found: Workers timeout on low-end devices with standard SLAs
+ * This function estimates device capability for latency budget scaling
+ * 
+ * Returns: 'low-end' | 'standard'
+ * 
+ * Detection criteria:
+ * - Device memory <= 2GB
+ * - CPU cores <= 2
+ * - Old device patterns (iPhone 3-5, iPad 1-4, etc.)
+ * - WebGL 1 only (no WebGL2 support)
+ */
+export function detectDeviceTier() {
+  try {
+    // Check device memory (if available)
+    const dm = getDeviceMemory();
+    if (dm && dm <= 2) return 'low-end';
+
+    // Check processor count
+    const hc = getHardwareConcurrency();
+    if (hc && hc <= 2) return 'low-end';
+
+    // Check if running on mobile
+    const ua = getUserAgent();
+    const isMobileDevice = isMobile();
+
+    // Check if running on specific low-end device patterns
+    const isOldMobile = /iPhone [0-9][ ;,]|iPad[ 1-4][ ;,]|Nexus 5|Nexus 5X|Moto G[0-9]|Samsung SM-J|LG-D|ZTE|Xiaomi Redmi|Honor [0-9]T/i.test(ua);
+    if (isOldMobile) return 'low-end';
+
+    // Check WebGL performance hints
+    try {
+      const hasWebGL = !!document.createElement('canvas').getContext('webgl');
+      const hasWebGL2 = !!document.createElement('canvas').getContext('webgl2');
+      const noModernGPU = !hasWebGL2 && isMobileDevice;
+      if (noModernGPU) return 'low-end';
+    } catch (e) {
+      // If WebGL check fails, continue with other heuristics
+    }
+
+    // Mobile with limited concurrency
+    if (isMobileDevice && (!hc || hc <= 4)) return 'low-end';
+
+    return 'standard';
+  } catch (e) {
+    return 'standard'; // Safe default
+  }
+}
+
+/**
+ * Get worker timeout configuration adjusted for device tier
+ * 
+ * Standard devices use conservative SLAs:
+ * - Flow: 100ms (target ~22ms, safe for desktop)
+ * - Focus: 200ms (target ~190ms, safe for detailed analysis)
+ * - Hybrid: 10ms (target ~5ms, for quick decisions)
+ * 
+ * Low-end devices get 2x adjustment:
+ * - Flow: 200ms (accommodates 50-150ms actual performance)
+ * - Focus: 400ms (accommodates slower depth/semantic workers)
+ * - Hybrid: 20ms (still tight but more realistic)
+ * 
+ * @returns {Object} Timeout configuration { flowTimeout, focusTimeout, hybridTimeout }
+ */
+export function getWorkerTimeoutConfig() {
+  const tier = detectDeviceTier();
+  const baseConfig = {
+    flowTimeout: 100,
+    focusTimeout: 200,
+    hybridTimeout: 10,
+  };
+
+  if (tier === 'low-end') {
+    return {
+      flowTimeout: 200,    // 2x adjustment
+      focusTimeout: 400,
+      hybridTimeout: 20,
+    };
+  }
+
+  return baseConfig;
+}
+
 // DOM-dependent runtime benchmark (kept here for consolidation). It is
 // guarded and will only run when a video/canvas/process function is provided.
 export async function computeAutoIntervalBenchmark(video, canvas, processFrameWithState, DEFAULT_TARGET_FPS = 15) {

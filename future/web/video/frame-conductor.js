@@ -44,6 +44,7 @@
 import { structuredLog, throttleError } from '../utils/logging.js';
 import { WorkerContract } from './workers/worker-contract.js';
 import { getWorkersForMode, getTotalLatencyBudget } from './workers/worker-manifest.js';
+import { detectDeviceTier, getWorkerTimeoutConfig } from '../utils/performance.js';
 
 /**
  * FrameConductor: Manifest-driven orchestrator for video workers
@@ -71,15 +72,20 @@ export class FrameConductor {
    * @param {boolean} config.logFrames - Whether to sample-log frame processing (default true)
    */
   constructor(config = {}) {
+    // Device-aware timeout adjustment (HAR analysis finding)
+    // Import timeout config from performance.js (respects SRP)
+    const timeoutConfig = getWorkerTimeoutConfig();
+    const deviceTier = detectDeviceTier();
+
     this.config = Object.assign(
       {
-        flowTimeout: 100,
-        focusTimeout: 200,
-        hybridTimeout: 10,
+        flowTimeout: timeoutConfig.flowTimeout,
+        focusTimeout: timeoutConfig.focusTimeout,
+        hybridTimeout: timeoutConfig.hybridTimeout,
         logMetrics: true,
         logFrames: true,
       },
-      config
+      config  // Allow explicit override if needed
     );
 
     // Worker storage: Map<workerName, Worker>
@@ -97,10 +103,12 @@ export class FrameConductor {
       totalFramesProcessed: 0,
       totalErrorsEncountered: 0,
       workerTimings: {}, // { workerName: [measurements] }
+      deviceTier: deviceTier,
     };
 
     structuredLog('DEBUG', 'FrameConductor created', {
       config: this.config,
+      deviceTier: this.#timingMetrics.deviceTier,
     });
   }
 
