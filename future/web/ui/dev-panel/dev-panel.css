@@ -3,6 +3,9 @@
   Description: Full-screen Developer Panel stylesheet.
 */
 
+/* Import EventBus Viewer styles */
+@import url('./eventbus-viewer.css');
+
 #acoustsee-dev-panel {
   position: fixed;
   top: 0;
