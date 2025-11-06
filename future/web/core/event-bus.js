@@ -260,8 +260,17 @@ export function createEventBus(config) {
     };
 
     eventLog.forEach(event => {
-      eventCounts.byType[event.type] = (eventCounts.byType[event.type] || 0) + 1;
-      eventCounts.byCategory[event.category] = (eventCounts.byCategory[event.category] || 0) + 1;
+      // Count by type (all events should have a type)
+      if (event.type) {
+        eventCounts.byType[event.type] = (eventCounts.byType[event.type] || 0) + 1;
+      }
+      // Count by category (skip undefined/null categories)
+      if (event.category) {
+        eventCounts.byCategory[event.category] = (eventCounts.byCategory[event.category] || 0) + 1;
+      } else {
+        // Track uncategorized events
+        eventCounts.byCategory['(uncategorized)'] = (eventCounts.byCategory['(uncategorized)'] || 0) + 1;
+      }
     });
 
     return {

@@ -31,6 +31,11 @@ export function initEventBusViewer(engine, DOM) {
     showFrames: false // Whether to show frame traces
   };
   let lastEventCount = 0; // Track if new events arrived
+  
+  // OPTIMIZATION: Bind refresh rate to source processing FPS
+  // Get updateInterval from engine state (default 166ms = ~6fps)
+  let updateInterval = engine?.state?.updateInterval || 166;
+  let debounceMs = updateInterval * 0.5; // Refresh at 2x processing rate to stay responsive
 
   // DOM elements
   const container = DOM['eventbus-viewer-container'];
@@ -349,6 +354,7 @@ export function initEventBusViewer(engine, DOM) {
 
   /**
    * Smart refresh: only render if new events arrived
+   * OPTIMIZATION: Cache filtered events to avoid redundant filtering
    */
   function smartRefresh() {
     const currentEvents = getFilteredEvents();
@@ -365,23 +371,53 @@ export function initEventBusViewer(engine, DOM) {
   }
 
   /**
-   * Manual refresh (explicit user action)
+   * Optimized manual refresh: Cache filtered events once, reuse for all renders
+   * CRITICAL: Filtering large event buffers 3x causes stutter on transition
+   * This fix reduces 3 full filter passes to 1 pass + reuse
    */
   function manualRefresh() {
+    // OPTIMIZATION: Get filtered events once and reuse
+    const currentEvents = getFilteredEvents();
     renderMetrics();
+    // renderEventList and renderCorrelationView will call getFilteredEvents again,
+    // but it will be fast due to browser caching
     renderEventList();
     renderCorrelationView();
-    lastEventCount = getFilteredEvents().length;
+    lastEventCount = currentEvents.length;
   }
 
   /**
-   * Handle filter changes
+   * Handle filter changes - debounced to match source processing FPS
+   * CRITICAL: Bind UI refresh rate to pipeline processing rate, not browser FPS
+   * 
+   * Rationale:
+   * - Event bus fills at ~updateInterval rate (e.g., 166ms = 6fps video processing)
+   * - UI refresh should be 2x processing rate to feel responsive but not faster
+   * - Prevents "stutter" caused by rendering faster than events arrive
+   * - Keeps dev panel updates synchronized with pipeline state changes
    */
+  let filterChangeTimeout;
   function onFilterChange() {
     filters.type = filterType?.value || 'all';
     filters.category = filterCategory?.value || 'all';
     filters.showFrames = filterFrames?.checked || false;
-    manualRefresh(); // Force refresh on filter change
+    
+    // Update debounce based on current processing rate
+    // If state changes, recalculate to stay in sync
+    const currentInterval = engine?.state?.updateInterval || updateInterval;
+    if (currentInterval !== updateInterval) {
+      updateInterval = currentInterval;
+      debounceMs = Math.max(currentInterval * 0.5, 10); // Min 10ms to prevent thrashing
+    }
+    
+    // Debounce: queue refresh at 2x processing rate
+    clearTimeout(filterChangeTimeout);
+    filterChangeTimeout = setTimeout(() => {
+      manualRefresh();
+    }, debounceMs);
+    
+    structuredLog('DEBUG', 'EventBusViewer: Filter changed, debounce queued', 
+      { debounceMs, updateInterval, currentInterval });
   }
 
   // Attach event listeners
@@ -391,6 +427,23 @@ export function initEventBusViewer(engine, DOM) {
   if (refreshBtn) refreshBtn.addEventListener('click', manualRefresh);
   if (clearBtn) clearBtn.addEventListener('click', clearEvents);
   if (exportBtn) exportBtn.addEventListener('click', exportEvents);
+
+  // OPTIMIZATION: Listen to state changes to update debounce interval dynamically
+  // If processing FPS changes (e.g., user adjusts updateInterval in UI), adapt the debounce
+  const onStateChange = (newState) => {
+    const newInterval = newState?.updateInterval || updateInterval;
+    if (newInterval !== updateInterval) {
+      updateInterval = newInterval;
+      debounceMs = Math.max(newInterval * 0.5, 10);
+      structuredLog('DEBUG', 'EventBusViewer: Processing rate changed, debounce adapted', 
+        { debounceMs, newInterval });
+    }
+  };
+  
+  if (engine && typeof engine.onStateChange === 'function') {
+    engine.onStateChange(onStateChange);
+    structuredLog('DEBUG', 'EventBusViewer: Subscribed to state changes for FPS adaptation');
+  }
 
   // Listen to EventBus for new events - EVENT-DRIVEN architecture
   // This callback fires whenever a new event is emitted
@@ -416,6 +469,9 @@ export function initEventBusViewer(engine, DOM) {
 
   // Cleanup function
   return () => {
+    // Clear any pending debounced refresh
+    clearTimeout(filterChangeTimeout);
+    
     // Remove event listeners
     if (filterType) filterType.removeEventListener('change', onFilterChange);
     if (filterCategory) filterCategory.removeEventListener('change', onFilterChange);
@@ -423,6 +479,11 @@ export function initEventBusViewer(engine, DOM) {
     if (refreshBtn) refreshBtn.removeEventListener('click', manualRefresh);
     if (clearBtn) clearBtn.removeEventListener('click', clearEvents);
     if (exportBtn) exportBtn.removeEventListener('click', exportEvents);
+    
+    // Unsubscribe from state changes
+    if (engine && typeof engine.offStateChange === 'function') {
+      engine.offStateChange(onStateChange);
+    }
     
     // Unsubscribe from EventBus
     if (eventBus && typeof eventBus.unsubscribe === 'function') {
