@@ -74,7 +74,8 @@ export class FrameConductor {
   constructor(config = {}) {
     // Device-aware timeout adjustment (HAR analysis finding)
     // Import timeout config from performance.js (respects SRP)
-    const timeoutConfig = getWorkerTimeoutConfig();
+    // CRITICAL FIX: Pass engine state to detect canvas fallback
+    const timeoutConfig = getWorkerTimeoutConfig(config.engine?.state);
     const deviceTier = detectDeviceTier();
 
     this.config = Object.assign(
@@ -87,6 +88,9 @@ export class FrameConductor {
       },
       config  // Allow explicit override if needed
     );
+    
+    // Store engine reference for dynamic timeout recalculation
+    this.#engine = config.engine;
 
     // Worker storage: Map<workerName, Worker>
     this.#workers = new Map();

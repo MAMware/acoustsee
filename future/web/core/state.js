@@ -47,6 +47,15 @@ export let settings = {
   },
   // Whether the engine should emit processFrame DEBUG logs (controlled by UI)
   includeProcessFrameLogs: false,
+  // Video capture capability tracking (for timeout adaptation in canvas fallback)
+  videoCapture: {
+    usingCanvasFallback: false,  // True if canvas-based video capture (no MediaStreamTrackProcessor)
+    detectedAt: null,            // Timestamp when fallback was detected
+    capabilities: {
+      hasMediaStreamTrackProcessor: false,  // Browser supports GPU-accelerated processing
+      hasOffscreenCanvas: false             // Browser supports OffscreenCanvas
+    }
+  },
   gridType: null,
   synthesisEngine: null,
   language: null,

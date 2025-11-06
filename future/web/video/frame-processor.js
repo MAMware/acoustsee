@@ -381,6 +381,15 @@ async function simulateShapeAnalysis(detectedObject = {}) {
 async function initializeVideoCanvasFallback(videoElement, engine) {
   structuredLog('INFO', 'Using canvas-based video capture (fallback mode)');
   
+  // CRITICAL FIX: Track canvas fallback in state for timeout adaptation
+  if (engine?.state?.videoCapture) {
+    engine.state.videoCapture.usingCanvasFallback = true;
+    engine.state.videoCapture.detectedAt = Date.now();
+    structuredLog('DEBUG', 'Canvas fallback detected - state updated for timeout adaptation', {
+      timestamp: engine.state.videoCapture.detectedAt
+    });
+  }
+  
   const canvas = document.createElement('canvas');
   canvas.width = videoElement.videoWidth || 640;
   canvas.height = videoElement.videoHeight || 480;
@@ -572,7 +581,9 @@ export async function initializeVideo(config) {
   startMotionWorker(currentMode);
   
   // Initialize FrameConductor (Phase 3.1b - replaces startFlowModeWorkers)
+  // CRITICAL FIX: Pass engine so timeout config can detect canvas fallback
   frameConductor = new FrameConductor({
+    engine: config.engine,  // Pass engine for state-aware timeout calculation
     flowTimeout: 100,
     focusTimeout: 200,
     hybridTimeout: 10,

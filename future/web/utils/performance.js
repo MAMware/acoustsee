@@ -131,34 +131,69 @@ export function detectDeviceTier() {
 }
 
 /**
- * Get worker timeout configuration adjusted for device tier
+ * Get worker timeout configuration based on device tier and video capture method.
  * 
- * Standard devices use conservative SLAs:
- * - Flow: 100ms (target ~22ms, safe for desktop)
- * - Focus: 200ms (target ~190ms, safe for detailed analysis)
- * - Hybrid: 10ms (target ~5ms, for quick decisions)
+ * CRITICAL FIX: Canvas fallback timeouts must be 3-4x longer than GPU-accelerated path.
+ * 
+ * The application uses two video capture methods:
+ * 1. GPU-accelerated: MediaStreamTrackProcessor (Chrome, modern Edge)
+ *    - High performance: 30-60 FPS, <33ms latency per frame
+ *    - Timeout window: 100-200ms comfortable
+ * 
+ * 2. CPU-based fallback: Canvas 2D (Firefox, Safari, older browsers)
+ *    - Lower performance: 4-10 FPS, 100-250ms latency per frame
+ *    - Timeout window: 300-600ms needed
+ * 
+ * Low-end devices get additional 2x adjustment on top of base timeouts.
+ * Canvas fallback detection happens in frame-processor.js and is stored in state.
  * 
  * Low-end devices get 2x adjustment:
  * - Flow: 200ms (accommodates 50-150ms actual performance)
  * - Focus: 400ms (accommodates slower depth/semantic workers)
  * - Hybrid: 20ms (still tight but more realistic)
  * 
+ * Canvas fallback paths (CPU-bound) need 3x longer:
+ * - Flow: 300ms (accommodates 100-250ms CPU motion detection)
+ * - Focus: 600ms (accommodates slower CPU depth processing)
+ * - Hybrid: 30ms (minimum for CPU, still tight)
+ * 
+ * Combined (low-end + canvas): 6x multiplier applied
+ * 
+ * @param {Object} state - Engine state (optional, contains videoCapture.usingCanvasFallback)
  * @returns {Object} Timeout configuration { flowTimeout, focusTimeout, hybridTimeout }
  */
-export function getWorkerTimeoutConfig() {
+export function getWorkerTimeoutConfig(state = null) {
   const tier = detectDeviceTier();
+  const usingCanvas = state?.videoCapture?.usingCanvasFallback || false;
+  
+  // Base configuration for GPU-accelerated path
   const baseConfig = {
-    flowTimeout: 100,
-    focusTimeout: 200,
-    hybridTimeout: 10,
+    flowTimeout: 100,      // 100ms - 1 frame at 10fps
+    focusTimeout: 200,     // 200ms - comfortable for GPU
+    hybridTimeout: 10,     // 10ms - ultra-tight for hybrid
   };
 
+  // Apply low-end device 2x multiplier
   if (tier === 'low-end') {
-    return {
-      flowTimeout: 200,    // 2x adjustment
-      focusTimeout: 400,
-      hybridTimeout: 20,
-    };
+    baseConfig.flowTimeout = 200;    // 2x adjustment
+    baseConfig.focusTimeout = 400;
+    baseConfig.hybridTimeout = 20;
+  }
+
+  // Apply canvas fallback 3x multiplier
+  // Canvas is CPU-bound and significantly slower than GPU-accelerated path
+  if (usingCanvas) {
+    baseConfig.flowTimeout *= 3;      // 300ms or 600ms with low-end
+    baseConfig.focusTimeout *= 3;     // 600ms or 1200ms with low-end
+    baseConfig.hybridTimeout *= 3;    // 30ms or 60ms with low-end
+    
+    structuredLog('DEBUG', 'Canvas fallback detected - timeouts increased for CPU-bound workers', {
+      tier,
+      flowTimeout: baseConfig.flowTimeout,
+      focusTimeout: baseConfig.focusTimeout,
+      hybridTimeout: baseConfig.hybridTimeout,
+      reason: 'Canvas capture is 3-4x slower than GPU-accelerated MediaStreamTrackProcessor'
+    });
   }
 
   return baseConfig;
