@@ -88,9 +88,6 @@ export class FrameConductor {
       },
       config  // Allow explicit override if needed
     );
-    
-    // Store engine reference for dynamic timeout recalculation
-    this.#engine = config.engine;
 
     // Worker storage: Map<workerName, Worker>
     this.#workers = new Map();
