@@ -10,6 +10,30 @@ This directory contains all logic for video capture, processing, and analysis. T
 
 ---
 
+## Component Status Matrix (Alpha Phase) November 6, 2025. v0.9.4-eventBusMetrics
+
+// R61125 there is no STABLE happy path, application is in not working state.There are key issues to address, e.g. like when and why motion-worker.js or fast-motion-worker.js is used. 
+
+**Legend:** ✅ STABLE (production-ready) | 🟡 WIP (in progress) | ❌ PLACEHOLDER (not started)
+
+This matrix helps you understand which components are ready for testing vs. which are still being developed.
+
+| Component | Status | Happy Path | Ready for Testing | Notes |
+|-----------|--------|-----------|-----|-------|
+| **Flow Mode (GPU)** |  UNSTABLE | Motion → Grid → Audio ✓ | Yes | Chrome/Brave/Edge, MediaStreamTrackProcessor, fast |
+| **Flow Mode (Canvas)** |  UNSTABLE | Motion → Grid → Audio ✓ | Yes | Firefox/Safari/iOS, CPU-based capture, works everywhere |
+| **Motion Worker** | UNSTABLE | Detects moving regions ✓ | Yes | Core component, robust motion detection |
+| **Frame Conductor** | WIP | Orchestrates workers ✓ | Yes | Manifest-driven, hot-swap support |
+| **Grid System** |  WIP | Maps motion → pitch ✓ | Yes | Linear-pitch + Circle-of-fifths, working |
+| **Focus Mode** | 🟡 WIP | Framework exists | No | Semantic detection incomplete, produces placeholder cues |
+| **Depth Worker** | 🟡 WIP | Stub implemented | No | Produces dummy data currently |
+| **Hybrid Mode** | 🟡 WIP | Decision logic sketched | No | Auto-switching not yet working |
+| **Segment Worker** | ❌ PLACEHOLDER | Not implemented | No | Object detection not started |
+
+**For Alpha Testing:** Focus on Flow mode (GPU + Canvas). Other modes are scaffolding.
+
+---
+
 ## Core Architecture
 
 ### 1. `workers/frame-provider-worker.js` (The Frame Provider)
@@ -571,7 +595,7 @@ class AutoFPS {
 
 ## Performance Considerations
 
-### The AutoFPS Feedback Loop
+### The AutoFPS Feedback Loop // R61125 could we make this leanear and smarter by integrating with current data instead of adding overhead? like we do at the "DETERMINISTIC TRACDEID" research
 
 The video subsystem participates in an intelligent performance management system:
 
@@ -591,6 +615,103 @@ The video subsystem participates in an intelligent performance management system
 | Specialist analysis | < 20ms | Per specialist, parallelizable |
 | Grid mapping | < 2ms | Should be very fast |
 | **Total pipeline** | **< 30ms** | **Leaves 35ms for audio + render (60 FPS)** |
+
+---
+
+## Video Capture Paths (GPU vs Canvas)
+
+The system supports multiple video frame capture methods. Currently, two paths are being implemented; more are planned.
+
+### Path 1: GPU-Accelerated (MediaStreamTrackProcessor) — R61125 NOT WORKING PROPERLY, "no motion, motion below threshold issues" UPDATE THIS TITLE WHEN FIXED
+
+- **Browsers:** Chrome, Brave, Edge (modern versions only)
+- **Method:** MediaStreamTrackProcessor API + OffscreenCanvas + Worker
+- **Performance:** ~16-33ms latency (GPU-accelerated, hardware-optimized)
+- **File:** `frame-provider-worker.js` (runs in dedicated worker, own RAF loop)
+- **Frame Format:** `ImageData` via `postMessage`
+- **Advantage:** Fast, smooth, hardware-accelerated
+- **When Used:** Default path; tried first on all browsers
+
+**Why GPU Path is Preferred (When Available):**
+- Offloads frame extraction to specialized hardware
+- Dedicated worker thread never blocks main thread
+- Lowest latency for motion detection
+- Scales well to high resolutions
+
+### Path 2: CPU-Based (Canvas 2D) — R61125 NOT WORKING PROPERLY, "no motion, motion below threshold issues" UPDATE THIS TITLE WHEN FIXED
+
+- **Browsers:** Firefox, Safari, iOS (universal, works everywhere)
+- **Method:** HTMLVideoElement → `ctx.drawImage()` → `ctx.getImageData()`
+- **Performance:** ~100-250ms latency (CPU-bound, main-thread blocking)
+- **File:** `frame-processor.js` → `initializeVideoCanvasFallback()` (main thread RAF)
+- **Frame Format:** Same `ImageData` format as GPU path
+- **Advantage:** Universal compatibility, no special API requirements
+- **Trade-off:** Slower due to:
+  - `drawImage()` CPU cost (pixel readback from GPU memory)
+  - `getImageData()` stalls main thread ~5-20ms per frame
+  - Motion detection runs synchronously (not in worker)
+
+**Why Canvas Path Exists:**
+- MediaStreamTrackProcessor not available in Firefox/Safari (as of Nov 2025)
+- iOS doesn't support MediaStreamTrackProcessor
+- Canvas 2D is universally supported (safe fallback)
+- "Fallback" terminology is misleading—it's the **only available** path on Firefox/Safari
+
+**Note:** Canvas is NOT a workaround; it's a first-class path option on par with GPU.
+
+### Path Selection (Automatic) // R61125 lets try to have this feature dinamic from the capability-detector.js
+
+```javascript
+// In frame-processor.js → initializeVideo()
+try {
+  // Try GPU path first (if MediaStreamTrackProcessor available)
+  await initializeVideoGPU();  // Success → use GPU
+} catch (e) {
+  // Fall back to Canvas path (universal)
+  await initializeVideoCanvasFallback();  // Always works
+}
+```
+
+### Key Architecture: Path-Agnostic Workers
+
+Both GPU and Canvas paths produce **identical output**:
+- `ImageData` object (RGBA pixel data)
+- Timing metadata (startTime, timestamp)
+- Dimensions (width, height)
+
+**Result:** Motion worker, grids, and audio pipeline are **path-agnostic**—they don't know or care which path produced the frames.
+
+**Implication:** When adding new workers, design for ANY `ImageData` source. Don't hardcode GPU-specific optimizations.
+
+### Timeout Adaptation Per Path
+
+Because Canvas (CPU-bound) is ~3-4× slower than GPU:
+
+| Path | Device Tier | Flow Timeout | Focus Timeout | Why |
+|------|-------------|--------------|---------------|-----|
+| GPU | Desktop | 100ms | 200ms | Fast hardware, GPU acceleration |
+| GPU | Low-End | 200ms | 400ms | Slower CPU, overhead |
+| Canvas | Desktop | 300ms | 600ms | 3x multiplier: CPU-bound capture |
+| Canvas | Low-End | 600ms | 1200ms | 2x device + 3x path (cumulative) |
+
+**How Adaptation Works:**
+1. FrameConductor detects active path via `engine.state.videoCapture.usingCanvasFallback`
+2. `performance.js` → `getWorkerTimeoutConfig()` calculates adaptive timeouts
+3. Timeouts set once at initialization, reused for all frames
+4. Debug logs show which timeouts are in use
+
+See **"Worker Timeout Adaptation Strategy"** section in `future/web/utils/README.md` for full details.
+
+### Future Paths (Planned, Not Yet Implemented)
+
+- **WebGL Path:** Direct GPU texture access (browsers supporting WebGL 2.0)
+- **WebGPU Path:** Next-gen GPU compute (Chromium + experimental)
+- **Native Path:** Electron or mobile app wrapper (native video APIs)
+
+When these are implemented, they'll follow the same pattern:
+1. Produce `ImageData` (or compatible format)
+2. Workers stay path-agnostic
+3. Timeout adaptation extends to new path's characteristics
 
 ---
 
@@ -648,12 +769,44 @@ The video subsystem participates in an intelligent performance management system
 ## File Checklist
 
 When working in this directory:
-- [ ] Did you modify a worker? **Test in both Chrome and Firefox (different worker APIs).**
+- [ ] Did you modify a worker? **Test in both Chrome and Firefox (different worker APIs and paths).**
 - [ ] Did you add a Specialist? **Measure performance impact before merging.**
 - [ ] Did you modify a Grid? **Test with various motion patterns.**
 - [ ] Did you change the frame format? **Update ALL workers and the Orchestrator.**
 - [ ] Did you add expensive computation? **Consider moving to a Specialist worker.**
+- [ ] **NEW:** Testing both paths? **Run on Chrome (GPU) AND Firefox (Canvas)** to ensure path-agnostic code.
+- [ ] **NEW:** Added worker? **Check timeout context** — does it respect adaptive timeouts from FrameConductor?
 
 ---
 
-**Last Updated:** 7 October 2025 - Architecture stabilized, Focus mode in development
+## Happy Path Testing Guide (Alpha Phase)
+
+### Goal
+Validate that core sonification works: **Motion → Grid → Audio**
+
+### Happy Path (End-to-End)
+
+1. Open browser with camera permission
+2. Grant camera access
+3. Move in front of camera
+4. **Expect:** Audio plays in sync with motion
+5. **Check dev-panel:** Shows FPS, motion regions, cues generated
+6. Stop moving → **Expect:** Audio stops
+
+### Testing Both Paths
+
+| Step | Chrome/Brave | Firefox |
+|------|--------------|---------|
+| Start app | ✓ GPU path used | Canvas path used |
+| Grant camera | ✓ | ✓ |
+| Move | ✓ Audio plays | ✓ Audio plays (slower capture) |
+| Check console | Look for "GPU path" logs | Look for "Canvas path" logs |
+| Stop moving | ✓ Audio stops | ✓ Audio stops |
+| Dev-panel | Shows FPS ~30-60 | Shows FPS ~5-15 (canvas is slower) |
+| No errors | ✓ Confirm | ✓ Confirm |
+
+**Success Criteria:** Audio output present in both browsers, timing difference expected but acceptable.
+
+---
+
+**Last Updated:** 6 November 2025 - Alpha Phase: Stable paths documented, WIP components tagged

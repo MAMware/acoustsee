@@ -89,6 +89,18 @@ export const settings = {
   fps: 0,
   cpuUsage: 0,
   
+  // ✅ Video capture state (Nov 6: Alpha phase) // R61125 when the "usingCanvasFallback" legend get correctly changed to "usingCanvas" lets not forget to update here too // R91125 by this time the change from "usingCanvasFallback to "usingCanvas" is on PRIORITY
+
+  videoCapture: {
+    usingCanvasFallback: false,           // Set when Canvas path active
+    detectedAt: null,                      // Timestamp of path detection
+    capabilities: {
+      hasMediaStreamTrackProcessor: false, // GPU capability
+      hasOffscreenCanvas: true,            // Canvas capability
+      // Future: hasWebGL, hasWebGPU, etc.
+    }
+  },
+  
   // ❌ DO NOT ADD:
   // audioContext: null,  // ❌ Live object
   // playFunction: null,  // ❌ Function
@@ -96,7 +108,65 @@ export const settings = {
 };
 ```
 
-### State Initialization Sequence
+### Video Capture State Tracking (Nov 6: Alpha Phase) // R61125 consider a "Deterministic TraceId" // TODO // PERFORMANCE // R91125 by this time the change from "usingCanvasFallback to "usingCanvas" is on PRIORITY
+
+
+**What is `videoCapture`?**
+
+The `videoCapture` object tracks which video frame capture method is active at runtime. This enables adaptive performance tuning based on the capture path (GPU vs Canvas).
+
+**Why Track This?**
+
+Performance characteristics differ dramatically:
+- **GPU path:** Fast frame capture (~16-33ms latency), hardware-accelerated
+- **Canvas path:** Slow frame capture (~100-250ms latency), CPU-bound
+
+Worker timeouts must adapt accordingly:
+- GPU: Base timeouts (Flow=100ms, Focus=200ms) are appropriate
+- Canvas: 3x multiplier needed (Flow=300ms, Focus=600ms) due to capture overhead
+
+**State Fields:**
+
+| Field | Type | Purpose | Set By |
+|-------|------|---------|--------|
+| `usingCanvasFallback` | boolean | True when Canvas 2D path is active | `frame-processor.js` |
+| `detectedAt` | timestamp | When path was detected/switched | `frame-processor.js` |
+| `capabilities.hasMediaStreamTrackProcessor` | boolean | Whether GPU API available | `capability-detector.js` |
+| `capabilities.hasOffscreenCanvas` | boolean | Whether Canvas API available | `capability-detector.js` |
+
+**When Is It Populated?**
+
+```javascript
+// In frame-processor.js → initializeVideoCanvasFallback()
+if (engine?.state?.videoCapture) {
+  engine.state.videoCapture.usingCanvasFallback = true;  // Canvas path detected
+  engine.state.videoCapture.detectedAt = Date.now();
+  structuredLog('DEBUG', 'Canvas path active - timeouts adapted');
+}
+```
+
+**How Performance Uses It:**
+
+```javascript
+// In utils/performance.js → getWorkerTimeoutConfig(state)
+if (state?.videoCapture?.usingCanvasFallback) {
+  // Canvas is CPU-bound, 3-4x slower → 3x multiplier
+  const canvasMultiplier = 3;
+  return {
+    flowTimeout: baseTimeout.flowTimeout * canvasMultiplier,    // 300ms
+    focusTimeout: baseTimeout.focusTimeout * canvasMultiplier,  // 600ms
+  };
+}
+```
+
+**Important:** State is **JSON-serializable**. This allows:
+- Dev panel to inspect which path is active
+- Session logs to record what method was used
+- Developers to debug "why is it slow?" by checking state history
+
+---
+
+## State Initialization Sequence
 
 The engine's state is initialized IN ORDER during `main.js`:
 

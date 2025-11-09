@@ -172,6 +172,7 @@ async function processFlowMode(frameData, width, height, state) {
     
     // Extract motion regions from conductor result
     let cues = [];
+    let panIntensity = { pan: 0, intensity: 0 };  // Initialize for calculation
     const grid = _config.getCurrentGrid();
     
     if (grid && grid.mapFunction && result.result?.coords?.length > 0) {
@@ -190,10 +191,21 @@ async function processFlowMode(frameData, width, height, state) {
       const gridOutput = grid.mapFunction(frameData, width, height, null, { movingRegions });
       if (gridOutput?.cues?.length > 0) {
         cues = gridOutput.cues;
+        
+        // Calculate panIntensity from the first cue (grid-normalized intensity)
+        // This fixes the motion threshold bug: panIntensity was hardcoded to 0
+        if (cues[0]) {
+          panIntensity = {
+            pan: cues[0].pan || 0,
+            intensity: cues[0].intensity || 0  // Already normalized by grid (0.02-0.08 typical)
+          };
+        }
+        
         structuredLog('DEBUG', 'Flow mode: Grid mapped motion to cues', { 
           gridId: grid.id, 
           cuesCount: cues.length, 
-          motionRegionsCount: movingRegions.length 
+          motionRegionsCount: movingRegions.length,
+          panIntensity 
         }, false, shouldSample('cueGeneration'));
       }
     }
@@ -203,7 +215,7 @@ async function processFlowMode(frameData, width, height, state) {
       cues = createCuesFromAudioParams({ pan: 0, intensity: 0 }, state);
     }
     
-    return { cues, panIntensity: { pan: 0, intensity: 0 } };
+    return { cues, panIntensity };
   } catch (error) {
     structuredLog('ERROR', 'processFlowMode error', { error: error.message });
     return { cues: [], panIntensity: { pan: 0, intensity: 0 } };
@@ -219,21 +231,30 @@ function createCuesFromAudioParams(params, state) {
     const { pan, intensity } = params;
 
     // If no motion, return empty cues
-    // Threshold: 0.001 (1% of max intensity) allows very subtle motion
-    // This prevents spurious audio but allows real motion detection
-    if (intensity === 0 || intensity < 0.001) {
-      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', { intensity, threshold: 0.001 }, false, shouldSample('cueGeneration'));
+    // Fix: Normalize intensity for proper threshold comparison
+    // - If intensity > 1: Assume uint8 range (0-255), normalize to 0-1
+    // - If intensity <= 1: Assume already normalized (0-1)
+    // - Threshold 0.001 works for normalized range (0.255 in uint8 = effectively zero)
+    const normalizedIntensity = intensity > 1 ? intensity / 255 : intensity;
+    const threshold = 0.001;
+    
+    if (normalizedIntensity === 0 || normalizedIntensity < threshold) {
+      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', 
+        { rawIntensity: intensity, normalizedIntensity, threshold }, 
+        false, shouldSample('cueGeneration'));
       return [];
     }
     
-    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', { intensity, pan }, false, shouldSample('cueGeneration'));
+    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', 
+      { intensity, normalizedIntensity, pan }, 
+      false, shouldSample('cueGeneration'));
 
     // Create single cue with pan and intensity for Flow mode
     const cue = {
       objectType: 'flow_motion',
       pitch: baseFreq,
       pan: Math.max(-1, Math.min(1, pan)),
-      intensity: Math.max(0, Math.min(1, intensity)),
+      intensity: Math.max(0, Math.min(1, normalizedIntensity)),
       position: {
         x: Math.max(-1, Math.min(1, pan)),
         y: 0.5,

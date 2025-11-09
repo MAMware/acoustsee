@@ -444,11 +444,11 @@ ingestEvent('logFrameBenchmark', {});   // performance_critical
 
 ---
 
-## 5. `performance.js` - Performance Measurement
+## 5. `performance.js` - Performance Measurement & Worker Timeout Adaptation 
 
-**This provides data structures and utilities for measuring system performance.**
+**This provides data structures, utilities for measuring system performance, AND adaptive timeout configuration based on device tier and capture method.**
 
-### Components
+### Part A: Performance Measurement
 
 #### `RingBuffer`
 A circular buffer for storing rolling performance measurements.
@@ -475,16 +475,147 @@ import { calculateFPS } from '../utils/performance.js';
 const fps = calculateFPS(16.7); // ms per frame → 60 FPS
 ```
 
-### When to Use
+### Part B: Worker Timeout Adaptation (Nov 6: Alpha Phase)
+
+**Why Timeout Adaptation?**
+
+Different video capture methods have different latency characteristics:
+- **GPU path:** Fast capture (~16-33ms), workers need ~100-200ms timeout
+- **Canvas path:** Slow capture (~100-250ms), workers need ~300-600ms timeout  
+- **Low-end device:** Even with GPU, motion detection slower, need 2x multiplier
+
+Hard-coded timeouts cause:
+- GPU path: Works, plenty of headroom
+- Canvas path: Timeouts before work completes → cascade failures
+- Low-end: Timeouts too aggressive → workers killed prematurely
+
+**Solution: Automatic Timeout Scaling**
+
+```javascript
+import { getWorkerTimeoutConfig, detectDeviceTier } from '../utils/performance.js';
+
+// Called once at FrameConductor initialization
+const timeoutConfig = getWorkerTimeoutConfig(engine.state);
+
+// Returns something like:
+// { flowTimeout: 300, focusTimeout: 600, hybridTimeout: 30 }
+```
+
+**How It Works:**
+
+```javascript
+// In performance.js
+export function getWorkerTimeoutConfig(state = null) {
+  // Step 1: Base timeouts (appropriate for GPU path)
+  const baseConfig = {
+    flowTimeout: 100,    // Flow mode: fast, real-time
+    focusTimeout: 200,   // Focus mode: detailed analysis
+    hybridTimeout: 10    // Hybrid mode: quick decisions
+  };
+  
+  // Step 2: Multiply if device is low-end (slower CPU)
+  const deviceTier = detectDeviceTier();
+  if (deviceTier === 'low-end') {
+    baseConfig.flowTimeout *= 2;    // 200ms
+    baseConfig.focusTimeout *= 2;   // 400ms
+    // Don't multiply hybrid (already fast)
+  }
+  
+  // Step 3: Multiply if Canvas path active (CPU-bound capture)
+  if (state?.videoCapture?.usingCanvasFallback) {
+    baseConfig.flowTimeout *= 3;    // 300ms (canvas adds 100-150ms overhead)
+    baseConfig.focusTimeout *= 3;   // 600ms (canvas adds 100-150ms overhead)
+  }
+  
+  return baseConfig;
+}
+```
+
+**Timeout Values by Configuration:**
+
+| Device Tier | Capture Path | Flow | Focus | Why |
+|-------------|---|---|---|---|
+| Desktop | GPU | 100ms | 200ms | Fast hardware + acceleration |
+| Desktop | Canvas | 300ms | 600ms | 3x for canvas capture overhead |
+| Low-End | GPU | 200ms | 400ms | 2x for slower CPU |
+| Low-End | Canvas | 600ms | 1200ms | 2x device + 3x path (cumulative) |
+
+**When Timeouts Are Calculated:**
+
+```javascript
+// In frame-conductor.js → constructor (lines 75-92)
+const timeoutConfig = getWorkerTimeoutConfig(config.engine?.state);
+this.config = {
+  flowTimeout: timeoutConfig.flowTimeout,
+  focusTimeout: timeoutConfig.focusTimeout,
+  hybridTimeout: timeoutConfig.hybridTimeout,
+};
+
+// NOTE: Calculated ONCE at initialization
+// NOT recalculated per-frame (too expensive)
+// If device condition changes, reinitialize FrameConductor
+```
+
+**Using Timeouts in Your Worker:**
+
+```javascript
+// In frame-conductor.js (internal to FrameConductor)
+const timeout = this.config.flowTimeout;  // Appropriate for current config
+
+// Set timeout for worker
+const timeoutHandle = setTimeout(() => {
+  structuredLog('WARN', 'Worker timeout', { 
+    workerName: workerConfig.name,
+    timeoutMs: timeout,
+    mode: this.#currentMode
+  });
+  worker.terminate();
+}, timeout);
+
+// Clear on success
+clearTimeout(timeoutHandle);
+```
+
+**Alpha Note:** Timeouts are **diagnostic SLAs, not hard limits**
+
+In this alpha phase:
+- Timeouts trigger DEBUG logging but don't crash the app
+- Workers fail gracefully when timeout occurs
+- Logs show what was slow: "Worker timeout: motion-worker after 100ms"
+- Helps identify bottlenecks for future optimization
+
+**For Developers Adding Workers:**
+
+1. Use timeouts from FrameConductor config, NOT hardcoded
+2. Ensure worker completes within timeout (or will be terminated)
+3. Test on both GPU and Canvas paths
+4. Monitor console for "Worker timeout" messages during testing
+
+---
+
+### Part C: Device Tier Detection
+
+```javascript
+import { detectDeviceTier } from '../utils/performance.js';
+
+const tier = detectDeviceTier();  // 'desktop' | 'tablet' | 'low-end'
+
+// Used internally by timeout adaptation
+// Factors: RAM, CPU cores, GPU capability
+```
+
+### When to Use Performance.js
 
 ✅ **Use for:**
 - Frame timing analysis
 - AutoFPS decision-making
+- Timeout configuration (device-aware)
 - Performance diagnostics in Dev Panel
 
 ❌ **DON'T use for:**
 - Real-time per-frame logs (use sampling)
 - Non-performance metrics
+- Anything else should be its own function
 
 ---
 
