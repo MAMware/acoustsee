@@ -1,3 +1,4 @@
+// R91125 lets check all comments for validity and update them if needed
 // Enhanced motion-worker with Lucas-Kanade optical flow: receives Y-plane ArrayBuffer and returns compact moving regions with direction.
 // Integrates basic optical flow for direction estimation (u, v) alongside intensity, enhancing motion detection for applications like AcoustSee.
 // Uses vanilla JavaScript convolution and matrix solving for compatibility and performance in web workers.
@@ -172,20 +173,23 @@ self.onmessage = (ev) => {
 
   // Process frame with inline grid configuration (stateless)
   // gridConfig and mode are passed with every frame, not stored in worker state
-  if (msg.type === 'frame') {
+  // FIX: Accept both 'frame' (legacy) and 'processingRequest' (FrameConductor) message types
+  if (msg.type === 'frame' || msg.type === 'processingRequest') {
     try {
-      const { 
-        ts = 0, 
-        w = 0, 
-        h = 0, 
-        yBuffer, 
-        step = 6, 
-        threshold = 20, 
-        maxRegions = 64, 
-        windowSize = 5,
-        gridConfig = { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 },
-        mode = 'hybrid'
-      } = msg;
+      // Extract frame data based on message type
+      // FrameConductor sends: { type: 'processingRequest', data: frameData, width, height, state }
+      // Legacy sends: { type: 'frame', w, h, yBuffer, ... }
+      const frameData = msg.data || msg.yBuffer;
+      const ts = msg.timestamp || 0;
+      const w = msg.width || msg.w || 0;
+      const h = msg.height || msg.h || 0;
+      const yBuffer = frameData;
+      const step = msg.step || 6;
+      const threshold = (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
+      const maxRegions = msg.maxRegions || 64;
+      const windowSize = msg.windowSize || 5;
+      const gridConfig = (msg.state && msg.state.gridConfig) || msg.gridConfig || { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 };
+      const mode = (msg.state && msg.state.mode) || msg.mode || 'hybrid';
       
       structuredLog('DEBUG', 'Motion worker received frame', { 
         width: w, 
