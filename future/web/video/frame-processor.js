@@ -94,68 +94,6 @@ let frameConductor = null;
 // Current mode and grid config are derived from engine state, not stored locally
 // This keeps frame-processor stateless for configuration
 
-// --- Helper Functions ---
-function startMotionWorker(currentMode = 'flow') {
-  if (motionWorker) return;
-  try {
-    const workerPath = currentMode === 'hybrid' ? './workers/image-worker.js' : './workers/motion-worker.js';
-    motionWorker = new Worker(new URL(workerPath, import.meta.url), { type: 'module' });
-    if (_config.registerWorker) _config.registerWorker(motionWorker, 'MotionSpecialist');
-    
-    // Add error handler for worker crashes
-    motionWorker.onerror = (error) => {
-      structuredLog('ERROR', 'Motion worker error', { 
-        message: error.message, 
-        filename: error.filename, 
-        lineno: error.lineno 
-      });
-    };
-    
-    motionWorker.onmessage = (e) => {
-      // This worker now uses a custom event system for promises
-      const event = new CustomEvent('motionResult', { detail: e.data });
-      motionWorker.dispatchEvent(event);
-    };
-    structuredLog('INFO', 'Motion Specialist worker started.');
-    
-    // Start depth worker for hybrid/focus
-    if (currentMode === 'hybrid' || currentMode === 'focus') {
-      startDepthWorker();
-    }
-  } catch (e) {
-    structuredLog('ERROR', 'Failed to start Motion Specialist worker.', { error: e });
-  }
-}
-
-function startDepthWorker() {
-  if (depthWorker) return;
-  try {
-    depthWorker = new Worker(new URL('./workers/depth-worker.js', import.meta.url), { type: 'module' });
-    if (_config.registerWorker) _config.registerWorker(depthWorker, 'DepthSpecialist');
-    
-    depthWorker.onerror = (error) => {
-      structuredLog('ERROR', 'Depth worker error', { 
-        message: error.message, 
-        filename: error.filename, 
-        lineno: error.lineno 
-      });
-    };
-    
-    depthWorker.onmessage = (e) => {
-      const validation = WorkerContract.validate(e.data);
-      if (validation.valid) {
-        const result = WorkerContract.getResult(e.data);
-        engine.dispatch('depthCuesReady', capHighFreqPayload('depthCuesReady', result));
-      } else {
-        structuredLog('WARN', 'Depth worker message validation failed', { error: validation.error });
-      }
-    };
-    structuredLog('INFO', 'Depth Specialist worker started.');
-  } catch (e) {
-    structuredLog('ERROR', 'Failed to start Depth Specialist worker.', { error: e });
-  }
-}
-
 /**
  * Process frame using Flow mode worker chain via FrameConductor (Phase 3.1b)
  * Sequential processing: motion → grid → params → audio
@@ -597,11 +535,11 @@ export async function initializeVideo(config) {
   
   structuredLog('DEBUG', 'initializeVideo: Starting video pipeline initialization', config);
 
-  // Pass current mode from engine state to startMotionWorker
+  // Get current mode from engine state
   const currentMode = config.engine?.getState?.()?.currentMode || 'flow';
-  startMotionWorker(currentMode);
   
-  // Initialize FrameConductor (Phase 3.1b - replaces startFlowModeWorkers)
+  // Initialize FrameConductor (Phase 3.1b - handles all worker orchestration)
+  // FrameConductor replaces legacy startMotionWorker() and startDepthWorker()
   // CRITICAL FIX: Pass engine so timeout config can detect canvas fallback
   frameConductor = new FrameConductor({
     engine: config.engine,  // Pass engine for state-aware timeout calculation

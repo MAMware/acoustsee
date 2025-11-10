@@ -10,9 +10,9 @@ This directory contains all logic for video capture, processing, and analysis. T
 
 ---
 
-## Component Status Matrix (Alpha Phase) November 6, 2025. v0.9.4-eventBusMetrics
+## Component Status Matrix (Alpha Phase) November 10, 2025. v0.9.4-bugMotion
 
-// R61125 there is no STABLE happy path, application is in not working state.There are key issues to address, e.g. like when and why motion-worker.js or fast-motion-worker.js is used. 
+**RESOLVED:** Motion consolidation complete - now using only `fast-motion-worker.js` via FrameConductor. No more ambiguity between motion-worker.js and fast-motion-worker.js. 
 
 **Legend:** ✅ STABLE (production-ready) | 🟡 WIP (in progress) | ❌ PLACEHOLDER (not started)
 
@@ -83,7 +83,7 @@ This matrix helps you understand which components are ready for testing vs. whic
 
 | Mode | Specialists Used | Grid Purpose | Output Type |
 |------|-----------------|--------------|-------------|
-| **Flow** | `motion-worker.js` | Map spatial motion → soundscape | Textural, ambient cues |
+| **Flow** | `fast-motion-worker.js` | Map spatial motion → soundscape | Textural, ambient cues |
 | **Focus** | (Future: `segment-worker.js`, `depth-worker.js`) | Map semantic objects → sonic signatures | Discrete, recognizable cues |
 
 **Key Points:**
@@ -177,12 +177,12 @@ conductor.dispose(); // Terminates all workers
 
 ---
 
-### 3. Specialist Workers (`workers/motion-worker.js`, etc.)
+### 3. Specialist Workers (`workers/fast-motion-worker.js`, etc.)
 
 **Purpose:** Experts in a single, computationally expensive analysis task.
 
 **Current Specialists:**
-- `motion-worker.js`: Detects regions of motion using frame differencing
+- `fast-motion-worker.js`: Detects motion regions via Lucas-Kanade optical flow on Y-plane (optimized for Flow mode, <15ms latency)
 
 **Future Specialists:**
 - `segment-worker.js`: Object segmentation using ML models
@@ -191,12 +191,12 @@ conductor.dispose(); // Terminates all workers
 **Contract:**
 ```javascript
 // To specialist:
-{ type: 'processFrame', imageData, width, height, threshold }
+{ type: 'processingRequest', data: ArrayBuffer, width, height, state }
 
-// From specialist:
-{ type: 'motionDetected', movingRegions: [...], timestamp }
+// From specialist (WorkerContract v2.0):
+{ type: 'processingResult', capabilities: [...], result: { coords, intens, uFlow, vFlow }, timestamp }
 // OR
-{ type: 'noMotion', timestamp }
+{ type: 'processingError', error: '...' }
 ```
 
 **Rules for Writing Specialists:**
