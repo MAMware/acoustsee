@@ -1,3 +1,4 @@
+// R91125 lets check all comments for validity and update them if needed
 // Enhanced fast-motion-worker with Lucas-Kanade optical flow: receives Y-plane ArrayBuffer and returns compact moving regions with direction.
 // Flow Mode optimized: Y-plane only, minimal latency (<15ms target)
 // Integrates basic optical flow for direction estimation (u, v) alongside intensity, enhancing motion detection for applications like AcoustSee.
@@ -21,6 +22,30 @@ let _useAdaptive = true; // Whether to use adaptive thresholding
 
 // Grid configuration is now received with each frame (stateless pattern)
 // Workers no longer maintain configuration state
+
+/**
+ * Convert RGBA imageData to Y-plane (luminance) for motion detection
+ * Standard ITU-R BT.601 conversion: Y = 0.299*R + 0.587*G + 0.114*B
+ * @param {Uint8ClampedArray} rgbaData - RGBA pixel data (length = width * height * 4)
+ * @param {number} width - Image width in pixels
+ * @param {number} height - Image height in pixels
+ * @returns {Uint8Array} Y-plane luminance data (length = width * height)
+ */
+function rgbaToYPlane(rgbaData, width, height) {
+  const yPlane = new Uint8Array(width * height);
+  const pixelCount = width * height;
+  
+  for (let i = 0; i < pixelCount; i++) {
+    const idx = i * 4;
+    const r = rgbaData[idx];
+    const g = rgbaData[idx + 1];
+    const b = rgbaData[idx + 2];
+    // ITU-R BT.601 luminance formula
+    yPlane[i] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+  }
+  
+  return yPlane;
+}
 
 function convolve2d(image, width, height, kernel) {
   const kh = kernel.length;
@@ -50,7 +75,7 @@ function convolve2d(image, width, height, kernel) {
   return out;
 }
 
-function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxRegions = 64, windowSize = 5) {
+function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxRegions = 64, windowSize = 5) { // R110125B when, how and who are using it? are this values hardcoded?
   const y = new Uint8Array(yBuf);
   if (!_prevY || _prevY.length !== y.length) {
     _prevY = new Uint8Array(y.length);
@@ -79,7 +104,7 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
 
   const w = Math.floor(windowSize / 2);
   const tau = 1e-2;
-
+  // R101125B lets check the following for "plausible but wrong" or unfinished work
   // Determine which threshold to use
   // UI threshold comes in as 0-1 (normalized), convert to pixel difference (0-255)
   // 0 = very insensitive (255 pixel diff required), 1 = very sensitive (0 pixel diff required)
@@ -89,7 +114,7 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
     effectiveThreshold = (1 - threshold) * 255;
     _useAdaptive = false; // Disable adaptive when user takes manual control
   } else {
-    // Adaptive threshold (legacy support removed - default to mid-sensitivity)
+    // Adaptive threshold (legacy support removed - default to mid-sensitivity) R101125B carefull here, re check.
     effectiveThreshold = _adaptiveThreshold;
     _useAdaptive = true;
   }
@@ -180,11 +205,10 @@ self.onmessage = (ev) => {
       // Extract frame data based on message type
       // FrameConductor sends: { type: 'processingRequest', data: frameData, width, height, state }
       // Legacy sends: { type: 'frame', w, h, yBuffer, ... }
-      const frameData = msg.data || msg.yBuffer;
+      let frameData = msg.data || msg.yBuffer;
       const ts = msg.timestamp || 0;
       const w = msg.width || msg.w || 0;
       const h = msg.height || msg.h || 0;
-      const yBuffer = frameData;
       const step = msg.step || 6;
       const threshold = (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
       const maxRegions = msg.maxRegions || 64;
@@ -192,12 +216,25 @@ self.onmessage = (ev) => {
       const gridConfig = (msg.state && msg.state.gridConfig) || msg.gridConfig || { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 };
       const mode = (msg.state && msg.state.mode) || msg.mode || 'flow';
       
+      // CRITICAL FIX: Convert RGBA ImageData to Y-plane if needed
+      // FrameConductor sends full RGBA data, but motion detection works on Y-plane only
+      // Check if frameData is RGBA (length = w*h*4) and convert to Y-plane (length = w*h)
+      if (frameData && frameData.length === w * h * 4) {
+        structuredLog('DEBUG', 'Fast motion worker: Converting RGBA to Y-plane', { 
+          width: w, height: h, rgbaLength: frameData.length 
+        });
+        frameData = rgbaToYPlane(frameData, w, h);
+      }
+      
+      const yBuffer = frameData;
+      
       structuredLog('DEBUG', 'Fast motion worker received frame', { 
         width: w, 
         height: h, 
         threshold, 
         mode,
-        gridSize: { rows: gridConfig.rows, cols: gridConfig.cols }
+        gridSize: { rows: gridConfig.rows, cols: gridConfig.cols },
+        yBufferLength: yBuffer ? yBuffer.length : 0
       });
       
       if (!yBuffer) {
