@@ -217,16 +217,37 @@ self.onmessage = (ev) => {
       const mode = (msg.state && msg.state.mode) || msg.mode || 'flow';
       
       // CRITICAL FIX: Convert RGBA ImageData to Y-plane if needed
-      // FrameConductor sends full RGBA data, but motion detection works on Y-plane only
-      // Check if frameData is RGBA (length = w*h*4) and convert to Y-plane (length = w*h)
-      if (frameData && frameData.length === w * h * 4) {
-        structuredLog('DEBUG', 'Fast motion worker: Converting RGBA to Y-plane', { 
-          width: w, height: h, rgbaLength: frameData.length 
-        });
-        frameData = rgbaToYPlane(frameData, w, h);
-      }
+      // FrameConductor sends full RGBA data (ArrayBuffer or Uint8ClampedArray)
+      // Motion detection works on Y-plane only (1 byte per pixel)
+      // Check if frameData is RGBA (4 bytes per pixel) and convert to Y-plane
+      let yBuffer = frameData;
+      const expectedRGBASize = w * h * 4;
+      const expectedYSize = w * h;
       
-      const yBuffer = frameData;
+      if (frameData) {
+        // Handle both ArrayBuffer and typed arrays
+        const bufferLength = frameData.length !== undefined ? frameData.length : frameData.byteLength;
+        
+        if (bufferLength === expectedRGBASize) {
+          // Convert RGBA to Y-plane
+          // If it's an ArrayBuffer, create a view first
+          const rgbaData = frameData instanceof ArrayBuffer 
+            ? new Uint8ClampedArray(frameData)
+            : frameData;
+          
+          structuredLog('DEBUG', 'Fast motion worker: Converting RGBA to Y-plane', { 
+            width: w, height: h, rgbaLength: bufferLength, isArrayBuffer: frameData instanceof ArrayBuffer
+          });
+          yBuffer = rgbaToYPlane(rgbaData, w, h);
+        } else if (bufferLength !== expectedYSize) {
+          structuredLog('WARN', 'Fast motion worker: Unexpected buffer size', {
+            receivedSize: bufferLength,
+            expectedRGBA: expectedRGBASize,
+            expectedY: expectedYSize,
+            isArrayBuffer: frameData instanceof ArrayBuffer
+          });
+        }
+      }
       
       structuredLog('DEBUG', 'Fast motion worker received frame', { 
         width: w, 
