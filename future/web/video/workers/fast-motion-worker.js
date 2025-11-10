@@ -11,7 +11,6 @@
 // Enhanced with Lucas-Kanade optical flow based on research in motion-worker.js.md, REV 2025-10-05.
 
 // Add this import at the top if not present
-import { structuredLog } from '../../utils/worker-logger.js';
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
 
 let _prevY = null;
@@ -235,28 +234,9 @@ self.onmessage = (ev) => {
             ? new Uint8ClampedArray(frameData)
             : frameData;
           
-          structuredLog('DEBUG', 'Fast motion worker: Converting RGBA to Y-plane', { 
-            width: w, height: h, rgbaLength: bufferLength, isArrayBuffer: frameData instanceof ArrayBuffer
-          });
           yBuffer = rgbaToYPlane(rgbaData, w, h);
-        } else if (bufferLength !== expectedYSize) {
-          structuredLog('WARN', 'Fast motion worker: Unexpected buffer size', {
-            receivedSize: bufferLength,
-            expectedRGBA: expectedRGBASize,
-            expectedY: expectedYSize,
-            isArrayBuffer: frameData instanceof ArrayBuffer
-          });
         }
       }
-      
-      structuredLog('DEBUG', 'Fast motion worker received frame', { 
-        width: w, 
-        height: h, 
-        threshold, 
-        mode,
-        gridSize: { rows: gridConfig.rows, cols: gridConfig.cols },
-        yBufferLength: yBuffer ? yBuffer.length : 0
-      });
       
       if (!yBuffer) {
         structuredLog('WARN', 'Fast motion worker: No yBuffer received');
@@ -281,13 +261,6 @@ self.onmessage = (ev) => {
       }
       
       const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
-      structuredLog('DEBUG', 'Fast motion detection complete', { 
-        count: res.count, 
-        threshold, 
-        adaptiveThreshold: _adaptiveThreshold,
-        usingAdaptive: _useAdaptive,
-        mode,
-      });
       
       // Create contract-compliant result with transferable buffers
       const resultData = {
@@ -311,11 +284,7 @@ self.onmessage = (ev) => {
       // Transfer buffer ownership to main thread for zero-copy performance
       self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
     } catch (e) {
-      structuredLog('ERROR', 'Fast motion worker exception', { 
-        message: e.message, 
-        stack: e.stack,
-        name: e.name
-      });
+      console.error('Fast motion worker exception:', e.message);
       // Send error via contract
       self.postMessage(
         WorkerContract.createError(
@@ -326,10 +295,8 @@ self.onmessage = (ev) => {
       );
     }
   } else if (msg.type === 'handshake') {
-    structuredLog('INFO', 'Fast motion worker initialized');
     self.postMessage({ type: 'ready', features: ['motion', 'flow', 'gridConfig'], mode: 'flow' });
   } else if (msg.type === 'simulate') {
-    structuredLog('INFO', 'Fast motion worker simulation mode');
     self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true, mode: 'flow' });
   }
 };
