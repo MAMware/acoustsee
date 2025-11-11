@@ -39,12 +39,25 @@ self.onmessage = (e) => {
   try {
     const { type, grid, gridConfig, data } = e.data;
     
+    // CRITICAL DIAGNOSTIC: Log EVERYTHING we receive
+    console.log('[PanMapper] FULL MESSAGE RECEIVED:', {
+      type,
+      hasGrid: !!grid,
+      hasData: !!data,
+      hasGridConfig: !!gridConfig,
+      gridType: grid ? grid.constructor.name : 'null',
+      dataType: data ? data.constructor.name : 'null',
+      gridLength: grid ? grid.length : null,
+      dataLength: data ? data.length : null
+    });
+    
     // CRITICAL FIX (Bug #10): Accept both 'processingRequest' and 'processFrame' message types
     // FrameConductor sends 'processingRequest', but this worker was only accepting 'processFrame'
     // This caused all messages to be rejected, resulting in undefined results
     const validTypes = ['processFrame', 'processingRequest'];
     
     if (!validTypes.includes(type)) {
+      console.error('[PanMapper] REJECTING: Invalid type');
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
@@ -59,19 +72,18 @@ self.onmessage = (e) => {
     // - 'processFrame': grid comes directly as grid field
     const actualGrid = grid || data;
     
-    // Debug: log what we received
-    if (Math.random() < 0.01) {
-      console.debug('[PanMapper] Received message:', {
-        type,
-        hasGrid: !!actualGrid,
-        gridLength: actualGrid ? actualGrid.length : null,
-        hasGridConfig: !!gridConfig,
-        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
-      });
-    }
+    console.log('[PanMapper] actualGrid:', {
+      hasActualGrid: !!actualGrid,
+      actualGridType: actualGrid ? actualGrid.constructor.name : 'null',
+      actualGridLength: actualGrid ? actualGrid.length : null
+    });
 
     // Validate inputs
     if (!actualGrid || !gridConfig) {
+      console.error('[PanMapper] REJECTING: Missing actualGrid or gridConfig', {
+        hasActualGrid: !!actualGrid,
+        hasGridConfig: !!gridConfig
+      });
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
@@ -84,6 +96,7 @@ self.onmessage = (e) => {
     const { rows, cols } = gridConfig;
 
     if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows <= 0 || cols <= 0) {
+      console.error('[PanMapper] REJECTING: Invalid dimensions', { rows, cols });
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
@@ -94,6 +107,10 @@ self.onmessage = (e) => {
     }
 
     if (actualGrid.length !== rows * cols) {
+      console.error('[PanMapper] REJECTING: Size mismatch', {
+        expected: rows * cols,
+        actual: actualGrid.length
+      });
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
@@ -103,24 +120,31 @@ self.onmessage = (e) => {
       return;
     }
 
+    console.log('[PanMapper] VALIDATION PASSED, calculating audio params...');
+
+    console.log('[PanMapper] VALIDATION PASSED, calculating audio params...');
+
     // Calculate pan and intensity from grid
     const { pan, intensity } = calculateAudioParams(actualGrid, rows, cols);
 
+    console.log('[PanMapper] CALCULATED:', { pan, intensity });
+
     // Send result via contract
-    self.postMessage(
-      WorkerContract.createResult(
-        WORKER_TYPES.PAN_INTENSITY_MAPPER,
-        'flow',
-        [CAPABILITIES.SPATIALIZATION],
-        {
-          pan,
-          intensity,
-          timestamp: Date.now(),
-          gridConfig
-        },
-        { panValue: pan.toFixed(3), intensityValue: intensity.toFixed(3) }
-      )
+    const resultMessage = WorkerContract.createResult(
+      WORKER_TYPES.PAN_INTENSITY_MAPPER,
+      'flow',
+      [CAPABILITIES.SPATIALIZATION],
+      {
+        pan,
+        intensity,
+        timestamp: Date.now(),
+        gridConfig
+      },
+      { panValue: pan.toFixed(3), intensityValue: intensity.toFixed(3) }
     );
+    
+    console.log('[PanMapper] POSTING MESSAGE:', resultMessage);
+    self.postMessage(resultMessage);
   } catch (error) {
     console.error('[PanMapper] Worker exception:', {
       message: error.message,
