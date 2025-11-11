@@ -184,9 +184,7 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
     } else if (count > 50) {
       _adaptiveThreshold = Math.min(50, _adaptiveThreshold * 1.05);
     }
-    if (_adaptiveThreshold !== oldThreshold) {
-      structuredLog('DEBUG', 'Adaptive threshold adjusted', { from: oldThreshold, to: _adaptiveThreshold, count });
-    }
+    // Threshold adjustments happen silently - no logging in worker
   }
 
   const returnedCount = Math.min(count, maxRegions);
@@ -239,7 +237,7 @@ self.onmessage = (ev) => {
       }
       
       if (!yBuffer) {
-        structuredLog('WARN', 'Fast motion worker: No yBuffer received');
+        // No buffer available - return empty result
         self.postMessage(
           WorkerContract.createResult(
             WORKER_TYPES.FAST_MOTION,

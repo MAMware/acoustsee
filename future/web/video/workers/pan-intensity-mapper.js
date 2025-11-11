@@ -23,7 +23,6 @@
  */
 
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
-import { structuredLog } from '../../utils/worker-logger.js';
 
 /**
  * Main message handler
