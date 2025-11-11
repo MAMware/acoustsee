@@ -173,7 +173,11 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
               if (count < maxRegions) {
                 coords[count * 2] = xx;
                 coords[count * 2 + 1] = yy;
-                intens[count] = Math.min(255, Math.floor(mag * 10)); // Scale magnitude to uint8
+                // CRITICAL FIX: Optical flow magnitude is typically 0.01-1.0 for pixel-level motion
+                // Original scaling (* 10) was too weak, producing zero intensities
+                // New scaling (* 500) maps 0.5 pixel/frame motion to intensity 255 (max)
+                // This makes subtle hand movements detectable in audio
+                intens[count] = Math.min(255, Math.floor(mag * 500)); 
                 uFlow[count] = u;
                 vFlow[count] = v;
               }
