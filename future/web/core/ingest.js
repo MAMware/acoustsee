@@ -56,12 +56,22 @@ export async function trackFeatureUse(event, payload = {}) {
     }
     // --- END NEW LOGIC ---
 
-    await fetch(INGEST_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      keepalive: true,
-      body: JSON.stringify(finalPayload) // Send the correct payload
-    });
+    // CRITICAL FIX: Use analytics batcher if available to prevent 429 rate limiting
+    // Batcher queues events and sends in batches every 30 seconds instead of real-time
+    const batcher = window.__audioSee?.analyticsBatcher;
+    
+    if (batcher) {
+      // Queue event for batched delivery (30-second intervals)
+      batcher.add(finalPayload);
+    } else {
+      // Fallback to direct fetch if batcher not initialized
+      await fetch(INGEST_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify(finalPayload) // Send the correct payload
+      });
+    }
   } catch (err) {
     console.error('Ingest send failed:', err);
   }

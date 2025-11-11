@@ -12,6 +12,7 @@
 import { createEngine } from './core/engine.js';
 import { createEventBus } from './core/event-bus.js';
 import { initializeAnalytics } from './core/event-bus-analytics.js';
+import { AnalyticsBatcher } from './core/analytics-batcher.js';
 import { settings } from './core/state.js';
 import { structuredLog, loggingConfig, initializeLogging } from './utils/logging.js';
 import { generateTraceId } from './utils/trace-id.js';
@@ -140,6 +141,17 @@ export async function init() {
     
     // Inject EventBus into engine for command tracking
     engine.setEventBus(eventBus);
+    
+    // STEP 0.6: Create analytics batcher (30-second batches, prevent 429 rate limiting)
+    const analyticsBatcher = new AnalyticsBatcher(
+      30000, // 30-second flush interval
+      'https://acoustsee-analytics.mamware.workers.dev',
+      { maxBatchSize: 1000, debugLogging: false }
+    );
+    
+    // Make batcher globally available for ingest.js
+    window.__audioSee = window.__audioSee || {};
+    window.__audioSee.analyticsBatcher = analyticsBatcher;
     
     // Initialize analytics subscribers (replaces direct ingest tracking)
     initializeAnalytics(eventBus, settings);
