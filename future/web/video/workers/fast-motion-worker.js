@@ -226,6 +226,20 @@ self.onmessage = (ev) => {
       const ts = msg.timestamp || 0;
       const w = msg.width || msg.w || 0;
       const h = msg.height || msg.h || 0;
+      
+      // TEMPORARY DIAGNOSTIC: Log frame data details (sample 1% of frames)
+      if (Math.random() < 0.01) {
+        console.log('[FastMotion] Frame received:', {
+          type: msg.type,
+          hasData: !!frameData,
+          dataType: frameData ? frameData.constructor.name : 'null',
+          dataSize: frameData ? (frameData.length || frameData.byteLength) : 0,
+          dimensions: `${w}x${h}`,
+          expectedRGBA: w * h * 4,
+          expectedY: w * h
+        });
+      }
+      
       const step = msg.step || 6;
       const threshold = (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
       const maxRegions = msg.maxRegions || 64;
@@ -280,6 +294,15 @@ self.onmessage = (ev) => {
       
       const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
       
+      // TEMPORARY DIAGNOSTIC: Log when motion is detected to verify intensity scaling
+      if (res.count > 0) {
+        console.log('[FastMotion] MOTION DETECTED:', {
+          regions: res.count,
+          maxIntensity: Math.max(...Array.from(res.intens.slice(0, res.count))),
+          avgIntensity: Array.from(res.intens.slice(0, res.count)).reduce((a,b)=>a+b,0) / res.count
+        });
+      }
+      
       // Create contract-compliant result with transferable buffers
       const resultData = {
         coords: res.coords,
@@ -302,7 +325,8 @@ self.onmessage = (ev) => {
       // Transfer buffer ownership to main thread for zero-copy performance
       self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
     } catch (e) {
-      console.error('Fast motion worker exception:', e.message);
+      // TEMPORARY DIAGNOSTIC: Log full error details
+      console.error('[FastMotion] EXCEPTION:', e.message, 'Stack:', e.stack);
       // Send error via contract
       self.postMessage(
         WorkerContract.createError(
