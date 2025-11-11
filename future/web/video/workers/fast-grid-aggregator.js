@@ -34,30 +34,46 @@ console.log('[GridAgg] Worker script loaded, setting up message handler');
 self.onmessage = (e) => {
   console.log('[GridAgg] Received message, type:', e.data?.type);
   try {
-    const { type, motionRegions, gridConfig } = e.data;
+    const { type, motionRegions, gridConfig, data } = e.data;
 
+    // CRITICAL FIX (Bug #10 part 2): Accept both 'processingRequest' and 'processFrame' message types
+    // FrameConductor sends 'processingRequest', but this worker was only accepting 'processFrame'
+    // This caused all messages to be rejected → no grid data → pan-mapper gets undefined
+    const validTypes = ['processFrame', 'processingRequest'];
+    
+    if (!validTypes.includes(type)) {
+      console.error('[GridAgg] REJECTING: Invalid type:', type);
+      self.postMessage(
+        WorkerContract.createError(
+          WORKER_TYPES.GRID_AGGREGATOR,
+          `Invalid message type: ${type}. Expected: ${validTypes.join(' or ')}`
+        )
+      );
+      return;
+    }
+
+    // Extract motion regions from either message format:
+    // - 'processingRequest': regions come in data field (from conductor chain)
+    // - 'processFrame': regions come directly as motionRegions field
+    const actualMotionRegions = motionRegions || data;
+    
     // Debug: log what we received
-    if (type === 'processFrame' && Math.random() < 0.01) {
-      console.debug('[GridAgg] Received processFrame:', {
-        hasMotionRegions: !!motionRegions,
+    if (Math.random() < 0.01) {
+      console.debug('[GridAgg] Received message:', {
+        type,
+        hasMotionRegions: !!actualMotionRegions,
         hasGridConfig: !!gridConfig,
         gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
         frameWidthHeight: gridConfig ? `${gridConfig.frameWidth}x${gridConfig.frameHeight}` : 'missing'
       });
     }
 
-    if (type !== 'processFrame') {
-      self.postMessage(
-        WorkerContract.createError(
-          WORKER_TYPES.GRID_AGGREGATOR,
-          `Invalid message type: ${type}. Expected 'processFrame'`
-        )
-      );
-      return;
-    }
-
     // Validate inputs
-    if (!motionRegions || !gridConfig) {
+    if (!actualMotionRegions || !gridConfig) {
+      console.error('[GridAgg] REJECTING: Missing data', {
+        hasActualMotionRegions: !!actualMotionRegions,
+        hasGridConfig: !!gridConfig
+      });
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.GRID_AGGREGATOR,
@@ -67,7 +83,7 @@ self.onmessage = (e) => {
       return;
     }
 
-    const { coords, intens, count } = motionRegions;
+    const { coords, intens, count } = actualMotionRegions;
     const { rows, cols, frameWidth, frameHeight } = gridConfig;
 
     if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows <= 0 || cols <= 0) {
