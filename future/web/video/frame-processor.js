@@ -108,16 +108,17 @@ async function processFlowMode(frameData, width, height, state) {
     // Use FrameConductor for orchestration
     const result = await frameConductor.processFrame(frameData, width, height, state);
     
-    // TEMPORARY DIAGNOSTIC: Log conductor result (sample 5%)
-    if (Math.random() < 0.05) {
-      structuredLog('DEBUG', '[DIAGNOSTIC] FrameConductor result', {
-        hasResult: !!result.result,
-        resultKeys: result.result ? Object.keys(result.result) : [],
-        pan: result.result?.pan,
-        intensity: result.result?.intensity,
-        capabilities: result.capabilities
-      }, false, true);
-    }
+    // TEMPORARY DIAGNOSTIC: Log conductor result (FORCE 100% to debug)
+    structuredLog('DEBUG', '[DIAGNOSTIC] FrameConductor result', {
+      hasResult: !!result.result,
+      resultType: result.result ? typeof result.result : 'null',
+      resultKeys: result.result ? Object.keys(result.result) : [],
+      pan: result.result?.pan,
+      intensity: result.result?.intensity,
+      panType: typeof result.result?.pan,
+      intensityType: typeof result.result?.intensity,
+      capabilities: result.capabilities
+    }, false, true);
     
     // Extract motion regions from conductor result
     let cues = [];
