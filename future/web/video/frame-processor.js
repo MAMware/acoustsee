@@ -108,12 +108,42 @@ async function processFlowMode(frameData, width, height, state) {
     // Use FrameConductor for orchestration
     const result = await frameConductor.processFrame(frameData, width, height, state);
     
+    // TEMPORARY DIAGNOSTIC: Log conductor result (sample 5%)
+    if (Math.random() < 0.05) {
+      structuredLog('DEBUG', '[DIAGNOSTIC] FrameConductor result', {
+        hasResult: !!result.result,
+        resultKeys: result.result ? Object.keys(result.result) : [],
+        pan: result.result?.pan,
+        intensity: result.result?.intensity,
+        capabilities: result.capabilities
+      }, false, true);
+    }
+    
     // Extract motion regions from conductor result
     let cues = [];
     let panIntensity = { pan: 0, intensity: 0 };  // Initialize for calculation
-    const grid = _config.getCurrentGrid();
     
-    if (grid && grid.mapFunction && result.result?.coords?.length > 0) {
+    // CRITICAL FIX: The conductor chain (motion → grid → pan-mapper) produces {pan, intensity}
+    // Use the final result directly instead of re-processing through grid.mapFunction
+    if (result.result && typeof result.result.pan === 'number' && typeof result.result.intensity === 'number') {
+      panIntensity = {
+        pan: result.result.pan,
+        intensity: result.result.intensity
+      };
+      
+      // Convert to cues for audio system
+      cues = createCuesFromAudioParams(panIntensity, state);
+      
+      structuredLog('DEBUG', 'Flow mode: Using conductor pan/intensity', { 
+        panIntensity,
+        cuesCount: cues.length 
+      }, false, shouldSample('cueGeneration'));
+    }
+    
+    // Legacy fallback: If result has coords (motion worker only, no pan-mapper)
+    // This path should rarely execute with proper FrameConductor chain
+    const grid = _config.getCurrentGrid();
+    if (cues.length === 0 && grid && grid.mapFunction && result.result?.coords?.length > 0) {
       // Convert result to movingRegions format that grids expect
       const movingRegions = [];
       const regions = result.result;
