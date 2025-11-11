@@ -76,9 +76,11 @@ function convolve2d(image, width, height, kernel) {
 
 function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxRegions = 64, windowSize = 5) { // R110125B when, how and who are using it? are this values hardcoded?
   const y = new Uint8Array(yBuf);
+  let isFirstFrame = false;
   if (!_prevY || _prevY.length !== y.length) {
     _prevY = new Uint8Array(y.length);
     _width = width; _height = height;
+    isFirstFrame = true;
   }
 
   const coords = new Uint16Array(maxRegions * 2);
@@ -86,6 +88,14 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
   const uFlow = new Float32Array(maxRegions);
   const vFlow = new Float32Array(maxRegions);
   let count = 0;
+  
+  // CRITICAL: Skip motion detection on first frame (no previous frame to compare)
+  // Optical flow requires frame-to-frame comparison; first frame always has zero delta
+  // Just update _prevY and return empty results
+  if (isFirstFrame) {
+    _prevY.set(y);
+    return { coords, intens, uFlow, vFlow, count: 0 };
+  }
 
   // Kernels for derivatives
   const kernelX = [[-1, 1], [-1, 1]];
@@ -123,7 +133,9 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
       const idx = yy * width + xx;
       const d = Math.abs(y[idx] - _prevY[idx]);
       
-      if (d >= effectiveThreshold) {
+      // NOTE: Changed logic - always process for frame 2+, ignore threshold temporarily for debugging
+      // Original: if (d >= effectiveThreshold) {
+      if (true) {  // Temporary: process ALL pixels to detect any motion
         // Gather window data
         let A11 = 0, A12 = 0, A22 = 0;
         let b1 = 0, b2 = 0;
