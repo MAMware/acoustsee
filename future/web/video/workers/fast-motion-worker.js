@@ -187,6 +187,10 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
     // Threshold adjustments happen silently - no logging in worker
   }
 
+  // CRITICAL: Update previous frame buffer for next frame's optical flow comparison
+  // Without this, optical flow always compares to zeros (or undefined), producing no motion
+  _prevY.set(y);
+
   const returnedCount = Math.min(count, maxRegions);
   return { coords, intens, uFlow, vFlow, count: returnedCount };
 }
