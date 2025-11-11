@@ -37,31 +37,41 @@ console.log('[PanMapper] Worker script loaded, setting up message handler');
 self.onmessage = (e) => {
   console.log('[PanMapper] Received message, type:', e.data?.type);
   try {
-    const { type, grid, gridConfig } = e.data;
-
-    // Debug: log what we received
-    if (type === 'processFrame' && Math.random() < 0.01) {
-      console.debug('[PanMapper] Received processFrame:', {
-        hasGrid: !!grid,
-        gridLength: grid ? grid.length : null,
-        hasGridConfig: !!gridConfig,
-        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
-        frameWidthHeight: gridConfig ? `${gridConfig.frameWidth}x${gridConfig.frameHeight}` : 'missing'
-      });
-    }
-
-    if (type !== 'processFrame') {
+    const { type, grid, gridConfig, data } = e.data;
+    
+    // CRITICAL FIX (Bug #10): Accept both 'processingRequest' and 'processFrame' message types
+    // FrameConductor sends 'processingRequest', but this worker was only accepting 'processFrame'
+    // This caused all messages to be rejected, resulting in undefined results
+    const validTypes = ['processFrame', 'processingRequest'];
+    
+    if (!validTypes.includes(type)) {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
-          `Invalid message type: ${type}. Expected 'processFrame'`
+          `Invalid message type: ${type}. Expected: ${validTypes.join(' or ')}`
         )
       );
       return;
     }
 
+    // Extract grid from either message format:
+    // - 'processingRequest': grid comes in data field (from conductor chain)
+    // - 'processFrame': grid comes directly as grid field
+    const actualGrid = grid || data;
+    
+    // Debug: log what we received
+    if (Math.random() < 0.01) {
+      console.debug('[PanMapper] Received message:', {
+        type,
+        hasGrid: !!actualGrid,
+        gridLength: actualGrid ? actualGrid.length : null,
+        hasGridConfig: !!gridConfig,
+        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
+      });
+    }
+
     // Validate inputs
-    if (!grid || !gridConfig) {
+    if (!actualGrid || !gridConfig) {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
@@ -83,18 +93,18 @@ self.onmessage = (e) => {
       return;
     }
 
-    if (grid.length !== rows * cols) {
+    if (actualGrid.length !== rows * cols) {
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
-          `Grid size mismatch: expected ${rows * cols}, got ${grid.length}`
+          `Grid size mismatch: expected ${rows * cols}, got ${actualGrid.length}`
         )
       );
       return;
     }
 
     // Calculate pan and intensity from grid
-    const { pan, intensity } = calculateAudioParams(grid, rows, cols);
+    const { pan, intensity } = calculateAudioParams(actualGrid, rows, cols);
 
     // Send result via contract
     self.postMessage(
