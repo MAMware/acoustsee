@@ -34,7 +34,7 @@ console.log('[GridAgg] Worker script loaded, setting up message handler');
 self.onmessage = (e) => {
   console.log('[GridAgg] Received message, type:', e.data?.type);
   try {
-    const { type, motionRegions, gridConfig, data } = e.data;
+    const { type, motionRegions, gridConfig, data, width, height, state } = e.data;
 
     // CRITICAL FIX (Bug #10 part 2): Accept both 'processingRequest' and 'processFrame' message types
     // FrameConductor sends 'processingRequest', but this worker was only accepting 'processFrame'
@@ -57,22 +57,36 @@ self.onmessage = (e) => {
     // - 'processFrame': regions come directly as motionRegions field
     const actualMotionRegions = motionRegions || data;
     
+    // Build gridConfig from message fields
+    // - 'processingRequest': construct from width, height, state
+    // - 'processFrame': use provided gridConfig
+    let actualGridConfig = gridConfig;
+    if (!actualGridConfig && width && height && state) {
+      // Default to 4x4 grid for motion detection
+      actualGridConfig = {
+        rows: 4,
+        cols: 4,
+        frameWidth: width,
+        frameHeight: height
+      };
+    }
+    
     // Debug: log what we received
     if (Math.random() < 0.01) {
       console.debug('[GridAgg] Received message:', {
         type,
         hasMotionRegions: !!actualMotionRegions,
-        hasGridConfig: !!gridConfig,
-        gridConfigDims: gridConfig ? `${gridConfig.rows}x${gridConfig.cols}` : null,
-        frameWidthHeight: gridConfig ? `${gridConfig.frameWidth}x${gridConfig.frameHeight}` : 'missing'
+        hasGridConfig: !!actualGridConfig,
+        gridConfigDims: actualGridConfig ? `${actualGridConfig.rows}x${actualGridConfig.cols}` : null,
+        frameWidthHeight: actualGridConfig ? `${actualGridConfig.frameWidth}x${actualGridConfig.frameHeight}` : 'missing'
       });
     }
 
     // Validate inputs
-    if (!actualMotionRegions || !gridConfig) {
+    if (!actualMotionRegions || !actualGridConfig) {
       console.error('[GridAgg] REJECTING: Missing data', {
         hasActualMotionRegions: !!actualMotionRegions,
-        hasGridConfig: !!gridConfig
+        hasActualGridConfig: !!actualGridConfig
       });
       self.postMessage(
         WorkerContract.createError(
@@ -84,7 +98,7 @@ self.onmessage = (e) => {
     }
 
     const { coords, intens, count } = actualMotionRegions;
-    const { rows, cols, frameWidth, frameHeight } = gridConfig;
+    const { rows, cols, frameWidth, frameHeight } = actualGridConfig;
 
     if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows <= 0 || cols <= 0) {
       self.postMessage(
@@ -131,7 +145,7 @@ self.onmessage = (e) => {
         {
           grid: result,
           timestamp: Date.now(),
-          gridConfig
+          gridConfig: actualGridConfig
         },
         { gridSize: rows * cols, regionsProcessed: count }
       )

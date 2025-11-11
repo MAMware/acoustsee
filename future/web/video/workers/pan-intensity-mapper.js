@@ -37,7 +37,7 @@ console.log('[PanMapper] Worker script loaded, setting up message handler');
 self.onmessage = (e) => {
   console.log('[PanMapper] Received message, type:', e.data?.type);
   try {
-    const { type, grid, gridConfig, data } = e.data;
+    const { type, grid, gridConfig, data, width, height, state } = e.data;
     
     // CRITICAL DIAGNOSTIC: Log EVERYTHING we receive
     console.log('[PanMapper] FULL MESSAGE RECEIVED:', {
@@ -72,17 +72,41 @@ self.onmessage = (e) => {
     // - 'processFrame': grid comes directly as grid field
     const actualGrid = grid || data;
     
+    // Build gridConfig from message fields or extract from data
+    // - 'processingRequest': construct from width, height OR extract from data.gridConfig
+    // - 'processFrame': use provided gridConfig
+    let actualGridConfig = gridConfig;
+    if (!actualGridConfig) {
+      // Check if grid aggregator passed gridConfig in its result
+      if (data && typeof data === 'object' && data.gridConfig) {
+        actualGridConfig = data.gridConfig;
+      } else if (width && height) {
+        // Fallback: construct default 4x4 grid
+        actualGridConfig = {
+          rows: 4,
+          cols: 4,
+          frameWidth: width,
+          frameHeight: height
+        };
+      }
+    }
+    
     console.log('[PanMapper] actualGrid:', {
       hasActualGrid: !!actualGrid,
       actualGridType: actualGrid ? actualGrid.constructor.name : 'null',
       actualGridLength: actualGrid ? actualGrid.length : null
     });
+    
+    console.log('[PanMapper] actualGridConfig:', {
+      hasActualGridConfig: !!actualGridConfig,
+      actualGridConfig
+    });
 
     // Validate inputs
-    if (!actualGrid || !gridConfig) {
+    if (!actualGrid || !actualGridConfig) {
       console.error('[PanMapper] REJECTING: Missing actualGrid or gridConfig', {
         hasActualGrid: !!actualGrid,
-        hasGridConfig: !!gridConfig
+        hasActualGridConfig: !!actualGridConfig
       });
       self.postMessage(
         WorkerContract.createError(
@@ -93,7 +117,7 @@ self.onmessage = (e) => {
       return;
     }
 
-    const { rows, cols } = gridConfig;
+    const { rows, cols } = actualGridConfig;
 
     if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows <= 0 || cols <= 0) {
       console.error('[PanMapper] REJECTING: Invalid dimensions', { rows, cols });
@@ -138,7 +162,7 @@ self.onmessage = (e) => {
         pan,
         intensity,
         timestamp: Date.now(),
-        gridConfig
+        gridConfig: actualGridConfig
       },
       { panValue: pan.toFixed(3), intensityValue: intensity.toFixed(3) }
     );
