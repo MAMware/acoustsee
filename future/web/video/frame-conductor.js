@@ -409,6 +409,11 @@ export class FrameConductor {
         const capabilities = WorkerContract.getCapabilities(workerResult);
         aggregatedCapabilities = [...aggregatedCapabilities, ...capabilities];
         currentInput = workerResult.result;
+        
+        // TEMPORARY DIAGNOSTIC: Log what we're extracting
+        if (workerConfig.name === 'pan-intensity-mapper') {
+          console.log('[Conductor] pan-mapper result:', workerResult.result);
+        }
 
         structuredLog('DEBUG', `FrameConductor: ${workerConfig.name} completed`, {
           workerName: workerConfig.name,
