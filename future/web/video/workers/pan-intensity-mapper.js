@@ -68,9 +68,11 @@ self.onmessage = (e) => {
     }
 
     // Extract grid from either message format:
-    // - 'processingRequest': grid comes in data field (from conductor chain)
+    // - 'processingRequest': grid comes in data.grid field (from conductor chain)
     // - 'processFrame': grid comes directly as grid field
-    const actualGrid = grid || data;
+    // CRITICAL FIX (Bug #10 Part 4): When chaining workers, conductor passes the full result object
+    // as 'data', so we need to extract data.grid (the Float32Array), not use data directly
+    const actualGrid = grid || (data && typeof data === 'object' && data.grid) || data;
     
     // Build gridConfig from message fields or extract from data
     // - 'processingRequest': construct from width, height OR extract from data.gridConfig

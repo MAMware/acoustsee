@@ -1,0 +1,1239 @@
+core-logger.js:178 [2025-11-11T14:10:37.172Z] INFO: Initializing settings from loaded configs. (state.js:208)
+core-logger.js:178 [2025-11-11T14:10:37.174Z] INFO: Settings initialized (state.js:238)
+main.js:92 Application base path established: https://mamware.github.io/acoustsee/future/web/
+main.js:675 Ingest ping function is available. Type `pingIngest()` in the console to test.
+core-logger.js:178 [2025-11-11T14:10:37.207Z] INFO: ENGINE: Attempting to register Sonification commands... (engine.js:357)
+core-logger.js:178 [2025-11-11T14:10:37.208Z] INFO: SONIFICATION-COMMANDS: registerSonificationCommands function has been entered. (sonification-commands.js:11)
+core-logger.js:178 [2025-11-11T14:10:37.212Z] INFO: ENGINE: Sonification commands registration call completed. (engine.js:360)
+core-logger.js:178 [2025-11-11T14:10:37.220Z] INFO: MEDIA-COMMANDS: Registering command handlers... (media-commands.js:25)
+core-logger.js:178 [2025-11-11T14:10:37.224Z] INFO: MEDIA-COMMANDS: All command handlers registered successfully. (media-commands.js:272)
+core-logger.js:178 [2025-11-11T14:10:37.229Z] DEBUG: Mode commands registered (mode-commands.js:59)
+core-logger.js:178 [2025-11-11T14:10:37.234Z] INFO: performance_optimization_applied (ingest.js:221)
+core-logger.js:178 [2025-11-11T14:10:37.237Z] DEBUG: Engine: unified EventBus injected (engine.js:252)
+core-logger.js:178 [2025-11-11T14:10:37.244Z] DEBUG: EventBus created and exposed as window.eventBus (main.js:188)
+core-logger.js:178 [2025-11-11T14:10:38.087Z] INFO: init: Video grids loaded successfully (main.js:203)
+core-logger.js:178 [2025-11-11T14:10:38.127Z] DEBUG: updateOrchestration: State updated (diagnostics-commands.js:141)
+core-logger.js:178 [2025-11-11T14:10:38.130Z] INFO: init: Browser capabilities detected (main.js:215)
+core-logger.js:178 [2025-11-11T14:10:38.130Z] DEBUG: Capability Report:
+=== Browser Capability Report ===
+MediaStreamTrackProcessor: ✓
+Canvas 2D:                 ✓
+WebGL:                     ✓
+WebGPU:                    ✓
+OffscreenCanvas:           ✓
+WebAssembly:               ✓ (main.js:226)
+core-logger.js:178 [2025-11-11T14:10:38.130Z] INFO: init: Configurations loaded (main.js:233)
+core-logger.js:178 [2025-11-11T14:10:38.502Z] INFO: init: Log level set to default (main.js:271)
+dev-panel.js:21 dev-panel module loaded. Version info will be read from engine state at runtime.
+core-logger.js:178 [2025-11-11T14:10:39.719Z] INFO: Dev Panel module loaded. Initializing via registry. (main.js:297)
+dev-panel.js:68 initializeDevPanel called (visible)
+dev-panel.js:72 Dev Panel: EventBus available, can add unified event viewer
+core-logger.js:178 [2025-11-11T14:10:39.722Z] INFO: Dev Panel initialized via registry with standardized context. (main.js:303)
+core-logger.js:178 [2025-11-11T14:10:40.054Z] INFO: Power-on button clicked (main.js:453)
+core-logger.js:178 [2025-11-11T14:10:40.057Z] INFO: AudioManager: unlockAudio called (audio-manager.js:46)
+core-logger.js:178 [2025-11-11T14:10:40.068Z] INFO: AudioManager: AudioContext running after unlock (audio-manager.js:69)
+core-logger.js:178 [2025-11-11T14:10:40.070Z] DEBUG: initializeAudio: starting (audio-processor.js:82)
+core-logger.js:178 [2025-11-11T14:10:40.085Z] INFO: AudioContext state changed (audio-processor.js:102)
+floating-export-btn.js:363 [FLOATING-BTN] {"level":"DEBUG","text":"Floating export button created","data":{"id":"floating-export-container","zIndex":999999,"position":"bottom-right"}}
+floating-export-btn.js:363 [FLOATING-BTN] {"level":"INFO","text":"Floating export button initialized","data":{"type":"persistent-overlay","always_on_top":true,"works_offline":true}}
+core-logger.js:178 [2025-11-11T14:10:40.172Z] DEBUG: init (main.js:473)
+core-logger.js:178 [2025-11-11T14:10:40.172Z] INFO: init: UI setup complete (main.js:537)
+core-logger.js:178 [2025-11-11T14:10:40.466Z] DEBUG: initializeAudio: enumerateDevices result (audio-processor.js:121)
+core-logger.js:178 [2025-11-11T14:10:40.468Z] DEBUG: Resizing oscillator pool (audio-processor.js:268)
+core-logger.js:178 [2025-11-11T14:10:40.475Z] DEBUG: Resized oscillator pool (audio-processor.js:290)
+core-logger.js:178 [2025-11-11T14:10:40.475Z] INFO: Audio system initialized successfully (audio-processor.js:152)
+core-logger.js:178 [2025-11-11T14:10:40.477Z] INFO: Audio system initialized (main.js:391)
+main.js:351 Activating Dev Panel in response to app:poweredOn event.
+core-logger.js:178 [2025-11-11T14:10:40.479Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:40.479Z] INFO: Dev Panel: Log level set to DEBUG (dev-panel.js:91)
+core-logger.js:178 [2025-11-11T14:10:40.482Z] INFO: Transitioned to main UI (main.js:428)
+dev-panel.js:253 Dev Panel: attempting to load CSS from https://mamware.github.io/acoustsee/future/web/ui/dev-panel/dev-panel.css
+dev-panel.js:256 Dev Panel CSS loaded: https://mamware.github.io/acoustsee/future/web/ui/dev-panel/dev-panel.css
+core-logger.js:178 [2025-11-11T14:10:41.763Z] INFO: Touch Pad UI wired successfully. (dev-panel.js:217)
+core-logger.js:178 [2025-11-11T14:10:41.786Z] DEBUG: dev-panel (dev-panel.js:625)
+core-logger.js:178 [2025-11-11T14:10:41.787Z] DEBUG: early-logs (early-logs.js:39)
+core-logger.js:178 [2025-11-11T14:10:41.788Z] DEBUG: early-logs (early-logs.js:86)
+core-logger.js:178 [2025-11-11T14:10:41.791Z] INFO: early-logs (early-logs.js:296)
+core-logger.js:178 [2025-11-11T14:10:41.792Z] INFO: dev-panel (dev-panel.js:640)
+core-logger.js:178 [2025-11-11T14:10:41.868Z] INFO: dev-panel (dev-panel.js:750)
+core-logger.js:178 [2025-11-11T14:10:41.881Z] DEBUG: orchestration-inspector (orchestration-inspector.js:411)
+core-logger.js:178 [2025-11-11T14:10:41.882Z] INFO: orchestration-inspector (orchestration-inspector.js:442)
+core-logger.js:178 [2025-11-11T14:10:41.883Z] INFO: dev-panel (dev-panel.js:770)
+core-logger.js:178 [2025-11-11T14:10:41.885Z] DEBUG: EventBusViewer: Subscribed to state changes for FPS adaptation (eventbus-viewer.js:445)
+core-logger.js:178 [2025-11-11T14:10:41.886Z] DEBUG: EventBusViewer: Subscribed to EventBus events (eventbus-viewer.js:457)
+core-logger.js:178 [2025-11-11T14:10:41.892Z] INFO: EventBusViewer initialized (eventbus-viewer.js:468)
+core-logger.js:178 [2025-11-11T14:10:41.893Z] INFO: dev-panel (dev-panel.js:801)
+core-logger.js:178 [2025-11-11T14:10:42.166Z] DEBUG: orchestration-inspector (orchestration-inspector.js:49)
+[Violation] Forced reflow while executing JavaScript took <N>ms
+[Violation] Forced reflow while executing JavaScript took <N>ms
+[Violation] Forced reflow while executing JavaScript took <N>ms
+[Violation] Forced reflow while executing JavaScript took <N>ms
+[Violation] Forced reflow while executing JavaScript took <N>ms
+[Violation] Forced reflow while executing JavaScript took <N>ms
+[Violation] Forced reflow while executing JavaScript took <N>ms
+core-logger.js:178 [2025-11-11T14:10:43.964Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:43.965Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:43.966Z] DEBUG: playCues entered (audio-processor.js:406)
+core-logger.js:178 [2025-11-11T14:10:43.967Z] DEBUG: playCues: Calling synth function (audio-processor.js:465)
+core-logger.js:178 [2025-11-11T14:10:43.967Z] DEBUG: OSC_LIFECYCLE: GET (audio-processor.js:328)
+core-logger.js:178 [2025-11-11T14:10:43.970Z] INFO: Synth Sandbox: Dispatched manual cue via BOTH events (dev-panel.actions.js:68)
+floating-export-btn.js:363 [FLOATING-BTN] {"level":"DEBUG","text":"OSC_LIFECYCLE: ONENDED","data":{"id":"osc_th23eh9","synth":"sine-wave"}}
+favicon.ico:1  GET https://mamware.github.io/favicon.ico 404 (Not Found)
+main.js:351 === SYNTH DROPDOWN CHANGE EVENT FIRED ===
+core-logger.js:178 [2025-11-11T14:10:50.054Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:50.054Z] DEBUG: Synth dropdown changed (dev-panel.js:894)
+core-logger.js:178 [2025-11-11T14:10:50.054Z] DEBUG: About to dispatch setSynthEngine (dev-panel.js:904)
+core-logger.js:178 [2025-11-11T14:10:50.056Z] DEBUG: setSynthEngine handler ENTRY (settings-commands.js:43)
+core-logger.js:178 [2025-11-11T14:10:50.056Z] DEBUG: setSynthEngine command received (settings-commands.js:53)
+core-logger.js:178 [2025-11-11T14:10:50.063Z] INFO: audio: selected synth engine (audio-processor.js:22)
+core-logger.js:178 [2025-11-11T14:10:50.063Z] INFO: DebugUI: Synth engine set (settings-commands.js:66)
+main.js:351 === GRID DROPDOWN CHANGE EVENT FIRED ===
+core-logger.js:178 [2025-11-11T14:10:51.284Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:51.285Z] DEBUG: Grid dropdown changed (dev-panel.js:869)
+core-logger.js:178 [2025-11-11T14:10:51.285Z] DEBUG: About to dispatch setGridType (dev-panel.js:879)
+core-logger.js:178 [2025-11-11T14:10:51.286Z] DEBUG: setGridType handler ENTRY (settings-commands.js:16)
+core-logger.js:178 [2025-11-11T14:10:51.286Z] DEBUG: setGridType command received (settings-commands.js:26)
+core-logger.js:178 [2025-11-11T14:10:51.291Z] INFO: DebugUI: Grid type set (settings-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:53.491Z] DEBUG: COMMAND: toggleProcessing received (media-commands.js:47)
+core-logger.js:178 [2025-11-11T14:10:53.492Z] DEBUG: ASYNC-HANDLER: startProcessing starting (media-commands.js:30)
+core-logger.js:178 [2025-11-11T14:10:53.493Z] DEBUG: COMMAND: startProcessing handler called (media-commands.js:57)
+core-logger.js:178 [2025-11-11T14:10:53.493Z] INFO: COMMAND: Start processing initiated. (media-commands.js:65)
+core-logger.js:178 [2025-11-11T14:10:53.494Z] DEBUG: COMMAND: Requesting camera permissions... (media-commands.js:67)
+core-logger.js:178 [2025-11-11T14:10:53.679Z] DEBUG: Performance events flushed (ingest.js:386)
+core-logger.js:178 [2025-11-11T14:10:54.070Z] DEBUG: COMMAND: Camera stream acquired successfully. (media-commands.js:70)
+main.js:351 ENGINE: setState called to set isProcessing=true
+core-logger.js:178 [2025-11-11T14:10:54.127Z] INFO: Console log (main.js:333)
+engine.js:129 Stack trace for isProcessing change:
+setState @ engine.js:129
+(anonymous) @ media-commands.js:91
+await in (anonymous)
+(anonymous) @ media-commands.js:32
+dispatch @ engine.js:224
+engine.dispatch @ ingest.js:83
+(anonymous) @ media-commands.js:51
+dispatch @ engine.js:224
+engine.dispatch @ ingest.js:83
+delegatedClick @ dev-panel.actions.js:38
+core-logger.js:178 [2025-11-11T14:10:54.133Z] DEBUG: ASYNC-HANDLER: initializeVideoPipeline starting (media-commands.js:30)
+core-logger.js:178 [2025-11-11T14:10:54.134Z] INFO: COMMAND: Initializing video pipeline... (media-commands.js:122)
+core-logger.js:178 [2025-11-11T14:10:54.140Z] DEBUG: initializeVideo: Starting video pipeline initialization (frame-processor.js:560)
+core-logger.js:178 [2025-11-11T14:10:54.143Z] DEBUG: FrameConductor created (frame-conductor.js:110)
+core-logger.js:178 [2025-11-11T14:10:54.146Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:242)
+core-logger.js:178 [2025-11-11T14:10:54.149Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:242)
+core-logger.js:178 [2025-11-11T14:10:54.152Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:242)
+core-logger.js:178 [2025-11-11T14:10:54.152Z] INFO: FrameConductor: mode initialized (frame-conductor.js:193)
+core-logger.js:178 [2025-11-11T14:10:54.155Z] INFO: FrameConductor initialized (frame-processor.js:580)
+core-logger.js:178 [2025-11-11T14:10:54.157Z] DEBUG: initializeVideo: Starting frame provider worker... (frame-processor.js:621)
+core-logger.js:178 [2025-11-11T14:10:54.160Z] DEBUG: initializeVideo: Canvas created (frame-processor.js:631)
+core-logger.js:178 [2025-11-11T14:10:54.163Z] DEBUG: initializeVideo: Sending init message to frame provider worker... (frame-processor.js:643)
+core-logger.js:178 [2025-11-11T14:10:54.166Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:54.167Z] INFO: initializeVideo: Video pipeline initialization completed successfully (frame-processor.js:884)
+core-logger.js:178 [2025-11-11T14:10:54.168Z] INFO: COMMAND: initializeVideoPipeline COMPLETED successfully. (media-commands.js:174)
+core-logger.js:178 [2025-11-11T14:10:54.168Z] DEBUG: ASYNC-HANDLER: initializeVideoPipeline completed (media-commands.js:33)
+core-logger.js:178 [2025-11-11T14:10:54.174Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:54.178Z] INFO: COMMAND: startProcessing initiation completed. (media-commands.js:99)
+core-logger.js:178 [2025-11-11T14:10:54.178Z] DEBUG: ASYNC-HANDLER: startProcessing completed (media-commands.js:33)
+core-logger.js:178 [2025-11-11T14:10:54.182Z] DEBUG: Operating mode active (frame-processor.js:880)
+log-viewer.js:37 [Violation] 'requestAnimationFrame' handler took 52ms
+pan-intensity-mapper.js:35 [PanMapper] Worker script loaded, setting up message handler
+fast-grid-aggregator.js:32 [GridAgg] Worker script loaded, setting up message handler
+frame-provider-worker.js:38 Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently
+provideFrame @ frame-provider-worker.js:38
+await in provideFrame
+loop @ frame-provider-worker.js:64
+requestAnimationFrame
+loop @ frame-provider-worker.js:65
+requestAnimationFrame
+self.onmessage @ frame-provider-worker.js:79
+ [2025-11-11T14:10:54.921Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [2025-11-11T14:10:54.932Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [FastMotion] Frame received: {type: 'processingRequest', hasData: true, dataType: 'Uint8ClampedArray', dataSize: 1228800, dimensions: '640x480', …}
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:10:54.949Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:10:54.949Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:54.974Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:54.975Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:54.975Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:54.975Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+core-logger.js:178 [2025-11-11T14:10:54.975Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:54.990Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:54.991Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:54.991Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:54.991Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:54.999Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:55.006Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:55.014Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:55.016Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:55.016Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:55.018Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:55.018Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:55.019Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:55.019Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:55.020Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:55.020Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:55.020Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:55.021Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:55.024Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:55.027Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:359 [2025-11-11T14:10:55.224Z] ERROR: FrameConductor: fast-motion-worker error (frame-conductor.js:435)
+console.error @ main.js:359
+output @ core-logger.js:178
+structuredLog @ logging.js:355
+processFrame @ frame-conductor.js:435
+await in processFrame
+processFlowMode @ frame-processor.js:109
+frameProviderWorker.onmessage @ frame-processor.js:671
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:55.324Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:55.360Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:55.361Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:55.361Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:55.369Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:55.375Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:55.375Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:55.375Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:55.393Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:55.393Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:55.393Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:55.411Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:55.423Z] DEBUG: Operating mode active (frame-processor.js:880)
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+core-logger.js:178 [2025-11-11T14:10:55.555Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 197.28125}
+core-logger.js:178 [2025-11-11T14:10:55.587Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:55.652Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:55.653Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:55.653Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:55.653Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:55.668Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:55.668Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:55.669Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:55.669Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:55.669Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:55.669Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:55.704Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:55.721Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:55.855Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+core-logger.js:178 [2025-11-11T14:10:55.855Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:55.860Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:55.936Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:55.936Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+core-logger.js:178 [2025-11-11T14:10:55.945Z] INFO: FrameConductor: frame timing (frame-conductor.js:618)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:55.945Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:55.946Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:55.946Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:55.957Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:55.957Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:55.957Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:55.958Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:55.958Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:55.973Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:56.004Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:56.008Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:56.012Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:56.012Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:56.012Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:56.013Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:56.013Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:56.013Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:56.013Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:56.015Z] DEBUG: Engine dispatch audioPlayCues (engine.js:220)
+core-logger.js:178 [2025-11-11T14:10:56.016Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:56.020Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:56.027Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [GridAgg] Received message, type: processingRequest
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:10:56.121Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:10:56.121Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:56.124Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [2025-11-11T14:10:56.124Z] INFO: FrameConductor: frame timing (frame-conductor.js:618)
+ [DIAGNOSTIC] result.result: undefined
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:56.125Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:56.125Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:56.126Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:56.126Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:56.126Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:56.130Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:56.132Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:56.133Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:56.134Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:56.135Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:56.135Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:56.135Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:56.136Z] DEBUG: Engine dispatch audioPlayCues (engine.js:220)
+ [2025-11-11T14:10:56.136Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:56.139Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:56.141Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+ [2025-11-11T14:10:56.163Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:10:56.165Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [2025-11-11T14:10:56.168Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:10:56.168Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:56.175Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:56.175Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:56.178Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:56.178Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:56.178Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:56.178Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:56.183Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:56.189Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:56.190Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:56.190Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:56.190Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:56.191Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:56.191Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:56.191Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:56.199Z] DEBUG: Operating mode active (frame-processor.js:880)
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 214.578125}
+core-logger.js:178 [2025-11-11T14:10:56.375Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:56.399Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 212.21875}
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:56.508Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:56.509Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:10:56.510Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:10:56.510Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:56.510Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:56.523Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:56.523Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:56.523Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:56.524Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:56.524Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:56.541Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+ [2025-11-11T14:10:56.553Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:56.559Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 196.703125}
+ [2025-11-11T14:10:56.729Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:10:56.743Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:10:56.746Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 175.4375}
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:56.865Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:56.869Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:10:56.869Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:10:56.869Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:56.869Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:56.870Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:56.870Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:56.881Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:56.882Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:56.884Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:56.891Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:56.896Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:56.900Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:56.901Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:10:56.902Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:10:56.906Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:56.906Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:56.908Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:56.909Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:56.913Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:56.916Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:56.916Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:56.926Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:56.936Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:56.939Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 181.5}
+  POST https://acoustsee-analytics.mamware.workers.dev/ 400 (Bad Request)
+sendCriticalEventBeacon @ analytics-batcher.js:314
+(anonymous) @ event-bus-analytics.js:135
+(anonymous) @ event-bus.js:129
+emit @ event-bus.js:127
+structuredLog @ logging.js:398
+processFrame @ frame-conductor.js:435
+await in processFrame
+processFlowMode @ frame-processor.js:109
+frameProviderWorker.onmessage @ frame-processor.js:671
+  POST https://acoustsee-analytics.mamware.workers.dev/ 400 (Bad Request)
+sendCriticalEventBeacon @ analytics-batcher.js:314
+(anonymous) @ event-bus-analytics.js:63
+(anonymous) @ event-bus.js:129
+emit @ event-bus.js:127
+structuredLog @ logging.js:398
+processFrame @ frame-conductor.js:435
+await in processFrame
+processFlowMode @ frame-processor.js:109
+frameProviderWorker.onmessage @ frame-processor.js:671
+ [2025-11-11T14:10:57.095Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [2025-11-11T14:10:57.117Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:10:57.119Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 178.875}
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:57.180Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:57.184Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:10:57.185Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:10:57.185Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:57.185Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:57.185Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:57.186Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:57.186Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:57.186Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:57.198Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:57.217Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:57.221Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [2025-11-11T14:10:57.221Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [2025-11-11T14:10:57.242Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:57.321Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:57.324Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:57.324Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:57.327Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:57.327Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:57.327Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:57.335Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 198.84375}
+ [2025-11-11T14:10:57.344Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:57.347Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:57.347Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:57.348Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:57.348Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:57.348Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:57.348Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:57.356Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:57.360Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:57.363Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+core-logger.js:178 [2025-11-11T14:10:57.433Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:57.439Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:57.440Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:57.441Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:57.441Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:57.441Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:57.441Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:57.446Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:57.449Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:57.454Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:57.506Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:57.507Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:57.507Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:57.511Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:57.511Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:57.512Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:57.529Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:57.562Z] DEBUG: Operating mode active (frame-processor.js:880)
+log-viewer.js:37 [Violation] 'requestAnimationFrame' handler took 53ms
+ [GridAgg] Received message, type: processingRequest
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 189.375}
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:10:57.888Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [2025-11-11T14:10:57.891Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:10:57.892Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:10:57.893Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [2025-11-11T14:10:57.897Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [2025-11-11T14:10:57.897Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [2025-11-11T14:10:57.897Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:10:57.898Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:10:57.898Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:10:57.898Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [GridAgg] Received message, type: processingRequest
+ [GridAgg] Received message, type: processingRequest
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:57.908Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:57.908Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [2025-11-11T14:10:57.908Z] INFO: FrameConductor: frame timing (frame-conductor.js:618)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:10:57.908Z] INFO: Console log (main.js:333)
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:10:57.913Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:57.913Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:57.913Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:57.914Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:57.914Z] DEBUG: Engine dispatch audioCuesReady (engine.js:220)
+ [2025-11-11T14:10:57.914Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:57.914Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:57.917Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:57.922Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:57.928Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:57.930Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:57.930Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:10:57.932Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:10:57.932Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:57.933Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:57.934Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:57.934Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:57.937Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:57.937Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:57.937Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:10:57.943Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:10:57.947Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:10:57.951Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:57.951Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:10:57.951Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:10:57.951Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:10:57.954Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:10:57.954Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:10:57.955Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:10:57.956Z] DEBUG: Engine dispatch audioCuesReady (engine.js:220)
+ [2025-11-11T14:10:57.956Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:10:57.956Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:10:57.956Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:57.964Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:57.969Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:57.972Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:57.972Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:57.973Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:57.973Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:57.973Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:57.973Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:57.976Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:57.977Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:57.977Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:57.983Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:57.989Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:57.990Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:57.992Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:57.992Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:57.992Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:57.994Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:57.994Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:57.998Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:58.004Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:58.006Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:58.007Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:58.007Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:58.007Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:58.007Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:58.007Z] DEBUG: Engine dispatch audioPlayCues (engine.js:220)
+core-logger.js:178 [2025-11-11T14:10:58.010Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:58.014Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:58.018Z] DEBUG: Operating mode active (frame-processor.js:880)
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:58.360Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+core-logger.js:178 [2025-11-11T14:10:58.363Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:58.366Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:58.373Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:58.373Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+core-logger.js:178 [2025-11-11T14:10:58.382Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+core-logger.js:178 [2025-11-11T14:10:58.382Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+log-viewer.js:37 [Violation] 'requestAnimationFrame' handler took 91ms
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:58.582Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:58.583Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:58.583Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:58.583Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:58.588Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:58.589Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:58.605Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:58.620Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:58.620Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:58.629Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:58.629Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:58.630Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:58.631Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:58.631Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:58.643Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:58.682Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:58.684Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:58.688Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:58.688Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:58.688Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:58.689Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:58.689Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:58.699Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:58.706Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:58.709Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:58.715Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:58.715Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:58.720Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:58.720Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:58.720Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:58.737Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:58.759Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:58.864Z] DEBUG: Frame processor: Received frame (frame-processor.js:662)
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 241.984375}
+core-logger.js:178 [2025-11-11T14:10:58.919Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:58.925Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:58.926Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:58.927Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+core-logger.js:178 [2025-11-11T14:10:58.934Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+core-logger.js:178 [2025-11-11T14:10:59.054Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+fast-grid-aggregator.js:35 [GridAgg] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:59.063Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:59.064Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+core-logger.js:178 [2025-11-11T14:10:59.071Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}actual: undefinedexpected: 16[[Prototype]]: Object
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+core-logger.js:178 [2025-11-11T14:10:59.079Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+core-logger.js:178 [2025-11-11T14:10:59.081Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+core-logger.js:178 [2025-11-11T14:10:59.081Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+pan-intensity-mapper.js:38 [PanMapper] Received message, type: processingRequest
+pan-intensity-mapper.js:43 [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+pan-intensity-mapper.js:94 [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+pan-intensity-mapper.js:100 [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+pan-intensity-mapper.js:134 [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 251.5625}
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.120Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:59.120Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.121Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.121Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.121Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:59.121Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:59.121Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:59.122Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:59.122Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:59.122Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:59.125Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:59.127Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.128Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:59.128Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.129Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.129Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.129Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:59.129Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:59.130Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:59.130Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:59.130Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:59.130Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:59.133Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:59.136Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.137Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:59.137Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.137Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.137Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.138Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:59.138Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:59.138Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:59.138Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:59.138Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:59.139Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:59.141Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:10:59.145Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.145Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:10:59.146Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.146Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.146Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.146Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:59.147Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:59.147Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:59.147Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:59.148Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:10:59.150Z] DEBUG: Operating mode active (frame-processor.js:880)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.153Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.153Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:59.153Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:59.154Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:59.154Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:59.154Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+main.js:351 [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:10:59.159Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:10:59.159Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:10:59.159Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:10:59.160Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:10:59.160Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:10:59.160Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 251.015625}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 248.5625}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 252.78125}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 251.8125}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 249.3125}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 248.25}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 246.40625}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 251.015625}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 244.671875}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 251.015625}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 255}
+analytics-batcher.js:162 [AnalyticsBatcher] Flushing 1 events
+analytics-batcher.js:187 [AnalyticsBatcher] Flush successful, 0 events remaining
+core-logger.js:178 [2025-11-11T14:11:18.236Z] DEBUG: COMMAND: toggleProcessing received (media-commands.js:47)
+core-logger.js:178 [2025-11-11T14:11:18.237Z] INFO: COMMAND: stopProcessing begins. (media-commands.js:193)
+core-logger.js:178 [2025-11-11T14:11:18.238Z] DEBUG: playCues entered (audio-processor.js:406)
+core-logger.js:178 [2025-11-11T14:11:18.238Z] DEBUG: Sent empty cues array to stop synth voices (media-commands.js:208)
+core-logger.js:178 [2025-11-11T14:11:18.238Z] INFO: COMMAND: stopProcessing COMPLETED. (media-commands.js:216)
+core-logger.js:178 [2025-11-11T14:11:18.243Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:11:18.248Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:11:18.390Z] DEBUG: Performance events flushed (ingest.js:386)
+analytics-batcher.js:162 [AnalyticsBatcher] Flushing 1 events
+analytics-batcher.js:187 [AnalyticsBatcher] Flush successful, 0 events remaining
+ [2025-11-11T14:12:44.454Z] DEBUG: Max notes slider changed (dev-panel.js:923)
+ [2025-11-11T14:12:44.456Z] DEBUG: Resizing oscillator pool (audio-processor.js:268)
+ [2025-11-11T14:12:44.458Z] DEBUG: Resized oscillator pool (audio-processor.js:290)
+ [2025-11-11T14:12:44.459Z] INFO: DebugUI: Max notes set (settings-commands.js:89)
+ [2025-11-11T14:12:44.468Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:44.482Z] DEBUG: Max notes slider changed (dev-panel.js:923)
+ [2025-11-11T14:12:44.483Z] DEBUG: Resizing oscillator pool (audio-processor.js:268)
+ [2025-11-11T14:12:44.486Z] DEBUG: Resized oscillator pool (audio-processor.js:290)
+ [2025-11-11T14:12:44.486Z] INFO: DebugUI: Max notes set (settings-commands.js:89)
+ [2025-11-11T14:12:44.490Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:44.526Z] DEBUG: Max notes slider changed (dev-panel.js:923)
+ [2025-11-11T14:12:44.527Z] DEBUG: Resizing oscillator pool (audio-processor.js:268)
+ [2025-11-11T14:12:44.533Z] DEBUG: Resized oscillator pool (audio-processor.js:290)
+ [2025-11-11T14:12:44.534Z] INFO: DebugUI: Max notes set (settings-commands.js:89)
+ [2025-11-11T14:12:44.539Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:46.255Z] DEBUG: COMMAND: toggleProcessing received (media-commands.js:47)
+ [2025-11-11T14:12:46.257Z] DEBUG: ASYNC-HANDLER: startProcessing starting (media-commands.js:30)
+ [2025-11-11T14:12:46.258Z] DEBUG: COMMAND: startProcessing handler called (media-commands.js:57)
+ [2025-11-11T14:12:46.261Z] INFO: COMMAND: Start processing initiated. (media-commands.js:65)
+ [2025-11-11T14:12:46.262Z] DEBUG: COMMAND: Requesting camera permissions... (media-commands.js:67)
+ [2025-11-11T14:12:46.276Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:46.369Z] DEBUG: Performance events flushed (ingest.js:386)
+ [2025-11-11T14:12:46.961Z] DEBUG: COMMAND: Camera stream acquired successfully. (media-commands.js:70)
+ ENGINE: setState called to set isProcessing=true
+ [2025-11-11T14:12:47.117Z] INFO: Console log (main.js:333)
+ Stack trace for isProcessing change:
+setState @ engine.js:129
+(anonymous) @ media-commands.js:91
+await in (anonymous)
+(anonymous) @ media-commands.js:32
+dispatch @ engine.js:224
+engine.dispatch @ ingest.js:83
+(anonymous) @ media-commands.js:51
+dispatch @ engine.js:224
+engine.dispatch @ ingest.js:83
+delegatedClick @ dev-panel.actions.js:38
+ [2025-11-11T14:12:47.165Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.167Z] DEBUG: ASYNC-HANDLER: initializeVideoPipeline starting (media-commands.js:30)
+ [2025-11-11T14:12:47.167Z] INFO: COMMAND: Initializing video pipeline... (media-commands.js:122)
+ [2025-11-11T14:12:47.168Z] DEBUG: initializeVideo: Starting video pipeline initialization (frame-processor.js:560)
+ [2025-11-11T14:12:47.168Z] DEBUG: FrameConductor created (frame-conductor.js:110)
+ [2025-11-11T14:12:47.187Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:242)
+ [2025-11-11T14:12:47.200Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:242)
+ [2025-11-11T14:12:47.201Z] DEBUG: FrameConductor: worker loaded (frame-conductor.js:242)
+ [2025-11-11T14:12:47.201Z] INFO: FrameConductor: mode initialized (frame-conductor.js:193)
+ [2025-11-11T14:12:47.202Z] INFO: FrameConductor initialized (frame-processor.js:580)
+ [2025-11-11T14:12:47.202Z] DEBUG: initializeVideo: Starting frame provider worker... (frame-processor.js:621)
+ [2025-11-11T14:12:47.202Z] DEBUG: initializeVideo: Canvas created (frame-processor.js:631)
+ [2025-11-11T14:12:47.203Z] DEBUG: initializeVideo: Sending init message to frame provider worker... (frame-processor.js:643)
+ [2025-11-11T14:12:47.203Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.203Z] INFO: initializeVideo: Video pipeline initialization completed successfully (frame-processor.js:884)
+ [2025-11-11T14:12:47.203Z] INFO: COMMAND: initializeVideoPipeline COMPLETED successfully. (media-commands.js:174)
+ [2025-11-11T14:12:47.204Z] DEBUG: ASYNC-HANDLER: initializeVideoPipeline completed (media-commands.js:33)
+ [2025-11-11T14:12:47.207Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.207Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.208Z] INFO: COMMAND: startProcessing initiation completed. (media-commands.js:99)
+ [2025-11-11T14:12:47.208Z] DEBUG: ASYNC-HANDLER: startProcessing completed (media-commands.js:33)
+ [2025-11-11T14:12:47.211Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.211Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [PanMapper] Worker script loaded, setting up message handler
+ [GridAgg] Worker script loaded, setting up message handler
+ [2025-11-11T14:12:47.576Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:12:47.586Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:12:47.597Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:47.598Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:12:47.601Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:12:47.603Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:12:47.606Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:47.607Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:12:47.609Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:12:47.610Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:12:47.613Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:12:47.614Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently
+provideFrame @ frame-provider-worker.js:38
+await in provideFrame
+loop @ frame-provider-worker.js:64
+requestAnimationFrame
+loop @ frame-provider-worker.js:65
+requestAnimationFrame
+self.onmessage @ frame-provider-worker.js:79
+ [2025-11-11T14:12:47.624Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.625Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.631Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.632Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:12:47.866Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:12:47.875Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:47.879Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:12:47.879Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:12:47.895Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:12:47.897Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:47.897Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:12:47.897Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:12:47.904Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:12:47.904Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:12:47.905Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:12:47.921Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.923Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 196.328125}
+ [2025-11-11T14:12:47.955Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:47.959Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:48.055Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 201.28125}
+ [2025-11-11T14:12:48.147Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [2025-11-11T14:12:48.216Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [2025-11-11T14:12:48.217Z] DEBUG: FrameConductor: fast-motion-worker completed (frame-conductor.js:418)
+ [GridAgg] Received message, type: processingRequest
+ [GridAgg] Received message, type: processingRequest
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:12:48.220Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:48.221Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:12:48.221Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:12:48.221Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:12:48.226Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:48.226Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:12:48.227Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:12:48.229Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:12:48.229Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:12:48.229Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:12:48.237Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:48.237Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:48.244Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:48.245Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 184.890625}
+ [2025-11-11T14:12:48.401Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [2025-11-11T14:12:48.402Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:12:48.461Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:48.463Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:12:48.463Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:12:48.463Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:12:48.463Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:48.464Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:12:48.464Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:12:48.464Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:12:48.464Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:12:48.464Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [2025-11-11T14:12:48.476Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:48.476Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [2025-11-11T14:12:48.483Z] DEBUG: Operating mode active (frame-processor.js:880)
+ [Conductor] pan-mapper result: undefined
+ [2025-11-11T14:12:48.484Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:48.484Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+ [DIAGNOSTIC] result.result: undefined
+ [2025-11-11T14:12:48.486Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] pan: undefined type: undefined
+ [2025-11-11T14:12:48.487Z] INFO: Console log (main.js:333)
+ [DIAGNOSTIC] intensity: undefined type: undefined
+ [2025-11-11T14:12:48.487Z] INFO: Console log (main.js:333)
+ [2025-11-11T14:12:48.487Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+ [2025-11-11T14:12:48.488Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+ [2025-11-11T14:12:48.488Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+ [2025-11-11T14:12:48.488Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+ [2025-11-11T14:12:48.488Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+ [GridAgg] Received message, type: processingRequest
+ [2025-11-11T14:12:48.631Z] DEBUG: FrameConductor: fast-grid-aggregator completed (frame-conductor.js:418)
+ [PanMapper] Received message, type: processingRequest
+ [PanMapper] FULL MESSAGE RECEIVED: {type: 'processingRequest', hasGrid: false, hasData: true, hasGridConfig: false, gridType: 'null', …}
+ [PanMapper] actualGrid: {hasActualGrid: true, actualGridType: 'Object', actualGridLength: undefined}
+ [PanMapper] actualGridConfig: {hasActualGridConfig: true, actualGridConfig: {…}}
+ [PanMapper] REJECTING: Size mismatch {expected: 16, actual: undefined}
+self.onmessage @ pan-intensity-mapper.js:134
+ [Conductor] pan-mapper result: undefined
+core-logger.js:178 [2025-11-11T14:12:48.633Z] INFO: Console log (main.js:333)
+core-logger.js:178 [2025-11-11T14:12:48.634Z] DEBUG: FrameConductor: pan-intensity-mapper completed (frame-conductor.js:418)
+main.js:351 [DIAGNOSTIC] result.result: undefined
+core-logger.js:178 [2025-11-11T14:12:48.634Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] pan: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:12:48.634Z] INFO: Console log (main.js:333)
+main.js:351 [DIAGNOSTIC] intensity: undefined type: undefined
+core-logger.js:178 [2025-11-11T14:12:48.635Z] DEBUG: createCuesFromAudioParams: No motion (intensity below threshold) (frame-processor.js:204)
+core-logger.js:178 [2025-11-11T14:12:48.635Z] INFO: Dispatching audioCuesReady (frame-processor.js:817)
+core-logger.js:178 [2025-11-11T14:12:48.636Z] DEBUG: sonification: audioCuesReady handler received (sonification-commands.js:29)
+core-logger.js:178 [2025-11-11T14:12:48.636Z] DEBUG: sonification: No cues to process (sonification-commands.js:32)
+core-logger.js:178 [2025-11-11T14:12:48.636Z] DEBUG: Frame processor: Also dispatched audioPlayCues fallback (frame-processor.js:827)
+core-logger.js:178 [2025-11-11T14:12:48.641Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:12:48.641Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:12:48.649Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:12:48.650Z] DEBUG: Operating mode active (frame-processor.js:880)
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 171.921875}
+fast-motion-worker.js:299 [FastMotion] MOTION DETECTED: {regions: 64, maxIntensity: 255, avgIntensity: 204.75}
+core-logger.js:178 [2025-11-11T14:12:58.397Z] DEBUG: COMMAND: toggleProcessing received (media-commands.js:47)
+core-logger.js:178 [2025-11-11T14:12:58.397Z] INFO: COMMAND: stopProcessing begins. (media-commands.js:193)
+core-logger.js:178 [2025-11-11T14:12:58.402Z] DEBUG: playCues entered (audio-processor.js:406)
+core-logger.js:178 [2025-11-11T14:12:58.402Z] DEBUG: Sent empty cues array to stop synth voices (media-commands.js:208)
+core-logger.js:178 [2025-11-11T14:12:58.402Z] INFO: COMMAND: stopProcessing COMPLETED. (media-commands.js:216)
+core-logger.js:178 [2025-11-11T14:12:58.427Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:12:58.427Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:12:58.439Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:12:58.441Z] DEBUG: Operating mode active (frame-processor.js:880)
+core-logger.js:178 [2025-11-11T14:12:58.571Z] DEBUG: Performance events flushed (ingest.js:386)
+ [AnalyticsBatcher] Flushing 2 events
