@@ -108,7 +108,7 @@ async function processFlowMode(frameData, width, height, state) {
     // Use FrameConductor for orchestration
     const result = await frameConductor.processFrame(frameData, width, height, state);
     
-    // TEMPORARY DIAGNOSTIC: Direct console.log to see actual values
+    // TEMPORARY DIAGNOSTIC: Direct console.log to see actual values R111125eb could eventBus be more appropriate? 
     console.log('[DIAGNOSTIC] result.result:', result.result);
     console.log('[DIAGNOSTIC] pan:', result.result?.pan, 'type:', typeof result.result?.pan);
     console.log('[DIAGNOSTIC] intensity:', result.result?.intensity, 'type:', typeof result.result?.intensity);
@@ -118,7 +118,7 @@ async function processFlowMode(frameData, width, height, state) {
     let panIntensity = { pan: 0, intensity: 0 };  // Initialize for calculation
     
     // CRITICAL FIX: The conductor chain (motion → grid → pan-mapper) produces {pan, intensity}
-    // Use the final result directly instead of re-processing through grid.mapFunction
+    // Use the final result directly instead of re-processing through grid.mapFunction R111125sp we could use this approach with some tweaks as a variant for the sonicPointer
     if (result.result && typeof result.result.pan === 'number' && typeof result.result.intensity === 'number') {
       panIntensity = {
         pan: result.result.pan,
@@ -134,7 +134,7 @@ async function processFlowMode(frameData, width, height, state) {
       }, false, shouldSample('cueGeneration'));
     }
     
-    // Legacy fallback: If result has coords (motion worker only, no pan-mapper)
+    // Legacy fallback: If result has coords (motion worker only, no pan-mapper)  R111125sf
     // This path should rarely execute with proper FrameConductor chain
     const grid = _config.getCurrentGrid();
     if (cues.length === 0 && grid && grid.mapFunction && result.result?.coords?.length > 0) {
@@ -201,28 +201,43 @@ function createCuesFromAudioParams(params, state) {
     const threshold = 0.001;
     
     if (normalizedIntensity === 0 || normalizedIntensity < threshold) {
-      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', 
+      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', // R111125hot what is structuredLog doing on a hot path, what about eventBus or even console.log?
         { rawIntensity: intensity, normalizedIntensity, threshold }, 
         false, shouldSample('cueGeneration'));
       return [];
     }
     
-    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', 
+    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', // R111125hot what is structuredLog doing on a hot path, what about eventBus or even console.log?
       { intensity, normalizedIntensity, pan }, 
       false, shouldSample('cueGeneration'));
 
     // Create single cue with pan and intensity for Flow mode
+    // Map pan -> pitch so motion position changes tone (Bug: previously pitch was constant) R111125warn this looks like a silent fallback that mocks the real purpose and could drive a fake happy path
+    const panClamped = Math.max(-1, Math.min(1, pan || 0));
+    // Allow configuration via state; default to 12 semitones (1 octave)
+    const semitoneRange = (state && state.semitoneRange) || 12;
+    const semitones = panClamped * semitoneRange; // -semitoneRange .. +semitoneRange
+    const pitch = baseFreq * Math.pow(2, semitones / 12);
+
     const cue = {
       objectType: 'flow_motion',
-      pitch: baseFreq,
-      pan: Math.max(-1, Math.min(1, pan)),
+      pitch,
+      pan: panClamped, // R111125evo this would be the evolution to the use of pan-intensity-mapper.js but i have doubts about this approach, i dont really see why  rely on another worker for the pan intensity, instead anotherworker could be doing something more useful like helping to build a mesh of grids  
       intensity: Math.max(0, Math.min(1, normalizedIntensity)),
       position: {
-        x: Math.max(-1, Math.min(1, pan)),
-        y: 0.5,
+        x: panClamped,
+        y: 0.5, // R111125y is the y plane hardcoded? here where coul a octaver changer based on z plane momtion location trigger 
         z: 0
       }
     };
+
+    // Small debug log so we can verify pitch changes in user logs
+    structuredLog('DEBUG', 'createCuesFromAudioParams: Generated cue', { // R111125hot what is structuredLog doing on a hot path, what about eventBus or even console.log?
+      pitch,
+      semitones,
+      pan: panClamped,
+      intensity: cue.intensity
+    }, false, shouldSample('cueGeneration'));
 
     return [cue];
   } catch (error) {

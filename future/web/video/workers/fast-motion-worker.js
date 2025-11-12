@@ -227,7 +227,7 @@ self.onmessage = (ev) => {
       const w = msg.width || msg.w || 0;
       const h = msg.height || msg.h || 0;
       
-      // TEMPORARY DIAGNOSTIC: Log frame data details (sample 1% of frames)
+      // TEMPORARY DIAGNOSTIC: Log frame data details (sample 1% of frames) R111125eb considered eventBus?
       if (Math.random() < 0.01) {
         console.log('[FastMotion] Frame received:', {
           type: msg.type,
@@ -294,7 +294,7 @@ self.onmessage = (ev) => {
       
       const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
       
-      // TEMPORARY DIAGNOSTIC: Log when motion is detected to verify intensity scaling
+      // TEMPORARY DIAGNOSTIC: Log when motion is detected to verify intensity scaling R111125eb consider eventBus if more performant than console.log
       if (res.count > 0) {
         console.log('[FastMotion] MOTION DETECTED:', {
           regions: res.count,
@@ -325,7 +325,7 @@ self.onmessage = (ev) => {
       // Transfer buffer ownership to main thread for zero-copy performance
       self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
     } catch (e) {
-      // TEMPORARY DIAGNOSTIC: Log full error details
+      // TEMPORARY DIAGNOSTIC: Log full error details R111125 considered eventBus?
       console.error('[FastMotion] EXCEPTION:', e.message, 'Stack:', e.stack);
       // Send error via contract
       self.postMessage(

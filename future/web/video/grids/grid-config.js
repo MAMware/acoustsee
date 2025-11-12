@@ -11,8 +11,12 @@
  * - Hybrid mode: Balanced grid (5×5) for transitional scenarios
  * 
  * This enables paradigm-adaptive performance: fast in navigation, detailed in exploration.
- * R171025 lets discuss if it would be usefull to have this settings present and/ or configurable
- * at the developer panel
+ * 
+ * R171025 / R111125gc it would be usefull to have this settingsconfigurable at the developer panel
+ * 
+ * R111125gc better documentation is needed, e.g. is this module used by fas-grid-aggregator.js? who and why? 
+ * R111125gc IMO this is an incomplete implementation from a misuderstood use case
+ * 
  */
 
 export const GRID_CONFIGS = {

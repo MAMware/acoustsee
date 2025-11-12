@@ -56,7 +56,7 @@ export async function trackFeatureUse(event, payload = {}) {
     }
     // --- END NEW LOGIC ---
 
-    // CRITICAL FIX: Use analytics batcher if available to prevent 429 rate limiting
+    // CRITICAL FIX: Use analytics batcher if available to prevent 429 rate limiting 
     // Batcher queues events and sends in batches every 30 seconds instead of real-time
     const batcher = window.__audioSee?.analyticsBatcher;
     

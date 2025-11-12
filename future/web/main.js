@@ -146,7 +146,7 @@ export async function init() {
     const analyticsBatcher = new AnalyticsBatcher(
       30000, // 30-second flush interval
       'https://acoustsee-analytics.mamware.workers.dev',
-      { maxBatchSize: 1000, debugLogging: false }
+      { maxBatchSize: 1000, debugLogging: false } // R111125 why false?
     );
     
     // Make batcher globally available for ingest.js

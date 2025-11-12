@@ -410,7 +410,7 @@ export class FrameConductor {
         aggregatedCapabilities = [...aggregatedCapabilities, ...capabilities];
         currentInput = workerResult.result;
         
-        // TEMPORARY DIAGNOSTIC: Log what we're extracting
+        // TEMPORARY DIAGNOSTIC: Log what we're extracting R111125 could the use of eventBus by optimal than console.log here in the citrical hot path?
         if (workerConfig.name === 'pan-intensity-mapper') {
           console.log('[Conductor] pan-mapper result:', workerResult.result);
         }
@@ -425,10 +425,10 @@ export class FrameConductor {
       } catch (error) {
         this.#timingMetrics.totalErrorsEncountered += 1;
         
-        // Throttle worker errors to prevent log spam (first occurrence + every 50th)
+        // Throttle worker errors to prevent log spam (first occurrence + every 10th)
         const throttle = throttleError(error, { 
           key: `worker:${workerConfig.name}:${error.message}`,
-          sampleEvery: 50 
+          sampleEvery: 10 
         });
         
         if (throttle.log) {

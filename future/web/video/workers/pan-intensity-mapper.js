@@ -39,7 +39,7 @@ self.onmessage = (e) => {
   try {
     const { type, grid, gridConfig, data, width, height, state } = e.data;
     
-    // CRITICAL DIAGNOSTIC: Log EVERYTHING we receive
+    // CRITICAL DIAGNOSTIC: Log EVERYTHING we receive R111125pim WARN: might be blocking the event loop and preventing garbage collection 
     console.log('[PanMapper] FULL MESSAGE RECEIVED:', {
       type,
       hasGrid: !!grid,
@@ -67,7 +67,7 @@ self.onmessage = (e) => {
       return;
     }
 
-    // Extract grid from either message format:
+    // Extract grid from either message format: R111125pim it seems we are doingduplicate work like of the fast-grid-aggregator.js
     // - 'processingRequest': grid comes in data.grid field (from conductor chain)
     // - 'processFrame': grid comes directly as grid field
     // CRITICAL FIX (Bug #10 Part 4): When chaining workers, conductor passes the full result object
@@ -83,7 +83,7 @@ self.onmessage = (e) => {
       if (data && typeof data === 'object' && data.gridConfig) {
         actualGridConfig = data.gridConfig;
       } else if (width && height) {
-        // Fallback: construct default 4x4 grid
+        // Fallback: construct default 4x4 grid R111125pim DO NOT SILENT FALLBACK!
         actualGridConfig = {
           rows: 4,
           cols: 4,
@@ -122,7 +122,7 @@ self.onmessage = (e) => {
     const { rows, cols } = actualGridConfig;
 
     if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows <= 0 || cols <= 0) {
-      console.error('[PanMapper] REJECTING: Invalid dimensions', { rows, cols });
+      console.error('[PanMapper] REJECTING: Invalid dimensions', { rows, cols }); // R111125pim we might be blocking the event loop and preventing garbage collection of logged object 
       self.postMessage(
         WorkerContract.createError(
           WORKER_TYPES.PAN_INTENSITY_MAPPER,
@@ -133,7 +133,7 @@ self.onmessage = (e) => {
     }
 
     if (actualGrid.length !== rows * cols) {
-      console.error('[PanMapper] REJECTING: Size mismatch', {
+      console.error('[PanMapper] REJECTING: Size mismatch', { // R111125pim we might be blocking the event loop and preventing garbage collection of logged object  
         expected: rows * cols,
         actual: actualGrid.length
       });
@@ -146,14 +146,12 @@ self.onmessage = (e) => {
       return;
     }
 
-    console.log('[PanMapper] VALIDATION PASSED, calculating audio params...');
-
-    console.log('[PanMapper] VALIDATION PASSED, calculating audio params...');
+    console.log('[PanMapper] VALIDATION PASSED, calculating audio params...'); // R111125pim we might be blocking the event loop and preventing garbage collection of logged object 
 
     // Calculate pan and intensity from grid
     const { pan, intensity } = calculateAudioParams(actualGrid, rows, cols);
 
-    console.log('[PanMapper] CALCULATED:', { pan, intensity });
+    console.log('[PanMapper] CALCULATED:', { pan, intensity }); // R111125pim we might be blocking the event loop and preventing garbage collection of logged object 
 
     // Send result via contract
     const resultMessage = WorkerContract.createResult(
@@ -169,7 +167,7 @@ self.onmessage = (e) => {
       { panValue: pan.toFixed(3), intensityValue: intensity.toFixed(3) }
     );
     
-    console.log('[PanMapper] POSTING MESSAGE:', resultMessage);
+    console.log('[PanMapper] POSTING MESSAGE:', resultMessage); // R111125pim we might be blocking the event loop and preventing garbage collection of logged object 
     self.postMessage(resultMessage);
   } catch (error) {
     console.error('[PanMapper] Worker exception:', {

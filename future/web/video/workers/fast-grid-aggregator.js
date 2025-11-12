@@ -22,7 +22,7 @@
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
 
 /**
- * Main message handler
+ * Main message handler // R111125fga : check line 37, the const has been updated 
  * Receives: {
  *   type: 'processFrame',
  *   motionRegions: { coords: Uint16Array, intens: Uint8Array, count: number },
@@ -38,7 +38,7 @@ self.onmessage = (e) => {
 
     // CRITICAL FIX (Bug #10 part 2): Accept both 'processingRequest' and 'processFrame' message types
     // FrameConductor sends 'processingRequest', but this worker was only accepting 'processFrame'
-    // This caused all messages to be rejected → no grid data → pan-mapper gets undefined
+    // This caused all messages to be rejected → no grid data → pan-mapper gets undefined R111125 why might by hoarding ghost code under "legacy" or "fallback" lets justfy why we add code in top of another
     const validTypes = ['processFrame', 'processingRequest'];
     
     if (!validTypes.includes(type)) {
@@ -52,7 +52,9 @@ self.onmessage = (e) => {
       return;
     }
 
-    // Extract motion regions from either message format:
+    // R111125grid : the original idea was to aggregate the actual grids from /workspaces/acoustsee/future/web/video/grids
+    // R111125grid : lets review the original idea and the SonicPointer concept, we might have to derive, expand and improve this approach
+    // Extract motion regions from either message format:  
     // - 'processingRequest': regions come in data field (from conductor chain)
     // - 'processFrame': regions come directly as motionRegions field
     const actualMotionRegions = motionRegions || data;
@@ -97,8 +99,8 @@ self.onmessage = (e) => {
       return;
     }
 
-    const { coords, intens, count } = actualMotionRegions;
-    const { rows, cols, frameWidth, frameHeight } = actualGridConfig;
+    const { coords, intens, count } = actualMotionRegions; // R111125ac this "actual" is a code smell to me
+    const { rows, cols, frameWidth, frameHeight } = actualGridConfig; // R111125ac this "actual" is a code smell to me
 
     if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows <= 0 || cols <= 0) {
       self.postMessage(
@@ -145,7 +147,7 @@ self.onmessage = (e) => {
         {
           grid: result,
           timestamp: Date.now(),
-          gridConfig: actualGridConfig
+          gridConfig: actualGridConfig // R111125ac this "actual" is a code smell to me
         },
         { gridSize: rows * cols, regionsProcessed: count }
       )
