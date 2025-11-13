@@ -47,7 +47,7 @@ export const mapFunction = function(frameData, width, height, prevFrameData, opt
     cues.push({
       objectType: 'default_motion', // This grid still produces a generic motion type
       pitch,
-      intensity: Math.min(1.0, intensity / 100),
+      intensity: Math.min(1.0, intensity / 255),  // Normalize uint8 (0-255) to float (0-1)
       position: {
         x: (x / width) * 2 - 1,
         y: -((y / height) * 2 - 1),
