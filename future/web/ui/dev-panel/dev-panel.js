@@ -918,6 +918,21 @@ export function initializeDevPanel(arg1, arg2) {
             telemetryRegions.textContent = state.normalizationTelemetry.frameCount || 0;
           }
         }
+
+        // Stall telemetry (pipeline stability)
+        if (state.stallStats) {
+          const stallAgeEl = document.getElementById('stall-last-cue-age');
+          const stallUnchangedEl = document.getElementById('stall-unchanged-frames');
+          const stallDetectedEl = document.getElementById('stall-detected');
+          const stallCountEl = document.getElementById('stall-count');
+          if (stallAgeEl) {
+            const age = state.stallStats.lastAudioCueTs ? (Date.now() - state.stallStats.lastAudioCueTs) : 0;
+            stallAgeEl.textContent = age.toString();
+          }
+            if (stallUnchangedEl) stallUnchangedEl.textContent = state.stallStats.unchangedPanFrames;
+            if (stallDetectedEl) stallDetectedEl.textContent = state.stallStats.stallDetected ? 'true' : 'false';
+            if (stallCountEl) stallCountEl.textContent = state.stallStats.stallCount;
+        }
       } catch(e) {}
     });
 

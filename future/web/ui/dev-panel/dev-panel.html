@@ -207,6 +207,26 @@
           <div id="telemetry-regions" style="font-size: 16px; font-weight: bold; color: #f39c12;">0</div>
         </div>
       </div>
+
+      <!-- Stall Detection Telemetry -->
+      <div class="telemetry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; padding: 12px; background: #263445; border-radius: 4px;">
+        <div class="telemetry-item">
+          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Cue Silence (ms)</div>
+          <div id="stall-last-cue-age" style="font-size: 16px; font-weight: bold; color: #9b59b6;">0</div>
+        </div>
+        <div class="telemetry-item">
+          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Static Frames</div>
+          <div id="stall-unchanged-frames" style="font-size: 16px; font-weight: bold; color: #1abc9c;">0</div>
+        </div>
+        <div class="telemetry-item">
+          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Stall Flag</div>
+          <div id="stall-detected" style="font-size: 16px; font-weight: bold; color: #e67e22;">false</div>
+        </div>
+        <div class="telemetry-item">
+          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Stall Count</div>
+          <div id="stall-count" style="font-size: 16px; font-weight: bold; color: #c0392b;">0</div>
+        </div>
+      </div>
       
       <!-- Preset Buttons -->
       <div class="preset-buttons" style="display: flex; gap: 8px; margin-bottom: 16px;">

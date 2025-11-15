@@ -121,6 +121,33 @@ engine.onStateChange(state => {
 disposeVideo(); // Terminates all workers
 ```
 
+### Stall Detection & Recovery (Flow / Focus Modes)
+
+To guard against silent motion→audio pipeline stalls (e.g. worker producing frames but audio cues not varying), a lightweight watchdog is implemented in `frame-processor.js`.
+
+**Telemetry State (`state.stallStats`):**
+- `lastAudioCueTs`: Timestamp of last `audioCuesReady` dispatch
+- `lastPan` / `lastIntensity`: Last pan/intensity values observed
+- `unchangedPanFrames`: Consecutive frames where pan & intensity stayed within ±0.01
+- `lastFrameId`: Last processed frame id
+- `lastCueCount`: Cue count of last dispatch
+- `stallDetected`: Flag set when watchdog declares a stall
+- `stallCount`: Total stalls this session (resets only on reload)
+
+**Watchdog Criteria (every 500ms):**
+- Silence: `Date.now() - lastAudioCueTs > 1500ms`
+- Static Output: `unchangedPanFrames > 90`
+
+On first detection, it logs `STALL_DETECTED` and dispatches `resetMotionWorker` (no automatic strategy downgrade per Manifest Strategy rules). After recovery (next non-empty cue or varied pan/intensity), `stallDetected` is cleared.
+
+**Adjusting Thresholds:** For now thresholds are hardcoded inside `frame-processor.js`. If tuning is needed, expose them via a config block or dev panel controls—do not add hidden fallbacks.
+
+**Rationale:** Ensures the system fails loudly instead of producing misleading static audio, supporting accessibility reliability. This mechanism observes state deltas—no additional frame processing overhead.
+
+**Dev Panel:** A "Stall Detection Telemetry" section surfaces these stats to aid debugging; sampling logs every 60 frames (`STALL_STATS_SAMPLE`).
+
+Follow the principle: detect → log → explicit recovery. Never silently switch to a lower capability path.
+
 ---
 
 ### 2a. `frame-conductor.js` (Phase 3.1b - Manifest-Driven Orchestrator)
