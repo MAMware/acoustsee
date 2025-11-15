@@ -17,3 +17,9 @@ export const VIDEO_VERSION = '0.8.3-flowOrchestration';
 export const UI_VERSION = '0.8.0-orchestrationInstrumentation';
 export const LANGUAGES_VERSION = '0.2-spaEng';
 export const UTILS_VERSION = '0.9.8-eventBus';
+
+// Build information (auto-injected by scripts/inject-build-info.js)
+export const BUILD_COMMIT = '4070d94';
+export const BUILD_BRANCH = 'v0.9.4-normalizerNormalize';
+export const BUILD_TIMESTAMP = '2025-11-15T13:40:46.587Z';
+

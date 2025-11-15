@@ -419,6 +419,23 @@ export function initializeDevPanel(arg1, arg2) {
       subtitle.textContent = `Build: ${ver} | Audio: ${buildInfo.audio_version || 'n/a'} | Video: ${buildInfo.video_version || 'n/a'} | UI: ${buildInfo.ui_version || 'n/a'} | Utils: ${buildInfo.utils_version || 'n/a'}`;
     } catch (e) {}
 
+    // --- Populate Build Info ---
+    try {
+      import('../../core/constants.js').then(constants => {
+        const buildInfoEl = panel.querySelector('#devpanel-buildinfo');
+        if (buildInfoEl) {
+          const commit = constants.BUILD_COMMIT || 'unknown';
+          const branch = constants.BUILD_BRANCH || 'unknown';
+          const timestamp = constants.BUILD_TIMESTAMP || 'unknown';
+          const shortTime = timestamp !== 'unknown' ? new Date(timestamp).toLocaleString() : 'unknown';
+          buildInfoEl.textContent = `Commit: ${commit} | Branch: ${branch} | Built: ${shortTime}`;
+          buildInfoEl.title = `Full timestamp: ${timestamp}`;
+        }
+      });
+    } catch (e) {
+      console.warn('Failed to load build info for dev panel', e);
+    }
+
     // --- Cost-Effective Processing Canvas Preview Wiring ---
     try {
       const pickProcessingCanvas = () =>

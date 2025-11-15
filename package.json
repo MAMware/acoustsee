@@ -5,6 +5,9 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
+    "inject-build": "node scripts/inject-build-info.js",
+    "serve": "npm run inject-build && python3 -m http.server 8000",
+    "serve-debug": "npm run inject-build && python3 -m http.server 8000",
     "test": "jest --config jest.config.cjs",
     "test:unit": "jest --config jest.config.cjs --testPathPattern=future/web/test --runInBand",
     "test:e2e": "npx playwright test --config=playwright.config.cjs",
@@ -13,8 +16,8 @@
     "test:e2e:http": "npx playwright test --config=playwright.config.cjs",
     "collect:artifacts": "node ./scripts/collect-artifacts.cjs"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["accessibility", "sonification", "audio", "video", "computer-vision"],
+  "author": "MAMware",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
     "@babel/core": "^7.24.0",
