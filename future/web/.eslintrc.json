@@ -1,7 +1,7 @@
 // future/web/.eslintrc.json
 {
-  "env": { "browser": true, "es2020": true },
-  "parserOptions": { "ecmaVersion": 2020, "sourceType": "module" },
+  "env": { "browser": true, "es2022": true },
+  "parserOptions": { "ecmaVersion": 2022, "sourceType": "module" },
 
 "plugins": [
     "jsonc" 

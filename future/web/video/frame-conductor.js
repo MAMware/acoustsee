@@ -106,14 +106,6 @@ export class FrameConductor {
       workerTimings: {}, // { workerName: [measurements] }
       deviceTier: deviceTier,
     };
-    
-    // CORE-15: Track latest normalization telemetry from motion worker R151125C15es are we carefull and consistent across the whole project with the JavaScript language specification
-    this.#lastNormalizationTelemetry = {
-      recentMax: 0,
-      effectiveMax: 0,
-      clippingRate: 0,
-      frameCount: 0
-    };
 
     structuredLog('DEBUG', 'FrameConductor created', {
       config: this.config,
@@ -708,6 +700,13 @@ export class FrameConductor {
   #currentChain = null;
   #isTransitioning = false;  // Phase 3.1b-hotfix: Graceful mode transition to prevent audio dropout
   #timingMetrics = {};
+  // CORE-15: Track latest normalization telemetry from motion worker
+  #lastNormalizationTelemetry = {
+    recentMax: 0,
+    effectiveMax: 0,
+    clippingRate: 0,
+    frameCount: 0
+  };
 }
 
 export default FrameConductor;
