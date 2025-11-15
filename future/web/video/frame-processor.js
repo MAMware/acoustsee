@@ -90,6 +90,8 @@ let previousDepthPath = null; // Track depth computation path changes (used to a
 
 // FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
 let frameConductor = null;
+// Stall watchdog interval reference
+let stallWatchdogInterval = null;
 
 // Current mode and grid config are derived from engine state, not stored locally
 // This keeps frame-processor stateless for configuration
@@ -683,6 +685,9 @@ export async function initializeVideo(config) {
       const frameData = new Uint8ClampedArray(payload.imageDataBuffer);
       const grid = _config.getCurrentGrid();
       let dispatchPayload = null;
+      // Access stallStats (guaranteed to exist in state.js); mutate in place
+      const stallStats = state.stallStats;
+      stallStats.lastFrameId = payload.frameId;
 
       // Only log every 30th frame to avoid flooding console
       if (payload.frameId && payload.frameId % 30 === 0) {
@@ -841,12 +846,47 @@ export async function initializeVideo(config) {
       }
       
       if (dispatchPayload) {
+        // Update stall metrics prior to dispatch
+        const panIntensity = dispatchPayload.panIntensity || { pan: 0, intensity: 0 };
+        const pan = panIntensity.pan ?? 0;
+        const intensity = panIntensity.intensity ?? 0;
+        // Determine if pan/intensity materially changed (avoid floating noise)
+        const PAN_DELTA_THRESHOLD = 0.01;
+        const INTENSITY_DELTA_THRESHOLD = 0.01;
+        const panChanged = Math.abs(pan - stallStats.lastPan) > PAN_DELTA_THRESHOLD;
+        const intensityChanged = Math.abs(intensity - stallStats.lastIntensity) > INTENSITY_DELTA_THRESHOLD;
+        if (panChanged || intensityChanged) {
+          stallStats.unchangedPanFrames = 0;
+          stallStats.lastPan = pan;
+          stallStats.lastIntensity = intensity;
+        } else {
+          stallStats.unchangedPanFrames++;
+        }
         structuredLog('INFO', 'Dispatching audioCuesReady', { cueCount: dispatchPayload.cues ? dispatchPayload.cues.length : 0, mode: state.currentMode });
         engine.dispatch('audioCuesReady', capHighFreqPayload('audioCuesReady', {
           cues: dispatchPayload.cues || [],
           frameId: payload.frameId,
           startTime: payload.startTime
         }));
+        // Update stall stats post audio dispatch
+        stallStats.lastAudioCueTs = Date.now();
+        stallStats.lastCueCount = dispatchPayload.cues ? dispatchPayload.cues.length : 0;
+        if (stallStats.stallDetected && stallStats.lastCueCount > 0) {
+          // Clear stall flag after successful cue dispatch
+            stallStats.stallDetected = false;
+        }
+        // Sampled telemetry logging every 60 frames
+        if (payload.frameId && payload.frameId % 60 === 0) {
+          structuredLog('DEBUG', 'STALL_STATS_SAMPLE', {
+            lastAudioCueTs: stallStats.lastAudioCueTs,
+            unchangedPanFrames: stallStats.unchangedPanFrames,
+            stallDetected: stallStats.stallDetected,
+            stallCount: stallStats.stallCount,
+            lastCueCount: stallStats.lastCueCount
+          });
+        }
+        // Persist updated stallStats in engine state
+        engine.setState({ stallStats });
         // Robust fallback: also dispatch direct audio play command which may be
         // consumed by older or alternate audio handlers expecting this event.
         try {
@@ -862,8 +902,52 @@ export async function initializeVideo(config) {
       if (!frameProviderWorker) return;
       if (state.isProcessing) {
         frameProviderWorker.postMessage({ type: 'start' });
+        // Start stall watchdog if not already running
+        if (!stallWatchdogInterval) {
+          const STALL_INTERVAL_MS = 500; // evaluation cadence
+          const MAX_SILENCE_MS = 1500;   // time threshold without cues
+          const MAX_UNCHANGED_FRAMES = 90; // unchanged pan/intensity threshold
+          stallWatchdogInterval = setInterval(() => {
+            try {
+              const currentState = engine.getState();
+              const stats = currentState.stallStats;
+              if (!stats) return; // safety
+              if (stats.lastAudioCueTs === 0) return; // no cues yet
+              const silenceDuration = Date.now() - stats.lastAudioCueTs;
+              const stallBySilence = silenceDuration > MAX_SILENCE_MS;
+              const stallByStaticPan = stats.unchangedPanFrames > MAX_UNCHANGED_FRAMES;
+              if ((stallBySilence || stallByStaticPan) && !stats.stallDetected) {
+                stats.stallDetected = true;
+                stats.stallCount++;
+                structuredLog('WARN', 'STALL_DETECTED', {
+                  stallBySilence,
+                  stallByStaticPan,
+                  silenceDuration,
+                  unchangedPanFrames: stats.unchangedPanFrames,
+                  lastCueCount: stats.lastCueCount
+                });
+                // Attempt recovery: reset motion worker (no silent strategy downgrade)
+                try { engine.dispatch('resetMotionWorker'); } catch (e) {
+                  structuredLog('ERROR', 'Failed to dispatch resetMotionWorker during stall recovery', { error: e?.message || String(e) });
+                }
+                // Reset dynamic counters (keep stallCount history)
+                stats.unchangedPanFrames = 0;
+                engine.setState({ stallStats: stats });
+              }
+            } catch (err) {
+              structuredLog('ERROR', 'Stall watchdog error', { error: err?.message || String(err) });
+            }
+          }, STALL_INTERVAL_MS);
+          structuredLog('INFO', 'Stall watchdog started');
+        }
       } else {
         frameProviderWorker.postMessage({ type: 'stop' });
+        // Stop stall watchdog when processing halts
+        if (stallWatchdogInterval) {
+          clearInterval(stallWatchdogInterval);
+          stallWatchdogInterval = null;
+          structuredLog('INFO', 'Stall watchdog stopped');
+        }
       }
       
       // Phase 3.1b: Hot-swap workers when mode changes via FrameConductor

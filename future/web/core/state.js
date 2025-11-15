@@ -146,6 +146,18 @@ export let settings = {
     clippingRate: 0,
     frameCount: 0
   },
+  // Stall detection metrics (motion→audio pipeline stability monitoring)
+  // Updated per frame in frame-processor; watchdog triggers resetMotionWorker on stall.
+  stallStats: {
+    lastAudioCueTs: 0,       // ms timestamp of last audioCuesReady dispatch
+    lastPan: 0,              // last pan value seen
+    lastIntensity: 0,        // last intensity value seen
+    unchangedPanFrames: 0,   // consecutive frames with effectively unchanged pan/intensity
+    lastFrameId: 0,          // last processed frameId
+    lastCueCount: 0,         // cue count from last audioCuesReady
+    stallDetected: false,    // true when watchdog has declared a stall
+    stallCount: 0            // number of stall events this session
+  },
   // Expose build/version information to the rest of the app via engine state.
   buildInfo: {
     version: BUILD_VERSION,
