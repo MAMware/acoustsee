@@ -227,6 +227,20 @@
           <div id="stall-count" style="font-size: 16px; font-weight: bold; color: #c0392b;">0</div>
         </div>
       </div>
+
+      <!-- Delta Histogram Overview -->
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 12px; font-weight: 600; color: #ecf0f1;">Pan Delta Histogram</div>
+          <div style="font-size: 11px; color: #bdc3c7;">Mean <span id="delta-pan-mean">0.000</span> · Zero streak <span id="delta-pan-zero">0</span></div>
+        </div>
+        <div id="delta-histogram-pan" class="delta-histogram-bars" style="display: flex; gap: 3px; align-items: flex-end; height: 32px;"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 12px; font-weight: 600; color: #ecf0f1;">Intensity Delta Histogram</div>
+          <div style="font-size: 11px; color: #bdc3c7;">Mean <span id="delta-intensity-mean">0.000</span> · Zero streak <span id="delta-intensity-zero">0</span></div>
+        </div>
+        <div id="delta-histogram-intensity" class="delta-histogram-bars" style="display: flex; gap: 3px; align-items: flex-end; height: 32px;"></div>
+      </div>
       
       <!-- Preset Buttons -->
       <div class="preset-buttons" style="display: flex; gap: 8px; margin-bottom: 16px;">

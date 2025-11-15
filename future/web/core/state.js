@@ -158,6 +158,15 @@ export let settings = {
     stallDetected: false,    // true when watchdog has declared a stall
     stallCount: 0            // number of stall events this session
   },
+  deltaSnapshot: {
+    pan: Array.from({ length: 16 }, () => 0),
+    intensity: Array.from({ length: 16 }, () => 0),
+    meanPanDelta: 0,
+    meanIntensityDelta: 0,
+    zeroPanStreak: 0,
+    zeroIntensityStreak: 0,
+    samples: 0
+  },
   // Expose build/version information to the rest of the app via engine state.
   buildInfo: {
     version: BUILD_VERSION,

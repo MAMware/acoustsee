@@ -90,6 +90,109 @@ let previousDepthPath = null; // Track depth computation path changes (used to a
 
 // FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
 let frameConductor = null;
+const DELTA_HISTOGRAM_BINS = 16;
+const DELTA_STATS_FLUSH_INTERVAL = 120;
+const PAN_MAX_DELTA = 2;
+const INTENSITY_MAX_DELTA = 1;
+const PAN_TINY_THRESHOLD = 0.005;
+const INTENSITY_TINY_THRESHOLD = 0.01;
+
+function createDeltaHistogramState() {
+  return {
+    pan: new Uint32Array(DELTA_HISTOGRAM_BINS),
+    intensity: new Uint32Array(DELTA_HISTOGRAM_BINS),
+    panPrev: null,
+    intensityPrev: null,
+    panZeroStreak: 0,
+    intensityZeroStreak: 0,
+    samples: 0,
+    recentMeanPanDelta: 0,
+    recentMeanIntensityDelta: 0,
+    recentVarPanDelta: 0,
+    recentVarIntensityDelta: 0,
+    lastWindowResetTs: Date.now()
+  };
+}
+
+function resetDeltaHistogramState() {
+  deltaHistogramState = createDeltaHistogramState();
+  deltaFramesSinceSnapshot = 0;
+}
+
+function bucketHistogram(bins, delta, maxDelta) {
+  if (maxDelta <= 0) return;
+  const normalized = Math.min(1, delta / maxDelta);
+  const idx = Math.min(bins.length - 1, Math.floor(normalized * bins.length));
+  bins[idx] = (bins[idx] || 0) + 1;
+}
+
+function createDeltaSnapshot(hist) {
+  return {
+    pan: Array.from(hist.pan),
+    intensity: Array.from(hist.intensity),
+    meanPanDelta: hist.recentMeanPanDelta,
+    meanIntensityDelta: hist.recentMeanIntensityDelta,
+    zeroPanStreak: hist.panZeroStreak,
+    zeroIntensityStreak: hist.intensityZeroStreak,
+    samples: hist.samples,
+    lastWindowResetTs: hist.lastWindowResetTs
+  };
+}
+
+function decayHistogram(hist) {
+  for (let i = 0; i < hist.pan.length; i++) {
+    hist.pan[i] = hist.pan[i] >>> 1;
+    hist.intensity[i] = hist.intensity[i] >>> 1;
+  }
+  hist.samples = hist.samples >>> 1;
+  hist.recentVarPanDelta *= 0.5;
+  hist.recentVarIntensityDelta *= 0.5;
+  hist.lastWindowResetTs = Date.now();
+}
+
+function updateDeltaHistogram(pan, intensity, stallStats) {
+  if (!stallStats) return;
+  const hist = deltaHistogramState;
+  if (hist.panPrev === null) {
+    hist.panPrev = pan;
+    hist.intensityPrev = intensity;
+    return;
+  }
+
+  const panDelta = Math.abs(pan - hist.panPrev);
+  const intensityDelta = Math.abs(intensity - hist.intensityPrev);
+  hist.panPrev = pan;
+  hist.intensityPrev = intensity;
+
+  bucketHistogram(hist.pan, panDelta, PAN_MAX_DELTA);
+  bucketHistogram(hist.intensity, intensityDelta, INTENSITY_MAX_DELTA);
+
+  hist.panZeroStreak = panDelta < PAN_TINY_THRESHOLD ? hist.panZeroStreak + 1 : 0;
+  hist.intensityZeroStreak = intensityDelta < INTENSITY_TINY_THRESHOLD ? hist.intensityZeroStreak + 1 : 0;
+
+  hist.samples++;
+  if (hist.samples > 0) {
+    const panDiff = panDelta - hist.recentMeanPanDelta;
+    hist.recentMeanPanDelta += panDiff / hist.samples;
+    hist.recentVarPanDelta += panDiff * (panDelta - hist.recentMeanPanDelta);
+
+    const intensityDiff = intensityDelta - hist.recentMeanIntensityDelta;
+    hist.recentMeanIntensityDelta += intensityDiff / hist.samples;
+    hist.recentVarIntensityDelta += intensityDiff * (intensityDelta - hist.recentMeanIntensityDelta);
+  }
+
+  deltaFramesSinceSnapshot++;
+  if (deltaFramesSinceSnapshot >= DELTA_STATS_FLUSH_INTERVAL) {
+    deltaFramesSinceSnapshot = 0;
+    stallStats.deltaSnapshot = createDeltaSnapshot(hist);
+    if (hist.samples > 10000) {
+      decayHistogram(hist);
+    }
+  }
+}
+
+let deltaHistogramState = createDeltaHistogramState();
+let deltaFramesSinceSnapshot = 0;
 // Stall watchdog interval reference
 let stallWatchdogInterval = null;
 
@@ -686,7 +789,8 @@ export async function initializeVideo(config) {
       const grid = _config.getCurrentGrid();
       let dispatchPayload = null;
       // Access stallStats (guaranteed to exist in state.js); mutate in place
-      const stallStats = state.stallStats;
+      const stallStats = state.stallStats || { deltaSnapshot: { pan: [], intensity: [] } };
+      state.stallStats = stallStats;
       stallStats.lastFrameId = payload.frameId;
 
       // Only log every 30th frame to avoid flooding console
@@ -850,6 +954,7 @@ export async function initializeVideo(config) {
         const panIntensity = dispatchPayload.panIntensity || { pan: 0, intensity: 0 };
         const pan = panIntensity.pan ?? 0;
         const intensity = panIntensity.intensity ?? 0;
+        updateDeltaHistogram(pan, intensity, stallStats);
         // Determine if pan/intensity materially changed (avoid floating noise)
         const PAN_DELTA_THRESHOLD = 0.01;
         const INTENSITY_DELTA_THRESHOLD = 0.01;
@@ -948,6 +1053,7 @@ export async function initializeVideo(config) {
           stallWatchdogInterval = null;
           structuredLog('INFO', 'Stall watchdog stopped');
         }
+        resetDeltaHistogramState();
       }
       
       // Phase 3.1b: Hot-swap workers when mode changes via FrameConductor

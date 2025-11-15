@@ -865,6 +865,59 @@ export function initializeDevPanel(arg1, arg2) {
     const telemetryEffectiveMax = panel.querySelector('#telemetry-effective-max');
     const telemetryClippingRate = panel.querySelector('#telemetry-clipping-rate');
     const telemetryRegions = panel.querySelector('#telemetry-regions');
+    const deltaPanMean = panel.querySelector('#delta-pan-mean');
+    const deltaPanZero = panel.querySelector('#delta-pan-zero');
+    const deltaIntensityMean = panel.querySelector('#delta-intensity-mean');
+    const deltaIntensityZero = panel.querySelector('#delta-intensity-zero');
+    const deltaHistogramPanContainer = panel.querySelector('#delta-histogram-pan');
+    const deltaHistogramIntensityContainer = panel.querySelector('#delta-histogram-intensity');
+    const HISTOGRAM_BIN_COUNT = 16;
+    const deltaHistogramConfig = {
+      pan: { container: deltaHistogramPanContainer, bars: [] },
+      intensity: { container: deltaHistogramIntensityContainer, bars: [] }
+    };
+
+    function ensureHistogramBars(axis) {
+      const config = deltaHistogramConfig[axis];
+      if (!config || !config.container) return null;
+      if (config.bars.length === 0) {
+        config.container.innerHTML = '';
+        for (let i = 0; i < HISTOGRAM_BIN_COUNT; i++) {
+          const bar = document.createElement('span');
+          bar.className = 'delta-histogram-bar';
+          bar.style.flex = '1';
+          bar.style.borderRadius = '2px';
+          bar.style.backgroundColor = '#2c3e50';
+          bar.style.transition = 'height 120ms ease, background-color 120ms ease';
+          config.container.appendChild(bar);
+          config.bars.push(bar);
+        }
+      }
+      return config;
+    }
+
+    function renderHistogram(axis, counts = []) {
+      const config = ensureHistogramBars(axis);
+      if (!config) return;
+      const bars = config.bars;
+      const maxCount = counts.length > 0 ? Math.max(...counts, 1) : 1;
+      bars.forEach((bar, idx) => {
+        const value = counts[idx] || 0;
+        const ratio = maxCount ? value / maxCount : 0;
+        const height = Math.max(4, ratio * 32);
+        bar.style.height = `${height}px`;
+        if (value === 0) {
+          bar.style.backgroundColor = '#2c3e50';
+        } else if (ratio > 0.7) {
+          bar.style.backgroundColor = '#e74c3c';
+        } else if (ratio > 0.3) {
+          bar.style.backgroundColor = '#f39c12';
+        } else {
+          bar.style.backgroundColor = '#1abc9c';
+        }
+        bar.title = value.toString();
+      });
+    }
 
     // Sync controls with state changes
     engine.onStateChange(state => {
@@ -932,6 +985,15 @@ export function initializeDevPanel(arg1, arg2) {
             if (stallUnchangedEl) stallUnchangedEl.textContent = state.stallStats.unchangedPanFrames;
             if (stallDetectedEl) stallDetectedEl.textContent = state.stallStats.stallDetected ? 'true' : 'false';
             if (stallCountEl) stallCountEl.textContent = state.stallStats.stallCount;
+        }
+        if (state.stallStats?.deltaSnapshot) {
+          const snapshot = state.stallStats.deltaSnapshot;
+          renderHistogram('pan', snapshot.pan);
+          renderHistogram('intensity', snapshot.intensity);
+          if (deltaPanMean) deltaPanMean.textContent = snapshot.meanPanDelta.toFixed(3);
+          if (deltaPanZero) deltaPanZero.textContent = snapshot.zeroPanStreak.toString();
+          if (deltaIntensityMean) deltaIntensityMean.textContent = snapshot.meanIntensityDelta.toFixed(3);
+          if (deltaIntensityZero) deltaIntensityZero.textContent = snapshot.zeroIntensityStreak.toString();
         }
       } catch(e) {}
     });
