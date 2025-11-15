@@ -73,14 +73,19 @@ self.onmessage = (e) => {
       };
     }
     
-    // Debug: log what we received
-    if (Math.random() < 0.01) {
-      console.debug('[GridAgg] Received message:', {
+    // Lightweight sampled diagnostic (2%): confirm inbound shapes (avoids heavy object logging)
+    if (Math.random() < 0.02) {
+      console.log('[GridAgg] INPUT SAMPLE', {
         type,
-        hasMotionRegions: !!actualMotionRegions,
-        hasGridConfig: !!actualGridConfig,
-        gridConfigDims: actualGridConfig ? `${actualGridConfig.rows}x${actualGridConfig.cols}` : null,
-        frameWidthHeight: actualGridConfig ? `${actualGridConfig.frameWidth}x${actualGridConfig.frameHeight}` : 'missing'
+        hasRegions: !!actualMotionRegions,
+        hasConfig: !!actualGridConfig,
+        regionsCount: actualMotionRegions && actualMotionRegions.count,
+        coordsLen: actualMotionRegions && actualMotionRegions.coords ? actualMotionRegions.coords.length : null,
+        intensLen: actualMotionRegions && actualMotionRegions.intens ? actualMotionRegions.intens.length : null,
+        rows: actualGridConfig && actualGridConfig.rows,
+        cols: actualGridConfig && actualGridConfig.cols,
+        fw: actualGridConfig && actualGridConfig.frameWidth,
+        fh: actualGridConfig && actualGridConfig.frameHeight
       });
     }
 

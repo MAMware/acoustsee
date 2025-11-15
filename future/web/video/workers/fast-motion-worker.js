@@ -431,6 +431,15 @@ self.onmessage = (ev) => {
         skipThreshold: 0.1
       };
 
+      // Lightweight sampled diagnostic (2%): confirm region count & first intensity
+      if (Math.random() < 0.02) {
+        console.log('[FastMotion] POST SAMPLE', {
+          count: res.count,
+          firstIntensity: res.count > 0 ? res.intens[0] : null,
+          intensLength: res.intens.length
+        });
+      }
+
       const resultData = {
         coords: res.coords,
         intens: res.intens,

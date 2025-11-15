@@ -434,7 +434,9 @@ export class FrameConductor {
         if (throttle.log) {
           structuredLog('ERROR', `FrameConductor: ${workerConfig.name} error`, {
             workerName: workerConfig.name,
-            error: error.message,
+            error: error.message || 'no-message',
+            stack: error.stack || 'no-stack',
+            name: error.name || 'Error',
             occurrences: throttle.occurrences,
           });
         }

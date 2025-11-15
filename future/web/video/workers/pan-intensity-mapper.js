@@ -32,24 +32,15 @@ import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js
  *   gridConfig: { rows, cols, frameWidth, frameHeight }
  * }
  */
-console.log('[PanMapper] Worker script loaded, setting up message handler');
+console.log('[PanMapper] Worker loaded');
 
 self.onmessage = (e) => {
-  console.log('[PanMapper] Received message, type:', e.data?.type);
+  // Sample message receipt (1%) to reduce spam
+  if (Math.random() < 0.01) console.log('[PanMapper] MSG type:', e.data?.type);
   try {
     const { type, grid, gridConfig, data, width, height, state } = e.data;
     
-    // CRITICAL DIAGNOSTIC: Log EVERYTHING we receive R111125pim WARN: might be blocking the event loop and preventing garbage collection 
-    console.log('[PanMapper] FULL MESSAGE RECEIVED:', {
-      type,
-      hasGrid: !!grid,
-      hasData: !!data,
-      hasGridConfig: !!gridConfig,
-      gridType: grid ? grid.constructor.name : 'null',
-      dataType: data ? data.constructor.name : 'null',
-      gridLength: grid ? grid.length : null,
-      dataLength: data ? data.length : null
-    });
+    // Removed verbose FULL MESSAGE logging (performance).
     
     // CRITICAL FIX (Bug #10): Accept both 'processingRequest' and 'processFrame' message types
     // FrameConductor sends 'processingRequest', but this worker was only accepting 'processFrame'
@@ -93,15 +84,12 @@ self.onmessage = (e) => {
       }
     }
     
-    console.log('[PanMapper] actualGrid:', {
-      hasActualGrid: !!actualGrid,
-      actualGridType: actualGrid ? actualGrid.constructor.name : 'null',
-      actualGridLength: actualGrid ? actualGrid.length : null
-    });
-    
-    console.log('[PanMapper] actualGridConfig:', {
-      hasActualGridConfig: !!actualGridConfig,
-      actualGridConfig
+    // Sample inbound grid summary (2%)
+    if (Math.random() < 0.02) console.log('[PanMapper] GRID SAMPLE', {
+      hasGrid: !!actualGrid,
+      len: actualGrid ? actualGrid.length : null,
+      rows: actualGridConfig && actualGridConfig.rows,
+      cols: actualGridConfig && actualGridConfig.cols
     });
 
     // Validate inputs
@@ -146,12 +134,14 @@ self.onmessage = (e) => {
       return;
     }
 
-    console.log('[PanMapper] VALIDATION PASSED, calculating audio params...'); // R111125pim we might be blocking the event loop and preventing garbage collection of logged object 
+    // Sample validation pass (1%)
+    if (Math.random() < 0.01) console.log('[PanMapper] VALID');
 
     // Calculate pan and intensity from grid
     const { pan, intensity } = calculateAudioParams(actualGrid, rows, cols);
 
-    console.log('[PanMapper] CALCULATED:', { pan, intensity }); // R111125pim we might be blocking the event loop and preventing garbage collection of logged object 
+    // Sample calculation output (2%)
+    if (Math.random() < 0.02) console.log('[PanMapper] CALC SAMPLE', { pan, intensity });
 
     // Send result via contract
     const resultMessage = WorkerContract.createResult(
@@ -167,7 +157,7 @@ self.onmessage = (e) => {
       { panValue: pan.toFixed(3), intensityValue: intensity.toFixed(3) }
     );
     
-    console.log('[PanMapper] POSTING MESSAGE:', resultMessage); // R111125pim we might be blocking the event loop and preventing garbage collection of logged object 
+    // Omit posting log to reduce overhead
     self.postMessage(resultMessage);
   } catch (error) {
     console.error('[PanMapper] Worker exception:', {
