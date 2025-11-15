@@ -309,6 +309,12 @@ export async function init() {
         }
       } catch (e) { structuredLog('WARN', 'Failed to load dev panel UI', { error: e?.message || String(e) }); }
     } else {
+      // DEVELOPMENT: Accessible UI disabled during development phase
+      // Only Dev Panel should load during active development to avoid UI conflicts
+      // Re-enable this when moving to production/user testing phase
+      structuredLog('INFO', 'Accessible UI loading skipped (development phase - use ?debug=true for Dev Panel)');
+      
+      /* PRODUCTION: Uncomment when ready for end-user testing
       document.body.classList.add('accessible-mode');
       try {
         const mod = await import('./ui/touch-gestures/touch-gestures-ui.js');
@@ -318,6 +324,7 @@ export async function init() {
           structuredLog('INFO', 'Initialized in Accessible UI mode with standardized context.');
         }
       } catch (e) { structuredLog('WARN', 'Failed to load accessible UI', { error: e?.message || String(e) }); }
+      */
     }
     
     // Console overrides
