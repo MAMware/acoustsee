@@ -13,6 +13,96 @@
 // Add this import at the top if not present
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
 
+/**
+ * Adaptive Motion Normalization
+ * 
+ * Prevents clipping on fast motion by tracking recent maximum magnitude
+ * and normalizing relative to that maximum. This preserves expressiveness:
+ * - Slow session (hand gestures) → sensitive (small motions audible)
+ * - Fast session (arm swings) → tolerant (full dynamic range preserved)
+ * 
+ * Example:
+ * - Slow session: recentMax=1.2, magnitude=0.3 → (0.3/1.2)×255 = 64 (25% volume)
+ * - Fast session: recentMax=5.0, magnitude=3.0 → (3.0/5.0)×255 = 153 (60% volume, not clipped!)
+ * 
+ * See ADR 0009 for complete rationale and design.
+ */
+class AdaptiveNormalizer {
+  /**
+   * @param {number} windowSize - History window size in frames (default: 60 = 1 sec at 60fps)
+   * @param {number} minMax - Minimum recentMax to prevent over-sensitivity (default: 0.5)
+   * @param {number} smoothing - Smoothing factor for recentMax updates (default: 0.95)
+   */
+  constructor(windowSize = 60, minMax = 0.5, smoothing = 0.95) {
+    this.windowSize = windowSize;
+    this.minMax = minMax;
+    this.smoothing = smoothing;
+    this.magnitudeHistory = [];
+    this.recentMax = 1.0;
+    this.frameCount = 0;
+    this.clipCount = 0; // Track clipping events for telemetry
+  }
+  
+  /**
+   * Normalize magnitude to [0, 255] relative to recent maximum
+   * @param {number} magnitude - Optical flow magnitude in pixels/frame
+   * @returns {number} Normalized intensity in [0, 255]
+   */
+  normalize(magnitude) {
+    // Update history
+    this.magnitudeHistory.push(magnitude);
+    if (this.magnitudeHistory.length > this.windowSize) {
+      this.magnitudeHistory.shift();
+    }
+    
+    // Calculate recent max with exponential smoothing
+    const currentMax = Math.max(...this.magnitudeHistory);
+    this.recentMax = this.recentMax * this.smoothing + currentMax * (1 - this.smoothing);
+    
+    // Prevent over-sensitivity (cap minimum recentMax)
+    const effectiveMax = Math.max(this.recentMax, this.minMax);
+    
+    // Normalize to [0, 255]
+    const normalized = (magnitude / effectiveMax) * 255;
+    const intensity = Math.min(255, Math.floor(normalized));
+    
+    // Track clipping for telemetry
+    this.frameCount++;
+    if (intensity >= 255) {
+      this.clipCount++;
+    }
+    
+    return intensity;
+  }
+  
+  /**
+   * Reset normalizer state (call on mode change or video restart)
+   */
+  reset() {
+    this.magnitudeHistory = [];
+    this.recentMax = 1.0;
+    this.frameCount = 0;
+    this.clipCount = 0;
+  }
+  
+  /**
+   * Get telemetry data for dev panel / logging
+   * @returns {Object} Telemetry metrics
+   */
+  getTelemetry() {
+    return {
+      recentMax: this.recentMax,
+      effectiveMax: Math.max(this.recentMax, this.minMax),
+      frameCount: this.frameCount,
+      clipCount: this.clipCount,
+      clippingRate: this.frameCount > 0 ? (this.clipCount / this.frameCount) : 0
+    };
+  }
+}
+
+// Create normalizer instance (singleton for worker lifetime)
+const normalizer = new AdaptiveNormalizer(60, 0.5, 0.95);
+
 let _prevY = null;
 let _width = 0;
 let _height = 0;
@@ -173,14 +263,11 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
               if (count < maxRegions) {
                 coords[count * 2] = xx;
                 coords[count * 2 + 1] = yy;
-                // Intensity normalization (0-255 uint8 range):
-                // Optical flow magnitude is typically 0.01-1.0 pixels/frame for normal motion
-                // Scale by 255 to map full range to uint8:
-                //   - 0.0 px/frame (no motion) → 0
-                //   - 1.0 px/frame (hand wave) → 255 (max)
-                //   - >1.0 px/frame (fast motion) → clipped to 255
-                // This provides consistent scaling: intensity = magnitude * 255
-                intens[count] = Math.min(255, Math.floor(mag * 255));
+                // Adaptive intensity normalization (ADR 0009):
+                // Uses AdaptiveNormalizer to prevent clipping on fast motion
+                // OLD: intens[count] = Math.min(255, Math.floor(mag * 255));
+                // NEW: Adaptive normalization relative to recent maximum
+                intens[count] = normalizer.normalize(mag);
                 uFlow[count] = u;
                 vFlow[count] = v;
               }
@@ -194,6 +281,17 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
 
   // Store current y for next frame
   _prevY.set(y);
+
+  // Log adaptive normalization telemetry (sample at 1% to avoid log spam) R151125t we have an ingest system in place, why are "reinventing the wheel"?
+  if (Math.random() < 0.01) {
+    const telemetry = normalizer.getTelemetry();
+    console.log('[FastMotion] Adaptive normalization stats:', {
+      recentMax: telemetry.recentMax.toFixed(2),
+      effectiveMax: telemetry.effectiveMax.toFixed(2),
+      clippingRate: (telemetry.clippingRate * 100).toFixed(1) + '%',
+      frameCount: telemetry.frameCount
+    });
+  }
 
   // Only adjust adaptive threshold if we're in adaptive mode
   if (_useAdaptive) {
@@ -216,6 +314,14 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
 
 self.onmessage = (ev) => {
   const msg = ev.data || {};
+
+  // Handle reset command (mode change, video restart)
+  if (msg.type === 'reset') {
+    normalizer.reset();
+    _prevY = null;
+    console.log('[FastMotion] Normalizer reset on mode change');
+    return;
+  }
 
   // Process frame with inline grid configuration (stateless)
   // gridConfig and mode are passed with every frame, not stored in worker state

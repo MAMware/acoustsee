@@ -1,4 +1,6 @@
 // filepath: future/web/video/workers/frame-provider-worker.js
+// R141125 this file need better documentation
+
 let canvas = null, ctx = null, streamReader = null, reader = null;
 let isRunning = false, frameCounter = 0;
 

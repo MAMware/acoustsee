@@ -2,25 +2,42 @@
 
 **Purpose:** Complete reference for how visual motion becomes audio in AcoustSee
 
-**Last Updated:** November 13, 2025  
-**Related:** `audio/README.md`, `video/README.md`, `ARCHITECTURE_RULES.md`
+**Last Updated:** November 14, 2025  
+**Phase:** 3.1b (FrameConductor integrated, AudioRouter planned)  
+**Related:** `audio/README.md`, `video/README.md`, `ARCHITECTURE_RULES.md`, `docs/adr/0006-video-to-audio-restructure.md`
+
+**Status:**
+- ✅ Phase 3.1a-b: FrameConductor-based worker orchestration (COMPLETE)
+- ⏳ Phase 3.2: AudioRouter capability-aware routing (PLANNED)
+- ⏳ Phase 2A-D: Orchestration visibility & quality profiles (PLANNED) R141125 HIGH PRIORITY
 
 ---
 
 ## 🎯 Overview: The Complete Pipeline
 
-AcoustSee transforms camera motion into sound through a **4-stage pipeline**:
+AcoustSee transforms camera motion into sound through a **4-stage pipeline** orchestrated by **FrameConductor** (Phase 3.1b):
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌──────────────┐
-│   Camera    │───▶│    Motion    │───▶│    Grid     │───▶│    Audio     │
-│   Frames    │    │  Detection   │    │   Mapping   │    │  Synthesis   │
-└─────────────┘    └──────────────┘    └─────────────┘    └──────────────┘
-  (RGB pixels)      (x,y,intensity)     (pitch,volume)      (sound waves)
-     640×480           0-64 regions        0-12 notes        Web Audio API
+┌─────────────┐    ┌──────────────────┐    ┌─────────────┐    ┌──────────────┐
+│   Camera    │───▶│ FrameConductor   │───▶│    Grid     │───▶│    Audio     │
+│   Frames    │    │  + Motion Worker │    │   Mapping   │    │  Synthesis   │
+└─────────────┘    └──────────────────┘    └─────────────┘    └──────────────┘
+  (RGB pixels)      (manifest-driven)       (pitch,volume)      (sound waves)
+     640×480         0-64 regions            0-12 notes         Web Audio API
+                    ✅ Phase 3.1b
 ```
 
-**Key Principle:** Each stage has **well-defined inputs and outputs** with consistent normalization.
+**Key Principles:**
+- **Manifest-driven orchestration**: FrameConductor reads `worker-manifest.js` to determine worker chains per mode
+- **Consistent normalization**: Each stage has well-defined inputs/outputs (0-255 → 0-1 → Web Audio) R1411125 we wee need two steps prior the Web Audio? 
+- **Capability-based routing**: Workers declare capabilities; AudioRouter (Phase 3.2) will route based on them
+
+**Current Implementation (Phase 3.1b):**
+- ✅ FrameConductor manages worker lifecycle (start, stop, hot-swap)
+- ✅ Motion detection → Grid mapping → Audio cues (Flow mode)
+- ✅ Intensity normalization fixed (magnitude × 255, grids /255)
+- ⏳ AudioRouter not yet implemented (manual synth selection)
+- ⏳ Capability-aware routing planned (Phase 3.2)
 
 ---
 
@@ -34,11 +51,23 @@ AcoustSee transforms camera motion into sound through a **4-stage pipeline**:
 
 - **Current frame:** Y-plane (luminance) `Uint8Array` of size `width × height`
 - **Previous frame:** Stored internally for frame-to-frame comparison
-- **Parameters:**
-  - `step`: Grid sampling interval (default: 6 pixels) R131125mts we might have an issue here, since the app uses the definition for other use (grids) folder this might cause ambiguity, also lets avoid harcodingor at least expose to developer panel gui for customization 
-  - `threshold`: Motion sensitivity (default: 20, range: 5-50) 
-  - `maxRegions`: Maximum detected regions (default: 64) R131125mts expose to developer panel gui for customization 
-  - `windowSize`: Optical flow window size (default: 5 pixels) R131125mts expose to developer panel gui for customization 
+
+**Parameters (Currently Hardcoded):**
+
+| Parameter | Current | Planned | Status |
+|-----------|---------|---------|--------|
+| `step` | 6 pixels | User-configurable (Phase 2C) | Grid sampling interval (default: 6 pixels) Consider renaming to `samplingStep` in Phase 3.2+ |
+| `threshold` | 20 (5-50) | Quality profile presets (Phase 2C) | Hardcoded |
+| `maxRegions` | 64 | Adaptive based on device (Phase 2C) | Hardcoded |
+| `windowSize` | 5 pixels | Quality profile presets (Phase 2C) | Hardcoded |
+
+**⚠️ Current Limitation:** These parameters are not exposed to users. **Phase 2C (Quality Profiles)** will add:
+- Dev panel GUI controls for real-time tuning
+- Presets: "Subtle Motion", "Normal", "Large Motion"
+- **Capability-aware defaults** (CPU cores, memory, GPU availability)
+  - Uses polymorphic orchestration: detects device capabilities, not device type
+  - See ADR 0007 for capability detection strategy // R141125 we could improve/update /workspaces/acoustsee/future/web/core/capability-detector.js for this task
+
 
 ### Processing
 
@@ -109,7 +138,7 @@ AcoustSee transforms camera motion into sound through a **4-stage pipeline**:
 | `maxRegions` | 64 | 8-128 | Caps simultaneous notes (prevents audio overload) |
 | `windowSize` | 5 | 3-9 | Larger = smoother flow estimates (less jittery) |
 
-**Example Motion Profiles:**
+**Example Motion Profiles:** R141125 why dont we have the needed headroom in place rather than allowing clipping?
 
 | Motion Type | magnitude | intensity | Notes |
 |-------------|-----------|-----------|-------|
@@ -120,11 +149,53 @@ AcoustSee transforms camera motion into sound through a **4-stage pipeline**:
 
 ---
 
+## 🎼 Stage 1.5: FrameConductor Orchestration (NEW - Phase 3.1b)
+
+**Location:** `future/web/video/frame-conductor.js`
+
+**Purpose:** Manifest-driven worker lifecycle management and message routing
+
+### What It Does
+
+```javascript
+// FrameConductor reads worker-manifest.js:
+const FLOW_MODE_CHAIN = [
+  { worker: 'fast-motion-worker.js', capabilities: ['motion_vectors'] },
+  { worker: 'grid-aggregator-worker.js', capabilities: ['spatial_aggregation'] },
+  { worker: 'pan-intensity-worker.js', capabilities: ['stereo_positioning'] }
+];
+
+// Automatically:
+// 1. Loads workers based on mode (flow/focus/hybrid)
+// 2. Validates messages using WorkerContract
+// 3. Routes results through chain
+// 4. Hot-swaps workers on mode change
+```
+
+### Key Benefits (Phase 3.1b)
+
+- ✅ **Eliminates 290 lines of hardcoded chain logic** from frame-processor.js
+- ✅ **Manifest-driven**: Add new workers by updating manifest (5 lines vs 50+ code changes)
+- ✅ **Mode-aware hot-swapping**: Clean worker shutdown/restart on mode change
+- ✅ **Centralized error handling**: All worker failures logged consistently
+
+### Current Limitations
+
+- ⏳ **AudioRouter not integrated**: Still uses hardcoded `audioCuesReady` dispatch (Phase 3.2)
+- ⏳ **No capability-based routing**: Workers declare capabilities but routing is manual (Phase 3.2)
+- ⏳ **No performance metrics exposed**: Timing data collected but not in dev panel (Phase 2A)
+
+**See:** `docs/adr/0006-video-to-audio-restructure.md` for full Phase 3 roadmap
+
+---
+
 ## 📐 Stage 2: Grid Mapping (Spatial→Musical)
 
 **Location:** `future/web/video/grids/*.js`
 
 **Purpose:** Convert pixel coordinates and motion intensity to musical parameters
+
+**Orchestration:** Managed by FrameConductor (Phase 3.1b)
 
 ### Input
 
@@ -235,32 +306,97 @@ intensity: Math.min(1.0, intensity / 255)  // CORRECT
 
 ## 🎵 Stage 3: Sound Profile Selection
 
-**Location:** `future/web/audio/sound-profiles.js`
+**Current Location:** `future/web/audio/sound-profiles.js` (manual selection)  
+**Planned Location:** `future/web/audio/audio-router.js` (Phase 3.2 - capability-aware routing) R141125 this approach need documenting
 
 **Purpose:** Map object types to synth engines and default parameters
 
-### Input
+**Current Implementation (Phase 3.1b):**
+- ✅ Manual synth selection via `setSelectedSynthEngine()`
+- ✅ Sound profiles define synth + parameters per object type
+- ❌ No automatic routing based on worker capabilities
+- ❌ No mode-aware audio parameter adjustments
 
-Single cue from Stage 2:
+**Planned Enhancement (Phase 3.2 - AudioRouter):**
 ```javascript
-{
-  objectType: 'default_motion',
-  pitch: 440,
-  intensity: 0.6,
-  position: { x: 0, y: 0, z: 0 }
+// Instead of manual selection:
+engine.dispatch('audioCuesReady', cues);  // Goes to default synth
+
+// AudioRouter will automatically route based on worker capabilities:
+class AudioRouter {
+  constructor(engine, audioProcessor) {
+    // Listen for worker results, not hardcoded 'audioCuesReady' R141125 dont we need to update the contract? 
+    engine.onCommand('workerResult', this._routeByCapability.bind(this));
+  }
+  
+  _routeByCapability(result) {
+    const { workerCapabilities, data, mode } = result;
+    
+    // Route based on declared worker capabilities
+    if (workerCapabilities.includes('semantic_detection')) {
+      // Use object-specific synths
+      data.cues.forEach(cue => {
+        if (cue.objectType === 'wall') cue.synth = 'sawtooth-pad';
+        if (cue.objectType === 'person') cue.synth = 'karplus-strong';
+      });
+    }
+    
+    if (workerCapabilities.includes('depth_map')) {
+      // Apply 3D spatialization
+      data.cues.forEach(cue => {
+        cue.position.z = depthToDistance(cue.depth); // 0-10 meters
+      });
+    }
+    
+    // Mode-aware parameter adjustment
+    if (mode === 'focus') {
+      data.cues.forEach(cue => {
+        cue.duration *= 2;  // Longer notes in focus mode
+        cue.reverb = 0.3;   // Add reverb
+      });
+    }
+    
+    this.audioProcessor.playCues(data.cues);
+  }
 }
+// See ADR 0008 for complete composable parameter architecture
 ```
 
-### Manifest
+### Input
+
+**Type:** Array of cues from Stage 2 (output of grid mapping)
+
+```javascript
+cues = [
+  {
+    objectType: 'default_motion', 
+    pitch: 440,
+    intensity: 0.6,
+    position: { x: 0, y: 0, z: 0 }
+  },
+  {
+    objectType: 'default_motion',
+    pitch: 523,
+    intensity: 0.8,
+    position: { x: 0.5, y: 0, z: 0 }
+  }
+  // ... up to maxNotes cues (default: 12)
+]
+// Note: "Play Single Note" in dev panel bypasses this and calls synths directly
+```
+
+### Manifest 
+
+**Current Structure (Phase 3.1b - Hardcoded per Synth):**
 
 ```javascript
 soundProfileManifest = {
   'default_motion': {
     playFunction: playSineWave,  // Which synth to use
     params: {
-      duration: 0.2,   // Note length (seconds)
-      attack: 0.01,    // Fade-in time
-      release: 0.1     // Fade-out time
+      duration: 0.2,    // Note length (seconds)
+      attack: 0.01,     // ADSR: Attack time
+      release: 0.1      // ADSR: Release time (decay/sustain not yet exposed)
     }
   },
   'wall': {
@@ -269,10 +405,42 @@ soundProfileManifest = {
       duration: 0.5,
       attack: 0.05,
       release: 0.2,
-      filterCutoff: 1200  // Synth-specific parameter
+      filterCutoff: 1200  // ⚠️ Synth-specific (should be global, see below)
     }
   }
 }
+```
+
+**Proposed Architecture (Phase 3.3 - Composable Parameters):**
+
+```javascript
+    soundProfileManifest = {
+      'wall': {
+        playFunction: playSawtoothPad,
+        envelope: {
+          attack: 0.05,   // Full ADSR support
+          decay: 0.1,
+          sustain: 0.7,
+          release: 0.2
+        },
+        filters: [
+          { type: 'lowpass', frequency: 1200, Q: 1.0 }  // Global, not synth-specific
+        ],
+        // Video→Audio parameter mappings (Phase 3.3)
+        mappings: {
+          'depth → filters[0].frequency': (depth) => 500 + depth * 200,      // Closer = brighter
+          'uFlow → envelope.attack': (uFlow) => Math.abs(uFlow) * 0.01,      // Faster = sharper
+          'intensity → filters[0].Q': (intensity) => 0.5 + intensity * 2     // Louder = resonant
+        }
+      }
+    }
+    // This enables:
+    // - Dev panel exposes all ADSR parameters
+    // - Filters are global, reusable across synths
+    // - Live mapping editor: "Map depth to filter cutoff"
+    // - Preset system: "Doppler effect" applies velocity → pitch
+    // See ADR 0008 for complete design
+  
 ```
 
 ### Output
@@ -347,7 +515,8 @@ export function playSineWave(notes, ctx) {
 }
 ```
 
-### Available Synths // R131125 review the synths becouse the filenames are incorrect
+### Available Synths 
+// R131125 review the synths becouse the filenames are incorrect
 
 | Synth | File | Timbre | Use Case |
 |-------|------|--------|----------|
@@ -372,6 +541,8 @@ export function playSineWave(notes, ctx) {
 
 ### Scenario: User waves hand (right side of screen, moderate speed)
 
+We need to document the "Stage 0"  and that would be where the frame provider takes place. Also expose e.g. resolution and fps settings to the developer panel for user customization 
+
 #### Stage 1: Motion Detection
 ```javascript
 // Input: Camera frame (640×480 pixels)
@@ -388,6 +559,9 @@ export function playSineWave(notes, ctx) {
 ```
 
 #### Stage 2: Grid Mapping (Linear Pitch)
+
+R141125 It seems that we might have hardcoded the resolution, instead it should be dynamic from the frame provider
+
 ```javascript
 // Input: region = { x: 480, y: 240, intensity: 255 }
 
@@ -529,6 +703,10 @@ state.audio = {
 
 ### Tuning Guidelines
 
+**⚠️ Current Status:** These are **code-level guidelines only**. Users cannot adjust without editing source.
+
+**Phase 2C (HIGH PRIORITY):** Will expose these as dev panel controls with live preview.
+
 **For subtle motion (hand gestures):**
 ```javascript
 sensitivity: 10   // Lower threshold
@@ -558,15 +736,25 @@ step: 6                   // Moderate density
 
 ## 🔍 Debugging
 
+**Architecture Context (Phase 3.1b):** FrameConductor orchestrates workers; check its state first.
+
 ### Problem: No sound on motion
 
-**Check:**
-1. Motion detection threshold too high?
-   - Lower `state.motionDetection.sensitivity`
-2. Intensity being clipped?
-   - Check browser console: `[FastMotion] Frame received` logs
-3. Audio context suspended?
-   - User must interact with page first
+**Check (in order):**
+
+1. **FrameConductor initialized?**
+   - Console: `frameConductor` should not be null
+   - Check: `initializeVideo()` called during startup
+   - **Phase 3.1b**: FrameConductor manages all workers
+
+2. **Motion detection threshold too high?**
+   - ⚠️ **Currently hardcoded** - cannot adjust without code change
+   - **Phase 2C**: Will have dev panel GUI controls R141125 HIGH PRIORITY
+   - Workaround: Edit `fast-motion-worker.js` line ~79, change `threshold = 20` to `10`
+
+3. **Intensity normalization correct?**
+   - **Fixed Nov 13**: Should be `/255` in all grids (was `/100`)
+   - Verify: Check `linear-pitch.js` line 25, `hex-tonnetz.js` line 69, `circle-of-fifths.js` line 50
 
 ### Problem: Sound too quiet/loud
 
@@ -590,16 +778,57 @@ step: 6                   // Moderate density
 
 ---
 
+## ⚠️ Anti-Pattern: Premature Verification
+
+**Lessons from Phase 3 Development:**
+
+We implemented verification steps **before defining "ready"**, causing:
+- ❌ Tests written for features not yet implemented (AudioRouter)
+- ❌ Documentation describing planned features as current
+- ❌ Debugging guides assuming non-existent dev panel controls
+
+**Definition of Ready (DoR) for Future Phases:**
+
+**Only verify features that exist. Write tests after implementation, not before.**
+
+**Phase 3.2 (AudioRouter) is Ready When:**
+- [ ] `audio-router.js` exists and exports `AudioRouter` class
+- [ ] AudioRouter listens for worker results (not hardcoded message types)
+- [ ] Capability-based routing implemented (semantic_detection, depth_map, flow_vectors)
+- [ ] Mode-aware audio parameters applied (flow vs focus vs hybrid)
+- [ ] Integrated in `main.js` STEP 4 (after audio init)
+- [ ] Unit tests pass (audio-router.test.js)
+- [ ] Smoke tests updated to verify routing
+- [ ] This document updated to remove "Planned" tags
+
+**Phase 2C (Quality Profiles) is Ready When:**
+- [ ] Dev panel has motion detection controls (step, threshold, maxRegions, windowSize)
+- [ ] Quality presets implemented ("Subtle", "Normal", "Large Motion")
+- [ ] Capability-aware defaults (CPU/memory/GPU-based, not device-type-based) from /workspaces/acoustsee/future/web/core/capability-detector.js
+- [ ] State persists across page reload
+- [ ] Documentation updated
+
+
+
+---
+
 ## 📚 Related Documentation
 
+**Architecture & Phases:**
+- **Phase 3 Roadmap:** `docs/adr/0006-video-to-audio-restructure.md` - Complete Phase 3 plan
+- **Phase 3.1b Status:** `docs/sessions/2025-10/W4/20251029-phase3-1b-quick-reference.md` - What's complete
+- **Pipeline Proposal:** `PIPELINE_IMPROVEMENT_PROPOSAL.md` - Original Phase 3 design
+
+**Subsystem Technical Docs:**
 - **Architecture:** `future/web/README.md` - Module integration rules
 - **Audio Subsystem:** `future/web/audio/README.md` - Synth architecture
-- **Video Subsystem:** `future/web/video/README.md` - Frame processing
+- **Video Subsystem:** `future/web/video/README.md` - Frame processing (FrameConductor)
 - **Performance:** `future/web/ARCHITECTURE_RULES.md` - Rules 6-7 (workers, logging)
 
 ---
 
 **Questions or issues? Check:**
-1. This document for pipeline overview
-2. Subsystem READMEs for implementation details
-3. ARCHITECTURE_RULES.md for debugging patterns
+1. **Phase status:** ADR 0006 for what's implemented vs planned
+2. **Pipeline overview:** This document (focuses on current implementation)
+3. **Implementation details:** Subsystem READMEs
+4. **Debugging patterns:** ARCHITECTURE_RULES.md

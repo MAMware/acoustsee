@@ -46,6 +46,112 @@ This document tracks active and future development tasks to provide a clear proj
 -   **[ ] `ORCH-2.4`:** Documentation & Testing - Update ARCHITECTURE.md, add runtime smoke test, document state schema. _(Pending)_
 
 ## Future Goals (Backlog)
+## Phase 2C: Quality Profiles & Dev Panel Controls (HIGH PRIORITY)
+
+**Context:** Motion detection parameters are currently hardcoded. Users cannot tune sensitivity without editing source code. This phase exposes tuning controls to the dev panel with quality presets and capability-aware defaults.
+
+**Related ADRs:** ADR 0007 (Capability Detection), ADR 0009 (Adaptive Normalization)
+
+### Motion Detection Controls
+
+-   **[ ] `CORE-15`:** Expose Motion Detection Parameters to Dev Panel
+	-   Add dev panel section with sliders for: `step`, `threshold`, `maxRegions`, `windowSize`
+	-   Display live stats: detected regions, average intensity, frame time
+	-   Implement quality presets: "Subtle Motion", "Normal", "Large Motion"
+	-   Persist tuning values in `state.motionDetection` and localStorage
+	-   Add telemetry to track parameter usage patterns
+	-   **Acceptance Criteria:**
+		-   [ ] Dev panel has "Motion Detection Tuning" section with 4 sliders
+		-   [ ] Quick presets buttons apply known-good configurations
+		-   [ ] Live stats update in real-time (regions detected, avg intensity)
+		-   [ ] Parameter changes take effect without page reload
+		-   [ ] Settings persist across sessions (localStorage)
+		-   [ ] Documentation updated with tuning guidelines
+
+### Capability-Based Adaptation
+
+-   **[ ] `ARCH-8`:** Implement Capability Detection (Replace Mobile/Desktop Checks)
+	-   Create `future/web/utils/capability-detector.js`
+	-   Detect: CPU cores, RAM, GPU (WebGPU/WebGL2/WebGL/none), battery status
+	-   Create `future/web/video/quality-strategy-manifest.js` with 4 strategies:
+		-   `highPerformance`: 8+ cores, 8GB+, WebGPU → maxRegions=128, step=4
+		-   `balanced`: 4+ cores, 4GB+, WebGL2 → maxRegions=64, step=6
+		-   `lowPower`: 2+ cores, 2GB+, WebGL → maxRegions=32, step=8
+		-   `minimal`: 1+ cores, 1GB+, none → maxRegions=16, step=12
+	-   Integrate with boot sequence in `boot.js`
+	-   Add dev panel display: detected capabilities + selected strategy
+	-   Search codebase for `isMobile()` / `isDesktop()` and replace with capability checks
+	-   **Acceptance Criteria:**
+		-   [ ] `capability-detector.js` implemented with device capability detection
+		-   [ ] `quality-strategy-manifest.js` defines 4 quality strategies
+		-   [ ] Boot sequence selects strategy based on capabilities
+		-   [ ] State contains `orchestration.capabilities` and `orchestration.qualityStrategy`
+		-   [ ] Dev panel shows detected capabilities (cores, RAM, GPU)
+		-   [ ] Dev panel allows manual strategy override
+		-   [ ] All `isMobile()` checks removed from codebase
+		-   [ ] Tests verify strategy selection logic
+		-   [ ] Documentation updated (ADR 0007, video/README.md)
+
+## Phase 3.2: AudioRouter & Adaptive Normalization
+
+**Context:** Audio routing is currently hardcoded. Motion intensity clips on fast gestures, losing expressiveness. This phase adds capability-aware routing and adaptive normalization.
+
+**Related ADRs:** ADR 0006 (Video-to-Audio Restructure), ADR 0009 (Adaptive Normalization)
+
+### Performance & Expressiveness
+
+-   **[~] `PERF-6`:** Implement Adaptive Motion Normalization _(Status: Core implementation complete 2025-11-15; dev panel controls pending Phase 2C)_
+    -   Add `AdaptiveNormalizer` class to `fast-motion-worker.js`
+    -   Replace fixed `magnitude × 255` with adaptive normalization (tracks recent max over 60-frame window)
+    -   Add telemetry: track `recentMax`, clipping rate (intensity=255 frequency)
+    -   Add dev panel section: strategy selector (Adaptive | Fixed Headroom | Logarithmic)
+    -   Add live stats: recent max, effective max, current magnitude → intensity
+    -   User testing with accessibility scenarios (fast motion, tremors)
+    -   **Acceptance Criteria:**
+        -   [x] `AdaptiveNormalizer` class implemented in fast-motion-worker.js
+        -   [x] Intensity calculation uses adaptive normalization by default
+        -   [x] Normalizer resets on mode change
+        -   [x] Telemetry tracks `recentMax` and clipping rate
+        -   [ ] Dev panel has normalization strategy selector (Phase 2C)
+        -   [ ] Dev panel shows live normalization stats (Phase 2C)
+        -   [ ] Unit tests verify adaptive behavior (Phase 2C)
+        -   [ ] Integration tests verify no clipping on fast motion (magnitude > 2.0)
+        -   [ ] Documentation updated (MOTION_TO_SOUND_MAPPING.md, video/README.md)
+        -   [ ] User testing confirms improved expressiveness## Phase 3.3: Composable Audio Parameters
+
+**Context:** Audio parameters (ADSR, filters) are synth-specific and not mappable to video data. This phase makes parameters composable and exposes video→audio mappings to the dev panel.
+
+**Related ADRs:** ADR 0008 (Composable Audio Parameters), ADR 0006 (Phase 3 context)
+
+### Audio Architecture Improvements
+
+-   **[ ] `AUDIO-12`:** Implement Composable Audio Parameters & Video→Audio Mappings
+	-   Add full ADSR support to all synths (attack, decay, sustain, release)
+	-   Create `future/web/audio/filter-processor.js` for global filter system
+	-   Add `filters` array to all sound profiles (not synth-specific)
+	-   Implement mapping system in `AudioRouter`:
+		-   `depth → filters[0].frequency` (closer = brighter)
+		-   `uFlow → envelope.attack` (faster = sharper attack)
+		-   `vFlow → pitch` (Doppler effect)
+		-   `intensity → filters[0].Q` (louder = more resonance)
+	-   Add dev panel section: ADSR sliders, filter controls, mapping editor
+	-   Implement preset system: save/load mapping configurations
+	-   **Acceptance Criteria:**
+		-   [ ] All synths support full ADSR (attack, decay, sustain, release)
+		-   [ ] `filter-processor.js` implemented with global filter application
+		-   [ ] All sound profiles have `filters` array
+		-   [ ] Mapping system implemented in AudioRouter
+		-   [ ] At least 3 example mappings per object type
+		-   [ ] Dev panel has ADSR controls (4 sliders per sound profile)
+		-   [ ] Dev panel has filter controls (type, frequency, Q)
+		-   [ ] Dev panel has mapping editor (source → target dropdowns)
+		-   [ ] Preset system implemented (save/load/delete mappings)
+		-   [ ] Unit tests for mapping functions
+		-   [ ] Documentation updated (audio/README.md, ADR 0008)
+		-   [ ] Smoke tests verify mappings work (depth affects brightness, etc.)
+
+---
+
 
 -   **[ ] `AUDIO-3`:** Implement a data-driven manifest for synth settings.
 -   **[ ] `DOCS-1`:** Add data flow diagrams to `ARCHITECTURE.md`.
