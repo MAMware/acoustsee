@@ -106,6 +106,14 @@ export class FrameConductor {
       workerTimings: {}, // { workerName: [measurements] }
       deviceTier: deviceTier,
     };
+    
+    // CORE-15: Track latest normalization telemetry from motion worker R151125C15es are we carefull and consistent across the whole project with the JavaScript language specification
+    this.#lastNormalizationTelemetry = {
+      recentMax: 0,
+      effectiveMax: 0,
+      clippingRate: 0,
+      frameCount: 0
+    };
 
     structuredLog('DEBUG', 'FrameConductor created', {
       config: this.config,
@@ -410,6 +418,11 @@ export class FrameConductor {
         aggregatedCapabilities = [...aggregatedCapabilities, ...capabilities];
         currentInput = workerResult.result;
         
+        // CORE-15: Extract normalization telemetry from motion worker result R151125C15ingest
+        if (workerConfig.name === 'fast-motion-worker' && workerResult.result?.normalizationTelemetry) {
+          this.#lastNormalizationTelemetry = workerResult.result.normalizationTelemetry;
+        }
+        
         // TEMPORARY DIAGNOSTIC: Log what we're extracting R111125 could the use of eventBus by optimal than console.log here in the citrical hot path?
         if (workerConfig.name === 'pan-intensity-mapper') {
           console.log('[Conductor] pan-mapper result:', workerResult.result);
@@ -471,6 +484,7 @@ export class FrameConductor {
       mode: this.#currentMode,
       timings,
       totalTimeMs: totalFrameTimeMs,
+      normalizationTelemetry: this.#lastNormalizationTelemetry // CORE-15: Include latest telemetry
     };
   }
 
@@ -515,6 +529,27 @@ export class FrameConductor {
       depthPath: state.depthPath,
       motionThreshold: state.motionThreshold,
       gridScale: state.gridScale,
+      
+      // CORE-15: Motion detection tuning parameters
+      motionDetection: state.motionDetection ? {
+        step: state.motionDetection.step,
+        threshold: state.motionDetection.threshold,
+        maxRegions: state.motionDetection.maxRegions,
+        windowSize: state.motionDetection.windowSize,
+        adaptiveEnabled: state.motionDetection.adaptiveEnabled,
+        smoothing: state.motionDetection.smoothing,
+        minHeadroom: state.motionDetection.minHeadroom,
+        strategy: state.motionDetection.strategy
+      } : {
+        step: 6,
+        threshold: 20,
+        maxRegions: 64,
+        windowSize: 5,
+        adaptiveEnabled: true,
+        smoothing: 0.95,
+        minHeadroom: 0.5,
+        strategy: 'adaptive'
+      },
       
       // Mode info
       mode: state.mode,

@@ -845,6 +845,26 @@ export function initializeDevPanel(arg1, arg2) {
     const ingestEnabledCheckbox = panel.querySelector('#ingest-enabled-checkbox');
     const batteryOptimizationCheckbox = panel.querySelector('#battery-optimization-checkbox');
     const ingestCategoryToggles = panel.querySelectorAll('.category-toggle input[type="checkbox"]');
+    
+    // CORE-15: Motion Detection Tuning controls
+    const motionStepSlider = panel.querySelector('#motion-step-slider');
+    const motionStepValue = panel.querySelector('#motion-step-value');
+    const motionThresholdTuningSlider = panel.querySelector('#motion-threshold-tuning-slider');
+    const motionThresholdTuningValue = panel.querySelector('#motion-threshold-tuning-value');
+    const motionMaxRegionsSlider = panel.querySelector('#motion-maxregions-slider');
+    const motionMaxRegionsValue = panel.querySelector('#motion-maxregions-value');
+    const motionWindowSizeSlider = panel.querySelector('#motion-windowsize-slider');
+    const motionWindowSizeValue = panel.querySelector('#motion-windowsize-value');
+    const motionAdaptiveToggle = panel.querySelector('#motion-adaptive-toggle');
+    const motionSmoothingSlider = panel.querySelector('#motion-smoothing-slider');
+    const motionSmoothingValue = panel.querySelector('#motion-smoothing-value');
+    const motionMinHeadroomSlider = panel.querySelector('#motion-minheadroom-slider');
+    const motionMinHeadroomValue = panel.querySelector('#motion-minheadroom-value');
+    const motionStrategySelect = panel.querySelector('#motion-strategy-select');
+    const telemetryRecentMax = panel.querySelector('#telemetry-recent-max');
+    const telemetryEffectiveMax = panel.querySelector('#telemetry-effective-max');
+    const telemetryClippingRate = panel.querySelector('#telemetry-clipping-rate');
+    const telemetryRegions = panel.querySelector('#telemetry-regions');
 
     // Sync controls with state changes
     engine.onStateChange(state => {
@@ -867,6 +887,36 @@ export function initializeDevPanel(arg1, arg2) {
           ingestCategoryToggles.forEach(toggle => {
             toggle.checked = enabledCategories.includes(toggle.dataset.category);
           });
+        }
+        
+        // CORE-15: Sync motion detection controls
+        if (state.motionDetection) {
+          if (motionStepSlider) motionStepSlider.value = state.motionDetection.step;
+          if (motionStepValue) motionStepValue.textContent = state.motionDetection.step;
+          if (motionThresholdTuningSlider) motionThresholdTuningSlider.value = state.motionDetection.threshold;
+          if (motionThresholdTuningValue) motionThresholdTuningValue.textContent = state.motionDetection.threshold;
+          if (motionMaxRegionsSlider) motionMaxRegionsSlider.value = state.motionDetection.maxRegions;
+          if (motionMaxRegionsValue) motionMaxRegionsValue.textContent = state.motionDetection.maxRegions;
+          if (motionWindowSizeSlider) motionWindowSizeSlider.value = state.motionDetection.windowSize;
+          if (motionWindowSizeValue) motionWindowSizeValue.textContent = state.motionDetection.windowSize;
+          if (motionAdaptiveToggle) motionAdaptiveToggle.checked = state.motionDetection.adaptiveEnabled;
+          if (motionSmoothingSlider) motionSmoothingSlider.value = state.motionDetection.smoothing;
+          if (motionSmoothingValue) motionSmoothingValue.textContent = state.motionDetection.smoothing.toFixed(2);
+          if (motionMinHeadroomSlider) motionMinHeadroomSlider.value = state.motionDetection.minHeadroom;
+          if (motionMinHeadroomValue) motionMinHeadroomValue.textContent = state.motionDetection.minHeadroom.toFixed(2);
+          if (motionStrategySelect) motionStrategySelect.value = state.motionDetection.strategy;
+        }
+        
+        // CORE-15: Update normalization telemetry display R151125C15ingest
+        if (state.normalizationTelemetry) {
+          if (telemetryRecentMax) telemetryRecentMax.textContent = state.normalizationTelemetry.recentMax.toFixed(2);
+          if (telemetryEffectiveMax) telemetryEffectiveMax.textContent = state.normalizationTelemetry.effectiveMax.toFixed(2);
+          if (telemetryClippingRate) telemetryClippingRate.textContent = (state.normalizationTelemetry.clippingRate * 100).toFixed(1) + '%';
+          if (telemetryRegions) {
+            // Extract region count from last frame result if available
+            // For now, show frameCount as a proxy
+            telemetryRegions.textContent = state.normalizationTelemetry.frameCount || 0;
+          }
         }
       } catch(e) {}
     });
@@ -956,6 +1006,67 @@ export function initializeDevPanel(arg1, arg2) {
         const traceId = generateTraceId ? generateTraceId() : null;
         structuredLog('DEBUG', 'Motion threshold slider changed', { value, traceId });
         engine.dispatch('setMotionThreshold', { motionThreshold: value }, { traceId });
+      });
+    }
+    
+    // CORE-15: Motion Detection Tuning listeners
+    if (motionStepSlider) {
+      motionStepSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value, 10);
+        if (motionStepValue) motionStepValue.textContent = value;
+        engine.dispatch('updateMotionDetection', { params: { step: value } });
+      });
+    }
+    
+    if (motionThresholdTuningSlider) {
+      motionThresholdTuningSlider.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        if (motionThresholdTuningValue) motionThresholdTuningValue.textContent = value;
+        engine.dispatch('updateMotionDetection', { params: { threshold: value } });
+      });
+    }
+    
+    if (motionMaxRegionsSlider) {
+      motionMaxRegionsSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value, 10);
+        if (motionMaxRegionsValue) motionMaxRegionsValue.textContent = value;
+        engine.dispatch('updateMotionDetection', { params: { maxRegions: value } });
+      });
+    }
+    
+    if (motionWindowSizeSlider) {
+      motionWindowSizeSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value, 10);
+        if (motionWindowSizeValue) motionWindowSizeValue.textContent = value;
+        engine.dispatch('updateMotionDetection', { params: { windowSize: value } });
+      });
+    }
+    
+    if (motionAdaptiveToggle) {
+      motionAdaptiveToggle.addEventListener('change', (e) => {
+        engine.dispatch('updateMotionDetection', { params: { adaptiveEnabled: e.target.checked } });
+      });
+    }
+    
+    if (motionSmoothingSlider) {
+      motionSmoothingSlider.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        if (motionSmoothingValue) motionSmoothingValue.textContent = value.toFixed(2);
+        engine.dispatch('updateMotionDetection', { params: { smoothing: value } });
+      });
+    }
+    
+    if (motionMinHeadroomSlider) {
+      motionMinHeadroomSlider.addEventListener('input', (e) => {
+        const value = parseFloat(e.target.value);
+        if (motionMinHeadroomValue) motionMinHeadroomValue.textContent = value.toFixed(2);
+        engine.dispatch('updateMotionDetection', { params: { minHeadroom: value } });
+      });
+    }
+    
+    if (motionStrategySelect) {
+      motionStrategySelect.addEventListener('change', (e) => {
+        engine.dispatch('updateMotionDetection', { params: { strategy: e.target.value } });
       });
     }
     

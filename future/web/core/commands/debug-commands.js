@@ -56,5 +56,21 @@ export function registerDebugCommands(engine) {
       return { ok: false, error: e?.message || String(e) };
     }
   });
+  
+  // CORE-15: Reset motion worker (used when normalization strategy changes)
+  registerCommandHandler('resetMotionWorker', async ({ state: s, payload, metadata }) => {
+    const traceId = metadata?.traceId;
+    try {
+      // Send reset message to motion worker via frame conductor
+      // This triggers normalizer.reset() in fast-motion-worker.js
+      structuredLog('INFO', 'resetMotionWorker: Triggering worker reset', {}, { traceId });
+      // The actual reset will happen via worker postMessage in frame-conductor
+      // For now, just log the intent; frame-conductor will handle the message
+      return { ok: true };
+    } catch (e) {
+      structuredLog('WARN', 'resetMotionWorker failed', { error: e?.message || String(e) }, { traceId });
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
 
 }

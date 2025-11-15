@@ -349,10 +349,12 @@ self.onmessage = (ev) => {
         });
       }
       
-      const step = msg.step || 6;
-      const threshold = (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
-      const maxRegions = msg.maxRegions || 64;
-      const windowSize = msg.windowSize || 5;
+      // CORE-15: Extract motion detection params from state.motionDetection or fallback to legacy R141125C15 what legacy? dont be vague, we need clear comunication and we dont like fallbacks speacilly silent in this project
+      const motionConfig = (msg.state && msg.state.motionDetection) || {};
+      const step = motionConfig.step || msg.step || 6;
+      const threshold = motionConfig.threshold || (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
+      const maxRegions = motionConfig.maxRegions || msg.maxRegions || 64;
+      const windowSize = motionConfig.windowSize || msg.windowSize || 5;
       const gridConfig = (msg.state && msg.state.gridConfig) || msg.gridConfig || { rows: 4, cols: 4, frameWidth: w, frameHeight: h, aggregation: 'mean', skipThreshold: 0.1 }; // Added frame dimensions for downstream workers
       const mode = (msg.state && msg.state.mode) || msg.mode || 'flow';
       
@@ -440,6 +442,9 @@ self.onmessage = (ev) => {
         });
       }
 
+      // CORE-15: Collect normalization telemetry for dev panel display R151125C15ingest dont we have already a ingest/telemetry system? why do we need a new computation?
+      const telemetry = normalizer.getTelemetry();
+
       const resultData = {
         coords: res.coords,
         intens: res.intens,
@@ -450,7 +455,14 @@ self.onmessage = (ev) => {
         gridConfig: enrichedGridConfig,
         mode,
         frameWidth: w,
-        frameHeight: h
+        frameHeight: h,
+        // CORE-15: Include normalization telemetry in worker result
+        normalizationTelemetry: {
+          recentMax: telemetry.recentMax,
+          effectiveMax: telemetry.effectiveMax,
+          clippingRate: telemetry.clippingRate,
+          frameCount: telemetry.frameCount
+        }
       };
       
       const contractMessage = WorkerContract.createResult(

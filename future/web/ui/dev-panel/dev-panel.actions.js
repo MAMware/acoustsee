@@ -145,6 +145,24 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
           }
         } catch (e) { /* ignore */ }
         break;
+      
+      // CORE-15: Motion detection preset actions
+      case 'motion-preset-subtle':
+        engine.dispatch && engine.dispatch('updateMotionDetection', { 
+          params: { step: 8, threshold: 15, maxRegions: 32, windowSize: 7 } 
+        });
+        break;
+      case 'motion-preset-normal':
+        engine.dispatch && engine.dispatch('updateMotionDetection', { 
+          params: { step: 6, threshold: 20, maxRegions: 64, windowSize: 5 } 
+        });
+        break;
+      case 'motion-preset-large':
+        engine.dispatch && engine.dispatch('updateMotionDetection', { 
+          params: { step: 4, threshold: 30, maxRegions: 96, windowSize: 3 } 
+        });
+        break;
+      
       case 'updateIngestSettings':
         try {
           console.log('=== UPDATE INGEST SETTINGS BUTTON CLICKED ===');

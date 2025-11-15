@@ -100,6 +100,90 @@ export function registerSettingsCommands(engine) {
     }
   });
 
+  // CORE-15: Motion detection tuning command with validation and persistence
+  registerCommandHandler('updateMotionDetection', async ({ state: s, payload, metadata }) => {
+    const traceId = metadata?.traceId;
+    const params = payload.params || {};
+    const updated = {};
+    
+    // Validate and apply each parameter with strict range checks
+    if ('step' in params) {
+      const step = parseInt(params.step, 10);
+      if (!isNaN(step) && step >= 4 && step <= 12) {
+        s.motionDetection.step = step;
+        updated.step = step;
+      }
+    }
+    
+    if ('threshold' in params) {
+      const threshold = parseFloat(params.threshold);
+      if (!isNaN(threshold) && threshold >= 10 && threshold <= 50) {
+        s.motionDetection.threshold = threshold;
+        updated.threshold = threshold;
+      }
+    }
+    
+    if ('maxRegions' in params) {
+      const maxRegions = parseInt(params.maxRegions, 10);
+      if (!isNaN(maxRegions) && maxRegions >= 16 && maxRegions <= 128) {
+        s.motionDetection.maxRegions = maxRegions;
+        updated.maxRegions = maxRegions;
+      }
+    }
+    
+    if ('windowSize' in params) {
+      const windowSize = parseInt(params.windowSize, 10);
+      if (!isNaN(windowSize) && windowSize >= 3 && windowSize <= 9) {
+        s.motionDetection.windowSize = windowSize;
+        updated.windowSize = windowSize;
+      }
+    }
+    
+    if ('adaptiveEnabled' in params) {
+      s.motionDetection.adaptiveEnabled = !!params.adaptiveEnabled;
+      updated.adaptiveEnabled = s.motionDetection.adaptiveEnabled;
+    }
+    
+    if ('smoothing' in params) {
+      const smoothing = parseFloat(params.smoothing);
+      if (!isNaN(smoothing) && smoothing >= 0.8 && smoothing <= 0.99) {
+        s.motionDetection.smoothing = smoothing;
+        updated.smoothing = smoothing;
+      }
+    }
+    
+    if ('minHeadroom' in params) {
+      const minHeadroom = parseFloat(params.minHeadroom);
+      if (!isNaN(minHeadroom) && minHeadroom >= 0.3 && minHeadroom <= 0.8) {
+        s.motionDetection.minHeadroom = minHeadroom;
+        updated.minHeadroom = minHeadroom;
+      }
+    }
+    
+    if ('strategy' in params) {
+      const validStrategies = ['adaptive', 'fixedHeadroom', 'logarithmic'];
+      if (validStrategies.includes(params.strategy)) {
+        s.motionDetection.strategy = params.strategy;
+        updated.strategy = params.strategy;
+      }
+    }
+    
+    // Persist to localStorage if any updates were applied
+    if (Object.keys(updated).length > 0) {
+      try {
+        localStorage.setItem('motionDetectionConfig', JSON.stringify(s.motionDetection));
+        structuredLog('INFO', 'Motion detection config updated and persisted', { updated }, { traceId });
+      } catch (e) {
+        structuredLog('WARN', 'Failed to persist motionDetection config', { error: e?.message }, { traceId });
+      }
+      
+      // If strategy changed, trigger worker reset to reinitialize normalizer
+      if ('strategy' in updated || 'adaptiveEnabled' in updated || 'smoothing' in updated || 'minHeadroom' in updated) {
+        dispatch('resetMotionWorker', {}, { traceId });
+      }
+    }
+  });
+
   registerCommandHandler('setAutoFPS', async ({ state: s, payload, metadata }) => {
     const traceId = metadata?.traceId;
     const enabled = !!payload.enabled;

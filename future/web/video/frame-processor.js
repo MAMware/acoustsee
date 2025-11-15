@@ -177,7 +177,12 @@ async function processFlowMode(frameData, width, height, state) {
       cues = createCuesFromAudioParams({ pan: 0, intensity: 0 }, state);
     }
     
-    return { cues, panIntensity };
+    // CORE-15: Return telemetry along with cues for state update R151125C15ingest 
+    return { 
+      cues, 
+      panIntensity,
+      normalizationTelemetry: result.normalizationTelemetry 
+    };
   } catch (error) {
     structuredLog('ERROR', 'processFlowMode error', { error: error.message });
     return { cues: [], panIntensity: { pan: 0, intensity: 0 } };
@@ -451,6 +456,13 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
       
       if (state.currentMode === 'flow') {
         const flowResult = await processFlowMode(frameData, canvas.width, canvas.height, state);
+        
+        // CORE-15: Update normalization telemetry in engine state if available R151125C15ingest
+        if (flowResult && flowResult.normalizationTelemetry) {
+          engine.setState({ 
+            normalizationTelemetry: flowResult.normalizationTelemetry 
+          });
+        }
         
         if (flowResult && flowResult.cues) {
           if (flowResult.cues.length > 0) {

@@ -127,6 +127,25 @@ export let settings = {
   motionThreshold: 20,
   maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value R151025: lets check this limit is not a issue in regard of soem sound issues like the lack of persistence
   ,
+  // Motion detection tuning parameters (CORE-15)
+  // All parameters can be adjusted via dev panel or updateMotionDetection command
+  motionDetection: {
+    step: 6,              // Sampling step (4-12): lower = denser analysis, higher cost
+    threshold: 20,        // Pixel difference threshold (10-50): motion sensitivity
+    maxRegions: 64,       // Max motion regions (16-128): higher = more detail
+    windowSize: 5,        // Lucas-Kanade window (3-9): affects optical flow smoothness
+    adaptiveEnabled: true,  // Use adaptive normalization vs fixed scaling
+    smoothing: 0.95,      // Exponential smoothing factor (0.8-0.99)
+    minHeadroom: 0.5,     // Minimum headroom for normalization (0.3-0.8)
+    strategy: 'adaptive'  // 'adaptive', 'fixedHeadroom', 'logarithmic' (only adaptive implemented)
+  },
+  // Runtime telemetry from motion processing (populated by frame-conductor)
+  normalizationTelemetry: {
+    recentMax: 0,
+    effectiveMax: 0,
+    clippingRate: 0,
+    frameCount: 0
+  },
   // Expose build/version information to the rest of the app via engine state.
   buildInfo: {
     version: BUILD_VERSION,
@@ -247,6 +266,18 @@ function initializeDefaults() {
     }
   } catch (e) {
     // ignore localStorage access errors
+  }
+  
+  // Load motion detection config from localStorage (CORE-15)
+  try {
+    const saved = localStorage.getItem('motionDetectionConfig');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(settings.motionDetection, parsed);
+      structuredLog('INFO', 'Loaded motionDetection config from localStorage', { config: parsed });
+    }
+  } catch (e) {
+    structuredLog('WARN', 'Failed to load motionDetection config from localStorage', { error: e?.message });
   }
 }
 

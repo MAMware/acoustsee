@@ -179,6 +179,99 @@
     </div>
   </div>
 
+  <!-- CORE-15: Motion Detection Tuning Section -->
+  <div class="devpanel-section motion-tuning-section">
+    <h2 class="section-header">
+      <span>Motion Detection Tuning</span>
+      <button class="collapse-btn" data-target="motion-tuning-content" aria-expanded="true" title="Collapse Motion Tuning">-</button>
+    </h2>
+    <div id="motion-tuning-content" class="section-content">
+      <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Fine-tune motion detection and normalization. Changes persist to localStorage.</p>
+      
+      <!-- Telemetry Display -->
+      <div class="telemetry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; padding: 12px; background: #2c3e50; border-radius: 4px;">
+        <div class="telemetry-item">
+          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Recent Max</div>
+          <div id="telemetry-recent-max" style="font-size: 16px; font-weight: bold; color: #3498db;">0.00</div>
+        </div>
+        <div class="telemetry-item">
+          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Effective Max</div>
+          <div id="telemetry-effective-max" style="font-size: 16px; font-weight: bold; color: #2ecc71;">0.00</div>
+        </div>
+        <div class="telemetry-item">
+          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Clipping Rate</div>
+          <div id="telemetry-clipping-rate" style="font-size: 16px; font-weight: bold; color: #e74c3c;">0.0%</div>
+        </div>
+        <div class="telemetry-item">
+          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Regions</div>
+          <div id="telemetry-regions" style="font-size: 16px; font-weight: bold; color: #f39c12;">0</div>
+        </div>
+      </div>
+      
+      <!-- Preset Buttons -->
+      <div class="preset-buttons" style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <button data-action="motion-preset-subtle" type="button" style="flex: 1;">Subtle Motion</button>
+        <button data-action="motion-preset-normal" type="button" style="flex: 1;">Normal</button>
+        <button data-action="motion-preset-large" type="button" style="flex: 1;">Large Motion</button>
+      </div>
+      
+      <!-- Controls Grid -->
+      <div class="controls-grid-2col">
+        <div class="control-column">
+          <label>Sampling Step (4-12)</label>
+          <div class="slider-container">
+            <input id="motion-step-slider" type="range" min="4" max="12" step="1" value="6">
+            <span id="motion-step-value">6</span>
+          </div>
+          
+          <label>Threshold (10-50)</label>
+          <div class="slider-container">
+            <input id="motion-threshold-tuning-slider" type="range" min="10" max="50" step="5" value="20">
+            <span id="motion-threshold-tuning-value">20</span>
+          </div>
+          
+          <label>Max Regions (16-128)</label>
+          <div class="slider-container">
+            <input id="motion-maxregions-slider" type="range" min="16" max="128" step="16" value="64">
+            <span id="motion-maxregions-value">64</span>
+          </div>
+          
+          <label>Window Size (3-9)</label>
+          <div class="slider-container">
+            <input id="motion-windowsize-slider" type="range" min="3" max="9" step="2" value="5">
+            <span id="motion-windowsize-value">5</span>
+          </div>
+        </div>
+        
+        <div class="control-column">
+          <label>Normalization Strategy</label>
+          <select id="motion-strategy-select">
+            <option value="adaptive">Adaptive (Recommended)</option>
+            <option value="fixedHeadroom" disabled>Fixed Headroom (Not Implemented)</option>
+            <option value="logarithmic" disabled>Logarithmic (Not Implemented)</option>
+          </select>
+          
+          <label style="display: flex; align-items: center; margin-top: 12px;">
+            <input type="checkbox" id="motion-adaptive-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;" checked>
+            <span>Adaptive Normalization</span>
+          </label>
+          
+          <label>Smoothing (0.8-0.99)</label>
+          <div class="slider-container">
+            <input id="motion-smoothing-slider" type="range" min="0.8" max="0.99" step="0.01" value="0.95">
+            <span id="motion-smoothing-value">0.95</span>
+          </div>
+          
+          <label>Min Headroom (0.3-0.8)</label>
+          <div class="slider-container">
+            <input id="motion-minheadroom-slider" type="range" min="0.3" max="0.8" step="0.05" value="0.5">
+            <span id="motion-minheadroom-value">0.5</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="devpanel-section cues-section">
     <h2 class="section-header">
       <span>Live Cues Display</span>
