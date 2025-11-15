@@ -353,7 +353,7 @@ self.onmessage = (ev) => {
       const threshold = (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
       const maxRegions = msg.maxRegions || 64;
       const windowSize = msg.windowSize || 5;
-      const gridConfig = (msg.state && msg.state.gridConfig) || msg.gridConfig || { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 };
+      const gridConfig = (msg.state && msg.state.gridConfig) || msg.gridConfig || { rows: 4, cols: 4, frameWidth: w, frameHeight: h, aggregation: 'mean', skipThreshold: 0.1 }; // Added frame dimensions for downstream workers
       const mode = (msg.state && msg.state.mode) || msg.mode || 'flow';
       
       // CRITICAL FIX: Convert RGBA ImageData to Y-plane if needed
@@ -413,6 +413,19 @@ self.onmessage = (ev) => {
       }
       
       // Create contract-compliant result with transferable buffers
+      // Sample intensity distribution (0.5% sample rate) for debugging zero-intensity issues
+      if (res.count > 0 && Math.random() < 0.005) {
+        const sample = Array.from(res.intens.slice(0, Math.min(res.count, 32)));
+        const maxI = Math.max(...sample);
+        const minI = Math.min(...sample);
+        const avgI = sample.reduce((a,b)=>a+b,0)/sample.length;
+        console.log('[FastMotion] INTENSITY SAMPLE:', { regions: res.count, minI, maxI, avgI, sample });
+      }
+
+      // Ensure frame dimensions are present in gridConfig for downstream aggregation workers
+      if (!gridConfig.frameWidth) gridConfig.frameWidth = w;
+      if (!gridConfig.frameHeight) gridConfig.frameHeight = h;
+
       const resultData = {
         coords: res.coords,
         intens: res.intens,
@@ -422,6 +435,8 @@ self.onmessage = (ev) => {
         timestamp: Date.now(),
         gridConfig,
         mode,
+        frameWidth: w,
+        frameHeight: h
       };
       
       const contractMessage = WorkerContract.createResult(
