@@ -403,28 +403,33 @@ self.onmessage = (ev) => {
       
       const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
       
-      // TEMPORARY DIAGNOSTIC: Log when motion is detected to verify intensity scaling R111125eb consider eventBus if more performant than console.log
-      if (res.count > 0) {
-        console.log('[FastMotion] MOTION DETECTED:', {
-          regions: res.count,
-          maxIntensity: Math.max(...Array.from(res.intens.slice(0, res.count))),
-          avgIntensity: Array.from(res.intens.slice(0, res.count)).reduce((a,b)=>a+b,0) / res.count
-        });
-      }
-      
-      // Create contract-compliant result with transferable buffers
-      // Sample intensity distribution (0.5% sample rate) for debugging zero-intensity issues
+      // TEMPORARY DIAGNOSTIC: Sample intensity for validation (0.5% sample rate)
+      // R111125eb consider eventBus if more performant than console.log
       if (res.count > 0 && Math.random() < 0.005) {
-        const sample = Array.from(res.intens.slice(0, Math.min(res.count, 32)));
-        const maxI = Math.max(...sample);
-        const minI = Math.min(...sample);
-        const avgI = sample.reduce((a,b)=>a+b,0)/sample.length;
-        console.log('[FastMotion] INTENSITY SAMPLE:', { regions: res.count, minI, maxI, avgI, sample });
+        const firstFew = [];
+        for (let i = 0; i < Math.min(5, res.count); i++) {
+          firstFew.push(res.intens[i]);
+        }
+        console.log('[FastMotion] INTENSITY SAMPLE:', {
+          regions: res.count,
+          firstFive: firstFew
+        });
       }
 
       // Ensure frame dimensions are present in gridConfig for downstream aggregation workers
-      if (!gridConfig.frameWidth) gridConfig.frameWidth = w;
-      if (!gridConfig.frameHeight) gridConfig.frameHeight = h;
+      // Create new object to avoid mutating potentially frozen state, handle null/undefined
+      const enrichedGridConfig = gridConfig ? {
+        ...gridConfig,
+        frameWidth: gridConfig.frameWidth || w,
+        frameHeight: gridConfig.frameHeight || h
+      } : {
+        rows: 4,
+        cols: 4,
+        frameWidth: w,
+        frameHeight: h,
+        aggregation: 'mean',
+        skipThreshold: 0.1
+      };
 
       const resultData = {
         coords: res.coords,
@@ -433,7 +438,7 @@ self.onmessage = (ev) => {
         vFlow: res.vFlow,
         count: res.count,
         timestamp: Date.now(),
-        gridConfig,
+        gridConfig: enrichedGridConfig,
         mode,
         frameWidth: w,
         frameHeight: h
