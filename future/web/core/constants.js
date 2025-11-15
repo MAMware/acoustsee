@@ -19,7 +19,7 @@ export const LANGUAGES_VERSION = '0.2-spaEng';
 export const UTILS_VERSION = '0.9.8-eventBus';
 
 // Build information (auto-injected by scripts/inject-build-info.js)
-export const BUILD_COMMIT = '60ae802';
+export const BUILD_COMMIT = 'fb2a53d';
 export const BUILD_BRANCH = 'v0.9.4-normalizerNormalize';
-export const BUILD_TIMESTAMP = '2025-11-15T14:14:02.231Z';
+export const BUILD_TIMESTAMP = '2025-11-15T14:41:55.710Z';
 

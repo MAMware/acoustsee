@@ -421,17 +421,24 @@ export function initializeDevPanel(arg1, arg2) {
 
     // --- Populate Build Info ---
     try {
-      import('../../core/constants.js').then(constants => {
+      const applyBuildInfo = (info) => {
         const buildInfoEl = panel.querySelector('#devpanel-buildinfo');
-        if (buildInfoEl) {
-          const commit = constants.BUILD_COMMIT || 'unknown';
-          const branch = constants.BUILD_BRANCH || 'unknown';
-          const timestamp = constants.BUILD_TIMESTAMP || 'unknown';
-          const shortTime = timestamp !== 'unknown' ? new Date(timestamp).toLocaleString() : 'unknown';
-          buildInfoEl.textContent = `Commit: ${commit} | Branch: ${branch} | Built: ${shortTime}`;
-          buildInfoEl.title = `Full timestamp: ${timestamp}`;
-        }
-      });
+        if (!buildInfoEl) return;
+        const commit = info.commit || info.BUILD_COMMIT || 'unknown';
+        const branch = info.branch || info.BUILD_BRANCH || 'unknown';
+        const timestamp = info.timestamp || info.BUILD_TIMESTAMP || 'unknown';
+        const shortTime = timestamp !== 'unknown' ? new Date(timestamp).toLocaleString() : 'unknown';
+        buildInfoEl.textContent = `Commit: ${commit} | Branch: ${branch} | Built: ${shortTime}`;
+        buildInfoEl.title = `Full timestamp: ${timestamp}`;
+      };
+      // Prefer engine state (populated in main.js)
+      if (engine.getState().buildInfo) {
+        applyBuildInfo(engine.getState().buildInfo);
+      } else if (window.__ACOUSTSEE_BUILD) {
+        applyBuildInfo(window.__ACOUSTSEE_BUILD);
+      } else {
+        import('../../core/constants.js').then(constants => applyBuildInfo(constants));
+      }
     } catch (e) {
       console.warn('Failed to load build info for dev panel', e);
     }

@@ -3,6 +3,8 @@
 // This module orchestrates the initialization of all major subsystems:
 // the core engine, UI, audio pipeline, and video pipeline. It loads initial
 // configurations and wires up the primary user interaction (the power-on button).
+// Build constants (ensure always available even if boot build log fails)
+import * as buildConstants from './core/constants.js';
 //
 // Architecture:
 // - Uses modern browser features (async/await, Web Workers, Web Audio).
@@ -128,6 +130,22 @@ export async function init() {
     
     // Make engine globally available for UI components
     window.engine = engine;
+  
+    // Attach build info onto settings for downstream UI/dev panel consumption
+    settings.buildInfo = {
+      commit: buildConstants.BUILD_COMMIT || 'unknown',
+      branch: buildConstants.BUILD_BRANCH || 'unknown',
+      timestamp: buildConstants.BUILD_TIMESTAMP || 'unknown',
+      version: buildConstants.BUILD_VERSION || 'unknown',
+      audio_version: buildConstants.AUDIO_VERSION || 'unknown',
+      video_version: buildConstants.VIDEO_VERSION || 'unknown',
+      ui_version: buildConstants.UI_VERSION || 'unknown',
+      utils_version: buildConstants.UTILS_VERSION || 'unknown'
+    };
+    // Expose globally as fallback for dev panel
+    window.__ACOUSTSEE_BUILD = settings.buildInfo;
+    console.log('%c🔧 Build Info (main.js)', 'font-weight:bold;color:#0ea5e9;', settings.buildInfo);
+    structuredLog('INFO', 'buildInfo', settings.buildInfo);
 
     // STEP 0.5: Create unified EventBus for logging and command tracking
     // Must be created after engine but before initializing subsystems that need it
