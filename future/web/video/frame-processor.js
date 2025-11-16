@@ -774,10 +774,38 @@ export async function initializeVideo(config) {
     
     structuredLog('DEBUG', 'initializeVideo: Sending init message to frame provider worker...');
 
+    // Compute and apply initial throttling based on quality profile, if present R161125 arent we violating SRP? dont we handle this task at utils pipeline ?   
+
+    const stateAtInit = engine.getState ? engine.getState() : {};
+    const orchestration = stateAtInit.orchestration || {};
+    const settingsState = stateAtInit.settings || {};
+    const profileName = settingsState.qualityProfileOverride || orchestration?.qualityProfile?.name || 'auto';
+    const profile = orchestration?.qualityProfiles?.[profileName] || orchestration?.qualityProfile || null;
+
     frameProviderWorker.postMessage(
       { type: 'init', payload: { canvas: offscreenCanvas, streamReader } },
       [offscreenCanvas, streamReader]
     );
+
+    // Apply initial throttle if a recognized profile is configured (e.g., 'ultra-low') R161125 carefull with the silent "if" 
+    if (profile && profile.fpsTarget && profile.targetWidth) {
+      try {
+        const srcWidth = canvas.width || (videoElement && videoElement.videoWidth) || 320;
+        const srcFps = orchestration?.metrics?.fps || 30; // fallback when metrics not yet populated
+        const targetWidth = profile.targetWidth || 160;
+        const scale = Math.max(0.1, Math.min(1.0, (targetWidth / srcWidth)));
+        const skipRate = Math.max(1, Math.ceil(srcFps / (profile.fpsTarget || 3)));
+
+        // Apply to worker and persist in engine state
+        frameProviderWorker.postMessage({ type: 'setResolutionScale', payload: { scale } });
+        frameProviderWorker.postMessage({ type: 'setFrameSkipRate', payload: { skipRate } });
+        try { engine.setState({ frameProviderThrottle: { skipRate, scale } }); } catch (e) {}
+        try { engine.setState({ settings: { ...settingsState, updateInterval: Math.round(1000 / (profile.fpsTarget || 3)) } }); } catch (e) {}
+        structuredLog('INFO', 'initializeVideo: Applied quality profile throttle', { profileName, scale, skipRate });
+      } catch (e) {
+        structuredLog('WARN', 'initializeVideo: Failed to apply quality profile throttle', { profileName, error: e?.message || String(e) });
+      }
+    }
 
     // This onmessage handler IS the Orchestrator.
     frameProviderWorker.onmessage = async (event) => {

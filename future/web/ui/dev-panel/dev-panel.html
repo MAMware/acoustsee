@@ -26,6 +26,13 @@
             <span id="sandbox-intensity-value">0.5</span>
           </div>
         </div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #444;font-size:12px;color:#bdc3c7;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div>Effective FPS: <span id="effective-fps">—</span></div>
+            <div>Skip Rate: <span id="effective-skip">—</span></div>
+            <div>Resolution Scale: <span id="effective-scale">—</span></div>
+          </div>
+        </div>
         <div class="control-column">
           <label>Pan (Left/Right)</label>
           <div class="slider-container">
@@ -353,6 +360,11 @@
             <select id="fps-mode-select">
               <option value="auto">Auto (Adaptive)</option>
               <option value="manual">Manual</option>
+            </select>
+            <label>Power Profile</label>
+            <select id="power-profile-select">
+              <option value="auto">Auto</option>
+              <option value="ultra-low">Power (160x120 @ 3fps)</option>
             </select>
             <label>Target FPS (Manual)</label>
             <div class="slider-container">

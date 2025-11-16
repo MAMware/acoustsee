@@ -28,6 +28,8 @@ export let settings = {
   availableLanguages: availableLanguagesData || [],
   audioTimerId: null,
   updateInterval: 166, // 6 FPS default (166ms = ~6fps) for stable debugging
+  // Optional override for quality profile during runtime / testing
+  qualityProfileOverride: null, // 'ultra-low' | null R161124 what is this for? why?
   autoFPS: false, // Disabled during debugging to prevent adaptive interference
   // Phase 2: performance tuning flags (can be adjusted at runtime by UI or tests)
   autoFpsDownscale: 0.25, // fraction of full canvas to use for benchmark (0.25 = 25%)

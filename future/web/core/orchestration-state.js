@@ -5,7 +5,7 @@
  * processing pipeline. This tracks which video capture method is active, what
  * capabilities the browser supports, and real-time performance metrics.
  * 
- * Part of Phase 2A: Orchestration Visibility
+ * Part of Phase 2A: Orchestration Visibility R161125 VERY HIGH PRIORITY
  * Purpose: Enable developers to see which video capture path is running and why
  * 
  * Architecture:
@@ -67,10 +67,19 @@ function createInitialOrchestrationState() {
     currentMode: null, // 'flow' | 'flow-legacy' | 'focus' | null
     
     // Quality profile settings
+    qualityProfiles: {
+      // Ultra-low power profile for mobile & battery constrained device
+      'ultra-low': {
+        name: 'ultra-low',
+        fpsTarget: 3,         // target 3 fps
+        targetWidth: 160,     // scale computed at runtime vs source width
+        description: 'Power-saving profile: 160x120 @ ~3fps'
+      }
+    },
     qualityProfile: {
-      name: 'auto',           // Profile being used
-      fpsTarget: 60,          // Target frames per second
-      resolutionScale: 1.0,   // Resolution multiplier (phase 2C will use source constraints)
+      name: 'auto',
+      fpsTarget: 9,
+      resolutionScale: 1.0
     },
     
     // Timestamp when state was last updated

@@ -837,6 +837,7 @@ export function initializeDevPanel(arg1, arg2) {
     const synthEngineSelect = panel.querySelector('#synth-engine-select');
     const modeSelect = panel.querySelector('#mode-select');
     const fpsModeSelect = panel.querySelector('#fps-mode-select');
+    const powerProfileSelect = panel.querySelector('#power-profile-select');
     const maxNotesSlider = panel.querySelector('#max-notes-slider');
     const maxNotesValue = panel.querySelector('#max-notes-value');
     const motionThresholdSlider = panel.querySelector('#motion-threshold-slider');
@@ -926,6 +927,7 @@ export function initializeDevPanel(arg1, arg2) {
         if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
         if (modeSelect) modeSelect.value = state.currentMode;
         if (fpsModeSelect) fpsModeSelect.value = state.autoFPS ? 'auto' : 'manual';
+        if (powerProfileSelect) powerProfileSelect.value = state.settings?.qualityProfileOverride || state.orchestration?.qualityProfile?.name || 'auto';
         if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
         if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
         if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
@@ -959,6 +961,19 @@ export function initializeDevPanel(arg1, arg2) {
           if (motionMinHeadroomValue) motionMinHeadroomValue.textContent = state.motionDetection.minHeadroom.toFixed(2);
           if (motionStrategySelect) motionStrategySelect.value = state.motionDetection.strategy;
         }
+        // Throttle UI sync
+        if (state.frameProviderThrottle) {
+          const skip = state.frameProviderThrottle.skipRate || 1;
+          const scale = state.frameProviderThrottle.scale || 1.0;
+          const skipSlider = panel.querySelector('#frame-skip-slider');
+          const scaleSlider = panel.querySelector('#resolution-scale-slider');
+          const skipValueEl = panel.querySelector('#frame-skip-value');
+          const scaleValueEl = panel.querySelector('#resolution-scale-value');
+          if (skipSlider) skipSlider.value = String(skip);
+          if (scaleSlider) scaleSlider.value = String(scale);
+          if (skipValueEl) skipValueEl.textContent = String(skip);
+          if (scaleValueEl) scaleValueEl.textContent = String(scale);
+        }
         
         // CORE-15: Update normalization telemetry display R151125C15ingest
         if (state.normalizationTelemetry) {
@@ -972,6 +987,13 @@ export function initializeDevPanel(arg1, arg2) {
           }
         }
 
+        // Effective throttle values (FPS & Worker Throttle)
+        const effectiveFpsEl = panel.querySelector('#effective-fps');
+        const effectiveSkipEl = panel.querySelector('#effective-skip');
+        const effectiveScaleEl = panel.querySelector('#effective-scale');
+        if (effectiveFpsEl) effectiveFpsEl.textContent = Math.round(1000 / (state.settings?.updateInterval || (state.orchestration?.qualityProfile?.fpsTarget ? Math.round(1000 / state.orchestration.qualityProfile.fpsTarget) : 1000/10)));
+        if (effectiveSkipEl) effectiveSkipEl.textContent = (state.frameProviderThrottle?.skipRate || 1).toString();
+        if (effectiveScaleEl) effectiveScaleEl.textContent = (state.frameProviderThrottle?.scale || 1.0).toString();
         // Stall telemetry (pipeline stability)
         if (state.stallStats) {
           const stallAgeEl = document.getElementById('stall-last-cue-age');

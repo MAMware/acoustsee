@@ -100,6 +100,38 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         const scale = panel.querySelector('#resolution-scale-slider')?.value || 1.0;
         engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate: parseInt(skipRate), scale: parseFloat(scale) });
         break;
+      case 'applyPowerProfile':
+        // Fallback: apply selected power profile as manual change
+        const profileSel = panel.querySelector('#power-profile-select');
+        const value = profileSel?.value || 'auto';
+        // Simulate the profile change by invoking the same logic as select change handler
+        if (value !== 'auto') {
+          // Apply a concrete throttle for the profile (ultra-low case)
+          const state = engine.getState && engine.getState();
+          const orchestration = state.orchestration || {};
+          const srcWidth = orchestration.metrics?.resolutionWidth || (DOM && DOM.frameCanvas?.width) || 320;
+          const srcFps = Math.max(10, Math.round(orchestration.metrics?.fps || 30));
+          const targetWidth = orchestration?.qualityProfiles?.[value]?.targetWidth || 160;
+          const targetFps = orchestration?.qualityProfiles?.[value]?.fpsTarget || 3;
+          const scale = Math.max(0.1, Math.min(1.0, targetWidth / srcWidth));
+          const skipRate = Math.max(1, Math.ceil(srcFps / targetFps));
+          engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate, scale });
+          // Update the UI sliders/values to reflect the applied profile
+          const skipSlider = panel.querySelector('#frame-skip-slider');
+          const scaleSlider = panel.querySelector('#resolution-scale-slider');
+          const skipValue = panel.querySelector('#frame-skip-value');
+          const scaleValue = panel.querySelector('#resolution-scale-value');
+          if (skipSlider) { skipSlider.value = String(skipRate); }
+          if (skipValue) { skipValue.textContent = String(skipRate); }
+          if (scaleSlider) { scaleSlider.value = String(scale); }
+          if (scaleValue) { scaleValue.textContent = String(scale); }
+          try { engine.setState({ settings: { ...state.settings, qualityProfileOverride: value, updateInterval: Math.round(1000 / targetFps) } }); } catch(e) {}
+        } else {
+          // Clear override
+          const state = engine.getState && engine.getState();
+          if (state) try { engine.setState({ settings: { ...state.settings, qualityProfileOverride: null } }); } catch(e) {}
+        }
+        break;
       case 'toggleWorkerExplorer':
         try {
           isExplorerVisible = !isExplorerVisible;
@@ -325,6 +357,7 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   try {
   // Performance controls wiring
   const fpsModeSel = panel.querySelector('#fps-mode-select');
+  const powerProfileSel = panel.querySelector('#power-profile-select');
     if (fpsModeSel) {
       const onFpsMode = (e) => {
         const mode = e.target.value;
@@ -333,6 +366,27 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
         engine.dispatch && engine.dispatch('setFpsMode', { mode, interval: mode === 'manual' ? interval : undefined });
       };
       fpsModeSel.addEventListener('change', onFpsMode);
+    }
+    if (powerProfileSel) {
+      const onPowerProfileChange = (e) => {
+        const value = e.target.value;
+        const state = engine.getState && engine.getState();
+        const orchestration = state.orchestration || {};
+        if (value === 'auto') {
+          // Clear override and let AutoFPS resume
+          try { engine.setState({ settings: { ...state.settings, qualityProfileOverride: null } }); } catch (e) {}
+        } else {
+          const profileDef = orchestration?.qualityProfiles?.[value] || { fpsTarget: 3, targetWidth: 160 };
+          const srcWidth = orchestration.metrics?.resolutionWidth || (DOM && DOM.frameCanvas?.width) || 320;
+          const srcFps = Math.max(10, Math.round(orchestration.metrics?.fps || 30));
+          const scale = Math.max(0.1, Math.min(1.0, profileDef.targetWidth / srcWidth));
+          const skipRate = Math.max(1, Math.ceil(srcFps / profileDef.fpsTarget));
+          engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate, scale });
+          try { engine.setState({ settings: { ...state.settings, qualityProfileOverride: value, updateInterval: Math.round(1000 / profileDef.fpsTarget) } }); } catch (e) {}
+        }
+      };
+      powerProfileSel.addEventListener('change', onPowerProfileChange);
+      attachedHandlers.push({ el: powerProfileSel, type: 'change', fn: onPowerProfileChange });
       attachedHandlers.push({ el: fpsModeSel, type: 'change', fn: onFpsMode });
     }
 
