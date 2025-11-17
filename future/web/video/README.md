@@ -793,16 +793,27 @@ When these are implemented, they'll follow the same pattern:
 
 ---
 
-## File Checklist
 
-When working in this directory:
-- [ ] Did you modify a worker? **Test in both Chrome and Firefox (different worker APIs and paths).**
-- [ ] Did you add a Specialist? **Measure performance impact before merging.**
-- [ ] Did you modify a Grid? **Test with various motion patterns.**
-- [ ] Did you change the frame format? **Update ALL workers and the Orchestrator.**
-- [ ] Did you add expensive computation? **Consider moving to a Specialist worker.**
-- [ ] **NEW:** Testing both paths? **Run on Chrome (GPU) AND Firefox (Canvas)** to ensure path-agnostic code.
-- [ ] **NEW:** Added worker? **Check timeout context** — does it respect adaptive timeouts from FrameConductor?
+## EventBus Delta Histogram Export & Analytics
+
+### Delta Histogram Snapshot Event
+Every 60 frames, the orchestrator emits a compact `deltaHistogramSnapshot` event to the EventBus. This event contains a 16-bin histogram array summarizing frame timing deltas, plus summary stats. It is sampled and JSON-serializable for diagnostics and export.
+
+### Dev Panel Mini-Chart
+The EventBus Viewer in the Dev Panel displays a mini-chart visualizing the most recent delta histogram snapshot. This chart helps developers quickly spot frame timing anomalies and performance trends.
+
+### Analytics Batch Upload
+Delta histogram snapshots are buffered in memory and periodically uploaded in batches (every 10 snapshots) to the analytics pipeline. This enables efficient, low-overhead telemetry for post-hoc analysis and cloud diagnostics.
+
+**How to test:**
+- Open the Dev Panel and trigger video processing.
+- Observe the EventBus Viewer metrics section for the histogram chart.
+- Confirm analytics batch uploads in the logs every 10 snapshots.
+
+**Relevant files:**
+- `video/frame-processor.js` (emits event)
+- `ui/dev-panel/eventbus-viewer.js` (renders chart, handles batch upload)
+- `core/state.js` (event category config)
 
 ---
 

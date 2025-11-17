@@ -11,15 +11,15 @@ export const LOG_LEVELS = {
 };
 
 // Version constants for different modules
-export const BUILD_VERSION = '0.9.4-flowOrchestration';
+export const BUILD_VERSION = '0.9.5';
 export const AUDIO_VERSION = '0.8.3-BPM';
-export const VIDEO_VERSION = '0.8.3-flowOrchestration';
-export const UI_VERSION = '0.8.0-orchestrationInstrumentation';
+export const VIDEO_VERSION = '0.8.4-flowOrchestration';
+export const UI_VERSION = '0.8.2-deltaHistogram';
 export const LANGUAGES_VERSION = '0.2-spaEng';
 export const UTILS_VERSION = '0.9.8-eventBus';
 
 // Build information (auto-injected by scripts/inject-build-info.js)
-export const BUILD_COMMIT = '19ed972';
-export const BUILD_BRANCH = 'v0.9.5-deltaHistogram';
-export const BUILD_TIMESTAMP = '2025-11-15T19:34:49.862Z';
+export const BUILD_COMMIT = 'eb451fd';
+export const BUILD_BRANCH = 'v0.9.5-guiStogram';
+export const BUILD_TIMESTAMP = '2025-11-17T22:36:02.885Z';
 

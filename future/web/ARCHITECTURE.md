@@ -415,12 +415,22 @@ Our new system is a true, closed-loop feedback system made of several cooperatin
 - **Performance Review:** `diagnosticTick` → Diagnostics Handler analysis
 - **Workload Adjustment:** Diagnostics Handler → `setFrameInterval`, `setFpsMode` commands to FrameProvider
 
-### Implementation Files
 
-- `core/scheduler.js` — The lightweight diagnostic scheduler
-- `core/commands/diagnostics-commands.js` — Performance measurement and adjustment handlers  
-- `video/frame-provider-worker.js` — The adaptive frame processing worker
-- `audio/hrtf-processor.js` — End-of-pipeline measurement point
+### EventBus Delta Histogram Export & Analytics
+
+**Delta Histogram Snapshot Event:**
+The video pipeline emits a sampled `deltaHistogramSnapshot` event to the EventBus every 60 frames. This event contains a compact histogram array and summary stats, enabling efficient diagnostics and export.
+
+**Dev Panel Mini-Chart:**
+The Dev Panel EventBus Viewer visualizes the latest delta histogram snapshot as a mini-chart, providing instant feedback on frame timing distribution and anomalies.
+
+**Analytics Batch Upload:**
+Delta histogram snapshots are buffered and uploaded in batches (every 10 events) to the analytics pipeline, supporting scalable telemetry and post-hoc analysis.
+
+**Integration Points:**
+- `video/frame-processor.js`: Emits the event
+- `ui/dev-panel/eventbus-viewer.js`: Renders chart, handles batch upload
+- `core/state.js`: Event category config
 
 ## 11. Guardrails — What Not To Do
 - Do not add business logic to `core/engine.js`.

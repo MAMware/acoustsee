@@ -162,4 +162,20 @@ export function registerDiagnosticsCommands(engine) {
       timestamp: updatedOrchestration.lastUpdateTimestamp,
     });
   });
+  
+  engine.registerCommandHandler('deltaHistogramSnapshot', ({ state: s, payload, metadata }) => {
+    try {
+      // Lightweight trace for debugging correlation if needed
+      if (Math.random() < 0.02) {
+        structuredLog('DEBUG', 'deltaHistogramSnapshot received', {
+          frameId: payload?.frameId,
+          meanPanDelta: payload?.meanPanDelta,
+          meanIntensityDelta: payload?.meanIntensityDelta,
+          panBins: Array.isArray(payload?.pan) ? payload.pan.length : 0,
+          intensityBins: Array.isArray(payload?.intensity) ? payload.intensity.length : 0
+        });
+      }
+    } catch (_) {}
+    return s; // No state mutation; event exists for EventBus export/telemetry
+  });
 }

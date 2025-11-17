@@ -6,9 +6,10 @@
   </div>
 
   <!-- Synth Sandbox: Manual cue sender for testing audio in isolation -->
-  <div class="devpanel-section synth-sandbox-section">
+  <div class="devpanel-section synth-sandbox-section half-width-section">
     <h2 class="section-header">
       <span>Synth Sandbox</span>
+      <span class="section-header-spacer"></span>
       <button class="collapse-btn" data-target="synth-sandbox-content" aria-expanded="true" title="Collapse Sandbox">-</button>
     </h2>
     <div id="synth-sandbox-content" class="section-content">
@@ -24,13 +25,6 @@
           <div class="slider-container">
             <input id="sandbox-intensity" type="range" min="0" max="1" step="0.05" value="0.5">
             <span id="sandbox-intensity-value">0.5</span>
-          </div>
-        </div>
-        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #444;font-size:12px;color:#bdc3c7;">
-          <div style="display:flex;gap:8px;align-items:center;">
-            <div>Effective FPS: <span id="effective-fps">—</span></div>
-            <div>Skip Rate: <span id="effective-skip">—</span></div>
-            <div>Resolution Scale: <span id="effective-scale">—</span></div>
           </div>
         </div>
         <div class="control-column">
@@ -164,15 +158,6 @@
             <option value="pseudo">Pseudo (Sobel/Gabor)</option>
             <option value="cnn">CNN (Full Regression)</option>
           </select>
-          <label>Motion Threshold</label>
-          <div class="slider-container">
-            <input id="motion-threshold-slider" type="range" min="20" max="120" step="20" value="20"><span id="motion-threshold-value">20</span>
-          </div>
-          <label style="display: flex; align-items: center; margin-top: 12px;">
-            <input type="checkbox" id="semantic-detection-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;">
-            <span>Semantic Detection (Educational)</span>
-          </label>
-          <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 26px;">Heuristic-based person/tree/ground/trash/box detection</p>
         </div>
         <div class="control-column">
           <label>Synth Engine</label>
@@ -186,14 +171,19 @@
     </div>
   </div>
 
-  <!-- CORE-15: Motion Detection Tuning Section -->
-  <div class="devpanel-section motion-tuning-section">
+  <!-- CORE-15: Motion Detection Controls Section -->
+  <div class="devpanel-section motion-Controls-section">
     <h2 class="section-header">
-      <span>Motion Detection Tuning</span>
-      <button class="collapse-btn" data-target="motion-tuning-content" aria-expanded="true" title="Collapse Motion Tuning">-</button>
+      <span>Motion Detection Controls</span>
+      <button class="collapse-btn" data-target="motion-Controls-content" aria-expanded="true" title="Collapse Motion Controls">-</button>
     </h2>
-    <div id="motion-tuning-content" class="section-content">
+    <div id="motion-controls-content" class="section-content">
       <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Fine-tune motion detection and normalization. Changes persist to localStorage.</p>
+      <label style="display: flex; align-items: center; margin: 8px 0 0 0;">
+        <input type="checkbox" id="semantic-detection-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;">
+        <span>Semantic Detection (Educational)</span>
+      </label>
+      <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 8px 26px;">Heuristic-based person/tree/ground/trash/box detection</p>
       
       <!-- Telemetry Display -->
       <div class="telemetry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; padding: 12px; background: #2c3e50; border-radius: 4px;">
@@ -267,8 +257,8 @@
           
           <label>Threshold (10-50)</label>
           <div class="slider-container">
-            <input id="motion-threshold-tuning-slider" type="range" min="10" max="50" step="5" value="20">
-            <span id="motion-threshold-tuning-value">20</span>
+            <input id="motion-threshold-slider" type="range" min="10" max="50" step="5" value="20">
+            <span id="motion-threshold-value">20</span>
           </div>
           
           <label>Max Regions (16-128)</label>
@@ -313,9 +303,10 @@
     </div>
   </div>
 
-  <div class="devpanel-section cues-section">
+  <div class="devpanel-section cues-section half-width-section">
     <h2 class="section-header">
       <span>Live Cues Display</span>
+      <span class="section-header-spacer"></span>
       <button class="collapse-btn" data-target="cues-content" aria-expanded="true" title="Collapse Cues">-</button>
     </h2>
     <div id="cues-content" class="section-content">
@@ -326,6 +317,7 @@
   <div class="devpanel-section touch-pad-section">
     <h2 class="section-header">
       <span>Manual Control Pad</span>
+      <span class="section-header-spacer"></span>
       <button class="collapse-btn" data-target="touch-pad-content" aria-expanded="true" title="Collapse Pad">-</button>
     </h2>
     <div id="touch-pad-content" class="section-content">

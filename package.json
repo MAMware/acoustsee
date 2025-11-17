@@ -5,7 +5,7 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "inject-build": "node scripts/inject-build-info.js",
+    "inject-build": "node future/web/scripts/inject-build-info.js",
     "serve": "npm run inject-build && python3 -m http.server 8000",
     "serve-debug": "npm run inject-build && python3 -m http.server 8000",
     "test": "jest --config jest.config.cjs",

@@ -31,6 +31,51 @@ export function initEventBusViewer(engine, DOM) {
     showFrames: false // Whether to show frame traces
   };
   let lastEventCount = 0; // Track if new events arrived
+
+    // --- Delta Histogram Snapshot Chart State ---
+    const histogramBuffer = [];
+    const batchSize = 10;
+    let lastUploadTs = 0;
+    function handleDeltaHistogramSnapshot(event) {
+      if (!event || !event.data || !Array.isArray(event.data.histogram)) return;
+      histogramBuffer.push(event.data.histogram);
+      if (histogramBuffer.length >= batchSize) {
+        // Simulate analytics upload (replace with real endpoint)
+        structuredLog('INFO', 'Analytics batch upload', { batch: histogramBuffer.slice() });
+        histogramBuffer.length = 0;
+        lastUploadTs = Date.now();
+      }
+      renderHistogramChart(event.data.histogram);
+    }
+
+    // --- Render Mini-Chart for Delta Histogram ---
+    function renderHistogramChart(histogram) {
+      const metricsContainer = DOM['eventbus-metrics-container'];
+      if (!metricsContainer) return;
+      let chart = metricsContainer.querySelector('#delta-histogram-chart');
+      if (!chart) {
+        chart = document.createElement('canvas');
+        chart.id = 'delta-histogram-chart';
+        chart.width = 160;
+        chart.height = 40;
+        chart.style.margin = '8px 0';
+        metricsContainer.appendChild(chart);
+      }
+      import('./worker-charts.js').then(({ scaleCanvasForDPR }) => {
+        scaleCanvasForDPR(chart, 160, 40);
+        const ctx = chart.getContext('2d');
+        ctx.clearRect(0, 0, chart.width, chart.height);
+        if (Array.isArray(histogram)) {
+          const max = Math.max(...histogram, 1);
+          for (let i = 0; i < histogram.length; ++i) {
+            const x = i * (chart.width / histogram.length);
+            const h = (histogram[i] / max) * (chart.height - 4);
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(x, chart.height - h, chart.width / histogram.length - 2, h);
+          }
+        }
+      });
+    }
   
   // OPTIMIZATION: Bind refresh rate to source processing FPS
   // Get updateInterval from engine state (default 166ms = ~6fps)
@@ -455,6 +500,8 @@ export function initEventBusViewer(engine, DOM) {
   if (eventBus && typeof eventBus.subscribe === 'function') {
     eventBus.subscribe('*', onNewEvent); // Subscribe to all events
     structuredLog('DEBUG', 'EventBusViewer: Subscribed to EventBus events');
+      // Listen for deltaHistogramSnapshot events
+      eventBus.subscribe('deltaHistogramSnapshot', handleDeltaHistogramSnapshot);
   } else {
     // Fallback: Poll only if eventBus doesn't support subscriptions
     // This is rare, but keeps backward compatibility
@@ -488,6 +535,7 @@ export function initEventBusViewer(engine, DOM) {
     // Unsubscribe from EventBus
     if (eventBus && typeof eventBus.unsubscribe === 'function') {
       eventBus.unsubscribe('*', onNewEvent);
+        eventBus.unsubscribe('deltaHistogramSnapshot', handleDeltaHistogramSnapshot);
     }
     
     structuredLog('INFO', 'EventBusViewer disposed');

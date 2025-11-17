@@ -110,6 +110,7 @@ export let settings = {
     'stopProcessing': { sampleRate: 1.0, destinations: ['eventBus', 'analytics'] },
     'audioCuesReady': { sampleRate: 0.01, destinations: ['eventBus'] },
     'setFrameInterval': { sampleRate: 0.1, destinations: ['eventBus'] }
+    , 'deltaHistogramSnapshot': { sampleRate: 1.0, destinations: ['eventBus'] }
   },
   dayNightMode: 'day',
   resetStateOnError: true,

@@ -516,6 +516,16 @@
 .devpanel-row.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .devpanel-row.two-col { grid-template-columns: 1fr; } }
 
+/* Half-width utility for standalone sections */
+.half-width-section {
+  display: inline-block;
+  width: calc(50% - 8px);
+  vertical-align: top;
+}
+@media (max-width: 900px) {
+  .half-width-section { display: block; width: 100%; }
+}
+
 /* Inline checkbox alignment */
 .inline-checkbox { display: inline-flex; align-items: center; gap: 8px; }
 

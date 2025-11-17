@@ -114,6 +114,21 @@ export class StateInspector {
       
       // Group state properties logically
       const stateGroups = this.groupStateProperties(state);
+
+      // Inject computed "Effective Throttle" group (derived from state)
+      try {
+        const updateInterval = state?.settings?.updateInterval || (state?.orchestration?.qualityProfile?.fpsTarget ? Math.round(1000 / state.orchestration.qualityProfile.fpsTarget) : 1000 / 10);
+        const effectiveFps = updateInterval ? Math.round(1000 / updateInterval) : 10;
+        const skipRate = state?.frameProviderThrottle?.skipRate || 1;
+        const scale = state?.frameProviderThrottle?.scale || 1.0;
+        const profile = state?.settings?.qualityProfileOverride || state?.orchestration?.qualityProfile?.name || 'auto';
+        stateGroups['Effective Throttle'] = {
+          'Effective FPS': effectiveFps,
+          'Frame Skip Rate': skipRate,
+          'Resolution Scale': scale,
+          'Power Profile': profile
+        };
+      } catch (_) {}
       
       // Clear and rebuild
       contentContainer.innerHTML = '';

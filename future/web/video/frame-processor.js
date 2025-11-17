@@ -1010,6 +1010,7 @@ export async function initializeVideo(config) {
         }
         // Sampled telemetry logging every 60 frames
         if (payload.frameId && payload.frameId % 60 === 0) {
+          // Export scalar stall stats
           structuredLog('DEBUG', 'STALL_STATS_SAMPLE', {
             lastAudioCueTs: stallStats.lastAudioCueTs,
             unchangedPanFrames: stallStats.unchangedPanFrames,
@@ -1017,6 +1018,34 @@ export async function initializeVideo(config) {
             stallCount: stallStats.stallCount,
             lastCueCount: stallStats.lastCueCount
           });
+          // Export compact delta histogram snapshot to EventBus (command event)
+          try {
+            const snap = stallStats.deltaSnapshot || createDeltaSnapshot({
+              pan: new Uint32Array(DELTA_HISTOGRAM_BINS),
+              intensity: new Uint32Array(DELTA_HISTOGRAM_BINS)
+            });
+            // Keep payload compact: 16-bin arrays + summary stats
+            const payloadSnapshot = {
+              frameId: payload.frameId,
+              meanPanDelta: snap.meanPanDelta,
+              meanIntensityDelta: snap.meanIntensityDelta,
+              zeroPanStreak: snap.zeroPanStreak,
+              zeroIntensityStreak: snap.zeroIntensityStreak,
+              pan: Array.from(snap.pan || []),
+              intensity: Array.from(snap.intensity || [])
+            };
+            engine.dispatch && engine.dispatch('deltaHistogramSnapshot', payloadSnapshot);
+            // Optional low-volume log for correlation in logs pane
+            if (Math.random() < 0.1) {
+              structuredLog('DEBUG', 'DELTA_HISTOGRAM_SNAPSHOT', {
+                frameId: payloadSnapshot.frameId,
+                meanPanDelta: payloadSnapshot.meanPanDelta,
+                meanIntensityDelta: payloadSnapshot.meanIntensityDelta
+              });
+            }
+          } catch (e) {
+            structuredLog('WARN', 'Failed to export delta histogram snapshot', { error: e?.message || String(e) });
+          }
         }
         // Persist updated stallStats in engine state
         engine.setState({ stallStats });
