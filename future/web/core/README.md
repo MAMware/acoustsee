@@ -89,10 +89,10 @@ export const settings = {
   fps: 0,
   cpuUsage: 0,
   
-  // ✅ Video capture state (Nov 6: Alpha phase) // R61125 when the "usingCanvasFallback" legend get correctly changed to "usingCanvas" lets not forget to update here too // R91125 by this time the change from "usingCanvasFallback to "usingCanvas" is on PRIORITY
+  // ✅ Video capture state (Nov 6: Alpha phase)
 
   videoCapture: {
-    usingCanvasFallback: false,           // Set when Canvas path active
+    usingCanvas: false,           // Set when Canvas path active
     detectedAt: null,                      // Timestamp of path detection
     capabilities: {
       hasMediaStreamTrackProcessor: false, // GPU capability
@@ -108,7 +108,7 @@ export const settings = {
 };
 ```
 
-### Video Capture State Tracking (Nov 6: Alpha Phase) // R61125 consider a "Deterministic TraceId" // TODO // PERFORMANCE // R91125 by this time the change from "usingCanvasFallback to "usingCanvas" is on PRIORITY
+### Video Capture State Tracking (Nov 6: Alpha Phase)
 
 
 **What is `videoCapture`?**
@@ -129,7 +129,7 @@ Worker timeouts must adapt accordingly:
 
 | Field | Type | Purpose | Set By |
 |-------|------|---------|--------|
-| `usingCanvasFallback` | boolean | True when Canvas 2D path is active | `frame-processor.js` |
+| `usingCanvas` | boolean | True when Canvas 2D path is active | `frame-processor.js` |
 | `detectedAt` | timestamp | When path was detected/switched | `frame-processor.js` |
 | `capabilities.hasMediaStreamTrackProcessor` | boolean | Whether GPU API available | `capability-detector.js` |
 | `capabilities.hasOffscreenCanvas` | boolean | Whether Canvas API available | `capability-detector.js` |
@@ -139,7 +139,8 @@ Worker timeouts must adapt accordingly:
 ```javascript
 // In frame-processor.js → initializeVideoCanvasFallback()
 if (engine?.state?.videoCapture) {
-  engine.state.videoCapture.usingCanvasFallback = true;  // Canvas path detected
+  // In frame-processor.js → initializeVideoCanvasFallback()
+  engine.state.videoCapture.usingCanvas = true;  // Canvas path detected
   engine.state.videoCapture.detectedAt = Date.now();
   structuredLog('DEBUG', 'Canvas path active - timeouts adapted');
 }
@@ -149,7 +150,7 @@ if (engine?.state?.videoCapture) {
 
 ```javascript
 // In utils/performance.js → getWorkerTimeoutConfig(state)
-if (state?.videoCapture?.usingCanvasFallback) {
+if (state?.videoCapture?.usingCanvas) {
   // Canvas is CPU-bound, 3-4x slower → 3x multiplier
   const canvasMultiplier = 3;
   return {

@@ -51,7 +51,7 @@ export let settings = {
   includeProcessFrameLogs: false,
   // Video capture capability tracking (for timeout adaptation in canvas fallback)
   videoCapture: {
-    usingCanvasFallback: false,  // True if canvas-based video capture (no MediaStreamTrackProcessor)
+    usingCanvas: false,  // True if canvas-based video capture (no MediaStreamTrackProcessor)
     detectedAt: null,            // Timestamp when fallback was detected
     capabilities: {
       hasMediaStreamTrackProcessor: false,  // Browser supports GPU-accelerated processing

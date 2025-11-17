@@ -159,12 +159,12 @@ export function detectDeviceTier() {
  * 
  * Combined (low-end + canvas): 6x multiplier applied
  * 
- * @param {Object} state - Engine state (optional, contains videoCapture.usingCanvasFallback)
+ * @param {Object} state - Engine state (optional, contains videoCapture.usingCanvas)
  * @returns {Object} Timeout configuration { flowTimeout, focusTimeout, hybridTimeout }
  */
 export function getWorkerTimeoutConfig(state = null) {
   const tier = detectDeviceTier();
-  const usingCanvas = state?.videoCapture?.usingCanvasFallback || false;
+  const usingCanvas = state?.videoCapture?.usingCanvas || false;
   
   // Base configuration for GPU-accelerated path
   const baseConfig = {

@@ -722,7 +722,7 @@ Because Canvas (CPU-bound) is ~3-4× slower than GPU:
 | Canvas | Low-End | 600ms | 1200ms | 2x device + 3x path (cumulative) |
 
 **How Adaptation Works:**
-1. FrameConductor detects active path via `engine.state.videoCapture.usingCanvasFallback`
+1. FrameConductor detects active path via `engine.state.videoCapture.usingCanvas`
 2. `performance.js` → `getWorkerTimeoutConfig()` calculates adaptive timeouts
 3. Timeouts set once at initialization, reused for all frames
 4. Debug logs show which timeouts are in use

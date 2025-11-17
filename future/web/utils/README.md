@@ -522,7 +522,7 @@ export function getWorkerTimeoutConfig(state = null) {
   }
   
   // Step 3: Multiply if Canvas path active (CPU-bound capture)
-  if (state?.videoCapture?.usingCanvasFallback) {
+  if (state?.videoCapture?.usingCanvas) {
     baseConfig.flowTimeout *= 3;    // 300ms (canvas adds 100-150ms overhead)
     baseConfig.focusTimeout *= 3;   // 600ms (canvas adds 100-150ms overhead)
   }

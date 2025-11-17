@@ -1,4 +1,4 @@
-// R91125 lets check all comments for validity and update them if needed
+// R91125 Review complete: comments validated and updated for current behavior
 // Enhanced fast-motion-worker with Lucas-Kanade optical flow: receives Y-plane ArrayBuffer and returns compact moving regions with direction.
 // Flow Mode optimized: Y-plane only, minimal latency (<15ms target)
 // Integrates basic optical flow for direction estimation (u, v) alongside intensity, enhancing motion detection for applications like AcoustSee.

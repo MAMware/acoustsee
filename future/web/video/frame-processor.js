@@ -491,7 +491,7 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
   
   // CRITICAL FIX: Track canvas fallback in state for timeout adaptation
   if (engine?.state?.videoCapture) {
-    engine.state.videoCapture.usingCanvasFallback = true;
+    engine.state.videoCapture.usingCanvas = true;
     engine.state.videoCapture.detectedAt = Date.now();
     structuredLog('DEBUG', 'Canvas fallback detected - state updated for timeout adaptation', {
       timestamp: engine.state.videoCapture.detectedAt
