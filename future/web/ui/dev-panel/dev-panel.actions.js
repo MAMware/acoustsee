@@ -358,37 +358,41 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
   // Performance controls wiring
   const fpsModeSel = panel.querySelector('#fps-mode-select');
   const powerProfileSel = panel.querySelector('#power-profile-select');
-    if (fpsModeSel) {
-      const onFpsMode = (e) => {
-        const mode = e.target.value;
-        const targetFpsSlider = panel.querySelector('#target-fps-slider');
-        const interval = targetFpsSlider ? Math.round(1000 / parseInt(targetFpsSlider.value)) : 66;
-        engine.dispatch && engine.dispatch('setFpsMode', { mode, interval: mode === 'manual' ? interval : undefined });
-      };
-      fpsModeSel.addEventListener('change', onFpsMode);
-    }
-    if (powerProfileSel) {
-      const onPowerProfileChange = (e) => {
-        const value = e.target.value;
-        const state = engine.getState && engine.getState();
-        const orchestration = state.orchestration || {};
-        if (value === 'auto') {
-          // Clear override and let AutoFPS resume
-          try { engine.setState({ settings: { ...state.settings, qualityProfileOverride: null } }); } catch (e) {}
-        } else {
-          const profileDef = orchestration?.qualityProfiles?.[value] || { fpsTarget: 3, targetWidth: 160 };
-          const srcWidth = orchestration.metrics?.resolutionWidth || (DOM && DOM.frameCanvas?.width) || 320;
-          const srcFps = Math.max(10, Math.round(orchestration.metrics?.fps || 30));
-          const scale = Math.max(0.1, Math.min(1.0, profileDef.targetWidth / srcWidth));
-          const skipRate = Math.max(1, Math.ceil(srcFps / profileDef.fpsTarget));
-          engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate, scale });
-          try { engine.setState({ settings: { ...state.settings, qualityProfileOverride: value, updateInterval: Math.round(1000 / profileDef.fpsTarget) } }); } catch (e) {}
-        }
-      };
-      powerProfileSel.addEventListener('change', onPowerProfileChange);
-      attachedHandlers.push({ el: powerProfileSel, type: 'change', fn: onPowerProfileChange });
+  let onFpsMode = null;  // Declare at outer scope
+  
+  if (fpsModeSel) {
+    onFpsMode = (e) => {
+      const mode = e.target.value;
+      const targetFpsSlider = panel.querySelector('#target-fps-slider');
+      const interval = targetFpsSlider ? Math.round(1000 / parseInt(targetFpsSlider.value)) : 66;
+      engine.dispatch && engine.dispatch('setFpsMode', { mode, interval: mode === 'manual' ? interval : undefined });
+    };
+    fpsModeSel.addEventListener('change', onFpsMode);
+  }
+  if (powerProfileSel) {
+    const onPowerProfileChange = (e) => {
+      const value = e.target.value;
+      const state = engine.getState && engine.getState();
+      const orchestration = state.orchestration || {};
+      if (value === 'auto') {
+        // Clear override and let AutoFPS resume
+        try { engine.setState({ settings: { ...state.settings, qualityProfileOverride: null } }); } catch (e) {}
+      } else {
+        const profileDef = orchestration?.qualityProfiles?.[value] || { fpsTarget: 3, targetWidth: 160 };
+        const srcWidth = orchestration.metrics?.resolutionWidth || (DOM && DOM.frameCanvas?.width) || 320;
+        const srcFps = Math.max(10, Math.round(orchestration.metrics?.fps || 30));
+        const scale = Math.max(0.1, Math.min(1.0, profileDef.targetWidth / srcWidth));
+        const skipRate = Math.max(1, Math.ceil(srcFps / profileDef.fpsTarget));
+        engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate, scale });
+        try { engine.setState({ settings: { ...state.settings, qualityProfileOverride: value, updateInterval: Math.round(1000 / profileDef.fpsTarget) } }); } catch (e) {}
+      }
+    };
+    powerProfileSel.addEventListener('change', onPowerProfileChange);
+    attachedHandlers.push({ el: powerProfileSel, type: 'change', fn: onPowerProfileChange });
+    if (onFpsMode && fpsModeSel) {
       attachedHandlers.push({ el: fpsModeSel, type: 'change', fn: onFpsMode });
     }
+  }
 
   const depthPathSel = panel.querySelector('#depth-path-select');
     if (depthPathSel) {
