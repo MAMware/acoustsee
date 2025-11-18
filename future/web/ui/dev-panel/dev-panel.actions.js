@@ -421,6 +421,40 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
       attachedHandlers.push({ el: semanticDetectionToggle, type: 'change', fn: onSemanticToggle });
     }
 
+  // Disable Frame Skipping Toggle (Native Low-End Mode)
+  const disableSkippingToggle = panel.querySelector('#disable-frame-skipping-toggle');
+  if (disableSkippingToggle) {
+    const onDisableSkipping = (e) => {
+      const isDisabled = e.target.checked;
+      if (isDisabled) {
+        // When enabled (skipping disabled), set native low-end: skipRate=1, scale=1.0 (no skipping, no scaling)
+        engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate: 1, scale: 1.0 });
+        // Also disable sliders to show user they're not used
+        const skipSlider = panel.querySelector('#frame-skip-slider');
+        const scaleSlider = panel.querySelector('#resolution-scale-slider');
+        const targetFpsSlider = panel.querySelector('#target-fps-slider');
+        if (skipSlider) skipSlider.disabled = true;
+        if (scaleSlider) scaleSlider.disabled = true;
+        if (targetFpsSlider) targetFpsSlider.disabled = true;
+        structuredLog('INFO', 'Frame skipping disabled (native mode)', { context: 'Dev Panel' });
+      } else {
+        // When disabled (skipping enabled), re-enable sliders and apply current values
+        const skipSlider = panel.querySelector('#frame-skip-slider');
+        const scaleSlider = panel.querySelector('#resolution-scale-slider');
+        const targetFpsSlider = panel.querySelector('#target-fps-slider');
+        if (skipSlider) skipSlider.disabled = false;
+        if (scaleSlider) scaleSlider.disabled = false;
+        if (targetFpsSlider) targetFpsSlider.disabled = false;
+        const skipRate = skipSlider?.value || 1;
+        const scale = scaleSlider?.value || 1.0;
+        engine.dispatch && engine.dispatch('setFrameProviderThrottle', { skipRate: parseInt(skipRate), scale: parseFloat(scale) });
+        structuredLog('INFO', 'Frame skipping enabled (manual throttle)', { skipRate, scale, context: 'Dev Panel' });
+      }
+    };
+    disableSkippingToggle.addEventListener('change', onDisableSkipping);
+    attachedHandlers.push({ el: disableSkippingToggle, type: 'change', fn: onDisableSkipping });
+  }
+
   const targetFpsEl = panel.querySelector('#target-fps-slider');
     const targetFpsValueEl = panel.querySelector('#target-fps-value');
     if (targetFpsEl) {

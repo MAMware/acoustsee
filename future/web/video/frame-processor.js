@@ -1070,7 +1070,7 @@ export async function initializeVideo(config) {
         // Start stall watchdog if not already running
         if (!stallWatchdogInterval) {
           const STALL_INTERVAL_MS = 500; // evaluation cadence
-          const MAX_SILENCE_MS = 1500;   // time threshold without cues
+          const MAX_SILENCE_MS = 2000;   // time threshold without cues (increased for 3fps low-power mode)
           const MAX_UNCHANGED_FRAMES = 90; // unchanged pan/intensity threshold
           stallWatchdogInterval = setInterval(() => {
             try {
