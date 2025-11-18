@@ -8,7 +8,19 @@ let _cameraStream = null;
 
 export async function startCamera(videoEl, constraints = { facingMode: 'environment' }, state = null) {
   try {
-    const c = { video: { facingMode: constraints.facingMode }, audio: false };
+    // Enforce native low-resolution, low-framerate profile for low-end devices
+    // The browser applies these optimizations in native code before JS runs,
+    // reducing compute load and battery drain significantly
+    const c = {
+      video: {
+        facingMode: constraints.facingMode,
+        // Request low resolution and framerate natively to save compute
+        width: { ideal: 160 },
+        height: { ideal: 120 },
+        frameRate: { ideal: 3 }
+      },
+      audio: false
+    };
     
     structuredLog('INFO', 'Requesting camera access', { constraints: c });
     

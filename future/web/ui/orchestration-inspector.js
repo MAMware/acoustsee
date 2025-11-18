@@ -147,6 +147,9 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
             </div>
           </section>
           
+          <!-- Video Worker Debug Config (Phase 2A Debug Feature) -->
+          ${buildVideoWorkerDebugConfig(state.videoWorkerDebugConfig)}
+          
           <!-- Current Mode -->
           <footer class="orch-section orch-mode-footer" aria-label="Current system state">
             <div class="orch-mode-item">
@@ -293,6 +296,45 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
         </div>
         <span class="orch-util-percent">${cpuUtil.toFixed(0)}%</span>
       </div>
+    `;
+  }
+  
+  /**
+   * Builds the video worker debug config display (Phase 2A debug feature)
+   * Shows which video workers are currently enabled/disabled for A/B testing
+   */
+  function buildVideoWorkerDebugConfig(debugConfig) {
+    if (!debugConfig || typeof debugConfig !== 'object' || Object.keys(debugConfig).length === 0) {
+      return ''; // Don't show section if no debug config
+    }
+    
+    const workers = [
+      { key: 'fast-motion-worker', label: 'Fast Motion Worker' },
+      { key: 'fast-grid-aggregator', label: 'Fast Grid Aggregator' },
+      { key: 'pan-intensity-mapper', label: 'Pan-Intensity Mapper' }
+    ];
+    
+    return `
+      <section class="orch-section orch-debug-section" aria-labelledby="debug-heading">
+        <h4 class="orch-section-title" id="debug-heading">VIDEO WORKER DEBUG CONFIG (A/B Testing)</h4>
+        <div class="orch-debug-config">
+          ${workers.map(({ key, label }) => {
+            const enabled = debugConfig[key] !== false; // default true if not explicitly false
+            const statusClass = enabled ? 'orch-debug-enabled' : 'orch-debug-disabled';
+            const statusIcon = enabled ? '✓' : '✗';
+            const statusText = enabled ? 'Enabled' : 'Disabled';
+            return `
+              <div class="orch-debug-item ${statusClass}" title="${label}: ${statusText}">
+                <span class="orch-debug-icon">${statusIcon}</span>
+                <span class="orch-debug-label">${label}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <p style="font-size: 11px; color: #95a5a6; margin-top: 8px;">
+          Use dev panel checkboxes under "Video Worker Filters (Debug)" to toggle workers for A/B testing.
+        </p>
+      </section>
     `;
   }
   

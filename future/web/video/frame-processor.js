@@ -213,10 +213,11 @@ async function processFlowMode(frameData, width, height, state) {
     // Use FrameConductor for orchestration
     const result = await frameConductor.processFrame(frameData, width, height, state);
     
-    // TEMPORARY DIAGNOSTIC: Direct console.log to see actual values R111125eb could eventBus be more appropriate? 
-    console.log('[DIAGNOSTIC] result.result:', result.result);
-    console.log('[DIAGNOSTIC] pan:', result.result?.pan, 'type:', typeof result.result?.pan);
-    console.log('[DIAGNOSTIC] intensity:', result.result?.intensity, 'type:', typeof result.result?.intensity);
+    // TEMPORARY DIAGNOSTIC: Direct console.log to see actual values R111125eb could eventBus be more appropriate?
+    // Commented out (Nov 18): Prevents log bomb on low-end devices; use dev panel orchestration inspector instead
+    // console.log('[DIAGNOSTIC] result.result:', result.result);
+    // console.log('[DIAGNOSTIC] pan:', result.result?.pan, 'type:', typeof result.result?.pan);
+    // console.log('[DIAGNOSTIC] intensity:', result.result?.intensity, 'type:', typeof result.result?.intensity);
     
     // Extract motion regions from conductor result
     let cues = [];
