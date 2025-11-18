@@ -846,6 +846,30 @@ export function initializeDevPanel(arg1, arg2) {
     const ingestEnabledCheckbox = panel.querySelector('#ingest-enabled-checkbox');
     const batteryOptimizationCheckbox = panel.querySelector('#battery-optimization-checkbox');
     const ingestCategoryToggles = panel.querySelectorAll('.category-toggle input[type="checkbox"]');
+
+    // Video worker debug toggles (dev-only, do not affect manifest)
+    const toggleFastMotion = panel.querySelector('#worker-toggle-fast-motion');
+    const toggleFastGrid = panel.querySelector('#worker-toggle-fast-grid');
+    const togglePanMapper = panel.querySelector('#worker-toggle-pan-mapper');
+
+    const applyWorkerDebugConfig = () => {
+      if (!engine || !engine.dispatch) return;
+      const enabled = {
+        'fast-motion-worker': !!(toggleFastMotion && toggleFastMotion.checked),
+        'fast-grid-aggregator': !!(toggleFastGrid && toggleFastGrid.checked),
+        'pan-intensity-mapper': !!(togglePanMapper && togglePanMapper.checked),
+      };
+      try {
+        engine.dispatch('updateVideoWorkerDebugConfig', { enabled });
+        structuredLog('DEBUG', 'DevPanel: updated video worker debug config', enabled);
+      } catch (e) {
+        console.warn('DevPanel: failed to dispatch updateVideoWorkerDebugConfig', e);
+      }
+    };
+
+    toggleFastMotion && toggleFastMotion.addEventListener('change', applyWorkerDebugConfig);
+    toggleFastGrid && toggleFastGrid.addEventListener('change', applyWorkerDebugConfig);
+    togglePanMapper && togglePanMapper.addEventListener('change', applyWorkerDebugConfig);
     
     // CORE-15: Motion Detection Tuning controls
     const motionStepSlider = panel.querySelector('#motion-step-slider');

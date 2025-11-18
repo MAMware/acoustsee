@@ -703,7 +703,9 @@ export async function initializeVideo(config) {
     focusTimeout: 200,
     hybridTimeout: 10,
     logMetrics: true,
-    logFrames: true
+    logFrames: true,
+    // Optional debug-only worker filter; may be set by dev panel
+    debugWorkerEnabled: config.debugWorkerEnabled || null,
   });
   
   // Initialize conductor for default mode

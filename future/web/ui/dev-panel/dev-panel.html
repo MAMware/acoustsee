@@ -124,7 +124,7 @@
         <div id="devpanel-preview-container" class="preview-container">
           <div class="preview-toggle-row">
             <input type="checkbox" id="devpanel-preview-toggle" aria-label="Show processing preview (low FPS)" />
-            <label for="devpanel-preview-toggle">Processing Preview (2–5 FPS)</label>
+            <label for="devpanel-preview-toggle">Low FPS Preview)</label>
           </div>
           <canvas id="devpanel-preview-canvas" width="320" height="240"></canvas>
           <p class="perf-note">Note: This preview samples the processing canvas at low FPS to avoid extra decoders.</p>
@@ -166,6 +166,24 @@
           <div class="slider-container">
             <input id="max-notes-slider" type="range" min="1" max="64" value="16"><span id="max-notes-value">16</span>
           </div>
+        </div>
+        <div class="control-column">
+          <label>Video Worker Filters (Debug)</label>
+          <div class="worker-toggle-row">
+            <input type="checkbox" id="worker-toggle-fast-motion" checked>
+            <label for="worker-toggle-fast-motion">Enable fast-motion-worker</label>
+          </div>
+          <div class="worker-toggle-row">
+            <input type="checkbox" id="worker-toggle-fast-grid" checked>
+            <label for="worker-toggle-fast-grid">Enable fast-grid-aggregator</label>
+          </div>
+          <div class="worker-toggle-row">
+            <input type="checkbox" id="worker-toggle-pan-mapper" checked>
+            <label for="worker-toggle-pan-mapper">Enable pan-intensity-mapper</label>
+          </div>
+          <p style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">
+            Debug-only: disable workers to isolate stalls. Manifest remains source of truth.
+          </p>
         </div>
       </div>
     </div>

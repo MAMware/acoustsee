@@ -161,11 +161,35 @@ export class FrameConductor {
     }
 
     // Load new workers
-    const chain = getWorkersForMode(mode);
+    let chain = getWorkersForMode(mode);
     if (!chain || chain.length === 0) {
       const error = new Error(`No workers defined for mode: ${mode}`);
       structuredLog('ERROR', 'FrameConductor: no workers for mode', { mode });
       throw error;
+    }
+
+    // Optional debug-only filtering: allow external config to disable specific workers
+    const debugEnabled = this.config?.debugWorkerEnabled;
+    if (debugEnabled && typeof debugEnabled === 'object') {
+      const originalCount = chain.length;
+      chain = chain.filter(w => {
+        if (!Object.prototype.hasOwnProperty.call(debugEnabled, w.name)) return true;
+        return !!debugEnabled[w.name];
+      });
+      if (chain.length === 0) {
+        structuredLog('WARN', 'FrameConductor: all workers disabled by debug config; using original chain', {
+          mode,
+          originalCount,
+        });
+        chain = getWorkersForMode(mode);
+      } else if (chain.length !== originalCount) {
+        structuredLog('INFO', 'FrameConductor: debug worker filter applied', {
+          mode,
+          originalCount,
+          filteredCount: chain.length,
+          enabled: debugEnabled,
+        });
+      }
     }
 
     try {
@@ -360,6 +384,13 @@ export class FrameConductor {
     let currentInput = frameData;
     const timings = {}; // { workerName: durationMs }
 
+    const getNextWorkerName = (name) => {
+      if (!this.#currentChain) return null;
+      const idx = this.#currentChain.findIndex(w => w.name === name);
+      if (idx === -1 || idx + 1 >= this.#currentChain.length) return null;
+      return this.#currentChain[idx + 1].name;
+    };
+
     // Process frame through chain
     for (const workerConfig of this.#currentChain) {
       const workerStartTime = performance.now();
@@ -409,6 +440,30 @@ export class FrameConductor {
         const capabilities = WorkerContract.getCapabilities(workerResult);
         aggregatedCapabilities = [...aggregatedCapabilities, ...capabilities];
         currentInput = workerResult.result;
+
+        // Sampled shape check before pan-intensity-mapper to debug grid size mismatches
+        if (workerConfig.name === 'fast-grid-aggregator') {
+          const nextName = getNextWorkerName(workerConfig.name);
+          if (nextName === 'pan-intensity-mapper' && workerResult.result) {
+            const out = workerResult.result;
+            const grid = out.grid || (out.data && out.data.grid) || out.data || null;
+            const gridConfig = out.gridConfig || null;
+            if (grid && gridConfig && Number.isInteger(gridConfig.rows) && Number.isInteger(gridConfig.cols)) {
+              const expected = gridConfig.rows * gridConfig.cols;
+              const actual = grid.length;
+              if (expected !== actual && Math.random() < 0.02) {
+                structuredLog('WARN', 'FrameConductor: grid size mismatch before pan-mapper', {
+                  workerName: workerConfig.name,
+                  nextWorker: nextName,
+                  expected,
+                  actual,
+                  rows: gridConfig.rows,
+                  cols: gridConfig.cols
+                });
+              }
+            }
+          }
+        }
         
         // CORE-15: Extract normalization telemetry from motion worker result R151125C15ingest
         if (workerConfig.name === 'fast-motion-worker' && workerResult.result?.normalizationTelemetry) {
