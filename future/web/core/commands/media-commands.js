@@ -108,6 +108,25 @@ export function registerMediaCommands(engine) {
       }
   }));
 
+  // Debug-only: allow dev panel to configure which video workers are enabled
+  registerCommandHandler('updateVideoWorkerDebugConfig', ({ state: s, payload }) => {
+    const enabled = payload && payload.enabled ? payload.enabled : {};
+    const current = s.orchestration || {};
+    const prevDebug = current.videoWorkerDebugConfig || {};
+    const nextDebug = Object.assign({}, prevDebug, enabled);
+
+    try {
+      engine.setState({
+        orchestration: Object.assign({}, current, {
+          videoWorkerDebugConfig: nextDebug,
+        }),
+      });
+      structuredLog('DEBUG', 'COMMAND: updateVideoWorkerDebugConfig applied', { enabled: nextDebug });
+    } catch (e) {
+      structuredLog('WARN', 'COMMAND: updateVideoWorkerDebugConfig failed to update state', { error: e.message });
+    }
+  });
+
     // New: initializeVideoPipeline - dedicated video pipeline initialization
     registerCommandHandler('initializeVideoPipeline', wrapAsyncHandler('initializeVideoPipeline', async ({ state: s, payload }) => {
       const { videoEl, stream } = payload || {};
@@ -150,6 +169,10 @@ export function registerMediaCommands(engine) {
           }
         } catch (e) { /* best-effort */ }
 
+        const currentState = engine.getState();
+        const orchestration = currentState.orchestration || {};
+        const debugWorkerEnabled = orchestration.videoWorkerDebugConfig || null;
+
         await initializeVideo({
           videoElement: videoEl,
           engine: engine,
@@ -167,6 +190,7 @@ export function registerMediaCommands(engine) {
             }
             return currentGrid;
           },
+          debugWorkerEnabled,
           registerWorker: window.__acoustseeDevPanelRegisterWorker,
           motionThreshold: s.motionThreshold,
         });
