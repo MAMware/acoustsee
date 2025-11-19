@@ -394,10 +394,10 @@ export async function init() {
     sampleRate: audioManager.context.sampleRate
   });
   
-  // Assign audioApi to engine immediately (context exists, just suspended)
-  engine.audioApi = audioManager;
-  structuredLog('INFO', 'Audio API assigned to engine', { 
-    audioContextState: audioManager.context.state 
+  // Store audioManager separately; audioApi will be assigned AFTER synthesis init
+  engine.audioManager = audioManager;
+  structuredLog('INFO', 'AudioManager stored on engine; audioApi deferred until initialization', {
+    audioContextState: audioManager.context.state
   });
   
   try { 
@@ -443,21 +443,25 @@ export async function init() {
     // STEP 2: Initialize the audio synthesis system
     // Create oscillator pool, gain nodes, audio graph
     // MUST happen inside user gesture (browser security requirement)
+    let audioApiSurface = null;
     try {
-      await initializeAudio({ audioManager, maxNotes: currentState.maxNotes || 32 });
-      structuredLog('INFO', 'handleAudioUnlock: Audio synthesis system initialized', 
-        { maxNotes: currentState.maxNotes || 32 }
-      );
+      audioApiSurface = await initializeAudio({ audioManager, maxNotes: currentState.maxNotes || 32 });
+      // Assign the returned synthesis surface (playCues, resizeOscillatorPool, setSelectedSynthEngine)
+      engine.audioApi = audioApiSurface;
+      structuredLog('INFO', 'handleAudioUnlock: Audio synthesis system initialized & audioApi assigned', {
+        maxNotes: currentState.maxNotes || 32,
+        hasPlayCues: typeof audioApiSurface?.playCues === 'function'
+      });
     } catch (e) {
-      structuredLog('ERROR', 'handleAudioUnlock: Audio synthesis initialization failed', { 
-        error: e?.message || String(e) 
+      structuredLog('ERROR', 'handleAudioUnlock: Audio synthesis initialization failed', {
+        error: e?.message || String(e)
       });
       throw new Error('Failed to initialize audio synthesis: ' + (e?.message || String(e)));
     }
 
     // STEP 3: Verify audio system is fully operational
-    if (!engine.audioApi || !audioManager.context || audioManager.context.state !== 'running') {
-      throw new Error(`Audio system not operational: audioApi=${!!engine.audioApi}, context=${!!audioManager.context}, state=${audioManager.context?.state}`);
+    if (!engine.audioApi || typeof engine.audioApi.playCues !== 'function' || !audioManager.context || audioManager.context.state !== 'running') {
+      throw new Error(`Audio system not operational: audioApi=${!!engine.audioApi}, playCuesFn=${typeof engine.audioApi?.playCues}, context=${!!audioManager.context}, state=${audioManager.context?.state}`);
     }
 
     structuredLog('INFO', 'handleAudioUnlock: COMPLETE - Audio system ready', {
