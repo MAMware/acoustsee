@@ -91,6 +91,15 @@ export async function getText(key, params = {}, state) {
       throw new Error('Language not set; call initializeLanguageIfNeeded first');
     }
 
+    if (!settings.availableLanguages || !Array.isArray(settings.availableLanguages)) {
+      structuredLog('ERROR', 'getText: availableLanguages not available', {
+        languageId,
+        availableLanguages: settings.availableLanguages,
+        key
+      });
+      return key;
+    }
+
     const language = settings.availableLanguages.find(l => l.id === languageId);
     if (!language) {
       structuredLog('ERROR', 'Language not found', {
@@ -104,16 +113,22 @@ export async function getText(key, params = {}, state) {
     let translations = translationsCache[language.id];
     if (!translations) {
       // Log cache miss and fetching fresh translations
-      structuredLog('DEBUG', 'Fetching fresh translations for language', { languageId });
+      structuredLog('DEBUG', 'Fetching fresh translations for language', { languageId, language: language });
       try {
         const basePath = typeof window !== 'undefined' ? window.__ACOUSTSEE_BASE_PATH__ || './' : './';
         const url = `${basePath}languages/${language.id}.json`;
+        structuredLog('DEBUG', 'Translation fetch URL', { url, basePath });
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
         translations = await response.json();
         translationsCache[language.id] = translations;
+        structuredLog('DEBUG', 'Translations loaded successfully', { languageId, keys: Object.keys(translations).length });
       } catch (fetchErr) {
-        structuredLog('ERROR', 'Language file fetch error', { message: fetchErr.message, key });
+        structuredLog('ERROR', 'Language file fetch error', { 
+          message: fetchErr.message, 
+          key,
+          url: `${typeof window !== 'undefined' ? window.__ACOUSTSEE_BASE_PATH__ || './' : './'}languages/${language.id}.json`
+        });
         return key; // Fallback on network/parse error
       }
     }
@@ -124,6 +139,11 @@ export async function getText(key, params = {}, state) {
     }
     if (typeof finalMessage === 'object') {
       finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
+    }
+
+    // Ensure finalMessage is a string before attempting replaceAll
+    if (typeof finalMessage !== 'string') {
+      finalMessage = key;
     }
 
     // Safer placeholder replacement (exact match to avoid partial brace issues)
