@@ -106,7 +106,9 @@ export async function getText(key, params = {}, state) {
       // Log cache miss and fetching fresh translations
       structuredLog('DEBUG', 'Fetching fresh translations for language', { languageId });
       try {
-        const response = await fetch(`./languages/${language.id}.json`);
+        const basePath = typeof window !== 'undefined' ? window.__ACOUSTSEE_BASE_PATH__ || './' : './';
+        const url = `${basePath}languages/${language.id}.json`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
         translations = await response.json();
         translationsCache[language.id] = translations;
@@ -217,7 +219,9 @@ export function announceMessage(message) {
  */
 export async function preloadTranslations(languageId) {
   try {
-    const response = await fetch(`./languages/${languageId}.json`);
+    const basePath = typeof window !== 'undefined' ? window.__ACOUSTSEE_BASE_PATH__ || './' : './';
+    const url = `${basePath}languages/${languageId}.json`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
     const translations = await response.json();
     translationsCache[languageId] = translations;

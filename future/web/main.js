@@ -95,6 +95,9 @@ try {
   console.warn('Could not determine base path automatically, falling back to "./"');
 }
 
+// Make basePath available globally for utils.js and other modules that need it
+window.__ACOUSTSEE_BASE_PATH__ = basePath;
+
 class CustomError extends Error {
   constructor(message, data = {}) {
     super(message);
