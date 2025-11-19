@@ -15,7 +15,6 @@ import { createEngine } from './core/engine.js';
 import { createEventBus } from './core/event-bus.js';
 import { initializeAnalytics } from './core/event-bus-analytics.js';
 import { AnalyticsBatcher } from './core/analytics-batcher.js';
-import { settings } from './core/state.js';
 import { structuredLog, loggingConfig, initializeLogging } from './utils/logging.js';
 import { generateTraceId } from './utils/trace-id.js';
 import { 
@@ -113,11 +112,6 @@ function validateDOM() {
 }
 
 export async function init() {
-  const originalConsole = {
-    log: console.log,
-    warn: console.warn,
-    error: console.error
-  };
   try {
     // Validate DOM early
     validateDOM();
@@ -131,8 +125,11 @@ export async function init() {
     // Make engine globally available for UI components
     window.engine = engine;
   
-    // Attach build info onto settings for downstream UI/dev panel consumption
-    settings.buildInfo = {
+    // Get engine state
+    const state = engine.getState();
+    
+    // Attach build info onto state for downstream UI/dev panel consumption
+    const buildInfo = {
       commit: buildConstants.BUILD_COMMIT || 'unknown',
       branch: buildConstants.BUILD_BRANCH || 'unknown',
       timestamp: buildConstants.BUILD_TIMESTAMP || 'unknown',
@@ -142,15 +139,16 @@ export async function init() {
       ui_version: buildConstants.UI_VERSION || 'unknown',
       utils_version: buildConstants.UTILS_VERSION || 'unknown'
     };
+    engine.setState({ buildInfo });
     // Expose globally as fallback for dev panel
-    window.__ACOUSTSEE_BUILD = settings.buildInfo;
-    console.log('%c🔧 Build Info (main.js)', 'font-weight:bold;color:#0ea5e9;', settings.buildInfo);
-    structuredLog('INFO', 'buildInfo', settings.buildInfo);
+    window.__ACOUSTSEE_BUILD = buildInfo;
+    console.log('%c🔧 Build Info (main.js)', 'font-weight:bold;color:#0ea5e9;', buildInfo);
+    structuredLog('INFO', 'buildInfo', buildInfo);
 
     // STEP 0.5: Create unified EventBus for logging and command tracking
     // Must be created after engine but before initializing subsystems that need it
     const eventBus = createEventBus({
-      state: settings,
+      state: state,
       maxEvents: 500
     });
     
@@ -172,7 +170,7 @@ export async function init() {
     window.__audioSee.analyticsBatcher = analyticsBatcher;
     
     // Initialize analytics subscribers (replaces direct ingest tracking)
-    initializeAnalytics(eventBus, settings);
+    initializeAnalytics(eventBus, state);
     
     // Wire worker logs to EventBus
     // Workers send { type: 'workerLog', log: { timestamp, level, message, metadata } }
@@ -213,12 +211,13 @@ export async function init() {
     try {
       const grids = await loadAvailableGrids();
       if (grids && grids.length > 0) {
-        settings.availableGrids = grids;
+        engine.setState({ availableGrids: grids });
         // Set a default grid if one isn't already set
-        if (!settings.gridType) {
-          settings.gridType = grids[0].id;
+        const currentState = engine.getState();
+        if (!currentState.gridType) {
+          engine.setState({ gridType: grids[0].id });
         }
-        structuredLog('INFO', 'init: Video grids loaded successfully', { count: grids.length, default: settings.gridType });
+        structuredLog('INFO', 'init: Video grids loaded successfully', { count: grids.length, default: engine.getState().gridType });
       } else {
         structuredLog('WARN', 'init: No video grids were loaded.');
       }
@@ -248,30 +247,31 @@ export async function init() {
     }
 
     // STEP 2: Now that all configs are loaded, log and check them.
+    const configState = engine.getState();
     structuredLog('INFO', 'init: Configurations loaded', {
-      gridType: settings.gridType,
-      synthesisEngine: settings.synthesisEngine,
-      language: settings.language
+      gridType: configState.gridType,
+      synthesisEngine: configState.synthesisEngine,
+      language: configState.language
     });
 
     // Ensure language is initialized before UI translation
-    initializeLanguageIfNeeded(settings);
+    initializeLanguageIfNeeded(configState);
     try {
-      await setLanguage(settings.language, settings);
-      translatePage(document, settings);
+      await setLanguage(configState.language, configState);
+      translatePage(document, configState);
     } catch (e) {
       structuredLog('WARN', 'setLanguage/translatePage failed', { error: e?.message || String(e) });
     }
 
     // This check will now run AFTER grids are loaded, so the warning should disappear.
-    if (!settings.gridType || !settings.synthesisEngine || !settings.language) {
+    if (!configState.gridType || !configState.synthesisEngine || !configState.language) {
       const missing = [];
-      if (!settings.gridType) missing.push('grids');
-      if (!settings.synthesisEngine) missing.push('engines');
-      if (!settings.language) missing.push('languages');
-      const msg = await getText('initMissingConfigs', { missing: missing.join(', ') }, settings);
+      if (!configState.gridType) missing.push('grids');
+      if (!configState.synthesisEngine) missing.push('engines');
+      if (!configState.language) missing.push('languages');
+      const msg = await getText('initMissingConfigs', { missing: missing.join(', ') }, configState);
       announceMessage(msg);
-  if (settings.ttsEnabled) speakText(settings, msg, 'tts');
+  if (configState.ttsEnabled) speakText(configState, msg, 'tts');
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
 
@@ -300,7 +300,7 @@ export async function init() {
       engine,
       DOM,
       eventBus,
-      settings,
+      settings: engine.getState(),
       basePath,
       importMetaUrl: import.meta.url
     });
@@ -345,45 +345,15 @@ export async function init() {
       */
     }
     
-    // Console overrides
-    function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
-      const tempLog = console.log;
-      const tempWarn = console.warn;
-      const tempError = console.error;
-      let threw = false;
-      try {
-        console.log = originalConsole.log;
-        console.warn = originalConsole.warn;
-        console.error = originalConsole.error;
-        structuredLog(level, message, data, persist, sample);
-        trackFeatureUse(level, { message, ...data });
-      } catch (err) {
-        threw = true;
-        console.log = tempLog;
-        console.warn = tempWarn;
-        console.error = tempError;
-        originalConsole.error('safeStructuredLog error:', err);
-      } finally {
-        if (!threw) {
-          console.log = tempLog;
-          console.warn = tempWarn;
-          console.error = tempError;
-        }
-      }
-    }
-
-    console.log = (...args) => {
-      originalConsole.log.apply(console, args);
-      if (settings.debugLogging) safeStructuredLog('INFO', 'Console log', { args }, false);
-    };
-    console.warn = (...args) => {
-      originalConsole.warn.apply(console, args);
-      if (settings.debugLogging) safeStructuredLog('WARN', 'Console warn', { args }, false);
-    };
-    console.error = (...args) => {
-      originalConsole.error.apply(console, args);
-      safeStructuredLog('ERROR', 'Console error', { args }, false);
-    };
+    // ⚠️ ANTI-PATTERN REMOVED: Console Hijack
+    // Previously: console.log/warn/error were monkey-patched to route through structuredLog.
+    // DANGER: This creates a feedback loop. If structuredLog throws an error, it might try to log
+    // that error to console, which calls the override again → Infinite Loop / Stack Overflow.
+    // PERFORMANCE: Every innocent console.log becomes a heavy serialization operation, causing
+    // the 25MB log bomb issue we experienced.
+    // FIX: Use structuredLog EXPLICITLY where needed. Leave native console for browser debugging.
+    // Modules that need structured logging should import structuredLog directly and call it.
+    // The EventBus now handles all high-frequency events safely with capping and sampling.
 
     // --- Audio manager and gated startup (user gesture required) ---
   const audioManager = new AudioManager();
@@ -394,7 +364,8 @@ export async function init() {
       // Helper: unlock audio and initialize audio subsystems inside user gesture
       async function handleAudioUnlock(event, traceId) {
         // Show initializing feedback
-        const initLabel = await getText('powerOn.initializing', {}, settings).catch(() => 'Initializing...');
+        const currentState = engine.getState();
+        const initLabel = await getText('powerOn.initializing', {}, currentState).catch(() => 'Initializing...');
         if (DOM.powerOn.querySelector('.power-label')) {
           DOM.powerOn.querySelector('.power-label').textContent = initLabel;
         } else {
@@ -408,7 +379,8 @@ export async function init() {
         await audioManager.initialize();
         try {
           // Initialize audio processor using dependency injection via a config object.
-          const audioApi = await initializeAudio({ audioManager, maxNotes: settings.maxNotes });
+          const audioState = engine.getState();
+          const audioApi = await initializeAudio({ audioManager, maxNotes: audioState.maxNotes });
           // Attach the initialized audio API onto the engine for consumers.
           engine.audioApi = audioApi;
           // Register audio listeners for object and BPM cues
@@ -441,8 +413,9 @@ export async function init() {
         if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
         if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';
         DOM.powerOn.setAttribute('aria-pressed', 'true');
-        const onMsg = await getText('audioOn', {}, settings).catch(() => 'Audio enabled');
-  speakText(settings, onMsg, 'tts');
+        const uiState = engine.getState();
+        const onMsg = await getText('audioOn', {}, uiState).catch(() => 'Audio enabled');
+  speakText(uiState, onMsg, 'tts');
         try { trackFeatureUse('power-on', { success: true, traceId }); } catch (e) {}
 
         try {
@@ -457,9 +430,10 @@ export async function init() {
       async function handlePowerOnError(error, originalLabel, traceId) {
         addSessionError({ message: 'power-on-failed', error: error?.message || String(error), traceId });
         structuredLog('ERROR', 'Power on handler failed', { error: error?.message || String(error), traceId });
-        const failMsg = await getText('audio.unavailable', {}, settings).catch(() => 'Audio unavailable. Tap to try again.');
+        const failState = engine.getState();
+        const failMsg = await getText('audio.unavailable', {}, failState).catch(() => 'Audio unavailable. Tap to try again.');
         announceMessage(failMsg);
-  speakText(settings, failMsg, 'tts');
+  speakText(failState, failMsg, 'tts');
         if (DOM.powerOn.querySelector('.power-label')) {
           DOM.powerOn.querySelector('.power-label').textContent = originalLabel;
         } else {
@@ -610,15 +584,17 @@ export async function init() {
       specificMessage = `Missing DOM elements: ${err.data.missing.join(', ')}`;
     }
     structuredLog('ERROR', 'init error', { message: specificMessage, data: errorData, stack: err.stack });
-    originalConsole.error('init error:', err.message);
+    console.error('init error:', err.message);
       try {
-  const errorText = await getText('init.tts.error', {}, settings);
-  speakText(settings, errorText, 'tts');
-      const initFail = await getTextCached('init.failed', { specificMessage }, settings).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
+  const errorState = engine.getState();
+  const errorText = await getText('init.tts.error', {}, errorState);
+  speakText(errorState, errorText, 'tts');
+      const initFail = await getTextCached('init.failed', { specificMessage }, errorState).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
       announceMessage(initFail);
     } catch (ttsErr) {
-      originalConsole.error('TTS error:', ttsErr.message);
-      const initFail = await getTextCached('init.failed', { specificMessage }, settings).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
+      console.error('TTS error:', ttsErr.message);
+      const ttsCatchState = engine.getState();
+      const initFail = await getTextCached('init.failed', { specificMessage }, ttsCatchState).catch(() => `Initialization failed: ${specificMessage}. Check console for details.`);
       announceMessage(initFail);
     }
   }

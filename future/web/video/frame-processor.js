@@ -84,9 +84,6 @@ function capHighFreqPayload(commandName, payload) {
 // --- Module State ---
 let _config = {};
 let frameProviderWorker = null;
-let motionWorker = null;
-let depthWorker = null;
-let previousDepthPath = null; // Track depth computation path changes (used to avoid redundant reconfigurations)
 
 // FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
 let frameConductor = null;
@@ -357,46 +354,10 @@ function createCuesFromAudioParams(params, state) {
   }
 }
 
-/**
- * Process frame using FrameConductor (Phase 3.1b)
- * Replaces hardcoded Focus/Hybrid mode worker chain with manifest-driven orchestration
- * 
- * For Focus/Hybrid modes, delegates to frameConductor.processFrame() instead of
- * manually managing motionWorker and depthWorker. This simplifies code and makes
- * adding new workers faster (just update manifest, no code changes needed).
- */
-async function processWithMotionWorker(frameData, width, height, state) {
-  if (!frameConductor) {
-    structuredLog('WARN', 'FrameConductor not initialized, returning empty results');
-    return { movingRegions: [], textureGrid: [], objects: [], inferredBPM: 100 };
-  }
-
-  try {
-    // Use FrameConductor for Focus/Hybrid orchestration (Phase 3.1b)
-    // Phase 3.1b-Hotfix: Remove legacy format conversion — return conductor result directly
-    const result = await frameConductor.processFrame(frameData, width, height, state);
-    
-    // Return conductor result directly (no legacy format conversion)
-    const motionResults = result.result || { cues: [], textureGrid: [], objects: [], inferredBPM: 100 };
-    
-    // Dispatch state change events for compatibility with existing subscribers
-    engine.dispatch('flowCuesReady', capHighFreqPayload('flowCuesReady', motionResults));
-    if (motionResults.objects?.length > 0) {
-      engine.dispatch('objectCuesReady', capHighFreqPayload('objectCuesReady', { objects: motionResults.objects }));
-    }
-    if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
-      engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
-    }
-    
-    return motionResults;
-  } catch (error) {
-    structuredLog('ERROR', 'processWithMotionWorker error', { 
-      error: error.message,
-      mode: state.currentMode
-    });
-    return { movingRegions: [], textureGrid: [], objects: [], inferredBPM: 100 };
-  }
-}
+// --- Video Frame Processing ---
+// Frame processing is orchestrated by FrameConductor (Phase 3.1b).
+// All worker management (motion, depth, objects) goes through the conductor manifest.
+// See frame-conductor.js for worker chain definition and orchestration logic.
 
 /**
  * Simulates object detection based on motion results.
@@ -473,15 +434,14 @@ async function simulateShapeAnalysis(detectedObject = {}) {
 }
 
 /**
- * Canvas-based fallback for video frame capture (no MediaStreamTrackProcessor required).
+ * Canvas-based path for video frame capture if no MediaStreamTrackProcessor support is available.
  * This runs frame capture in the main thread and processes frames through the audio pipeline.
  * Slower than MediaStreamTrackProcessor but works in all browsers (Firefox, Safari, iOS).
  * 
- * NOTE: Frame processing logic (Flow/Flow-legacy/Focus mode handling) is intentionally
- * duplicated from the worker-based handler in frameProviderWorker.onmessage. Both
- * implementations call the same core functions (processFlowMode, processWithMotionWorker)
- * so they produce identical results. The duplication keeps the fallback self-contained
- * and simplifies debugging.
+ * NOTE: Frame processing logic for Flow/Focus modes uses FrameConductor for
+ * manifest-driven worker orchestration (Phase 3.1b). Canvas is available
+ * for browsers without OffscreenCanvas, using processFlowMode for motion detection.
+ * Both paths produce identical audio cues.
  * 
  * @param {HTMLVideoElement} videoElement - The video element to capture from
  * @param {object} engine - The state engine
@@ -591,48 +551,8 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
         } else {
           dispatchPayload = { cues: [], panIntensity: { pan: 0, intensity: 0 } };
         }
-      } else if (state.currentMode === 'flow-legacy') {
-        const motionResults = await processWithMotionWorker(frameData, canvas.width, canvas.height, state);
-        
-        engine.dispatch('flowCuesReady', capHighFreqPayload('flowCuesReady', motionResults));
-        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', capHighFreqPayload('objectCuesReady', { objects: motionResults.objects }));
-        if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
-          engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
-        }
-        
-        if (grid && grid.mapFunction) {
-          const gridOutput = grid.mapFunction(frameData, canvas.width, canvas.height, null, motionResults);
-          if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
-            dispatchPayload = { cues: gridOutput.cues };
-          } else {
-            if (motionResults.movingRegions && motionResults.movingRegions.length > 0) {
-              const defaultCues = motionResults.movingRegions.slice(0, 1).map(region => ({
-                objectType: 'default_motion',
-                pitch: 440 + (region.y || 0) * 400,
-                intensity: Math.min(1.0, (region.intensity || 50) / 100),
-                position: { x: region.x || 0, y: region.y || 0, z: 0 }
-              }));
-              dispatchPayload = { cues: defaultCues };
-            }
-          }
-        } else {
-          if (motionResults.movingRegions && motionResults.movingRegions.length > 0) {
-            const defaultCues = motionResults.movingRegions.slice(0, 1).map(region => ({
-              objectType: 'default_motion',
-              pitch: 440 + (region.y || 0) * 400,
-              intensity: Math.min(1.0, (region.intensity || 50) / 100),
-              position: { x: region.x || 0, y: region.y || 0, z: 0 }
-            }));
-            dispatchPayload = { cues: defaultCues };
-          }
-        }
       } else if (state.currentMode === 'focus') {
-        const motionResults = await processWithMotionWorker(frameData, canvas.width, canvas.height, state);
-        
-        const specialists = {
-          depth: await processWithDepthWorker(frameData, canvas.width, canvas.height, state),
-          objects: await simulateObjectDetection(frameData, canvas.width, canvas.height)
-        };
+        const motionResults = await frameConductor.processFrame(frameData, canvas.width, canvas.height, state);
         
         dispatchPayload = {
           cues: motionResults.objects || [],
@@ -695,8 +615,8 @@ export async function initializeVideo(config) {
   // Get current mode from engine state
   const currentMode = config.engine?.getState?.()?.currentMode || 'flow';
   
-  // Initialize FrameConductor (Phase 3.1b - handles all worker orchestration)
-  // FrameConductor replaces legacy startMotionWorker() and startDepthWorker()
+  // Initialize FrameConductor (Phase 3.1b - manifest-driven worker orchestration)
+  // Single source of truth for video worker lifecycle management across all modes.
   // CRITICAL FIX: Pass engine so timeout config can detect canvas fallback
   frameConductor = new FrameConductor({
     engine: config.engine,  // Pass engine for state-aware timeout calculation
@@ -864,80 +784,9 @@ export async function initializeVideo(config) {
           // Timeout or error - dispatch empty safely
           dispatchPayload = { cues: [], panIntensity: { pan: 0, intensity: 0 } };
         }
-      } else if (state.currentMode === 'flow-legacy') {
-        // Legacy Flow mode using existing motion worker (fallback)
-        const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height, state);
-        
-        // Dispatch new cues
-        engine.dispatch('flowCuesReady', capHighFreqPayload('flowCuesReady', motionResults));
-        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', capHighFreqPayload('objectCuesReady', { objects: motionResults.objects }));
-        if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
-          engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
-        }
-        
-        // Log textureGrid for debug
-        if (window.location.search.includes('debug=true')) {
-          structuredLog('DEBUG', 'Cues', { textureGrid: motionResults.textureGrid, objects: motionResults.objects });
-        }
-        
-        // Very aggressive sampling - only log every 100th frame to reduce dev panel spam
-        if (payload.frameId && payload.frameId % 100 === 0) {
-          structuredLog('DEBUG', 'Frame processor: Motion results', { 
-            movingRegions: motionResults.movingRegions.length 
-          });
-        }
-        
-        if (grid && grid.mapFunction) {
-          const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
-          structuredLog('DEBUG', 'Grid cues generated', { cueCount: gridOutput?.cues?.length || 0, mode: state.currentMode, motionPresent: !!motionResults });
-          if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
-            // In Flow mode, the payload includes the cues array
-            dispatchPayload = { cues: gridOutput.cues };
-            // Only log every 30th frame to avoid flooding console
-            if (payload.frameId && payload.frameId % 30 === 0) {
-              structuredLog('DEBUG', 'Frame processor: Generated cues for Flow mode', { 
-                cuesCount: gridOutput.cues.length 
-              });
-            }
-          } else {
-            // FALLBACK: Grid returned no cues, create a default one from motion data // R181025 we must be cautious with fallbacks, remember that this is a navigation aid for blind users
-            if (motionResults.movingRegions && motionResults.movingRegions.length > 0) {
-              const defaultCues = motionResults.movingRegions.slice(0, 1).map(region => ({
-                objectType: 'default_motion',
-                pitch: 440 + (region.y || 0) * 400, // Vary pitch based on position
-                intensity: Math.min(1.0, (region.intensity || 50) / 100),
-                position: { x: region.x || 0, y: region.y || 0, z: 0 }
-              }));
-              dispatchPayload = { cues: defaultCues };
-              structuredLog('DEBUG', 'Frame processor: Created fallback cues for Flow mode', { cuesCount: defaultCues.length });
-            }
-          }
-        } else {
-          // FALLBACK: No grid available, create cues from motion data directly
-          if (motionResults.movingRegions && motionResults.movingRegions.length > 0) {
-            const defaultCues = motionResults.movingRegions.slice(0, 1).map(region => ({
-              objectType: 'default_motion',
-              pitch: 440 + (region.y || 0) * 400,
-              intensity: Math.min(1.0, (region.intensity || 50) / 100),
-              position: { x: region.x || 0, y: region.y || 0, z: 0 }
-            }));
-            dispatchPayload = { cues: defaultCues };
-            structuredLog('DEBUG', 'Frame processor: No grid, using motion-based fallback cues', { cuesCount: defaultCues.length });
-          }
-        }
-
       } else if (state.currentMode === 'focus') {
-        // In Focus mode, run specialists and generate a rich payload
-        const motionResults = await processWithMotionWorker(frameData, payload.width, payload.height, state);
-        
-        // Dispatch new cues
-        engine.dispatch('flowCuesReady', capHighFreqPayload('flowCuesReady', motionResults));
-        if (motionResults.objects.length > 0) engine.dispatch('objectCuesReady', capHighFreqPayload('objectCuesReady', { objects: motionResults.objects }));
-        if (Math.abs(motionResults.inferredBPM - (state.bpm || 100)) > 5) {
-          engine.dispatch('bpmUpdate', { bpm: motionResults.inferredBPM });
-        }
-        
-        const objectResults = await simulateObjectDetection(motionResults);
+        // In Focus mode, use FrameConductor for all worker orchestration
+        const motionResults = await frameConductor.processFrame(frameData, payload.width, payload.height, state);
 
         if (objectResults.detectedObjects.length > 0) {
           const mainObject = objectResults.detectedObjects[0];
@@ -1091,10 +940,8 @@ export async function initializeVideo(config) {
                   unchangedPanFrames: stats.unchangedPanFrames,
                   lastCueCount: stats.lastCueCount
                 });
-                // Attempt recovery: reset motion worker (no silent strategy downgrade)
-                try { engine.dispatch('resetMotionWorker'); } catch (e) {
-                  structuredLog('ERROR', 'Failed to dispatch resetMotionWorker during stall recovery', { error: e?.message || String(e) });
-                }
+                // Stall recovery: FrameConductor will timeout and restart workers automatically
+                // No explicit worker reset needed; let conductor handle recovery
                 // Reset dynamic counters (keep stallCount history)
                 stats.unchangedPanFrames = 0;
                 engine.setState({ stallStats: stats });
@@ -1139,13 +986,9 @@ export async function initializeVideo(config) {
       
       // Check for depth path changes
       if (state.depthPath && state.depthPath !== previousDepthPath) {
-        // "FrameConductor updates its internal depth worker state" via the updateDepthPath 
-        // method (semantic: pass new path config to depth computation)
+        // FrameConductor handles depth path updates via updateDepthPath method
         if (frameConductor && frameConductor.updateDepthPath) {
           frameConductor.updateDepthPath(state.depthPath);
-        } else if (depthWorker) {
-          depthWorker.postMessage({ type: 'setPath', path: state.depthPath });
-          structuredLog('INFO', 'Depth path updated (legacy)', { path: state.depthPath });
         }
         previousDepthPath = state.depthPath;
       }
@@ -1172,29 +1015,16 @@ export async function initializeVideo(config) {
  * 
  * This function:
  * - Terminates frame provider worker
- * - Terminates motion and depth workers (if still running)
- * - Disposes FrameConductor and all its managed workers
+ * - Disposes FrameConductor and all its manifest-managed workers
  * - Clears module state
  */
 export function disposeVideo() {
   try {
-    // Terminate legacy workers (cleanup for any remaining direct references)
+    // Terminate frame provider worker
     if (frameProviderWorker) {
       frameProviderWorker.terminate();
       frameProviderWorker = null;
       structuredLog('INFO', 'Frame provider worker terminated');
-    }
-    
-    if (motionWorker) {
-      motionWorker.terminate();
-      motionWorker = null;
-      structuredLog('INFO', 'Motion worker terminated');
-    }
-    
-    if (depthWorker) {
-      depthWorker.terminate();
-      depthWorker = null;
-      structuredLog('INFO', 'Depth worker terminated');
     }
     
     // Phase 3.1b: Dispose FrameConductor (terminates all manifest-managed workers)
@@ -1206,7 +1036,6 @@ export function disposeVideo() {
     
     // Reset module state
     _config = {};
-    previousDepthPath = null;
     
     structuredLog('INFO', 'Video processor fully disposed');
   } catch (error) {

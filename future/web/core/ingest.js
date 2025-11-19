@@ -5,7 +5,6 @@
  * @param {string} event - The event name or level.
  * @param {{}} payload - Additional data to send.
  */
-import { settings } from './state.js';
 import { deviceSummary } from '../utils/performance.js';
 
 const INGEST_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev';
@@ -15,9 +14,22 @@ const INGEST_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev';
 const IS_LOCALHOST = (typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname))
   || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test');
 
+function getState() {
+  // Priority: Use engine.getState() if available, else return empty object
+  if (typeof window !== 'undefined' && window.engine && typeof window.engine.getState === 'function') {
+    try {
+      return window.engine.getState();
+    } catch (e) {
+      return {};
+    }
+  }
+  return {};
+}
+
 function shouldSendIngest() {
   try {
-    if (!settings?.ingestEnabled) return false;
+    const state = getState();
+    if (!state.ingestEnabled) return false;
   } catch (e) {
     return false;
   }
@@ -28,7 +40,10 @@ function shouldSendIngest() {
 export async function trackFeatureUse(event, payload = {}) {
   // Fast-path: do not attempt network calls in local/test environments.
   if (!shouldSendIngest()) {
-    try { if (settings?.debugLogging) console.debug('ingest: suppressed trackFeatureUse for', event); } catch (e) {}
+    try {
+      const state = getState();
+      if (state.debugLogging) console.debug('ingest: suppressed trackFeatureUse for', event);
+    } catch (e) {}
     return;
   }
 
@@ -83,7 +98,10 @@ export async function trackFeatureUse(event, payload = {}) {
 export function emergencyTrack(eventName, errorPayload = {}) {
   try {
     if (!shouldSendIngest()) {
-      try { if (settings?.debugLogging) console.debug('ingest: suppressed emergencyTrack for', eventName); } catch (e) {}
+      try {
+        const state = getState();
+        if (state.debugLogging) console.debug('ingest: suppressed emergencyTrack for', eventName);
+      } catch (e) {}
       return;
     }
     const payload = {

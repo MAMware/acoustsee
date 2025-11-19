@@ -3,11 +3,9 @@
 // R151025: This file needs cleanup, it seems to have unfished work and need for detail where ambiguity arises,
 // each line will be taged with R151025 once issues are addressed please remove the comments that prompted them.
 //
-// R151025: why unused imports? e.g. deprecated or unfinished?
 // R151025: state.js we need to reflect in "real" time the state of parameters of settings (e.g. starting at line 10 from state.js) at the developer panel since currently the user needs to change the code for many settings parametization. The "Developer Panel"  has a "State Inspector" that is a good candidate for where do this could be the "State Inspector". The current "State Inspector" is fixed and it does not reflect the actual settings in "real" time, instead it reflects the defaults. 
 
-import { structuredLog } from '../utils/logging.js';
-import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';
+import { getAllIdbLogs } from '../utils/idb-logger.js';
 import { availableGridsData } from '../video/grids/available-grids.js';
 import { availableEnginesData } from '../audio/synths/available-synths.js';
 import { availableLanguagesData } from '../languages/available-languages.js';
@@ -15,7 +13,16 @@ import { computeDefaultUpdateInterval, computeDefaultMaxNotes, deviceSummary } f
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION, UTILS_VERSION } from './constants.js';
 
 
-export let settings = {
+/**
+ * Factory function that returns a new initial state object.
+ * 
+ * This enforces the Single Source of Truth principle: the Engine is responsible for
+ * all state initialization, not the state definition file itself.
+ * 
+ * @returns {Object} A fresh copy of initial state
+ */
+export function createInitialState() {
+  return {
   debugLogging: true,
   // Debug configuration for tracing and diagnostics
   debugConfig: {
@@ -179,135 +186,13 @@ export let settings = {
     languages_version: LANGUAGES_VERSION,
     utils_version: UTILS_VERSION
   }
-};
+  };
+}
+
 
 // Detect local/test environments where telemetry should be disabled by default. R151025 where did the rationally that telemetry is not needed for local environments?, i dont see the use of this and it might be better removed
 const IS_LOCALHOST = (typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname))
   || (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test');
-
-/**
- * Validates settings object against a simple JSON schema without external dependencies.
- * @param {Object} settingsObj - The settings object to validate.
- * @returns {boolean} True if valid, false otherwise.
- */
-function validateSettingsSchema(settingsObj) {
-  const schema = {
-    debugLogging: 'boolean',
-    stream: ['null', 'object'],
-    availableGrids: 'array',
-    availableEngines: 'array',
-    availableLanguages: 'array',
-    audioTimerId: ['null', 'number'],
-    updateInterval: 'number',
-    autoFPS: 'boolean',
-    gridType: ['null', 'string'],
-    synthesisEngine: ['null', 'string'],
-    language: ['null', 'string'],
-    isSettingsMode: 'boolean',
-    micStream: ['null', 'object'],
-    audioResumeAttempts: 'number',
-    audioResumeDelayMs: 'number',
-    ttsEnabled: 'boolean',
-    ingestEnabled: 'boolean',
-    ingestPreferences: 'object',
-    ingestCategories: 'object',
-    dayNightMode: 'string',
-    resetStateOnError: 'boolean',
-    motionThreshold: 'number',
-    currentMode: 'string',
-    enableSemanticDetection: 'boolean'
-  };
-
-  for (const key in schema) {
-    const expectedType = schema[key];
-    const actualValue = settingsObj[key];
-
-    // Use explicit array type check when schema expects 'array'
-    if (expectedType === 'array') {
-      if (!Array.isArray(actualValue)) {
-        structuredLog('ERROR', `Invalid type for ${key}`, { expected: 'array', actual: typeof actualValue });
-        return false;
-      }
-    } else if (Array.isArray(expectedType)) {
-      if (!expectedType.some(type => type === typeof actualValue || (type === 'null' && actualValue === null))) {
-        structuredLog('ERROR', `Invalid type for ${key}`, { expected: expectedType, actual: typeof actualValue });
-        return false;
-      }
-    } else if (typeof actualValue !== expectedType) {
-      structuredLog('ERROR', `Invalid type for ${key}`, { expected: expectedType, actual: typeof actualValue });
-      return false;
-    }
-  }
-
-  return true;
-}
-
-// R151025: lets document better what is saved to configs, if it is only this... we could do a lot better
-/**
- * Initializes default settings from the loaded configuration files.
- * This runs after the config files have been fetched and parsed.
- */
-function initializeDefaults() {
-  structuredLog('INFO', 'Initializing settings from loaded configs.'); // R151025: is this actualy loading settings configs? the section comments staes that this loads defaults 
-
-  if (!validateSettingsSchema(settings)) {
-    structuredLog('ERROR', 'initializeDefaults: Invalid settings schema', { settings });
-    throw new Error('Settings validation failed');
-  }
-
-  if (settings.availableGrids.length > 0 && !settings.gridType) {
-    settings.gridType = settings.availableGrids[0].id;
-  }
-
-  if (settings.availableEngines.length > 0 && !settings.synthesisEngine) {
-    settings.synthesisEngine = settings.availableEngines[0].id;
-  }
-
-  if (settings.availableLanguages.length > 0) {
-    if (!settings.language || !settings.availableLanguages.some(l => l.id === settings.language)) {
-      settings.language = settings.availableLanguages[0].id;
-    }
-  }
-  
-  // Log settings with sanitized grids/engines (remove large meta objects to keep logs lean)
-  // Also exclude orchestration from settings logging (it's a separate state field, not settings)
-  const sanitizedSettings = {
-    ...settings,
-    availableGrids: settings.availableGrids.map(g => ({ id: g.id })),
-    availableEngines: settings.availableEngines.map(e => ({ id: e.id })),
-    availableLanguages: settings.availableLanguages.map(l => ({ id: l.id }))
-  };
-  delete sanitizedSettings.orchestration; // orchestration is NOT part of settings
-  structuredLog('INFO', 'Settings initialized', { settings: sanitizedSettings });
-
-  try {
-    const t = localStorage.getItem('ingestEnabled');
-    if (t === '0') settings.ingestEnabled = false;
-    else if (t === '1') settings.ingestEnabled = true;
-    else if (IS_LOCALHOST) {
-      // Default to disabled on localhost/test to avoid accidental network calls. R151025: explain such "accidental network calls"
-      settings.ingestEnabled = false;
-    }
-  } catch (e) {
-    // ignore localStorage access errors
-  }
-  
-  // Load motion detection config from localStorage (CORE-15)
-  try {
-    const saved = localStorage.getItem('motionDetectionConfig');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      Object.assign(settings.motionDetection, parsed);
-      structuredLog('INFO', 'Loaded motionDetection config from localStorage', { config: parsed });
-    }
-  } catch (e) {
-    structuredLog('WARN', 'Failed to load motionDetection config from localStorage', { error: e?.message });
-  }
-}
-
-initializeDefaults();
-
-// --- REMOVED loadConfigs: configs are now loaded statically via import --- R151025 Do wee need to keep this comment?
 
 export async function getLogs() {
   // Fetch from IndexedDB and pretty-print for readability.

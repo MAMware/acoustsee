@@ -1,4 +1,4 @@
-import { settings } from '../../core/state.js';
+import { createInitialState } from '../../core/state.js';
 import { setExternalFrameBuffer, enableFrameWorker, enableWorkerTransfer, shutdownFrameWorker } from '../../video/frame-processor.js';
 
 const video = { /* stub for demo */ };
@@ -8,6 +8,7 @@ let stream = null;
 let procTimer = null;
 let processing = false;
 let buf = null;
+const settings = createInitialState();
 
 function log(...args) { console.log('[demo]', ...args); }
 

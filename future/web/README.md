@@ -105,6 +105,27 @@ return existingState;  // Same object
 
 **Recent Bug:** Grid Type dropdown was empty because `mergeOrchestrationState()` created a new object with spread operator. When `main.js` set `settings.availableGrids`, the engine didn't see it (different object).
 
+### State Factory Pattern (Nov 18: Fixed)
+
+State is no longer exported as a live object. Instead, `state.js` exports a factory function:
+
+```javascript
+// ❌ OLD (BYPASSED):
+import { settings } from './core/state.js';
+settings.gridType = 'hex';  // Direct mutation - bypasses engine!
+
+// ✅ NEW (ENFORCED):
+// state.js exports:
+export function createInitialState() { return { gridType: 'hex', ... } }
+
+// Access state only through engine:
+const state = engine.getState();           // Read
+engine.setState({ gridType: 'square' });   // Mutate through engine
+engine.dispatch('setGridType', { gridType: 'square' });  // Via commands
+```
+
+**Why?** Prevents state bypass anti-pattern. All mutations now go through the engine's command system, ensuring proper logging, telemetry, and Single Source of Truth.
+
 ### Initialization Order (CRITICAL)
 
 In `main.js`, follow this sequence exactly:

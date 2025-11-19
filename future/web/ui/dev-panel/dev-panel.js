@@ -182,7 +182,7 @@ export function initializeDevPanel(arg1, arg2) {
             const onPointerDown = (e) => {
               isPadActive = true;
               padStartTime = performance.now(); // Record start time
-              try { padArea.setPointerCapture && padArea.setPointerCapture(e.pointerId); } catch (_) {}
+              try { padArea.setPointerCapture && padArea.setPointerCapture(e.pointerId); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to set pointer capture', { error: e?.message || String(e) }); }
               generateCuesFromPad(e);
             };
 
@@ -197,7 +197,7 @@ export function initializeDevPanel(arg1, arg2) {
                 });
                 padStartTime = null;
               }
-              try { padArea.releasePointerCapture && padArea.releasePointerCapture(e.pointerId); } catch (_) {}
+              try { padArea.releasePointerCapture && padArea.releasePointerCapture(e.pointerId); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to release pointer capture', { error: e?.message || String(e) }); }
               engine.dispatch && engine.dispatch('audioPlayCues', { cues: [] });
             };
 
@@ -208,11 +208,11 @@ export function initializeDevPanel(arg1, arg2) {
 
             // Store a cleanup function on the panel for the main dispose function
             panel.__touchPadCleanup = () => {
-              try { padArea.removeEventListener('pointerdown', onPointerDown); } catch (_) {}
-              try { padArea.removeEventListener('pointermove', generateCuesFromPad); } catch (_) {}
-              try { padArea.removeEventListener('pointerup', onPointerUp); } catch (_) {}
-              try { padArea.removeEventListener('pointerleave', onPointerUp); } catch (_) {}
-              try { if (_padDurationHandler && durationSlider) durationSlider.removeEventListener('input', _padDurationHandler); } catch (_) {}
+              try { padArea.removeEventListener('pointerdown', onPointerDown); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove pointerdown listener', { error: e?.message || String(e) }); }
+              try { padArea.removeEventListener('pointermove', generateCuesFromPad); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove pointermove listener', { error: e?.message || String(e) }); }
+              try { padArea.removeEventListener('pointerup', onPointerUp); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove pointerup listener', { error: e?.message || String(e) }); }
+              try { padArea.removeEventListener('pointerleave', onPointerUp); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove pointerleave listener', { error: e?.message || String(e) }); }
+              try { if (_padDurationHandler && durationSlider) durationSlider.removeEventListener('input', _padDurationHandler); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove duration slider listener', { error: e?.message || String(e) }); }
             };
             structuredLog('INFO', 'Touch Pad UI wired successfully.');
           } else {
@@ -250,10 +250,10 @@ export function initializeDevPanel(arg1, arg2) {
         link.id = cssId;
         link.rel = 'stylesheet';
         link.href = href;
-        try { console.debug && console.debug('Dev Panel: attempting to load CSS from', link.href); } catch (e) {}
+        try { console.debug && console.debug('Dev Panel: attempting to load CSS from', link.href); } catch (e) { structuredLog('DEBUG', 'Dev Panel: CSS load debug logging failed', { href: link.href, error: e?.message || String(e) }); }
 
         link.onload = () => {
-          try { console.debug && console.debug('Dev Panel CSS loaded:', link.href); } catch (e) {}
+          try { console.debug && console.debug('Dev Panel CSS loaded:', link.href); } catch (e) { structuredLog('DEBUG', 'Dev Panel: CSS loaded debug logging failed', { href: link.href, error: e?.message || String(e) }); }
           wireUpUI();
         };
 
@@ -270,7 +270,7 @@ export function initializeDevPanel(arg1, arg2) {
       loadCss();
     } catch (e) {
       console.warn('Exception loading dev-panel stylesheet', e);
-      try { wireUpUI(); } catch (_) {}
+      try { wireUpUI(); } catch (e) { structuredLog('ERROR', 'Dev Panel: Failed to wire up UI', { error: e?.message || String(e) }); }
     }
   };
 
@@ -326,14 +326,14 @@ export function initializeDevPanel(arg1, arg2) {
         if (workerChartRenderLoopId === null) {
           lastRenderTime = performance.now();
           workerChartRenderLoopId = requestAnimationFrame(renderLoop);
-          try { panel.__workerChartRAFId = workerChartRenderLoopId; } catch (e) {}
+          try { panel.__workerChartRAFId = workerChartRenderLoopId; } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to store worker chart RAF ID', { error: e?.message || String(e) }); }
         }
       };
       const stopChart = () => {
         if (workerChartRenderLoopId !== null) {
-          try { cancelAnimationFrame(workerChartRenderLoopId); } catch (e) {}
+          try { cancelAnimationFrame(workerChartRenderLoopId); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to cancel animation frame', { rafId: workerChartRenderLoopId, error: e?.message || String(e) }); }
           workerChartRenderLoopId = null;
-          try { panel.__workerChartRAFId = null; } catch (e) {}
+          try { panel.__workerChartRAFId = null; } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to clear worker chart RAF ID', { error: e?.message || String(e) }); }
         }
       };
 
@@ -417,7 +417,7 @@ export function initializeDevPanel(arg1, arg2) {
       const buildInfo = engine.getState().buildInfo || {};
       const ver = metaVer || window.ACOUSTSEE_VERSION || window.ACOUSTSEE_APP_VERSION || buildInfo.version || 'unknown';
       subtitle.textContent = `Build: ${ver} | Audio: ${buildInfo.audio_version || 'n/a'} | Video: ${buildInfo.video_version || 'n/a'} | UI: ${buildInfo.ui_version || 'n/a'} | Utils: ${buildInfo.utils_version || 'n/a'}`;
-    } catch (e) {}
+    } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to set version subtitle', { error: e?.message || String(e) }); }
 
     // --- Populate Build Info ---
     try {
@@ -491,12 +491,12 @@ export function initializeDevPanel(arg1, arg2) {
           previewCanvas.height = h;
           previewCanvas.style.width = `${w}px`;
           previewCanvas.style.height = `${h}px`;
-        } catch (_) {}
+        } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to resize preview canvas', { error: e?.message || String(e) }); }
       };
 
       const detachSource = () => {
         if (panel.__previewRO) {
-          try { panel.__previewRO.disconnect(); } catch (_) {}
+          try { panel.__previewRO.disconnect(); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to disconnect preview ResizeObserver', { error: e?.message || String(e) }); }
         }
         panel.__previewRO = null;
         activeSource = null;
@@ -539,7 +539,7 @@ export function initializeDevPanel(arg1, arg2) {
           try {
             panel.__previewRO = new ResizeObserver(() => resizePreview(src));
             panel.__previewRO.observe(src);
-          } catch (_) {}
+          } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to set up preview ResizeObserver', { error: e?.message || String(e) }); }
         }
 
         return src;
@@ -556,7 +556,7 @@ export function initializeDevPanel(arg1, arg2) {
         try {
           previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
           previewCtx.drawImage(src, 0, 0, previewCanvas.width, previewCanvas.height);
-        } catch (_) {}
+        } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to draw preview image', { error: e?.message || String(e) }); }
       };
 
       const startPreview = (fps = 4) => {
@@ -597,10 +597,10 @@ export function initializeDevPanel(arg1, arg2) {
         try {
           DOM.videoFeed.addEventListener('loadedmetadata', handleVideoReady, { passive: true });
           DOM.videoFeed.addEventListener('playing', handleVideoReady, { passive: true });
-        } catch (_) {}
+        } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to attach video preview event listeners', { error: e?.message || String(e) }); }
         panel.__detachPreviewVideoEvents = () => {
-          try { DOM.videoFeed.removeEventListener('loadedmetadata', handleVideoReady); } catch (_) {}
-          try { DOM.videoFeed.removeEventListener('playing', handleVideoReady); } catch (_) {}
+          try { DOM.videoFeed.removeEventListener('loadedmetadata', handleVideoReady); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove loadedmetadata listener', { error: e?.message || String(e) }); }
+          try { DOM.videoFeed.removeEventListener('playing', handleVideoReady); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove playing listener', { error: e?.message || String(e) }); }
         };
       } else {
         panel.__detachPreviewVideoEvents = () => {};
@@ -1041,7 +1041,7 @@ export function initializeDevPanel(arg1, arg2) {
           if (deltaIntensityMean) deltaIntensityMean.textContent = snapshot.meanIntensityDelta.toFixed(3);
           if (deltaIntensityZero) deltaIntensityZero.textContent = snapshot.zeroIntensityStreak.toString();
         }
-      } catch(e) {}
+      } catch(e) { structuredLog('WARN', 'Dev Panel: Failed to update delta stats display', { error: e?.message || String(e) }); }
     });
 
     // Add change listeners for selects
@@ -1348,7 +1348,7 @@ export function initializeDevPanel(arg1, arg2) {
       } catch (e) {
         console.warn('Dev Panel activation failed', e);
       }
-      try { if (typeof unsubscribe === 'function') unsubscribe(); } catch (_) {}
+      try { if (typeof unsubscribe === 'function') unsubscribe(); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to unsubscribe from app:poweredOn', { error: e?.message || String(e) }); }
     };
 
     unsubscribe = engine.on('app:poweredOn', activationListener);
@@ -1451,4 +1451,4 @@ export function initializeDevPanel(arg1, arg2) {
 }
 
 // Register initializer in the ui-registry for other modules to access later under the canonical name
-try { registerComponent && registerComponent('dev-panel', initializeDevPanel); } catch (e) {}
+try { registerComponent && registerComponent('dev-panel', initializeDevPanel); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to register component in UI registry', { error: e?.message || String(e) }); }

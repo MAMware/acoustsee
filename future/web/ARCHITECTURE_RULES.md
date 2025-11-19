@@ -741,6 +741,118 @@ async function safeLoadGrids() {
 
 ---
 
+## Rule 11: State Factory Pattern - Prevent State Bypass (Nov 18: Fixed)
+
+**The Problem:**
+If `state.js` exports a live state object, any module can import it directly and mutate state without going through the engine. This breaks the Single Source of Truth principle and creates invisible state mutations.
+
+**Anti-Pattern (What We Had):**
+```javascript
+// core/state.js
+export let settings = {  // ❌ Live object exported
+  gridType: 'hex',
+  isProcessing: false,
+  // ...
+};
+
+// ANYWHERE in the code:
+import { settings } from './core/state.js';
+settings.gridType = 'square';  // ❌ BYPASSES engine!
+
+// Engine doesn't know state changed
+// Dev panel shows stale value
+// No command handler ran
+// No logging occurred
+// This is a SILENT FAILURE
+```
+
+**Why This Is Dangerous:**
+- ❌ Multiple entry points for state mutations (not Single Source of Truth)
+- ❌ Impossible to debug "why did this value change?"
+- ❌ No command logging or telemetry for state changes
+- ❌ Tests are not isolated (state persists between tests)
+- ❌ Breaks the Redux-like unidirectional data flow
+
+**Solution: Factory Pattern (What We Have Now):**
+```javascript
+// core/state.js
+export function createInitialState() {  // ✅ Factory function
+  return {
+    gridType: 'hex',
+    isProcessing: false,
+    // ...
+  };
+}
+
+// core/engine.js
+import { createInitialState } from './state.js';
+
+export function createEngine() {
+  let state = createInitialState();  // ✅ Engine owns state creation
+  // Now state is PRIVATE to engine
+  
+  // Expose only through controlled methods:
+  return {
+    getState: () => ({ ...state }),        // Read-only copy
+    setState: (updates) => {
+      Object.assign(state, updates);       // Controlled mutation
+      notifyListeners();
+    },
+    dispatch: (cmd, payload) => { /* ... */ }  // Command system
+  };
+}
+
+// ANYWHERE in the code:
+import { createInitialState } from './core/state.js';  // ❌ DON'T DO THIS
+const myState = createInitialState();  // Creates fresh state, not connected to engine
+
+// ✅ CORRECT:
+const state = engine.getState();        // Get current state from engine
+engine.setState({ gridType: 'square' }); // Mutate only through engine
+```
+
+**Pattern Benefits:**
+```javascript
+// 1. Every test gets fresh state
+function createEngine() {
+  let state = createInitialState();  // Fresh copy each call ✅
+}
+
+// 2. Engine controls initialization timing
+// 3. No modules can bypass engine
+// 4. All mutations go through dispatch or setState
+// 5. Easy to add logging to all state changes
+```
+
+**What You Can't Do Anymore (Good!):**
+```javascript
+// ❌ FORBIDDEN:
+import { settings } from '../core/state.js';  // This export doesn't exist
+settings.someValue = 123;  // Can't do this anymore
+
+// ❌ FORBIDDEN:
+import { createInitialState } from '../core/state.js';
+const myState = createInitialState();
+myState.someValue = 123;  // Creates unconnected state object
+
+// ✅ DO THIS INSTEAD:
+const currentState = engine.getState();
+engine.setState({ someValue: 123 });  // All mutations through engine
+```
+
+**Module Access Patterns:**
+
+| Pattern | Where | How |
+|---------|-------|-----|
+| Command handler | `commands/*.js` | Receives `state` in context |
+| UI module | `ui/**` | Calls `engine.getState()` |
+| Core module | `core/` | Calls `engine.getState()` |
+| Test | `test/` | Creates fresh engine, calls `createInitialState()` for mocks |
+
+**Rule:** Never export a live state object. Always use factory pattern (`createInitialState()`) and let only the Engine own state mutations.
+
+---
+
 ## Quick Reference Checklist
 
 Before submitting code changes, verify:
@@ -750,6 +862,9 @@ Before submitting code changes, verify:
 - [ ] State mutations preserve object identity
 - [ ] All state values are JSON-serializable
 - [ ] No functions, classes, or DOM in state
+- [ ] Never import `settings` directly from state.js ✅ NEW: Rule 11
+- [ ] All state mutations go through `engine.setState()` or dispatch ✅ NEW: Rule 11
+- [ ] No bypassing engine with direct state imports ✅ NEW: Rule 11
 
 ### Module Dependencies
 - [ ] UI modules don't import from core/
@@ -790,6 +905,13 @@ Before submitting code changes, verify:
 ---
 
 ## Common Bugs We've Fixed
+
+### Bug 0: State Bypass Anti-Pattern (November 18, 2025)
+**Symptom:** Multiple modules importing and mutating state directly; changes invisible to engine
+**Root Cause:** `state.js` exported live `settings` object; no enforcement of single mutation point
+**Fix:** Converted to factory pattern: `export function createInitialState() {...}`
+**Impact:** Removed 5 direct imports across main.js, ingest.js, media-commands.js, test files
+**Rule Enforced:** Rule 11 (State Factory Pattern)
 
 ### Bug 1: Empty Grid Dropdown (October 2025)
 **Symptom:** Grid Type dropdown had no options; Manual Control Pad broken

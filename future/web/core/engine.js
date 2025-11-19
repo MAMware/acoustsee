@@ -4,7 +4,7 @@
 // R29925: too much leftovers, clean ASAP
 // Minimal headless engine: owns state and exposes a dispatch API for commands.
 
-import { settings } from './state.js';
+import { createInitialState } from './state.js';
 import { structuredLog, throttleError, shouldSample } from '../utils/logging.js';
 import { generateTraceId } from '../utils/trace-id.js';
 import logger from '../utils/logging.js';
@@ -27,23 +27,9 @@ import { mergeOrchestrationState } from './orchestration-state.js';
 
 // Core engine state and functionality
 
-function _resolveStateModule() {
-  // In Jest tests we rely on runtime require to pick up per-test mocks. In
-  // browser environments `require` is not defined so fall back to the static
-  // imported binding above.
-  try {
-    if (typeof require !== 'undefined') {
-      const m = require('./state.js');
-      if (m && m.settings) return m;
-    }
-  } catch (e) {
-    // ignore and fall through
-  }
-  return { settings };
-}
 
 export function createEngine() {
-  let state = _resolveStateModule().settings; // legacy shared settings object for incremental migration
+  let state = createInitialState();
   
   // Initialize orchestration state on engine creation
   state = mergeOrchestrationState(state);

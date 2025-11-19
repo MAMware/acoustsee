@@ -36,17 +36,26 @@ jest.mock('../audio/audio-processor.js', () => ({
 }));
 
 jest.mock('../core/state.js', () => {
-  const settings = { autoFPS: true, updateInterval: 15, autoFpsBenchmark: {}, micStream: null, workerTransferEnabled: true, _frameBuffer: undefined };
-  return { settings };
+  return {
+    createInitialState: () => ({
+      autoFPS: true,
+      updateInterval: 15,
+      autoFpsBenchmark: {},
+      micStream: null,
+      workerTransferEnabled: true,
+      _frameBuffer: undefined
+    })
+  };
 });
 // structuredLog is mocked globally in setup.js
 
 // Use a lightweight test-local engine to avoid importing the full app engine
 // (which registers real command handlers and requires DOM/media APIs). The
 // fake engine implements only the minimal command behaviors needed by tests.
-import { settings } from '../core/state.js';
+import { createInitialState } from '../core/state.js';
 
 function createEngine() {
+  const settings = createInitialState();
   const listeners = new Set();
   const benchmarkListeners = new Set();
   const handlers = Object.create(null);

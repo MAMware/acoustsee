@@ -1,7 +1,6 @@
 // File: web/core/commands/media-commands.js
 // Handles commands related to starting, stopping, and processing media streams.
 
-import { settings } from '../state.js';
 import { structuredLog } from '../../utils/logging.js';
 import { 
   executeCriticalOperation, 

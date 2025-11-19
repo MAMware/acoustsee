@@ -16,10 +16,12 @@ The application is built around a single, headless **Engine** (`engine.js`). Thi
         *   Notifies all subsystems of state changes via the `onStateChange` listener.
     *   **Pattern:** This implements a standard **Redux-like, unidirectional data flow.**
 
-2.  **`state.js` (The State Object):**
+2.  **`state.js` (State Factory):**
     *   **Responsibilities:**
-        *   Defines the default shape of the application's entire state.
+        *   Exports `createInitialState()` factory function that returns a fresh state object
+        *   Defines the shape and defaults of the entire application state
         *   This state object must be **fully JSON serializable**. It contains settings, flags, and data, but **no functions, class instances, or live browser objects** (like `MediaStream`). This "state hygiene" is critical for stability and debugging.
+    *   **Pattern:** Uses the **Factory Pattern** to prevent state bypass. The factory ensures each state instance is created fresh and controlled by the Engine, not imported as a live object.
 
 3.  **`commands/` (The Command Handlers):**
     *   **Responsibilities:**
@@ -68,45 +70,52 @@ This clean, predictable cycle makes the application easy to debug, reason about,
 ### State Structure Template
 
 ```javascript
-// core/state.js - The application state object
-export const settings = {
-  // ✅ Configuration
-  updateInterval: 50,
-  motionThreshold: 30,
-  maxNotes: 24,
-  gridType: 'hex-tonnetz',
-  synthesisEngine: 'sine-wave',
-  language: 'en-US',
-  
-  // ✅ Loaded resources (arrays/objects only)
-  availableGrids: null,  // Populated at init
-  
-  // ✅ UI state
-  isProcessing: false,
-  settingsMode: false,
-  
-  // ✅ Performance metrics
-  fps: 0,
-  cpuUsage: 0,
-  
-  // ✅ Video capture state (Nov 6: Alpha phase)
-
-  videoCapture: {
-    usingCanvas: false,           // Set when Canvas path active
-    detectedAt: null,                      // Timestamp of path detection
-    capabilities: {
-      hasMediaStreamTrackProcessor: false, // GPU capability
-      hasOffscreenCanvas: true,            // Canvas capability
-      // Future: hasWebGL, hasWebGPU, etc.
-    }
-  },
-  
-  // ❌ DO NOT ADD:
-  // audioContext: null,  // ❌ Live object
-  // playFunction: null,  // ❌ Function
-  // videoElement: null,  // ❌ DOM element
-};
+// core/state.js - Factory function for initial state
+export function createInitialState() {
+  return {
+    // ✅ Configuration
+    updateInterval: 50,
+    motionThreshold: 30,
+    maxNotes: 24,
+    gridType: 'hex-tonnetz',
+    synthesisEngine: 'sine-wave',
+    language: 'en-US',
+    
+    // ✅ Loaded resources (arrays/objects only)
+    availableGrids: [],  // Populated at init via engine.setState()
+    
+    // ✅ UI state
+    isProcessing: false,
+    settingsMode: false,
+    
+    // ✅ Performance metrics
+    fps: 0,
+    cpuUsage: 0,
+    
+    // ✅ Video capture state
+    videoCapture: {
+      usingCanvas: false,           // Set when Canvas path active
+      detectedAt: null,             // Timestamp of path detection
+      capabilities: {
+        hasMediaStreamTrackProcessor: false, // GPU capability
+        hasOffscreenCanvas: true,            // Canvas capability
+      }
+    },
+    
+    // ❌ DO NOT ADD:
+    // audioContext: null,  // ❌ Live object
+    // playFunction: null,  // ❌ Function
+    // videoElement: null,  // ❌ DOM element
+  };
+}
 ```
+
+**Why Factory Pattern?**
+The factory function prevents the **state bypass anti-pattern**. Instead of exporting a live state object that any module could import and mutate directly, we provide a factory. This ensures:
+- ✅ Engine controls state initialization timing
+- ✅ No modules can bypass the Engine by importing state directly
+- ✅ Each call to `createInitialState()` returns a fresh object (useful in tests)
+- ✅ All state mutations must go through `engine.setState()` or dispatch commands
 
 ### Video Capture State Tracking (Nov 6: Alpha Phase)
 
@@ -171,13 +180,41 @@ if (state?.videoCapture?.usingCanvas) {
 
 The engine's state is initialized IN ORDER during `main.js`:
 
-1. **Load settings** from `core/state.js`
+1. **Create engine** - Engine calls `createInitialState()` factory
 2. **Merge orchestration** - MUST preserve object identity (never spread)
-3. **Load async resources** - grids, capabilities, etc.
+3. **Load async resources** - grids, capabilities, etc. via `engine.setState()`
 4. **Register handlers** - so commands can dispatch properly
 5. **Setup listeners** - UI modules subscribe to state
 
-**Critical:** Each step assumes the previous state object is still valid. Never create new state objects.
+**Critical:** The engine owns the entire state lifecycle. All state mutations go through `engine.setState()` or command dispatch.
+
+### Factory Pattern for State Creation (Nov 18: Fixed)
+
+Engine now uses the factory pattern to prevent state bypass:
+
+```javascript
+// core/engine.js
+import { createInitialState } from './state.js';
+
+export function createEngine() {
+  let state = createInitialState();  // ✅ Fresh state from factory
+  
+  // Initialize orchestration state on engine creation
+  state = mergeOrchestrationState(state);
+  
+  // ... rest of engine initialization
+}
+
+// Any module that needs state:
+const state = engine.getState();  // ✅ Get current state
+engine.setState({ someValue: 123 });  // ✅ Mutate only through engine
+```
+
+**Why This Matters:**
+- ✅ No modules can bypass the engine by importing state directly
+- ✅ All state mutations go through the command system
+- ✅ Testing is isolated (each test gets fresh state from factory)
+- ✅ Single Source of Truth enforced architecturally
 
 ### Object Identity (CRITICAL)
 
@@ -185,18 +222,19 @@ The engine's state must be the SAME JavaScript object throughout its lifetime:
 
 ```javascript
 // BROKEN (what we had):
-settings = { availableGrids: null }  ← main.js holds this
-
-engine._state = { ...settings }      ← engine has DIFFERENT object
+export let settings = { ... }       ← live object, any module could import
+engine._state = { ...settings }     ← engine creates different object
 
 // FIXED (what we have now):
-settings = { availableGrids: null }  ← all hold SAME reference
-engine._state = settings             ← same object
+export function createInitialState() {
+  return { ... }                    ← factory, only engine calls it
+}
+engine._state = createInitialState()  ← single object, engine owns it
 ```
 
 **Real Bug:** Grid Type dropdown was empty because `mergeOrchestrationState()` used spread operator, creating a new object. When `main.js` set `settings.availableGrids`, the engine didn't see it.
 
-**Rule:** Always mutate the existing state object. Never use spread operator on state.
+**Rule:** Always mutate the existing state object. Never create a new one (via spread or factory call).
 
 ```javascript
 // ❌ WRONG:
