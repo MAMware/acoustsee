@@ -7,14 +7,28 @@ import { trackFeatureUse } from '../core/ingest.js';
 export class AudioManager {
   constructor(opts = {}) {
     this.opts = opts;
-    this.AudioCtxClass = (window.AudioContext || window.webkitAudioContext);
-    this._ctx = null;
-    this.state = 'idle'; // idle | created | unlocked | running | suspended | closed
+    const AudioCtxClass = (window.AudioContext || window.webkitAudioContext);
+    
+    // PRODUCTION GRADE: Audio is required. Create AudioContext immediately.
+    // The app's sole purpose is video-to-audio conversion. No lazy initialization.
+    if (!AudioCtxClass) {
+      throw new Error('Web Audio API not supported. This application requires audio.');
+    }
+    
+    // Create AudioContext NOW. It starts in 'suspended' state (browser security).
+    // Power-on gesture will resume it.
+    this._ctx = new AudioCtxClass();
+    this.state = 'created'; // created | unlocked | running | suspended | closed
     this._unlocked = false;
     this._listeners = new Map();
     this._resumeRetries = 0;
     this._maxRetries = opts.maxRetries || 5;
     this._retryDelayBase = opts.retryDelayBase || 200; // ms
+
+    structuredLog('INFO', 'AudioManager: AudioContext created', { 
+      state: this._ctx.state,
+      sampleRate: this._ctx.sampleRate 
+    });
 
     this._bindVisibility();
   }
@@ -27,52 +41,43 @@ export class AudioManager {
   // Public getter for external code
   get context() { return this._ctx; }
 
-  // Lazily create AudioContext when needed
-  _createContextIfNeeded() {
-    if (!this._ctx) {
-      if (!this.AudioCtxClass) {
-        throw new Error('Web Audio API not supported');
-      }
-      this._ctx = new this.AudioCtxClass();
-      this.state = 'created';
-    }
-    return this._ctx;
-  }
-
   // Public: call from a user gesture. Returns true if unlocked.
+  // This RESUMES the AudioContext (which was already created in constructor).
   async unlockAudio(userEvent = null) {
     if (this._unlocked) return true;
+    
     try {
-  structuredLog('INFO', 'AudioManager: unlockAudio called', { hasEvent: !!userEvent });
-      // Disallow non-user or incidental calls: only proceed when the event is
-      // trusted (browser-reported user gesture) or when the transient power
-      // gesture flag was set by the Power button handler.
+      structuredLog('INFO', 'AudioManager: unlockAudio called', { 
+        hasEvent: !!userEvent,
+        currentState: this._ctx.state 
+      });
+      
+      // Verify we have a real user gesture
       const powerFlag = !!(typeof window !== 'undefined' && window.__acoustseePowerGesture);
       if (userEvent && typeof userEvent.isTrusted === 'boolean' && !userEvent.isTrusted && !powerFlag) {
         structuredLog('WARN', 'AudioManager: unlockAudio rejected - event not trusted and no power flag');
         return false;
       }
-      const ctx = this._createContextIfNeeded();
 
-      if (ctx.state === 'suspended') {
-        // Some browsers only allow resume inside a user gesture.
-        await ctx.resume();
+      // Resume the AudioContext (browser requires user gesture)
+      if (this._ctx.state === 'suspended') {
+        await this._ctx.resume();
       }
 
-      // Do a minimal silent buffer hit to maximize unlock coverage.
-      this._trySilentHit(ctx);
+      // Do a minimal silent buffer hit to maximize unlock coverage
+      this._trySilentHit(this._ctx);
 
-      if (ctx.state === 'running') {
+      if (this._ctx.state === 'running') {
         this._unlocked = true;
         this.state = 'unlocked';
         try { sessionStorage.setItem('audio-unlocked', '1'); } catch(e){}
         structuredLog('INFO', 'AudioManager: AudioContext running after unlock');
-  try { trackFeatureUse('audio-unlock', { success: true, ua: navigator.userAgent }); } catch(e){}
+        try { trackFeatureUse('audio-unlock', { success: true, ua: navigator.userAgent }); } catch(e){}
         this._emit('unlocked');
         return true;
       }
 
-      // If still suspended, try a controlled retry strategy.
+      // If still suspended, try a controlled retry strategy
       return await this._retryResume();
     } catch (err) {
       console.warn('AudioManager: unlock failed', err && err.message);
@@ -125,7 +130,7 @@ export class AudioManager {
   // Initialize audio graph / nodes after context exists. Keep this lightweight.
   // Consumers should pass a builder function to create nodes and return a teardown.
   async initialize(builderFn = null) {
-    this._createContextIfNeeded();
+    // AudioContext already exists (created in constructor)
     if (typeof builderFn === 'function') {
       try {
         // allow builder to create nodes synchronously

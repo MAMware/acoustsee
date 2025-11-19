@@ -379,81 +379,91 @@ export async function init() {
     // The EventBus now handles all high-frequency events safely with capping and sampling.
 
     // --- Audio manager and gated startup (user gesture required) ---
+  // PRODUCTION GRADE: Create AudioManager NOW. AudioContext is created immediately.
+  // The context starts in 'suspended' state. Power-on button will resume it.
   const audioManager = new AudioManager();
   DOM.audioManager = audioManager;
+  
+  // Verify AudioContext was created successfully
+  if (!audioManager.context) {
+    throw new Error('CRITICAL: AudioContext not created. This application requires Web Audio API.');
+  }
+  
+  structuredLog('INFO', 'AudioContext created at startup', { 
+    state: audioManager.context.state,
+    sampleRate: audioManager.context.sampleRate
+  });
+  
+  // Assign audioApi to engine immediately (context exists, just suspended)
+  engine.audioApi = audioManager;
+  structuredLog('INFO', 'Audio API assigned to engine', { 
+    audioContextState: audioManager.context.state 
+  });
+  
   try { 
     bindAudioProcessor(audioManager);
-    // CRITICAL: Assign audioApi to engine so audio commands can access it
-    engine.audioApi = audioManager.context ? audioManager : null;
-    if (engine.audioApi) {
-      structuredLog('INFO', 'Audio API assigned to engine', { audioContextState: audioManager.context?.state });
-    } else {
-      structuredLog('WARN', 'Audio API assignment skipped: audioManager missing context', {});
-    }
+    structuredLog('INFO', 'Audio processor bound to manager', {});
   } catch (e) { 
     console.warn('bindAudioProcessor failed', e);
-    structuredLog('WARN', 'Failed to initialize audio processor', { error: e?.message || String(e) });
+    structuredLog('ERROR', 'Failed to bind audio processor', { error: e?.message || String(e) });
+    throw e; // Fatal - audio is required
   }
 
     if (DOM.powerOn) {
       // Helper: unlock audio and initialize audio subsystems inside user gesture
-  async function handleAudioUnlock() {
+  async function handleAudioUnlock(userEvent) {
     const currentState = engine.getState();
 
-    // REMOVED: Language guard was blocking audio initialization unnecessarily.
-    // Language is v0.2 (lowest priority) and should not prevent core functionality.
-    // If text is unavailable, we'll use fallback messages or announce nothing.
-    // The audio system is what matters for accessibility.
-
+    // Announce initialization (language is optional, fallback available)
     try {
       const initLabel = await getText('powerOn.initializing', {}, currentState);
-      // Only announce if we got a real translation (not the key fallback)
       if (initLabel && initLabel !== 'powerOn.initializing') {
         announceMessage(initLabel);
         if (currentState.ttsEnabled) speakText(currentState, initLabel, 'tts');
       } else {
-        // Fallback message (no translation available)
         announceMessage('Initializing audio...');
         if (currentState.ttsEnabled) speakText(currentState, 'Initializing audio...', 'tts');
       }
     } catch (textErr) {
-      // getText should not throw, but keep defensive catch
-      // If text fails, we proceed anyway - audio is what matters
-      structuredLog('DEBUG', 'handleAudioUnlock: getText unavailable, proceeding with audio init', { error: textErr?.message || String(textErr) });
+      structuredLog('DEBUG', 'handleAudioUnlock: getText unavailable, using fallback', { error: textErr?.message || String(textErr) });
       announceMessage('Initializing audio...');
       if (currentState.ttsEnabled) speakText(currentState, 'Initializing audio...', 'tts');
     }
 
-    // CRITICAL: Resume AudioContext (browser requirement for user gesture)
-    try {
-      await AudioContext.resume();
-      structuredLog('INFO', 'handleAudioUnlock: AudioContext resumed successfully');
-    } catch (e) {
-      structuredLog('ERROR', 'handleAudioUnlock: AudioContext.resume failed', { error: e?.message || String(e) });
-      throw new Error('Failed to resume AudioContext: ' + (e?.message || String(e)));
+    // STEP 1: Resume AudioContext (browser requires user gesture)
+    // AudioContext already exists (created at app startup), just needs to be resumed
+    const unlocked = await audioManager.unlockAudio(userEvent);
+    if (!unlocked) {
+      throw new Error('Failed to unlock audio. Browser blocked the AudioContext resume.');
     }
+    structuredLog('INFO', 'handleAudioUnlock: AudioContext resumed successfully', { 
+      state: audioManager.context.state 
+    });
 
-    // CRITICAL: Initialize the audio synthesis system
-    // Uses configured maxNotes from state, or falls back to 32
-    // The oscillator pool and gain nodes MUST be created inside user gesture (browser security),
-    // and MUST happen before any audioPlayCues commands can execute.
-    // This is non-negotiable: the power-on gesture IS the audio unlock ceremony.
+    // STEP 2: Initialize the audio synthesis system
+    // Create oscillator pool, gain nodes, audio graph
+    // MUST happen inside user gesture (browser security requirement)
     try {
       await initializeAudio({ audioManager, maxNotes: currentState.maxNotes || 32 });
-      structuredLog('INFO', 'handleAudioUnlock: Audio synthesis system initialized successfully', 
+      structuredLog('INFO', 'handleAudioUnlock: Audio synthesis system initialized', 
         { maxNotes: currentState.maxNotes || 32 }
       );
     } catch (e) {
-      structuredLog('ERROR', 'handleAudioUnlock: Audio initialization failed', { error: e?.message || String(e) });
-      throw new Error('Failed to initialize audio system: ' + (e?.message || String(e)));
+      structuredLog('ERROR', 'handleAudioUnlock: Audio synthesis initialization failed', { 
+        error: e?.message || String(e) 
+      });
+      throw new Error('Failed to initialize audio synthesis: ' + (e?.message || String(e)));
     }
 
-    // Verify audioApi is now available
-    if (!engine.audioApi) {
-      throw new Error('Audio API not available after initialization. This is a critical system failure.');
+    // STEP 3: Verify audio system is fully operational
+    if (!engine.audioApi || !audioManager.context || audioManager.context.state !== 'running') {
+      throw new Error(`Audio system not operational: audioApi=${!!engine.audioApi}, context=${!!audioManager.context}, state=${audioManager.context?.state}`);
     }
 
-    structuredLog('INFO', 'handleAudioUnlock: COMPLETE - Audio system fully initialized and ready', {});
+    structuredLog('INFO', 'handleAudioUnlock: COMPLETE - Audio system ready', {
+      contextState: audioManager.context.state,
+      sampleRate: audioManager.context.sampleRate
+    });
   }      // Helper: show main UI and optional debug panel R17925 why optional debug panel? dont we have a ?debug=true param to show it?
       async function transitionToMainUI(traceId) {
         if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
