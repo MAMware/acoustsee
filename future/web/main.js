@@ -278,13 +278,21 @@ export async function init() {
       
       try {
         const msg = await getText('initMissingConfigs', { missing: missing.join(', ') }, configState);
-        announceMessage(msg);
-        if (configState.ttsEnabled) speakText(configState, msg, 'tts');
+        if (msg && msg !== 'initMissingConfigs') { // Only announce if we got a real translation
+          announceMessage(msg);
+          if (configState.ttsEnabled) speakText(configState, msg, 'tts');
+        } else {
+          // Fallback when translation unavailable
+          const fallbackMsg = `Initialization incomplete: ${missing.join(', ')}`;
+          announceMessage(fallbackMsg);
+          if (configState.ttsEnabled) speakText(configState, fallbackMsg, 'tts');
+        }
       } catch (textErr) {
+        // getText should not throw anymore, but keep catch for defensive programming
         structuredLog('ERROR', 'Failed to get initialization warning text', { error: textErr?.message, missing });
-        // Only proceed with TTS if we have a message
+        const fallbackMsg = `Initialization incomplete: ${missing.join(', ')}`;
         if (configState.ttsEnabled) {
-          speakText(configState, `Initialization incomplete: ${missing.join(', ')}`, 'tts');
+          speakText(configState, fallbackMsg, 'tts');
         }
       }
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
@@ -373,35 +381,79 @@ export async function init() {
     // --- Audio manager and gated startup (user gesture required) ---
   const audioManager = new AudioManager();
   DOM.audioManager = audioManager;
-  try { bindAudioProcessor(audioManager); } catch (e) { console.warn('bindAudioProcessor failed', e); }
+  try { 
+    bindAudioProcessor(audioManager);
+    // CRITICAL: Assign audioApi to engine so audio commands can access it
+    engine.audioApi = audioManager.context ? audioManager : null;
+    if (engine.audioApi) {
+      structuredLog('INFO', 'Audio API assigned to engine', { audioContextState: audioManager.context?.state });
+    } else {
+      structuredLog('WARN', 'Audio API assignment skipped: audioManager missing context', {});
+    }
+  } catch (e) { 
+    console.warn('bindAudioProcessor failed', e);
+    structuredLog('WARN', 'Failed to initialize audio processor', { error: e?.message || String(e) });
+  }
 
     if (DOM.powerOn) {
       // Helper: unlock audio and initialize audio subsystems inside user gesture
   async function handleAudioUnlock() {
     const currentState = engine.getState();
 
-    // Guard: Language must be initialized before getText
-    if (!currentState.language) {
-      structuredLog('WARN', 'handleAudioUnlock: Language not yet initialized, deferring audio unlock');
-      return;
-    }
+    // REMOVED: Language guard was blocking audio initialization unnecessarily.
+    // Language is v0.2 (lowest priority) and should not prevent core functionality.
+    // If text is unavailable, we'll use fallback messages or announce nothing.
+    // The audio system is what matters for accessibility.
 
     try {
       const initLabel = await getText('powerOn.initializing', {}, currentState);
-      announceMessage(initLabel);
-      if (currentState.ttsEnabled) speakText(currentState, initLabel, 'tts');
+      // Only announce if we got a real translation (not the key fallback)
+      if (initLabel && initLabel !== 'powerOn.initializing') {
+        announceMessage(initLabel);
+        if (currentState.ttsEnabled) speakText(currentState, initLabel, 'tts');
+      } else {
+        // Fallback message (no translation available)
+        announceMessage('Initializing audio...');
+        if (currentState.ttsEnabled) speakText(currentState, 'Initializing audio...', 'tts');
+      }
     } catch (textErr) {
-      structuredLog('ERROR', 'handleAudioUnlock: getText failed', { error: textErr?.message || String(textErr) });
-      announceMessage('Initializing...');
-      if (currentState.ttsEnabled) speakText(currentState, 'Initializing...', 'tts');
+      // getText should not throw, but keep defensive catch
+      // If text fails, we proceed anyway - audio is what matters
+      structuredLog('DEBUG', 'handleAudioUnlock: getText unavailable, proceeding with audio init', { error: textErr?.message || String(textErr) });
+      announceMessage('Initializing audio...');
+      if (currentState.ttsEnabled) speakText(currentState, 'Initializing audio...', 'tts');
     }
 
+    // CRITICAL: Resume AudioContext (browser requirement for user gesture)
     try {
       await AudioContext.resume();
-      structuredLog('INFO', 'handleAudioUnlock: AudioContext resumed');
+      structuredLog('INFO', 'handleAudioUnlock: AudioContext resumed successfully');
     } catch (e) {
       structuredLog('ERROR', 'handleAudioUnlock: AudioContext.resume failed', { error: e?.message || String(e) });
+      throw new Error('Failed to resume AudioContext: ' + (e?.message || String(e)));
     }
+
+    // CRITICAL: Initialize the audio synthesis system
+    // Uses configured maxNotes from state, or falls back to 32
+    // The oscillator pool and gain nodes MUST be created inside user gesture (browser security),
+    // and MUST happen before any audioPlayCues commands can execute.
+    // This is non-negotiable: the power-on gesture IS the audio unlock ceremony.
+    try {
+      await initializeAudio({ audioManager, maxNotes: currentState.maxNotes || 32 });
+      structuredLog('INFO', 'handleAudioUnlock: Audio synthesis system initialized successfully', 
+        { maxNotes: currentState.maxNotes || 32 }
+      );
+    } catch (e) {
+      structuredLog('ERROR', 'handleAudioUnlock: Audio initialization failed', { error: e?.message || String(e) });
+      throw new Error('Failed to initialize audio system: ' + (e?.message || String(e)));
+    }
+
+    // Verify audioApi is now available
+    if (!engine.audioApi) {
+      throw new Error('Audio API not available after initialization. This is a critical system failure.');
+    }
+
+    structuredLog('INFO', 'handleAudioUnlock: COMPLETE - Audio system fully initialized and ready', {});
   }      // Helper: show main UI and optional debug panel R17925 why optional debug panel? dont we have a ?debug=true param to show it?
       async function transitionToMainUI(traceId) {
         if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';

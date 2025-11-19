@@ -55,6 +55,14 @@ export function registerMediaCommands(engine) {
   registerCommandHandler('startProcessing', wrapAsyncHandler('startProcessing', async ({ state: s, payload }) => {
       structuredLog('DEBUG', 'COMMAND: startProcessing handler called', { isProcessing: s.isProcessing, payload });
 
+      // CRITICAL: Audio system must be initialized before processing video
+      // The entire application purpose is visual-to-audio conversion
+      if (!engine.audioApi) {
+        const err = new Error('Audio system not initialized. Power-on gesture must complete audio initialization before starting video processing.');
+        structuredLog('ERROR', 'COMMAND: startProcessing BLOCKED - Audio system not ready', { error: err.message });
+        throw err;
+      }
+
       if (s.isProcessing) {
         structuredLog('WARN', 'COMMAND: startProcessing aborted - already processing');
         return; // Prevent re-entry

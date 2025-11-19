@@ -154,7 +154,9 @@ export async function getText(key, params = {}, state) {
     return finalMessage;
   } catch (err) {
     structuredLog('ERROR', 'getText error', { message: err.message, key, params });
-    throw err; // Rethrow for callers to handle (e.g., fallback or announce)
+    // Graceful fallback: Return the key instead of throwing
+    // This allows the UI to continue functioning with untranslated strings
+    return key;
   }
 }
 
