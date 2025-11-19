@@ -247,7 +247,7 @@ export async function init() {
     }
 
     // STEP 2: Now that all configs are loaded, log and check them.
-    const configState = engine.getState();
+    let configState = engine.getState();
     structuredLog('INFO', 'init: Configurations loaded', {
       gridType: configState.gridType,
       synthesisEngine: configState.synthesisEngine,
@@ -263,15 +263,27 @@ export async function init() {
       structuredLog('WARN', 'setLanguage/translatePage failed', { error: e?.message || String(e) });
     }
 
+    // Get FRESH state after async operations to ensure all mutations are visible
+    configState = engine.getState();
+
     // This check will now run AFTER grids are loaded, so the warning should disappear.
     if (!configState.gridType || !configState.synthesisEngine || !configState.language) {
       const missing = [];
       if (!configState.gridType) missing.push('grids');
       if (!configState.synthesisEngine) missing.push('engines');
       if (!configState.language) missing.push('languages');
-      const msg = await getText('initMissingConfigs', { missing: missing.join(', ') }, configState);
-      announceMessage(msg);
-  if (configState.ttsEnabled) speakText(configState, msg, 'tts');
+      
+      try {
+        const msg = await getText('initMissingConfigs', { missing: missing.join(', ') }, configState);
+        announceMessage(msg);
+        if (configState.ttsEnabled) speakText(configState, msg, 'tts');
+      } catch (textErr) {
+        structuredLog('ERROR', 'Failed to get initialization warning text', { error: textErr?.message, missing });
+        // Only proceed with TTS if we have a message
+        if (configState.ttsEnabled) {
+          speakText(configState, `Initialization incomplete: ${missing.join(', ')}`, 'tts');
+        }
+      }
       structuredLog('WARN', 'Partial configs; proceeding with limitations', { missing });
     }
 
@@ -362,53 +374,32 @@ export async function init() {
 
     if (DOM.powerOn) {
       // Helper: unlock audio and initialize audio subsystems inside user gesture
-      async function handleAudioUnlock(event, traceId) {
-        // Show initializing feedback
-        const currentState = engine.getState();
-        const initLabel = await getText('powerOn.initializing', {}, currentState).catch(() => 'Initializing...');
-        if (DOM.powerOn.querySelector('.power-label')) {
-          DOM.powerOn.querySelector('.power-label').textContent = initLabel;
-        } else {
-          DOM.powerOn.textContent = initLabel;
-        }
+  async function handleAudioUnlock() {
+    const currentState = engine.getState();
 
-        try { window.__acoustseePowerGesture = true; } catch (e) {}
-        const unlocked = await audioManager.unlockAudio(event);
-        if (!unlocked) throw new Error('AudioContext could not be unlocked.');
+    // Guard: Language must be initialized before getText
+    if (!currentState.language) {
+      structuredLog('WARN', 'handleAudioUnlock: Language not yet initialized, deferring audio unlock');
+      return;
+    }
 
-        await audioManager.initialize();
-        try {
-          // Initialize audio processor using dependency injection via a config object.
-          const audioState = engine.getState();
-          const audioApi = await initializeAudio({ audioManager, maxNotes: audioState.maxNotes });
-          // Attach the initialized audio API onto the engine for consumers.
-          engine.audioApi = audioApi;
-          // Register audio listeners for object and BPM cues
-          registerAudioListeners(engine);
-          structuredLog('INFO', 'Audio system initialized', {}, true, true, { traceId });
-        } catch (initErr) {
-          // Handle critical audio system failures appropriately
-          if (initErr instanceof AccessibilityError) {
-            showCriticalError(
-              'Audio System Failed',
-              initErr.message,
-              { 
-                error: initErr.message,
-                code: initErr.code,
-                context: initErr.context,
-                troubleshooting: 'Audio is required for visual-to-audio conversion',
-                traceId
-              }
-            );
-            throw initErr; // Re-throw to prevent incomplete initialization
-          } else {
-            structuredLog('ERROR', 'initializeAudio failed', { error: initErr?.message || String(initErr), traceId });
-            throw initErr;
-          }
-        }
-      }
+    try {
+      const initLabel = await getText('powerOn.initializing', {}, currentState);
+      announceMessage(initLabel);
+      if (currentState.ttsEnabled) speakText(currentState, initLabel, 'tts');
+    } catch (textErr) {
+      structuredLog('ERROR', 'handleAudioUnlock: getText failed', { error: textErr?.message || String(textErr) });
+      announceMessage('Initializing...');
+      if (currentState.ttsEnabled) speakText(currentState, 'Initializing...', 'tts');
+    }
 
-      // Helper: show main UI and optional debug panel R17925 why optional debug panel? dont we have a ?debug=true param to show it?
+    try {
+      await AudioContext.resume();
+      structuredLog('INFO', 'handleAudioUnlock: AudioContext resumed');
+    } catch (e) {
+      structuredLog('ERROR', 'handleAudioUnlock: AudioContext.resume failed', { error: e?.message || String(e) });
+    }
+  }      // Helper: show main UI and optional debug panel R17925 why optional debug panel? dont we have a ?debug=true param to show it?
       async function transitionToMainUI(traceId) {
         if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
         if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';

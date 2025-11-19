@@ -84,6 +84,7 @@ function capHighFreqPayload(commandName, payload) {
 // --- Module State ---
 let _config = {};
 let frameProviderWorker = null;
+let previousDepthPath = null;  // Track depth path for change detection
 
 // FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
 let frameConductor = null;

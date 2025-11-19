@@ -92,6 +92,9 @@ export class AnalyticsBatcher {
     this.isFlushInProgress = false;
     this.failedBatches = 0;
     this.successfulBatches = 0;
+    this.consecutiveFailures = 0;
+    this.maxConsecutiveFailures = 5; // Disable batcher after 5 consecutive failures
+    this.endpointHealthy = true;
     
     // Start the periodic flush timer
     this.flushTimer = setInterval(() => {
@@ -148,6 +151,15 @@ export class AnalyticsBatcher {
       return;
     }
 
+    // If endpoint has failed too many times, disable analytics to prevent blocking
+    if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+      if (this.debugLogging) {
+        console.warn(`[AnalyticsBatcher] Endpoint unreachable after ${this.maxConsecutiveFailures} attempts, disabling`);
+      }
+      this.endpointHealthy = false;
+      return;
+    }
+
     if (this.buffer.length === 0) {
       return;
     }
@@ -159,7 +171,7 @@ export class AnalyticsBatcher {
       const batch = this.buffer.slice(0, this.buffer.length);
       
       if (this.debugLogging) {
-        console.debug(`[AnalyticsBatcher] Flushing ${batch.length} events`);
+        console.debug(`[AnalyticsBatcher] Flushing ${batch.length} events to ${this.endpoint}`);
       }
 
       const payload = {
@@ -174,33 +186,72 @@ export class AnalyticsBatcher {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         keepalive: true,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(5000) // 5-second timeout
       });
 
       if (response.ok) {
         // Only remove from buffer on success
         this.buffer.splice(0, batch.length);
         this.successfulBatches++;
-        this.failedBatches = 0; // Reset failure counter on success
+        this.failedBatches = 0;
+        this.consecutiveFailures = 0; // Reset consecutive failures on success
+        this.endpointHealthy = true;
 
         if (this.debugLogging) {
-          console.debug(`[AnalyticsBatcher] Flush successful, ${this.buffer.length} events remaining`);
+          console.debug(`[AnalyticsBatcher] Flush successful (${response.status}), ${this.buffer.length} events remaining`);
         }
       } else {
         this.failedBatches++;
+        this.consecutiveFailures++;
         if (this.debugLogging) {
           console.warn(`[AnalyticsBatcher] Flush failed (${response.status}), will retry next interval`);
         }
       }
     } catch (err) {
       this.failedBatches++;
+      this.consecutiveFailures++;
+      
+      // Provide specific error context for debugging
+      const errorMsg = err?.message || String(err);
+      const errorType = err?.name || 'UnknownError';
+      
       if (this.debugLogging) {
-        console.error(`[AnalyticsBatcher] Flush error:`, err?.message || String(err));
+        console.error(
+          `[AnalyticsBatcher] Flush error (${this.consecutiveFailures}/${this.maxConsecutiveFailures}): ${errorType}: ${errorMsg}`
+        );
       }
-      // Don't log repeatedly - errors in batcher could cause infinite recursion
+      
+      // Check if endpoint is still reachable with a health check on repeated failures
+      if (this.consecutiveFailures === 2) {
+        this.performHealthCheck();
+      }
     }
 
     this.isFlushInProgress = false;
+  }
+
+  /**
+   * Perform a health check on the endpoint to determine if it's reachable
+   * 
+   * @private
+   */
+  async performHealthCheck() {
+    try {
+      const response = await fetch(this.endpoint, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000)
+      });
+      this.endpointHealthy = response.ok;
+      if (this.debugLogging) {
+        console.debug(`[AnalyticsBatcher] Health check: endpoint ${this.endpointHealthy ? 'healthy' : 'unhealthy'}`);
+      }
+    } catch (err) {
+      this.endpointHealthy = false;
+      if (this.debugLogging) {
+        console.error(`[AnalyticsBatcher] Health check failed: ${err?.message || String(err)}`);
+      }
+    }
   }
 
   /**
