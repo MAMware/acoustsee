@@ -188,8 +188,11 @@ if (location.protocol === 'file:') {
     console.log(`  Version:   ${constants.BUILD_VERSION || 'unknown'}`);
   }).catch(() => console.warn('Build info unavailable'));
 
-  // Import app entry and call exported init() so boot can catch startup errors.
-  import('./main.js').then(async (mod) => {
+  // Import app entry with cache-busting based on build info so browsers don't serve stale main.js
+  import('./core/constants.js').then(constants => {
+    const v = encodeURIComponent(constants.BUILD_TIMESTAMP || constants.BUILD_COMMIT || Date.now().toString());
+    return import(`./main.js?v=${v}`);
+  }).then(async (mod) => {
     try {
       if (mod && typeof mod.init === 'function') {
         await mod.init();
