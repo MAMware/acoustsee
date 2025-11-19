@@ -1,3 +1,9 @@
+## getText Behavior & Language Subsystem
+
+`getText` now returns the key as a fallback instead of throwing on translation fetch errors. The language subsystem is v0.2 priority and does not block audio initialization. If translations are unavailable, the UI continues with untranslated keys.
+
+**Base Path:**
+Language files are loaded relative to the global base path (`window.__ACOUSTSEE_BASE_PATH__`).
 # Utils Subsystem
 
 This directory contains cross-cutting utilities that are used by multiple subsystems. These are **stateless helper functions and lightweight services** - not business logic.

@@ -1,3 +1,18 @@
+## Audio Pipeline Dependency
+
+**Video processing is blocked until the audio system is ready.** FrameConductor and grid mapping will not dispatch cues until `engine.audioApi` is available and exposes `playCues`. This ensures accessibility and prevents silent failures.
+
+**Unlock Ceremony:**
+- At startup, `AudioManager` creates the `AudioContext` (suspended).
+- Power-on resumes context and runs `initializeAudio()`.
+- Only after synthesis init is `engine.audioApi` assigned and video-to-audio mapping enabled.
+## Worker Chain Filtering (Debug Only)
+
+Dev panel exposes worker chain filtering for diagnostics. Example:
+```js
+chain = manifest.filter(w => debugConfig[w.name] !== false);
+```
+This is for debug use only, not production fallback.
 # Motion-to-Sound Pipeline Documentation
 
 **Purpose:** Complete reference for how visual motion becomes audio in AcoustSee

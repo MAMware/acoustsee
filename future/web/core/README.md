@@ -17,11 +17,11 @@ The application is built around a single, headless **Engine** (`engine.js`). Thi
     *   **Pattern:** This implements a standard **Redux-like, unidirectional data flow.**
 
 2.  **`state.js` (State Factory):**
-    *   **Responsibilities:**
-        *   Exports `createInitialState()` factory function that returns a fresh state object
-        *   Defines the shape and defaults of the entire application state
-        *   This state object must be **fully JSON serializable**. It contains settings, flags, and data, but **no functions, class instances, or live browser objects** (like `MediaStream`). This "state hygiene" is critical for stability and debugging.
-    *   **Pattern:** Uses the **Factory Pattern** to prevent state bypass. The factory ensures each state instance is created fresh and controlled by the Engine, not imported as a live object.
+  *   **Responsibilities:**
+    *   Exports `createInitialState()` factory function that returns a fresh state object
+    *   Defines the shape and defaults of the entire application state
+    *   This state object must be **fully JSON serializable**. It contains settings, flags, and data, but **no functions, class instances, or live browser objects** (like `MediaStream`). This "state hygiene" is critical for stability and debugging.
+  *   **Pattern:** Uses the **Factory Pattern** to prevent state bypass. The factory ensures each state instance is created fresh and controlled by the Engine, not imported as a live object. **Direct import/export of a live state object is forbidden.**
 
 3.  **`commands/` (The Command Handlers):**
     *   **Responsibilities:**
@@ -35,18 +35,16 @@ The application is built around a single, headless **Engine** (`engine.js`). Thi
         *   Provides a simple mechanism for **Dependency Injection** (DI). For example, it holds a reference to the global `DOM` object.
     *   **Legacy Note:** This file contains older patterns like `getDispatchEvent()`. New code should **not** use these. Instead, the `engine` instance should be passed directly to any function that needs it during initialization.
 
-## The Unidirectional Data Flow
+## State Ownership & Mutation Flow
 
-Understanding this flow is the key to understanding the entire application.
+The Engine is the single source of truth. All state is created via `createInitialState()` and mutated only through `engine.setState()` or command dispatch. No module may import or mutate state directly.
+
+### State Flow Diagram
 
 1.  **Action:** The **UI** (or another subsystem) calls `engine.dispatch('someCommand', { payload })`. This is the *only* way to initiate a change in the application.
-
 2.  **Command Handling:** The **Engine** finds the registered `command handler` for `'someCommand'` and executes it.
-
 3.  **State Mutation:** The **Command Handler** contains the logic to perform the action. If necessary, it calls `engine.setState({ ... })` to update the application state. This is the *only* place where the state is ever modified.
-
 4.  **Notification:** After the state is updated, the **Engine** notifies all registered listeners (via `onStateChange`) that a new state is available.
-
 5.  **Reaction:** The **UI** and other subsystems receive the new state and re-render or react to the changes accordingly.
 
 This clean, predictable cycle makes the application easy to debug, reason about, and extend.
@@ -112,10 +110,14 @@ export function createInitialState() {
 
 **Why Factory Pattern?**
 The factory function prevents the **state bypass anti-pattern**. Instead of exporting a live state object that any module could import and mutate directly, we provide a factory. This ensures:
-- ✅ Engine controls state initialization timing
-- ✅ No modules can bypass the Engine by importing state directly
-- ✅ Each call to `createInitialState()` returns a fresh object (useful in tests)
-- ✅ All state mutations must go through `engine.setState()` or dispatch commands
+- 	Engine controls state initialization timing
+- 	No modules can bypass the Engine by importing state directly
+- 	Each call to `createInitialState()` returns a fresh object (useful in tests)
+- 	All state mutations must go through `engine.setState()` or dispatch commands
+
+### Console Logging Policy
+
+**No console hijacking:** Console methods are not monkey-patched. All structured logs must use `structuredLog` directly. This prevents feedback loops and performance issues.
 
 ### Video Capture State Tracking (Nov 6: Alpha Phase)
 

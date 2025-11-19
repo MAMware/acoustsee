@@ -13,11 +13,24 @@ This directory contains all logic related to sound generation and processing. Th
 ## Key Files
 
 -   **`audio-processor.js`:** The central "Conductor" that orchestrates all sound production via its `playCues` function. **This is the ONLY file that should manage the oscillator pool.**
--   **`audio-manager.js`:** Manages the lifecycle of the Web Audio API `AudioContext`, including critical user-gesture unlocking.
+-   **`audio-manager.js`:** Manages the lifecycle of the Web Audio API `AudioContext`. **AudioContext is created immediately in the constructor (eager initialization, fail-fast).** Unlocking (power-on) resumes the context and triggers synthesis initialization.
 -   **`sound-profiles.js`:** A manifest mapping a semantic `objectType` (from a video `cue`) to a specific synthesizer and its base parameters.
 -   **`synths/`:** A directory of pluggable synthesizer modules, each an independent "instrument."
 
 ---
+
+## Audio Initialization & Unlock Ceremony
+
+**Lifecycle:**
+- At app startup, `AudioManager` creates the `AudioContext` immediately (no lazy `_createContextIfNeeded`).
+- The context starts in `suspended` state (browser security).
+- On power-on, the user gesture resumes the context and runs `initializeAudio()`.
+- `engine.audioApi` is assigned only after synthesis is initialized, exposing `playCues`, `resizeOscillatorPool`, and `setSelectedSynthEngine`.
+- If audio is not ready, commands fail loudly (no silent fallback or degradation).
+
+**Separation of Concerns:**
+- `audioManager`: manages context lifecycle and unlock.
+- `audioApi`: exposes playback surface (`playCues`, etc.) after synthesis init.
 
 ## The "Conductor" Data Flow (`playCues`)
 
@@ -45,6 +58,9 @@ The `playCues` function in `audio-processor.js` is the **sole entry point** for 
 ### Why This Pattern?
 
 This "Conductor" pattern is highly efficient and allows for complex soundscapes to be generated without overwhelming the audio engine. It also cleanly decouples the "what to play" (from the video pipeline) from the "how to play it" (managed by the audio pipeline).
+## Error Handling Policy
+
+**Audio is required.** If `engine.audioApi` is missing or not ready, commands must fail loudly (ERROR log, no silent fallback). Language subsystem may degrade gracefully (returns key), but must never block audio initialization.
 
 ---
 

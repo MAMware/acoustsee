@@ -11,11 +11,10 @@ import { WorkerContract } from './workers/worker-contract.js';
 import { FrameConductor } from './frame-conductor.js';
 
 // ============================================================================
-// HIGH-FREQUENCY PAYLOAD OPTIMIZATION (Event Bus Performance)
-// ============================================================================
-// Commands like 'audioCuesReady' emit large payloads (motion matrices, specialists).
-// This causes bus overhead. Enable payload capping to reduce event size.
-// Configurable from dev panel (window.__audioSeeDebug.capHighFreqPayloads).
+// FrameConductor is the exclusive orchestrator for motion-to-sound mapping.
+// All legacy ghost code and manual worker start functions have been removed.
+// Video processing is blocked until audio system is ready (engine.audioApi exposes playCues).
+// High-frequency payload optimization is configurable from dev panel (window.__audioSeeDebug.capHighFreqPayloads).
 // See EVENT_BUS_IMPLEMENTATION_AUDIT_ISSUES.md for details.
 
 function shouldCapHighFreqPayloads() {

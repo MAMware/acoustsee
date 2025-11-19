@@ -1,3 +1,34 @@
+# Rule X: Critical Subsystems Must Fail Loudly
+
+**The Problem:**
+Silent fallback or graceful degradation for core subsystems (like audio) undermines the application's accessibility and reliability. If audio is not ready, commands must fail loudly and log an ERROR. Language subsystem may degrade gracefully (returns key), but must never block audio initialization.
+
+**Real Bug from Session:**
+- Audio system was not initialized, but commands attempted to play cues, resulting in silent failures and no sound for users.
+- Language fetch failures previously blocked audio initialization; now, language errors degrade gracefully and never block audio.
+
+**Rule:**
+- Audio is required. If `engine.audioApi` is missing or not ready, commands must log ERROR and fail. No silent fallback or degradation.
+- Language subsystem may degrade gracefully (returns key), but must never block audio initialization.
+
+**Example:**
+```javascript
+// audio-commands.js
+if (!engine.audioApi) {
+  structuredLog('ERROR', 'audioPlayCues FAILED: Audio system not initialized. App requires audio to function.', ...);
+  return { played: false, reason: 'AUDIO_SYSTEM_NOT_READY', critical: true };
+}
+```
+# Rule Y: No Console Hijacking
+
+**The Problem:**
+Monkey-patching console methods to route through structuredLog creates feedback loops and performance issues. All structured logs must use `structuredLog` directly.
+
+**Real Bug from Session:**
+- Console hijack caused infinite loop and 25MB log bomb.
+
+**Rule:**
+- Never override console methods. Use `structuredLog` explicitly for all logging.
 # Architecture Rules - Critical for Avoiding Bugs
 
 **Last Updated:** October 23, 2025  
