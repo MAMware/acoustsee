@@ -134,6 +134,14 @@ To prevent rework and ensure clarity, this project follows a lightweight develop
 - `web/ui/` — pluggable UI modules; each UI lives in its own subdirectory (e.g., `ui/dev-panel/`, `ui/touch-gestures/`).
 - `web/audio/`, `web/video/`, `web/utils/` — well-scoped helpers and workers. UI-specific helpers (for example worker monitors) may be colocated under `web/ui/<name>/`.
 
+## 5.5 Audio Lifecycle & Unlock Ceremony
+
+- `AudioManager` eagerly creates the `AudioContext` at startup. If unsupported, initialization fails fast.
+- The `Power` button (user gesture) resumes the context and calls `initializeAudio()`.
+- `initializeAudio()` returns the `audioApi` surface (`playCues`, `resizeOscillatorPool`, `setSelectedSynthEngine`). Only then is `engine.audioApi` assigned.
+- Video-to-audio mapping is blocked until `engine.audioApi` exists and exposes `playCues`.
+- If audio is not ready, commands must log ERROR and fail (no silent fallback). Language may degrade gracefully and never blocks audio init.
+
 ## 6. Pluggable UI Contract
 Each UI module must:
 - Live under `web/ui/<name>/`.

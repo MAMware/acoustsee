@@ -24,6 +24,10 @@ This document tracks active and future development tasks to provide a clear proj
 ## Completed Tasks
 
 -   **[x] `ARCH-1`:** Consolidate `microphone-controller.js` into `media-controller.js` per ADR-0001. _(Completed 2025-10-13)_
+-   **[x] `ARCH-9`:** State Factory Pattern - Remove direct state imports/exports, enforce `createInitialState()` factory. _(Completed 2025-11-19)_
+-   **[x] `ARCH-10`:** Eager Audio Initialization - AudioContext created at startup, fail-fast if unsupported. _(Completed 2025-11-19)_
+-   **[x] `ARCH-11`:** Strict Audio Gating - Commands fail loudly when audio unavailable, no silent fallback. _(Completed 2025-11-19)_
+-   **[x] `ARCH-12`:** Remove Console Hijacking - No console monkey-patching, use `structuredLog` explicitly. _(Completed 2025-11-19)_
 
 ## Phase 2A: Orchestration Visibility (Week 1-2)
 
@@ -44,6 +48,11 @@ This document tracks active and future development tasks to provide a clear proj
 -   **[ ] `ORCH-2.3`:** Styling & Accessibility Polish - WCAG AA compliance review, keyboard navigation testing, responsive design validation on mobile/tablet. _(Pending)_
 
 -   **[ ] `ORCH-2.4`:** Documentation & Testing - Update ARCHITECTURE.md, add runtime smoke test, document state schema. _(Pending)_
+
+## Follow-Up Tasks
+
+-   **[ ] `DOC-1`:** Finalize Audio Documentation - Sweep codebase for stale references to lazy audio init or direct state imports. _(Priority: Low)_
+-   **[ ] `DOC-2`:** Link ADR-0011 from README - Add reference to State Factory & Audio Initialization ADR in root README. _(Priority: Low)_
 
 ## Future Goals (Backlog)
 ## Phase 2C: Quality Profiles & Dev Panel Controls (HIGH PRIORITY)

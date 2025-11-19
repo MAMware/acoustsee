@@ -4,6 +4,13 @@ An open-source computer vision sound synthetizer framework designed to help blin
 
 The project is built with a focus on accessibility, performance, and extensibility, using vanilla JavaScript and modern browser APIs to run efficiently on a wide range of devices, especially mobile phones.
 
+## Architecture Delta (v0.9.5)
+
+- State Factory pattern adopted: all state created via `createInitialState()`, no direct state imports/exports.
+- Audio lifecycle simplified: `AudioManager` creates `AudioContext` eagerly; power-on resumes + initializes synthesis; `engine.audioApi` assigned after init only.
+- Strict audio requirement: commands fail loudly when audio is unavailable; language subsystem degrades gracefully (returns key).
+- Explicit logging: no console hijacking; use `structuredLog` directly.
+
 ## Core Features
 
 - **Real-Time Motion Sonification:** Translates visual motion into musical, tonal and sound cues.
@@ -15,6 +22,10 @@ The project is built with a focus on accessibility, performance, and extensibili
 - **Extensible:** Easily add new musical grids, sound synths, or languages.
 
 ## Getting Started
+
+- Serve the web app from `future/web/` (any static file server).
+- Open the app and click the `Power` button to unlock audio (browser requirement). This resumes the AudioContext and initializes synthesis.
+- Optional: add `?debug=true` to enable the Dev Panel.
 
 ## How to Use
 
@@ -47,13 +58,12 @@ Example: `http://mamware.github.io/acoustsee/future/web/index.html?debug=true`
 
 The application is built on a decoupled, headless architecture.
 
-- **`main.js`:** The entry point that initializes the system and loads the appropriate UI.
-- **`core/engine.js`:** A "headless" state machine that manages all application logic via a command pattern. It has no knowledge of the DOM.
-- **`video/frame-processor.js`:** The Orchestrator that manages the video pipeline and delegates to Specialist Workers.
-- **`workers/frame-provider-worker.js`:** The entry point for camera data, running its own `requestAnimationFrame` loop.
-- **`workers/motion-worker.js` (and others):** Specialist Workers for analysis tasks like motion detection.
-- **`audio/audio-processor.js`:** Manages the Web Audio API, sound profiles, and synths.
-- **`ui/` directory:** Contains pluggable UI modules (e.g., `touch-gestures/` for accessible UI, `dev-panel/` for debugging).
+- **`main.js`:** The entry point that initializes the system and loads the appropriate UI. It constructs `AudioManager` at startup and assigns `engine.audioApi` only after the power-on unlock + synthesis initialization completes.
+- **`core/engine.js`:** A headless state machine using a command pattern and a factory-created state (`createInitialState()`). The engine is the single source of truth; no direct state imports/exports.
+- **`video/frame-processor.js`:** The orchestrator that manages the video pipeline (FrameConductor + specialists) and emits audio cues only when `engine.audioApi` is ready.
+- **`audio/audio-manager.js`:** Eagerly creates the `AudioContext` at startup (fail-fast). Power-on resumes the context.
+- **`audio/audio-processor.js`:** Synthesis conductor. After initialization it returns the `audioApi` surface (`playCues`, `resizeOscillatorPool`, `setSelectedSynthEngine`).
+- **`ui/` directory:** Pluggable UIs (e.g., `touch-gestures/` for accessible UI, `dev-panel/` for debugging).
 
 ## Educational Resources
 

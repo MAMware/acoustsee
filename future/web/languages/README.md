@@ -30,13 +30,21 @@ languages/
    - Each entry: `{ id: 'en-US', name: 'English (USA)' }`
 
 3. **Core Utilities** - `utils/utils.js` implements:
-   - `getText(key, locale)` - Get translated string
+   - `getText(key, locale)` - Get translated string; returns key as fallback on fetch error
    - `setLanguage(locale)` - Switch active language
    - `translatePage(document)` - Translate DOM elements
+   - **Base Path Resolution:** Language files loaded relative to `window.__ACOUSTSEE_BASE_PATH__`
 
 4. **DOM Translation** - Elements with `data-i18n` attribute
    - `<button data-i18n="ui.buttons.start">Start</button>`
    - Automatically translated by `translatePage()`
+
+### Resilient Fallback Strategy
+
+The language subsystem is on a early development stage, thus it should never block audio initialization. If translation files are unavailable:
+- `getText()` returns the key itself (e.g., `"ui.buttons.start"`) instead of throwing.
+- UI continues with untranslated keys.
+- Audio and core functionality remain unaffected.
 
 ---
 
