@@ -7,13 +7,13 @@ export const AVAILABLE_UIS = [
   {
     id: 'dev-panel',
     label: 'Developer Panel',
-    module: './ui/dev-panel/dev-panel.js',
+    module: './dev-panel/dev-panel.js', // corrected path (was ./ui/dev-panel/...)
     description: 'Advanced diagnostics and development tooling'
   },
   {
     id: 'touch-gestures',
     label: 'Touch / Gestures UI',
-    module: './ui/touch-gestures/touch-gestures-ui.js',
+    module: './touch-gestures/touch-gestures-ui.js', // corrected path (was ./ui/touch-gestures/...)
     description: 'Accessible interaction layer with gesture & tap controls'
   }
 ];
