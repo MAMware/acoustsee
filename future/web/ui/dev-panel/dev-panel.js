@@ -14,6 +14,8 @@ import { initializeDevPanelRenderer } from './dev-panel-renderer.js'; // renamed
 import { StateInspector } from './state-inspector.js';
 import { initializeOrchestrationInspector } from '../orchestration-inspector.js'; // Phase 2A: Orchestration visibility
 import { initEventBusViewer } from './eventbus-viewer.js'; // Phase 2: EventBus viewer
+import { initializePreview } from './dev-panel-preview.js'; // Extracted preview logic
+import { initializeChartController } from './dev-panel-chart-controller.js'; // Extracted chart logic
 // Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
 
@@ -277,67 +279,19 @@ export function initializeDevPanel(arg1, arg2) {
   async function setupUI() {
     // This panel is now full-screen by default via its CSS.
 
-    // --- Wire All Collapsible Sections (with special logic for worker chart) ---
-    let workerChartRenderLoopId = null;
+    // --- Initialize Worker Performance Chart Controller ---
+    let chartController = null;
     try {
-      // Prepare the chart rendering function once.
-      const workerCanvas = panel.querySelector('#worker-explorer-canvas');
-      const legendEl = panel.querySelector('#worker-explorer-legend');
-      const { RingBuffer, scaleCanvasForDPR, drawMultiSparkline } = (await import('./worker-charts.js'));
-      const workerDataBuffers = new Map();
-      scaleCanvasForDPR(workerCanvas);
+      chartController = await initializeChartController(panel, engine);
+      if (chartController && typeof chartController.dispose === 'function') {
+        panel.__chartControllerDispose = chartController.dispose;
+      }
+    } catch (e) {
+      console.error('Failed to initialize chart controller', e);
+    }
 
-      const renderCharts = () => {
-        if (!window.__acoustseeDevPanelGetWorkerStats) return;
-        const stats = window.__acoustseeDevPanelGetWorkerStats();
-        // Include aggregated stats from video worker
-        if (window.__acoustseeWorkerStats) {
-          window.__acoustseeWorkerStats.forEach((stat, id) => stats.push(stat));
-        }
-        const seriesMap = new Map();
-        let legendHTML = '';
-        stats.forEach((workerStat, i) => {
-          if (!workerDataBuffers.has(workerStat.id)) {
-            workerDataBuffers.set(workerStat.id, new RingBuffer(64));
-          }
-          const buffer = workerDataBuffers.get(workerStat.id);
-          buffer.push(workerStat.last ? workerStat.last.util : 0);
-          seriesMap.set(workerStat.id, buffer.toArray());
-          const color = `hsl(${(i * 137) % 360}, 72%, 58%)`;
-          legendHTML += `<span style="color: ${color}; margin-right: 10px;">■ ${workerStat.name || workerStat.id}</span>`;
-        });
-        if (legendEl) legendEl.innerHTML = legendHTML;
-        drawMultiSparkline(workerCanvas, seriesMap);
-      };
-
-      // Create a rendering loop using requestAnimationFrame
-      let lastRenderTime = 0;
-      const renderLoop = (timestamp) => {
-        // Limit rendering to ~4 FPS (once every 250ms)
-        if (timestamp - lastRenderTime >= 250) {
-          lastRenderTime = timestamp;
-          renderCharts();
-        }
-        // Continue the loop
-        workerChartRenderLoopId = requestAnimationFrame(renderLoop);
-      };
-
-      const startChart = () => {
-        if (workerChartRenderLoopId === null) {
-          lastRenderTime = performance.now();
-          workerChartRenderLoopId = requestAnimationFrame(renderLoop);
-          try { panel.__workerChartRAFId = workerChartRenderLoopId; } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to store worker chart RAF ID', { error: e?.message || String(e) }); }
-        }
-      };
-      const stopChart = () => {
-        if (workerChartRenderLoopId !== null) {
-          try { cancelAnimationFrame(workerChartRenderLoopId); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to cancel animation frame', { rafId: workerChartRenderLoopId, error: e?.message || String(e) }); }
-          workerChartRenderLoopId = null;
-          try { panel.__workerChartRAFId = null; } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to clear worker chart RAF ID', { error: e?.message || String(e) }); }
-        }
-      };
-
-      // Set up click handlers for all collapsible section headers
+    // --- Wire All Collapsible Sections ---
+    try {
       panel.querySelectorAll('.section-header').forEach(headerEl => {
         const sectionEl = headerEl.closest('.devpanel-section');
         const btn = headerEl.querySelector('.collapse-btn');
@@ -351,7 +305,10 @@ export function initializeDevPanel(arg1, arg2) {
           btn.textContent = isNowCollapsed ? '+' : '-';
           btn.setAttribute('aria-expanded', String(!isNowCollapsed));
           if (sectionEl.classList.contains('worker-section')) {
-            isNowCollapsed ? stopChart() : startChart();
+            // Use chart controller API
+            if (chartController) {
+              isNowCollapsed ? chartController.stop() : chartController.start();
+            }
           }
           if (sectionEl.classList.contains('video-section')) {
             const previewToggle = panel.querySelector('#devpanel-preview-toggle');
@@ -364,51 +321,7 @@ export function initializeDevPanel(arg1, arg2) {
           }
         });
       });
-      
-      // Starts the worker chart if it's visible on initial load.
-      const workerSection = panel.querySelector('#worker-explorer-container');
-      if (workerSection && !workerSection.classList.contains('collapsed')) {
-        // Add a small delay to ensure workers are registered and data is available
-        setTimeout(() => {
-          startChart();
-        }, 500);
-      }
-
-      // Also use Page Visibility API to globally pause the chart
-      const visibilityHandler = () => {
-        // Find the worker section element safely.
-        const workerSection = panel.querySelector('#worker-explorer-container'); // <-- CORRECT SELECTOR
-        if (!workerSection) return; // Defensive check
-
-        if (document.hidden) {
-          stopChart();
-        } else if (!workerSection.classList.contains('collapsed')) { 
-          // Only restart if it was supposed to be running
-          startChart();
-        }
-      };
-      document.addEventListener('visibilitychange', visibilityHandler);
-      panel.__visibilityHandler = visibilityHandler;
-
-      // Start chart when processing begins (workers become active)
-      if (engine.onStateChange) {
-        const onStateChangeCb = (state) => {
-          const workerSection = panel.querySelector('#worker-explorer-container');
-          if (workerSection && !workerSection.classList.contains('collapsed')) {
-            if (state.isProcessing && workerChartRenderLoopId === null) {
-              // Processing started and chart isn't running - start it
-              startChart();
-            } else if (!state.isProcessing && workerChartRenderLoopId !== null) {
-              // Processing stopped - optionally keep chart running to show final data
-              stopChart(); // Uncomment if you want chart to stop when processing stops
-            }
-          }
-        };
-        const maybeUnsub = engine.onStateChange(onStateChangeCb);
-        if (typeof maybeUnsub === 'function') panel.__engineOnStateUnsubscribe = maybeUnsub;
-      }
-
-    } catch (e) { console.error('Failed to wire collapse buttons or worker chart', e); }
+    } catch (e) { console.error('Failed to wire collapse buttons', e); }
 
     // --- Populate Version Subtitle ---
     try {
@@ -444,189 +357,15 @@ export function initializeDevPanel(arg1, arg2) {
     }
 
     // --- Cost-Effective Processing Canvas Preview Wiring ---
+    // Use extracted logic
     try {
-      const pickProcessingCanvas = () =>
-        (DOM && (DOM.frameCanvas || DOM.videoCanvas)) ||
-        document.querySelector('canvas#frameCanvas, canvas#frame-canvas, canvas[data-role="frame-canvas"]');
-
-      const previewCanvas = panel.querySelector('#devpanel-preview-canvas');
-      const previewToggle = panel.querySelector('#devpanel-preview-toggle');
-
-      panel.__previewInterval = null;
-      panel.__previewRO = null;
-
-      if (!previewCanvas || !previewToggle) {
-        return;
+      const previewModule = initializePreview(panel, DOM, engine);
+      if (previewModule && typeof previewModule.dispose === 'function') {
+        panel.__previewDispose = previewModule.dispose;
       }
-
-      const previewCtx = previewCanvas.getContext('2d', { alpha: false });
-      panel.__previewCtx = previewCtx;
-      previewCanvas.style.display = 'none';
-
-      let activeSource = null;
-      let loggedMissingSource = false;
-      const MAX_WIDTH = 360;
-      const MAX_HEIGHT = 270;
-
-      const getSourceDimensions = (src) => {
-        if (!src) return { width: 0, height: 0 };
-        const width = src.videoWidth || src.width || src.clientWidth || 0;
-        const height = src.videoHeight || src.height || src.clientHeight || 0;
-        return { width, height };
-      };
-
-      const resizePreview = (src) => {
-        try {
-          if (!src || !previewCanvas) return;
-          const { width: sw, height: sh } = getSourceDimensions(src);
-          if (!sw || !sh) return;
-          const parent = previewCanvas.parentElement;
-          const widthLimit = Math.max(1, Math.min(MAX_WIDTH, parent?.clientWidth || MAX_WIDTH));
-          const heightLimitSource = parent?.clientHeight || MAX_HEIGHT;
-          const heightLimit = Math.max(1, Math.min(MAX_HEIGHT, heightLimitSource || MAX_HEIGHT));
-          const ratio = Math.min(widthLimit / sw, heightLimit / sh, 1);
-          const w = Math.max(1, Math.round(sw * ratio));
-          const h = Math.max(1, Math.round(sh * ratio));
-          previewCanvas.width = w;
-          previewCanvas.height = h;
-          previewCanvas.style.width = `${w}px`;
-          previewCanvas.style.height = `${h}px`;
-        } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to resize preview canvas', { error: e?.message || String(e) }); }
-      };
-
-      const detachSource = () => {
-        if (panel.__previewRO) {
-          try { panel.__previewRO.disconnect(); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to disconnect preview ResizeObserver', { error: e?.message || String(e) }); }
-        }
-        panel.__previewRO = null;
-        activeSource = null;
-      };
-
-      const resolvePreviewSource = () => {
-        const candidates = [];
-        if (DOM?.videoFeed) candidates.push(DOM.videoFeed);
-        const docVideoFeed = document.querySelector('video#videoFeed');
-        if (docVideoFeed && docVideoFeed !== DOM?.videoFeed) candidates.push(docVideoFeed);
-        const processingCanvas = pickProcessingCanvas();
-        if (processingCanvas) candidates.push(processingCanvas);
-
-        for (const candidate of candidates) {
-          const { width, height } = getSourceDimensions(candidate);
-          const ready = typeof candidate.readyState === 'number' ? candidate.readyState >= 2 : true;
-          if (ready && width > 0 && height > 0) {
-            return candidate;
-          }
-        }
-        return null;
-      };
-
-      const ensureSource = () => {
-        const src = resolvePreviewSource();
-        if (!src) {
-          if (!loggedMissingSource) {
-            structuredLog('DEBUG', 'dev-panel', { message: 'Preview source not ready yet' });
-            loggedMissingSource = true;
-          }
-          return null;
-        }
-
-        loggedMissingSource = false;
-
-        if (src !== activeSource) {
-          detachSource();
-          activeSource = src;
-          resizePreview(src);
-          try {
-            panel.__previewRO = new ResizeObserver(() => resizePreview(src));
-            panel.__previewRO.observe(src);
-          } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to set up preview ResizeObserver', { error: e?.message || String(e) }); }
-        }
-
-        return src;
-      };
-
-      const drawFrame = () => {
-        const src = ensureSource();
-        if (!src || !previewCtx) return;
-        const { width, height } = getSourceDimensions(src);
-        if (!width || !height) return;
-        if (previewCanvas.width === 0 || previewCanvas.height === 0) {
-          resizePreview(src);
-        }
-        try {
-          previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-          previewCtx.drawImage(src, 0, 0, previewCanvas.width, previewCanvas.height);
-        } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to draw preview image', { error: e?.message || String(e) }); }
-      };
-
-      const startPreview = (fps = 4) => {
-        if (panel.__previewInterval) return;
-        previewCanvas.style.display = 'block';
-        ensureSource();
-        const intervalMs = Math.max(1000 / fps, 200);
-        panel.__previewInterval = setInterval(drawFrame, intervalMs);
-      };
-
-      const stopPreview = () => {
-        if (panel.__previewInterval) {
-          clearInterval(panel.__previewInterval);
-          panel.__previewInterval = null;
-        }
-        detachSource();
-        loggedMissingSource = false;
-        if (previewCanvas && previewCtx) {
-          previewCtx.clearRect(0, 0, previewCanvas.width || 0, previewCanvas.height || 0);
-        }
-        if (previewCanvas) {
-          previewCanvas.style.display = 'none';
-        }
-      };
-
-      panel.__startPreview = startPreview;
-      panel.__stopPreview = stopPreview;
-
-      const handleVideoReady = () => {
-        if (!DOM?.videoFeed) return;
-        if (previewToggle.checked) {
-          resizePreview(DOM.videoFeed);
-          if (!panel.__previewInterval) startPreview(4);
-        }
-      };
-
-      if (DOM?.videoFeed) {
-        try {
-          DOM.videoFeed.addEventListener('loadedmetadata', handleVideoReady, { passive: true });
-          DOM.videoFeed.addEventListener('playing', handleVideoReady, { passive: true });
-        } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to attach video preview event listeners', { error: e?.message || String(e) }); }
-        panel.__detachPreviewVideoEvents = () => {
-          try { DOM.videoFeed.removeEventListener('loadedmetadata', handleVideoReady); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove loadedmetadata listener', { error: e?.message || String(e) }); }
-          try { DOM.videoFeed.removeEventListener('playing', handleVideoReady); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove playing listener', { error: e?.message || String(e) }); }
-        };
-      } else {
-        panel.__detachPreviewVideoEvents = () => {};
-      }
-
-      previewToggle.addEventListener('change', (e) => {
-        if (e.target.checked) startPreview(4);
-        else stopPreview();
-      }, { passive: true });
-
-      setTimeout(() => {
-        if (previewToggle.checked) startPreview(4);
-      }, 600);
-
-      if (engine.onStateChange) {
-        const previewOnState = (state) => {
-          if (!state) return;
-          if (state.isProcessing && previewToggle.checked && !panel.__previewInterval) {
-            startPreview(4);
-          }
-        };
-        const maybeUnsub = engine.onStateChange(previewOnState);
-        if (typeof maybeUnsub === 'function') panel.__previewOnStateUnsubscribe = maybeUnsub;
-      }
-
-    } catch (e) { console.error('Failed to wire processing preview', e); }
+    } catch (e) {
+      console.error('Failed to initialize preview module wiring', e);
+    }
 
     // --- Wire Core Action Buttons & Renderer ---
     try {
@@ -1400,47 +1139,30 @@ export function initializeDevPanel(arg1, arg2) {
       } catch (e) { /* swallow */ }
 
       // 3. Stop the video preview and clean up its resources
-      try {
-        if (typeof panel.__stopPreview === 'function') panel.__stopPreview();
-      } catch (e) { /* swallow */ }
-      try {
-        if (typeof panel.__detachPreviewVideoEvents === 'function') panel.__detachPreviewVideoEvents();
-      } catch (e) { /* swallow */ }
+      // CHANGED: Delegate to the module-provided disposal function
+      if (panel.__previewDispose) {
+        panel.__previewDispose();
+      }
 
       // 4. Stop the worker chart rendering loop
+      // CHANGED: Delegate to the chart controller's disposal function
       try {
-        if (typeof cancelAnimationFrame === 'function') {
-          // We stored RAF id in workerChartRenderLoopId inside setupUI scope; try to access via panel
-          const rafId = panel.__workerChartRAFId;
-          if (typeof rafId === 'number') cancelAnimationFrame(rafId);
+        if (panel.__chartControllerDispose && typeof panel.__chartControllerDispose === 'function') {
+          panel.__chartControllerDispose();
         }
       } catch (e) { /* swallow */ }
 
       // 5. Clean up the log viewer callback
       try { setOutputCallback(null); } catch (e) { /* swallow */ }
 
-      // 6. Remove global event listeners (visibilitychange)
-      try {
-        if (typeof panel.__visibilityHandler === 'function') {
-          document.removeEventListener('visibilitychange', panel.__visibilityHandler);
-        }
-      } catch (e) { /* swallow */ }
-
-      // 6.5 Touch Pad cleanup if present
+      // 6. Touch Pad cleanup if present
       try {
         if (typeof panel.__touchPadCleanup === 'function') {
           panel.__touchPadCleanup();
         }
       } catch (e) { /* swallow */ }
 
-      // 7. Remove engine state change listener if present
-      try {
-        if (panel.__engineOnStateUnsubscribe && typeof panel.__engineOnStateUnsubscribe === 'function') {
-          panel.__engineOnStateUnsubscribe();
-        }
-      } catch (e) { /* swallow */ }
-
-      // 8. Remove panel node from DOM
+      // 7. Remove panel node from DOM
       try {
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
       } catch (e) { /* swallow */ }
