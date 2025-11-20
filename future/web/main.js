@@ -29,6 +29,7 @@ import { initializeAudio, bindAudioManager as bindAudioProcessor, registerAudioL
 import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { getComponent } from './ui/ui-registry.js';
+import { AVAILABLE_UIS, getUIEntry, loadUIById } from './ui/ui-manifest.js';
 import { createIngestInterceptor, setupIngestErrorTracking } from './utils/ingest.js';
 import { detectAllCapabilities, generateCapabilityReport } from './core/capability-detector.js';
 
@@ -314,6 +315,7 @@ export async function init() {
 
     // --- UI LOADER LOGIC (dynamic import to avoid duplicate initialization) ---
     const isDebugMode = logLevelFromUrl ? logLevelFromUrl === 'debug' || urlParams.get('debug') === 'true' : urlParams.get('debug') === 'true';
+    const requestedUI = urlParams.get('ui'); // explicit UI selection via URL
     
     // Import UI context factory for standardized initialization
     const { createUIContext } = await import('./ui/ui-context.js');
@@ -328,44 +330,63 @@ export async function init() {
       importMetaUrl: import.meta.url
     });
     
-    if (isDebugMode) {
-      // userAgent has been disabled (commented out) even in debug mode as per MAMware request, it seem they do add any usefull info
-      // loggingConfig.includeUserAgent = true;
-      document.body.classList.add('dev-panel-mode');
+    // --- Dynamic UI Selection Logic ---
+    // Strategy:
+    //  1. If ?ui=<id> provided and exists in manifest -> load that immediately.
+    //  2. Else if debug mode and no explicit ui -> default to dev-panel.
+    //  3. Else defer loading until user clicks Power On; populate selector.
+    let activeUIId = null;
+    let activeUIDispose = null;
+
+    async function activateUI(id) {
       try {
-        // Import the module so it can register itself and listen for lifecycle events.
-        await import('./ui/dev-panel/dev-panel.js');
-        structuredLog('INFO', 'Dev Panel module loaded. Initializing via registry.');
-        try {
-          const devPanelInitializer = getComponent('dev-panel');
-          if (typeof devPanelInitializer === 'function') {
-            // Pass standardized uiContext
-            devPanelInitializer(uiContext);
-            structuredLog('INFO', 'Dev Panel initialized via registry with standardized context.');
-          } else {
-            structuredLog('ERROR', 'Dev Panel module loaded but did not register an initializer.');
+        const entry = getUIEntry(id);
+        if (!entry) {
+          structuredLog('WARN', 'activateUI: Unknown UI id', { id });
+          return;
+        }
+        await loadUIById(id); // dynamic import
+        const initializer = getComponent(id);
+        if (typeof initializer === 'function') {
+          // Dispose previous UI if any
+          if (activeUIDispose) {
+            try { activeUIDispose(); } catch (e) { structuredLog('WARN', 'Previous UI dispose failed', { error: e?.message }); }
           }
-        } catch (e) {
-          structuredLog('ERROR', 'Dev Panel initialization via registry failed', { error: e?.message || String(e) });
+          activeUIId = id;
+          const disposeFn = initializer(uiContext);
+          if (typeof disposeFn === 'function') activeUIDispose = disposeFn; else activeUIDispose = null;
+          structuredLog('INFO', 'UI activated', { id });
+          // Body mode class for styling isolation
+          document.body.classList.remove('dev-panel-mode', 'accessible-mode');
+          if (id === 'dev-panel') document.body.classList.add('dev-panel-mode');
+          if (id === 'touch-gestures') document.body.classList.add('accessible-mode');
+        } else {
+          structuredLog('ERROR', 'UI module did not register initializer', { id });
         }
-      } catch (e) { structuredLog('WARN', 'Failed to load dev panel UI', { error: e?.message || String(e) }); }
+      } catch (e) {
+        structuredLog('ERROR', 'Failed to activate UI', { id, error: e?.message || String(e) });
+      }
+    }
+
+    // Pre-load if URL param explicitly requests a UI
+    if (requestedUI) {
+      await activateUI(requestedUI);
+    } else if (isDebugMode) {
+      await activateUI('dev-panel');
     } else {
-      // DEVELOPMENT: Accessible UI disabled during development phase
-      // Only Dev Panel should load during active development to avoid UI conflicts
-      // Re-enable this when moving to production/user testing phase
-      structuredLog('INFO', 'Accessible UI loading skipped (development phase - use ?debug=true for Dev Panel)');
-      
-      /* PRODUCTION: Uncomment when ready for end-user testing
-      document.body.classList.add('accessible-mode');
-      try {
-        const mod = await import('./ui/touch-gestures/touch-gestures-ui.js');
-        if (mod && typeof mod.initializeAccessibleUI === 'function') {
-          // Pass standardized uiContext (supports legacy signature too)
-          mod.initializeAccessibleUI(uiContext);
-          structuredLog('INFO', 'Initialized in Accessible UI mode with standardized context.');
-        }
-      } catch (e) { structuredLog('WARN', 'Failed to load accessible UI', { error: e?.message || String(e) }); }
-      */
+      // Populate selector (deferred activation on Power On)
+      const selector = document.getElementById('uiSelector');
+      if (selector) {
+        selector.innerHTML = '';
+        AVAILABLE_UIS.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.label;
+          selector.appendChild(opt);
+        });
+        // Choose default non-debug UI
+        selector.value = 'touch-gestures';
+      }
     }
     
     // ⚠️ ANTI-PATTERN REMOVED: Console Hijack
@@ -513,9 +534,15 @@ export async function init() {
         
         try {
           await handleAudioUnlock(ev, traceId);
-            // Emit global lifecycle event so UI modules can self-activate
-            try { engine.emit && engine.emit('app:poweredOn', { traceId }); } catch (e) { structuredLog('WARN', 'engine.emit failed', { error: e?.message, traceId }); }
-            await transitionToMainUI(traceId);
+          // Emit global lifecycle event so UI modules can self-activate
+          try { engine.emit && engine.emit('app:poweredOn', { traceId }); } catch (e) { structuredLog('WARN', 'engine.emit failed', { error: e?.message, traceId }); }
+          // If no UI was auto-activated (non-debug), activate selected one now
+          if (!activeUIId) {
+            const selector = document.getElementById('uiSelector');
+            const chosen = selector ? selector.value : null;
+            if (chosen) await activateUI(chosen);
+          }
+          await transitionToMainUI(traceId);
         } catch (err) {
           await handlePowerOnError(err, origLabel, traceId);
         } finally {
@@ -523,6 +550,11 @@ export async function init() {
         }
       }, { once: false });
     }
+
+    // Expose for debugging / potential runtime UI switching
+    window.__activateUI = activateUI;
+    window.__getActiveUI = () => activeUIId;
+    window.__disposeActiveUI = () => { if (activeUIDispose) { try { activeUIDispose(); } catch(e){} activeUIDispose = null; activeUIId = null; } };
 
     // Initialize Persistent Floating Export Button (Phase 2A Task 2.2 Enhancement)
     // Creates an always-on-top button that persists regardless of UI state

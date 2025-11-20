@@ -13,6 +13,13 @@
 <body>
   <div id="splashScreen" class="splash-screen">
     <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
+      <!-- UI Selector (dynamic pluggable UI loader) -->
+      <label for="uiSelector" style="font-size:0.9rem;color:#222;display:flex;flex-direction:column;align-items:flex-start;gap:0.35rem;">
+        <span data-i18n="ui.selector.label">Interface</span>
+        <select id="uiSelector" style="padding:0.5rem 0.75rem;border:1px solid #ccc;border-radius:6px;background:#fff;min-width:220px;font-size:0.95rem;">
+          <!-- Options populated at runtime from ui-manifest.js -->
+        </select>
+      </label>
       <button id="powerOn" class="power-on-button" role="button" data-i18n-aria="powerOn.aria" aria-pressed="false" aria-label="Power">
         <span class="power-label" data-i18n="powerOn.text">Power</span>
         <span class="sr-only" data-i18n="powerOn.sr">Power on</span>

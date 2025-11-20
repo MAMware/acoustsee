@@ -2,6 +2,8 @@
 // Settings / config injected here to avoid implicit global coupling
 let _uiConfig = {};
 
+import { registerComponent } from '../ui-registry.js';
+
 export function initializeAccessibleUI(arg1, arg2) {
   // Support both signatures:
   // - New (v0.10.0+): initializeAccessibleUI(uiContext)
@@ -249,3 +251,6 @@ export function initializeAccessibleUI(arg1, arg2) {
 }
 // Provide a canonical export for the touch gestures initializer (legacy name)
 export const initializeTouchGesturesUI = initializeAccessibleUI;
+
+// Auto-register with standardized id so main.js / selector can load it
+try { registerComponent('touch-gestures', initializeAccessibleUI); } catch (_) {}
