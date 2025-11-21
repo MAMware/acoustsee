@@ -333,18 +333,41 @@ export async function init() {
 
     async function activateUI(id) {
       try {
+        // Prevent concurrent activations
+        if (activateUI._inProgress) {
+          structuredLog('WARN', 'activateUI: activation already in progress', { requested: id });
+          return;
+        }
+        activateUI._inProgress = true;
+
+        // Dispose currently active UI BEFORE loading the next one to avoid
+        // overlapping listeners or DOM collisions.
+        if (activeUIDispose) {
+          try {
+            activeUIDispose();
+          } catch (e) {
+            structuredLog('WARN', 'Previous UI dispose failed', { error: e?.message });
+          }
+          activeUIDispose = null;
+          activeUIId = null;
+        }
+
+        // Clear any leftover UI DOM so new UI starts with a clean root
+        try {
+          if (uiContext && uiContext.DOM && uiContext.DOM.uiPanelRoot) {
+            uiContext.DOM.uiPanelRoot.innerHTML = '';
+          }
+        } catch (e) { /* best-effort */ }
+
         const entry = getUIEntry(id);
         if (!entry) {
           structuredLog('WARN', 'activateUI: Unknown UI id', { id });
+          activateUI._inProgress = false;
           return;
         }
         await loadUIById(id); // dynamic import triggers registration
         const initializer = getComponent(id);
         if (typeof initializer === 'function') {
-          // Dispose previous UI if any
-          if (activeUIDispose) {
-            try { activeUIDispose(); } catch (e) { structuredLog('WARN', 'Previous UI dispose failed', { error: e?.message }); }
-          }
           activeUIId = id;
           const disposeFn = initializer(uiContext);
           if (typeof disposeFn === 'function') activeUIDispose = disposeFn; else activeUIDispose = null;
@@ -356,8 +379,10 @@ export async function init() {
         } else {
           structuredLog('ERROR', 'UI module did not register initializer', { id });
         }
+        activateUI._inProgress = false;
       } catch (e) {
         structuredLog('ERROR', 'Failed to activate UI', { id, error: e?.message || String(e) });
+        activateUI._inProgress = false;
       }
     }
 
