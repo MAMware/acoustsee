@@ -1,4 +1,4 @@
-export default {
+const enUS = {
   "powerOn": {
     "text": "Power On",
     "aria": "Press Power On to initialize",
@@ -204,3 +204,6 @@ export default {
     "failed": "Initialization failed: {specificMessage}. Check console for details."
   }
 };
+
+export default enUS;
+export { enUS };
