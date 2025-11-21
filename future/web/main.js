@@ -313,13 +313,11 @@ export async function init() {
       structuredLog('INFO', 'init: Log level set to default', { logLevel: 'INFO' });
     }
 
-    // --- UI LOADER LOGIC (dynamic import to avoid duplicate initialization) ---
-    const isDebugMode = logLevelFromUrl ? logLevelFromUrl === 'debug' || urlParams.get('debug') === 'true' : urlParams.get('debug') === 'true';
-    const requestedUI = urlParams.get('ui'); // explicit UI selection via URL
-    
-    // Import UI context factory for standardized initialization
+    // --- UI LOADER LOGIC (simplified) ---
+    // We deliberately ignore ?debug and ?ui parameters for now. All UI imports
+    // are deferred until the user performs the global audio unlock (Power On).
     const { createUIContext } = await import('./ui/ui-context.js');
-    
+
     // Create standardized UI context (plug-and-play contract)
     const uiContext = createUIContext({
       engine,
@@ -329,12 +327,7 @@ export async function init() {
       basePath,
       importMetaUrl: import.meta.url
     });
-    
-    // --- Dynamic UI Selection Logic ---
-    // Strategy:
-    //  1. If ?ui=<id> provided and exists in manifest -> load that immediately.
-    //  2. Else if debug mode and no explicit ui -> default to dev-panel.
-    //  3. Else defer loading until user clicks Power On; populate selector.
+
     let activeUIId = null;
     let activeUIDispose = null;
 
@@ -345,7 +338,7 @@ export async function init() {
           structuredLog('WARN', 'activateUI: Unknown UI id', { id });
           return;
         }
-        await loadUIById(id); // dynamic import
+        await loadUIById(id); // dynamic import triggers registration
         const initializer = getComponent(id);
         if (typeof initializer === 'function') {
           // Dispose previous UI if any
@@ -368,25 +361,18 @@ export async function init() {
       }
     }
 
-    // Pre-load if URL param explicitly requests a UI
-    if (requestedUI) {
-      await activateUI(requestedUI);
-    } else if (isDebugMode) {
-      await activateUI('dev-panel');
-    } else {
-      // Populate selector (deferred activation on Power On)
-      const selector = document.getElementById('uiSelector');
-      if (selector) {
-        selector.innerHTML = '';
-        AVAILABLE_UIS.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u.id;
-          opt.textContent = u.label;
-          selector.appendChild(opt);
-        });
-        // Choose default non-debug UI
-        selector.value = 'touch-gestures';
-      }
+    // Populate selector now (UI activation deferred until Power On)
+    const selector = document.getElementById('uiSelector');
+    if (selector) {
+      selector.innerHTML = '';
+      AVAILABLE_UIS.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.label;
+        selector.appendChild(opt);
+      });
+      // Default selection
+      selector.value = 'touch-gestures';
     }
     
     // ⚠️ ANTI-PATTERN REMOVED: Console Hijack
@@ -533,15 +519,16 @@ export async function init() {
         structuredLog('INFO', 'Power-on button clicked', {}, true, true, { traceId });
         
         try {
+          // 1) Unlock audio (user gesture required)
           await handleAudioUnlock(ev, traceId);
-          // Emit global lifecycle event so UI modules can self-activate
+          // 2) Determine chosen UI from selector (default to touch-gestures)
+          const selectorEl = document.getElementById('uiSelector');
+          const chosen = selectorEl && selectorEl.value ? selectorEl.value : 'touch-gestures';
+          // 3) Import & initialize chosen UI BEFORE emitting poweredOn so listeners receive the event
+          await activateUI(chosen);
+          // 4) Emit global lifecycle event so UI modules can react
           try { engine.emit && engine.emit('app:poweredOn', { traceId }); } catch (e) { structuredLog('WARN', 'engine.emit failed', { error: e?.message, traceId }); }
-          // If no UI was auto-activated (non-debug), activate selected one now
-          if (!activeUIId) {
-            const selector = document.getElementById('uiSelector');
-            const chosen = selector ? selector.value : null;
-            if (chosen) await activateUI(chosen);
-          }
+          // 5) Transition visuals
           await transitionToMainUI(traceId);
         } catch (err) {
           await handlePowerOnError(err, origLabel, traceId);
