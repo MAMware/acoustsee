@@ -55,6 +55,42 @@ export function initializeAnalytics(eventBus, state, options = {}) {
         return;
       }
       
+      // Special-case: map I18N error codes into a small, well-structured
+      // analytics event so the backend can aggregate i18n gaps.
+      // Our logging pipeline emits these as structuredLog(level, message, data)
+      // where `message` may be one of the I18N_* codes and `data` contains
+      // the `key` and `languageId` fields. Detect and map them here.
+      try {
+        const msg = event.data && event.data.message;
+        if (typeof msg === 'string' && msg.startsWith('I18N_')) {
+          // Map to a dedicated i18n event type
+          const mapped = {
+            type: 'i18n_error',
+            category: msg, // e.g. I18N_KEY_MISSING
+            timestamp: event.timestamp || Date.now(),
+            traceId: event.traceId || null,
+            data: {
+              missingKey: event.data.key || event.data.missingKey || null,
+              currentLanguage: event.data.languageId || event.data.language || null,
+              originalMessage: msg,
+              // include any extra context for downstream debugging
+              meta: { ...event.data }
+            }
+          };
+
+          // Ensure these are batched to avoid flooding the analytics endpoint
+          if (globalBatcher) {
+            globalBatcher.add(mapped);
+          } else {
+            // Fallback: send via beacon if batcher unavailable
+            sendCriticalEventBeacon(mapped, endpoint);
+          }
+          return; // We've handled this event
+        }
+      } catch (i18nMapErr) {
+        structuredLog('WARN', 'event-bus-analytics i18n mapping failed', { error: i18nMapErr?.message || String(i18nMapErr) });
+      }
+
       // OPTIMIZATION: Use batcher for non-critical events
       if (shouldBatchEvent(event)) {
         globalBatcher.add(event);

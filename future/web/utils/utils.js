@@ -4,6 +4,11 @@
 let lastTTSTime = 0;
 import { structuredLog } from './logging.js';
 import { computeAnnounceDelay, deviceSummary } from './performance.js';
+// Pre-bundled English fallback to guarantee offline availability for core UI
+// NOTE: JSON module import is supported by the bundler; if running in a
+// pure-Node environment this may require experimental flags. This import
+// is intentionally conservative: it's only used as a last-resort fallback.
+import { enUS } from '../languages/en-US.js';
 
 // Configurable announce rewrite delay (ms). Tune this if you see missed
 // announcements on older/slow devices. Default is conservative.
@@ -84,79 +89,98 @@ export function clearTranslationsCache() {
  * @returns {Promise<string>} The formatted message, or key on failure.
  */
 export async function getText(key, params = {}, state) {
+  // Error codes used for structured logging/analytics
+  const I18N_INIT_ERROR = 'I18N_INIT_ERROR';
+  const I18N_STATE_MISSING = 'I18N_STATE_MISSING';
+  const I18N_KEY_MISSING = 'I18N_KEY_MISSING';
+  const I18N_FETCH_ERROR = 'I18N_FETCH_ERROR';
+
   try {
+    // Defensive: ensure caller passed the state object
+    if (!state || typeof state !== 'object') {
+      structuredLog('ERROR', I18N_STATE_MISSING, { message: 'getText called without state', key, params });
+      // Developer error — return visible missing indicator
+      return `[missing:${key}]`;
+    }
+
     const settings = state;
-    const languageId = settings.language;
-    if (!languageId) {
-      throw new Error('Language not set; call initializeLanguageIfNeeded first');
+    // Ensure availableLanguages exists
+    if (!settings.availableLanguages || !Array.isArray(settings.availableLanguages) || settings.availableLanguages.length === 0) {
+      structuredLog('ERROR', I18N_INIT_ERROR, { message: 'availableLanguages missing on state', key, params });
+      // Attempt to set a safe fallback language and continue
+      settings.language = settings.availableLanguages && settings.availableLanguages[0] ? settings.availableLanguages[0].id : 'en-US';
     }
 
-    if (!settings.availableLanguages || !Array.isArray(settings.availableLanguages)) {
-      structuredLog('ERROR', 'getText: availableLanguages not available', {
-        languageId,
-        availableLanguages: settings.availableLanguages,
-        key
-      });
-      return key;
+    const languageId = settings.language || (settings.availableLanguages && settings.availableLanguages[0] && settings.availableLanguages[0].id) || 'en-US';
+    if (!settings.language) {
+      structuredLog('WARN', I18N_INIT_ERROR, { message: 'Language not set; defaulting', defaultLanguage: languageId, key });
+      settings.language = languageId;
     }
 
-    const language = settings.availableLanguages.find(l => l.id === languageId);
-    if (!language) {
-      structuredLog('ERROR', 'Language not found', {
-        requestedLanguage: languageId,
-        availableLanguages: settings.availableLanguages.map(l => l.id),
-        key
-      });
-      return key; // No fallback mutation—caller decides
-    }
+    const language = (settings.availableLanguages || []).find(l => l.id === languageId) || { id: languageId };
 
+    // Try cache first
     let translations = translationsCache[language.id];
     if (!translations) {
-      // Log cache miss and fetching fresh translations
-      structuredLog('DEBUG', 'Fetching fresh translations for language', { languageId, language: language });
-      try {
-        const basePath = typeof window !== 'undefined' ? window.__ACOUSTSEE_BASE_PATH__ || './' : './';
-        const url = `${basePath}languages/${language.id}.json`;
-        structuredLog('DEBUG', 'Translation fetch URL', { url, basePath });
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
-        translations = await response.json();
-        translationsCache[language.id] = translations;
-        structuredLog('DEBUG', 'Translations loaded successfully', { languageId, keys: Object.keys(translations).length });
-      } catch (fetchErr) {
-        structuredLog('ERROR', 'Language file fetch error', { 
-          message: fetchErr.message, 
-          key,
-          url: `${typeof window !== 'undefined' ? window.__ACOUSTSEE_BASE_PATH__ || './' : './'}languages/${language.id}.json`
-        });
-        return key; // Fallback on network/parse error
+      // If this is the bundled English, use the pre-bundled object
+      if (language.id === 'en-US' && typeof enUS === 'object' && Object.keys(enUS).length > 0) {
+        translations = enUS;
+        translationsCache['en-US'] = translations;
+        structuredLog('DEBUG', 'Using bundled en-US translations', { languageId });
+      } else {
+        // Fetch language file from server
+        try {
+          const basePath = typeof window !== 'undefined' ? window.__ACOUSTSEE_BASE_PATH__ || './' : './';
+          const url = `${basePath}languages/${language.id}.json`;
+          structuredLog('DEBUG', 'Translation fetch URL', { url, basePath });
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
+          translations = await response.json();
+          translationsCache[language.id] = translations;
+          structuredLog('DEBUG', 'Translations loaded successfully', { languageId, keys: Object.keys(translations).length });
+        } catch (fetchErr) {
+          structuredLog('ERROR', I18N_FETCH_ERROR, { message: fetchErr.message, key, languageId });
+          // Return visible missing indicator rather than raw key
+          // and record missing translation on state for dev visibility
+          if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+          if (!settings.missingTranslations.includes(key)) settings.missingTranslations.push(key);
+          return `[missing:${key}]`;
+        }
       }
     }
 
+    // Walk the translation tree according to dot-notated key
     let finalMessage = translations;
     for (const part of key.split('.')) {
-      finalMessage = finalMessage[part] || key;
+      if (!finalMessage || typeof finalMessage !== 'object') {
+        finalMessage = undefined;
+        break;
+      }
+      finalMessage = finalMessage[part];
     }
+
+    // If finalMessage resolves to an object, attempt a default property
     if (typeof finalMessage === 'object') {
-      finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
+      finalMessage = (typeof finalMessage.default === 'string') ? finalMessage.default : undefined;
     }
 
-    // Ensure finalMessage is a string before attempting replaceAll
+    // If missing, record and return visible indicator
     if (typeof finalMessage !== 'string') {
-      finalMessage = key;
+      structuredLog('INFO', I18N_KEY_MISSING, { key, languageId });
+      if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+      if (!settings.missingTranslations.includes(key)) settings.missingTranslations.push(key);
+      return `[missing:${key}]`;
     }
 
-    // Safer placeholder replacement (exact match to avoid partial brace issues)
+    // Replace placeholders safely
     for (const [paramKey, paramValue] of Object.entries(params)) {
-      finalMessage = finalMessage.replaceAll(`{${paramKey}}`, paramValue);
+      finalMessage = finalMessage.split(`{${paramKey}}`).join(String(paramValue));
     }
 
     return finalMessage;
   } catch (err) {
-    structuredLog('ERROR', 'getText error', { message: err.message, key, params });
-    // Graceful fallback: Return the key instead of throwing
-    // This allows the UI to continue functioning with untranslated strings
-    return key;
+    structuredLog('ERROR', 'getText error', { message: err?.message || String(err), key, params });
+    return `[missing:${key}]`;
   }
 }
 
@@ -301,17 +325,17 @@ export function translatePage(root = document, state) {
         return (typeof node === 'string') ? node : key;
       };
 
-      root.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (!key) return;
-        try { el.textContent = lookup(key); } catch (e) { /* ignore element errors */ }
-      });
+        root.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (!key) return;
+          try { el.textContent = lookup(key); } catch (e) { /* ignore element errors */ }
+        });
 
-      root.querySelectorAll('[data-i18n-aria]').forEach(el => {
-        const key = el.getAttribute('data-i18n-aria');
-        if (!key) return;
-        try { el.setAttribute('aria-label', lookup(key)); } catch (e) { /* ignore */ }
-      });
+        root.querySelectorAll('[data-i18n-aria]').forEach(el => {
+          const key = el.getAttribute('data-i18n-aria');
+          if (!key) return;
+          try { el.setAttribute('aria-label', lookup(key)); } catch (e) { /* ignore */ }
+        });
 
       return;
     }
@@ -320,12 +344,13 @@ export function translatePage(root = document, state) {
     root.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
       if (!key) return;
-      getText(key).then(text => { el.textContent = text; }).catch(() => {});
+      // Ensure we pass the current state so getText has the context it needs
+      getText(key, {}, settings).then(text => { el.textContent = text; }).catch(() => {});
     });
     root.querySelectorAll('[data-i18n-aria]').forEach(el => {
       const key = el.getAttribute('data-i18n-aria');
       if (!key) return;
-      getText(key).then(text => { el.setAttribute('aria-label', text); }).catch(() => {});
+      getText(key, {}, settings).then(text => { el.setAttribute('aria-label', text); }).catch(() => {});
     });
   } catch (e) {
     structuredLog('WARN', 'translatePage failed', { error: e?.message || String(e) });

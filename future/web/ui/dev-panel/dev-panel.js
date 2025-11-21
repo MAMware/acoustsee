@@ -800,6 +800,27 @@ export function initializeDevPanel(arg1, arg2) {
           if (deltaIntensityMean) deltaIntensityMean.textContent = snapshot.meanIntensityDelta.toFixed(3);
           if (deltaIntensityZero) deltaIntensityZero.textContent = snapshot.zeroIntensityStreak.toString();
         }
+        // Update missing translations display (if present)
+        try {
+          const missingContainer = panel.querySelector('#i18n-missing-list');
+          const missingSummary = panel.querySelector('#i18n-missing-summary');
+          const missing = Array.isArray(state.missingTranslations) ? state.missingTranslations : [];
+          if (missingContainer) {
+            if (missing.length === 0) {
+              missingContainer.innerHTML = '<div style="color:#7f8c8d">None</div>';
+            } else {
+              missingContainer.innerHTML = '';
+              missing.forEach(k => {
+                const el = document.createElement('div');
+                el.textContent = k;
+                missingContainer.appendChild(el);
+              });
+            }
+          }
+          if (missingSummary) {
+            missingSummary.textContent = missing.length === 0 ? 'No missing translations detected.' : `${missing.length} missing translation(s)`;
+          }
+        } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to update missing translations display', { error: e?.message || String(e) }); }
       } catch(e) { structuredLog('WARN', 'Dev Panel: Failed to update delta stats display', { error: e?.message || String(e) }); }
     });
 

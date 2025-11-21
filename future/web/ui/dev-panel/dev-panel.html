@@ -52,6 +52,20 @@
     </div>
   </div>
 
+  <!-- I18N: Missing Translations -->
+  <div class="devpanel-section i18n-missing-section">
+    <h2 class="section-header">
+      <span>Missing Translations</span>
+      <span class="section-header-spacer"></span>
+      <button class="collapse-btn" data-target="i18n-missing-content" aria-expanded="true" title="Collapse Missing Translations">-</button>
+    </h2>
+    <div id="i18n-missing-content" class="section-content">
+      <p style="font-size:12px; color:#95a5a6; margin:0 0 8px 0;">Keys that were requested but not found in the current language files. Useful to triage i18n gaps.</p>
+      <div id="i18n-missing-summary" style="font-size:12px; color:#bdc3c7; margin-bottom:8px;">No missing translations detected.</div>
+      <div id="i18n-missing-list" style="max-height:160px; overflow:auto; font-family: monospace; font-size:12px; background:#111; color:#eee; padding:8px; border-radius:4px;">&nbsp;</div>
+    </div>
+  </div>
+
   <!-- EventBus Viewer Section -->
   <div class="devpanel-section eventbus-viewer-section">
     <h2 class="section-header">

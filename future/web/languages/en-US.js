@@ -1,0 +1,206 @@
+export default {
+  "powerOn": {
+    "text": "Power On",
+    "aria": "Press Power On to initialize",
+    "failed": {
+      "text": "Audio Failed - Retry",
+      "aria": "Retry audio initialization"
+    },
+    "initializing": "Initializing..."
+  },
+  "videoFeed": {
+    "aria": "Video Feed"
+  },
+  "frameCanvas": {
+    "aria": "Hidden Frame Processing Canvas"
+  },
+  "debugPanel": {
+    "aria": "Dev Panel"
+  },
+  
+  "button1": {
+    "normal": {
+      "start": {
+        "text": "Start",
+        "aria": "Processing video started"
+      },
+      "stop": {
+        "text": "Stop",
+        "aria": "Processing video stopped"
+      }
+    },
+    "settings": {
+      "text": "Kernel: {gridType}",
+      "aria": "Kernel selection {gridType}"
+    },
+    "tts": {
+      "startStop": {
+        "starting": "Startinng syneshesia",
+        "stopping": "Stopping synesthesia",
+        "error": "Error starting or stopping processing"
+      },
+      "cameraError": "Camera access error",
+      "gridSelect": "Kernel set to {state}"
+    }
+  },
+  "button2": {
+    "normal": {
+      "on": {
+        "text": "Mic On",
+        "aria": "Turn on microphone"
+      },
+      "off": {
+        "text": "Mic Off",
+        "aria": "Turn off microphone"
+      }
+    },
+    "settings": {
+      "text": "Sound synthetizer: {synthesisEngine}",
+      "aria": "Select synthesis engine {synthesisEngine}"
+    },
+    "tts": {
+      "micToggle": {
+        "turningOn": "Turning on microphone",
+        "turningOff": "Turning off microphone"
+      },
+      "micError": "Microphone access error",
+      "synthesisSelect": "Synthesis set to {state}"
+    }
+  },
+  "button3": {
+    "normal": {
+      "text": "Language: {languageName}",
+      "aria": "Select language {languageName}"
+    },
+    "settings": {
+      "text": "Input: {inputType}",
+      "aria": "Input selector: {inputType}"
+    },
+    "tts": {
+      "languageSelect": "Language set to {languageName}",
+      "fpsError": "Language toggle error"
+    }
+  },
+  "button4": {
+    "normal": {
+      "auto": {
+        "text": "Auto FPS",
+        "aria": "Select frame rate"
+      },
+      "manual": {
+        "text": "{fps} FPS",
+        "aria": "Select frame rate"
+      },
+      "aria": "Select frame rate"
+    },
+    "settings": {
+      "text": "Save Settings",
+      "aria": "Save settings"
+    },
+    "tts": {
+      "fpsBtn": "Frame rate set to {fps}",
+      "fpsError": "Frame rate error",
+      "saveSettings": "Settings saved",
+      "saveError": "Error saving settings"
+    }
+  },
+  "button5": {
+    "normal": {
+      "text": "Email Console Log",
+      "aria": "Email console log"
+    },
+    "settings": {
+      "text": "Load Settings",
+      "aria": "Load settings"
+    },
+    "tts": {
+      "emailDebug": {
+        "email": "Emailing console log for debuggin",
+        "error": "Error emailing console log"
+      },
+      "loadSettings": {
+        "loaded": "Settings loaded",
+        "none": "No settings found"
+      },
+      "loadError": "Error loading settings"
+    }
+  },
+  "button6": {
+    "normal": {
+      "text": "Settings",
+      "aria": "Enter settings mode"
+    },
+    "settings": {
+      "text": "Exit Settings",
+      "aria": "Exit settings mode"
+    },
+    "tts": {
+      "settingsToggle": {
+        "on": "Entering settings mode",
+        "off": "Exiting settings mode"
+      },
+      "settingsError": "Settings toggle error"
+    }
+  },
+  "audio": {
+    "unavailable": "Audio unavailable. Tap to try again.",
+    "initFailed": "Audio initialization failed. You may need to tap again."
+  },
+  "audioOn": "Audio enabled",
+  "startup": {
+    "failed": "Startup failed. Check console for details."
+  },
+  "camera": {
+    "unable": "Unable to access camera."
+  },
+  "cameraStartSuccess": "Camera started successfully",
+  "cameraStartFailed": "Failed to start camera",
+  "micStartSuccess": "Microphone started successfully",
+  "micStartFailed": "Failed to start microphone",
+  "language": {
+    "set": "Language set to {languageName}."
+  },
+  "settings": {
+    "category": {
+      "motionThreshold": "Motion Sensitivity"
+    },
+    "value": {
+      "sensitivity": "Sensitivity: {{level}}",
+      "notes": "{{count}} notes"
+    },
+    "sensitivity": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    }
+  ,
+  "saved": "Settings saved successfully.",
+  "loaded": "Settings loaded successfully.",
+  "save_error": "Error saving settings.",
+  "load_none": "No saved settings found.",
+  "load_error": "Error loading settings."
+  },
+  "processing": {
+    "stopped": "Stopping",
+    "started": "Starting"
+  },
+  "mic": {
+    "on": "Microphone on.",
+    "off": "Microphone off.",
+    "error": "Microphone unavailable."
+  },
+  "status": {
+    "live": "Live",
+    "idle": "Idle",
+    "full": "Status is {{status}}. Grid is {{grid}}. Sound is {{synth}}."
+  },
+  "settings.enter": "Settings mode. Swipe left or right to choose a category. Long-press to exit.",
+  "settings.exit": "Exiting settings and saving.",
+  "report": {
+    "sending": "Thank you. Sending diagnostic report.",
+    "error": "Sorry, the report could not be sent."
+  },
+  "init": {
+    "failed": "Initialization failed: {specificMessage}. Check console for details."
+  }
+};
