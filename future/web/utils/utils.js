@@ -8,7 +8,7 @@ import { computeAnnounceDelay, deviceSummary } from './performance.js';
 // NOTE: JSON module import is supported by the bundler; if running in a
 // pure-Node environment this may require experimental flags. This import
 // is intentionally conservative: it's only used as a last-resort fallback.
-import { enUS } from '../languages/en-US.js';
+import enUS from '../languages/en-US.js';
 
 // Configurable announce rewrite delay (ms). Tune this if you see missed
 // announcements on older/slow devices. Default is conservative.
