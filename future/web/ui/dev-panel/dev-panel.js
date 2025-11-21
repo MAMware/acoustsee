@@ -258,6 +258,12 @@ export function initializeDevPanel(arg1, arg2) {
           try { console.debug && console.debug('Dev Panel CSS loaded:', link.href); } catch (e) { structuredLog('DEBUG', 'Dev Panel: CSS loaded debug logging failed', { href: link.href, error: e?.message || String(e) }); }
           wireUpUI();
         };
+        // If CSS fails to load, still proceed to wire the UI after logging a warning.
+        link.onerror = () => {
+          structuredLog('WARN', 'Dev Panel: CSS failed to load, proceeding without stylesheet', { href: link.href });
+          // Give the browser a short moment, then continue initialization without CSS
+          setTimeout(() => wireUpUI(), 50);
+        };
 
         link.onerror = (e) => {
           try { console.error && console.error('Dev Panel: stylesheet failed to load', { path: link.href, error: e }); } catch (err) {}
@@ -266,6 +272,12 @@ export function initializeDevPanel(arg1, arg2) {
         };
 
         document.head.appendChild(link);
+        // Safety timeout: if neither onload nor onerror fired within 3s, proceed anyway.
+        setTimeout(() => {
+          if (!document.getElementById(cssId)) return; // if removed, CSS already handled
+          try { structuredLog('DEBUG', 'Dev Panel: CSS load timeout, proceeding without stylesheet', { href: link.href }); } catch (e) {}
+          try { wireUpUI(); } catch (e) { console.error('Dev Panel: wireUpUI after timeout failed', e); }
+        }, 3000);
       }
 
       // Invoke the loader
