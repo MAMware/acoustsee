@@ -254,15 +254,23 @@ export function initializeDevPanel(arg1, arg2) {
         link.href = href;
         try { console.debug && console.debug('Dev Panel: attempting to load CSS from', link.href); } catch (e) { structuredLog('DEBUG', 'Dev Panel: CSS load debug logging failed', { href: link.href, error: e?.message || String(e) }); }
 
-        link.onload = () => {
-          try { console.debug && console.debug('Dev Panel CSS loaded:', link.href); } catch (e) { structuredLog('DEBUG', 'Dev Panel: CSS loaded debug logging failed', { href: link.href, error: e?.message || String(e) }); }
+        let _devPanelCssHandled = false;
+        let _devPanelCssTimeoutId = null;
+        function _handleCssReady() {
+          if (_devPanelCssHandled) return;
+          _devPanelCssHandled = true;
+          try { console.debug && console.debug('Dev Panel CSS loaded or fallback:', link.href); } catch (e) { structuredLog('DEBUG', 'Dev Panel: CSS load debug logging failed', { href: link.href, error: e?.message || String(e) }); }
+          // Clear safety timeout if still pending
+          try { if (_devPanelCssTimeoutId) clearTimeout(_devPanelCssTimeoutId); } catch (e) {}
           wireUpUI();
-        };
+        }
+
+        link.onload = _handleCssReady;
         // If CSS fails to load, still proceed to wire the UI after logging a warning.
         link.onerror = () => {
           structuredLog('WARN', 'Dev Panel: CSS failed to load, proceeding without stylesheet', { href: link.href });
           // Give the browser a short moment, then continue initialization without CSS
-          setTimeout(() => wireUpUI(), 50);
+          setTimeout(() => _handleCssReady(), 50);
         };
 
         link.onerror = (e) => {
@@ -273,10 +281,10 @@ export function initializeDevPanel(arg1, arg2) {
 
         document.head.appendChild(link);
         // Safety timeout: if neither onload nor onerror fired within 3s, proceed anyway.
-        setTimeout(() => {
-          if (!document.getElementById(cssId)) return; // if removed, CSS already handled
+        _devPanelCssTimeoutId = setTimeout(() => {
+          if (_devPanelCssHandled) return;
           try { structuredLog('DEBUG', 'Dev Panel: CSS load timeout, proceeding without stylesheet', { href: link.href }); } catch (e) {}
-          try { wireUpUI(); } catch (e) { console.error('Dev Panel: wireUpUI after timeout failed', e); }
+          try { _handleCssReady(); } catch (e) { console.error('Dev Panel: wireUpUI after timeout failed', e); }
         }, 3000);
       }
 
