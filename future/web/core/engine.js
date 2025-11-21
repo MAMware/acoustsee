@@ -243,7 +243,7 @@ export function createEngine() {
     // NOTE: This is a shallow convenience reference to the injected bus.
     // The canonical contract remains dependency injection via setEventBus().
     // eslint-disable-next-line accessor-pairs
-    get eventBus() { return unifiedEventBus; }
+    get eventBus() { return unifiedEventBus; },
     // Expose traceId generator for explicit use
     generateTraceId: generateTraceId
   };
