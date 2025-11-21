@@ -237,6 +237,13 @@ export function createEngine() {
       unifiedEventBus = eventBusRef;
       structuredLog('DEBUG', 'Engine: unified EventBus injected', {});
     },
+
+    // Expose injected EventBus for convenience/access by UI modules
+    // Some UI modules expect `engine.eventBus` to be present; set it here.
+    // NOTE: This is a shallow convenience reference to the injected bus.
+    // The canonical contract remains dependency injection via setEventBus().
+    // eslint-disable-next-line accessor-pairs
+    get eventBus() { return unifiedEventBus; }
     // Expose traceId generator for explicit use
     generateTraceId: generateTraceId
   };
