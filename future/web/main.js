@@ -478,18 +478,14 @@ export async function init() {
   }      // Helper: show main UI and optional debug panel R17925 why optional debug panel? dont we have a ?debug=true param to show it?
       async function transitionToMainUI(traceId) {
         if (DOM.splashScreen) DOM.splashScreen.style.display = 'none';
-        if (DOM.mainContainer) DOM.mainContainer.style.display = 'block';
+        // Leave decisions about showing/hiding `mainContainer` to the active UI.
+        // The bootstrap should not enforce UI-specific DOM behavior — UIs should
+        // opt-in to show the main application container if they need it.
         DOM.powerOn.setAttribute('aria-pressed', 'true');
         const uiState = engine.getState();
         const onMsg = await getText('audioOn', {}, uiState).catch(() => 'Audio enabled');
-  speakText(uiState, onMsg, 'tts');
+        speakText(uiState, onMsg, 'tts');
         try { trackFeatureUse('power-on', { success: true, traceId }); } catch (e) {}
-
-        try {
-          // Dev panel is initialized at startup when ?debug=true. No autoOpen needed here.
-          // No direct action required here; the Dev Panel manages its own visibility
-          // via the engine lifecycle event. main.js should not assume UI state.
-        } catch (e) { console.warn('showing debugUI failed', e); }
         structuredLog('INFO', 'Transitioned to main UI', {}, true, true, { traceId });
       }
 

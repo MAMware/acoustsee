@@ -47,6 +47,15 @@ export function initializeAccessibleUI(arg1, arg2) {
   engine = engine || { dispatch: () => {}, getState: () => ({}) };
   DOM = DOM || (typeof window !== 'undefined' ? window.DOM : undefined);
   console.log('Initializing Accessible UI...');
+
+  // Opt-in: this UI requires the main application container to be visible.
+  // Make the main container visible when this UI initializes; the UI will
+  // hide it again in its dispose() method.
+  try {
+    if (DOM && DOM.mainContainer && typeof DOM.mainContainer.style !== 'undefined') {
+      DOM.mainContainer.style.display = 'block';
+    }
+  } catch (e) { /* best-effort, ignore errors */ }
   
   // This UI is primarily for end-users. It will be gesture-based.
   // The original "Start/Stop" button overlay on the video is a good
@@ -92,17 +101,16 @@ export function initializeAccessibleUI(arg1, arg2) {
       let touchendX = 0;
       let touchendY = 0;
       const threshold = 50; // Minimum distance for a swipe
-
-      element.addEventListener('touchstart', (event) => {
+      function onTouchStart(event) {
         touchstartX = event.changedTouches[0].screenX;
         touchstartY = event.changedTouches[0].screenY;
-      }, false);
+      }
 
-      element.addEventListener('touchend', (event) => {
+      function onTouchEnd(event) {
         touchendX = event.changedTouches[0].screenX;
         touchendY = event.changedTouches[0].screenY;
         handleSwipe();
-      }, false);
+      }
 
       function handleSwipe() {
         const deltaX = touchendX - touchstartX;
@@ -118,6 +126,18 @@ export function initializeAccessibleUI(arg1, arg2) {
           }
         }
       }
+
+      element.addEventListener('touchstart', onTouchStart, false);
+      element.addEventListener('touchend', onTouchEnd, false);
+
+      return {
+        dispose() {
+          try {
+            element.removeEventListener('touchstart', onTouchStart, false);
+            element.removeEventListener('touchend', onTouchEnd, false);
+          } catch (e) { /* ignore */ }
+        }
+      };
     }
 
     // --- Gesture State ---
@@ -126,6 +146,9 @@ export function initializeAccessibleUI(arg1, arg2) {
     let longPressTimer = null;
     const TAP_DELAY = 300; // ms
     const LONG_PRESS_DELAY = 1000; // 1 second
+
+    // Swipe detector instance (disposable) so we can clean up listeners
+    let swipeDetector = null;
 
     // --- Event Handlers ---
     function handlePointerDown() {
@@ -207,7 +230,7 @@ export function initializeAccessibleUI(arg1, arg2) {
       mainArea.addEventListener('click', handleClick);
       mainArea.addEventListener('pointerdown', handlePointerDown);
       mainArea.addEventListener('pointerup', handlePointerUp);
-      createSwipeDetector(mainArea, handleSwipe);
+      swipeDetector = createSwipeDetector(mainArea, handleSwipe);
     }
 
   // Named timers and swipe detector cleanup
@@ -222,14 +245,8 @@ export function initializeAccessibleUI(arg1, arg2) {
 
         // Clean up swipe detector listeners / instance if present
         try {
-          if (swipeDetector) {
-            if (typeof swipeDetector.dispose === 'function') {
-              swipeDetector.dispose();
-            } else if (typeof swipeDetector.off === 'function') {
-              swipeDetector.off('swipe');
-            } else if (typeof swipeDetector.removeEventListener === 'function') {
-              swipeDetector.removeEventListener('swipe', () => {});
-            }
+          if (swipeDetector && typeof swipeDetector.dispose === 'function') {
+            swipeDetector.dispose();
             swipeDetector = null;
           }
         } catch (e) {
@@ -243,6 +260,12 @@ export function initializeAccessibleUI(arg1, arg2) {
         longPressTimer = 0;
 
         structuredLog('INFO', 'Touch Gestures UI disposed');
+        // Hide main container when this UI is disposed (best-effort)
+        try {
+          if (DOM && DOM.mainContainer && typeof DOM.mainContainer.style !== 'undefined') {
+            DOM.mainContainer.style.display = 'none';
+          }
+        } catch (e) { /* ignore */ }
       } catch (err) {
         structuredLog('ERROR', 'touch-gestures dispose error', { message: String(err) });
       }
