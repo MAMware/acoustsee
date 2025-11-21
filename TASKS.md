@@ -29,6 +29,32 @@ This document tracks active and future development tasks to provide a clear proj
 -   **[x] `ARCH-11`:** Strict Audio Gating - Commands fail loudly when audio unavailable, no silent fallback. _(Completed 2025-11-19)_
 -   **[x] `ARCH-12`:** Remove Console Hijacking - No console monkey-patching, use `structuredLog` explicitly. _(Completed 2025-11-19)_
 
+## Ad-hoc: Dynamic UI & Dev Panel Refactor (Nov 21, 2025)
+
+-   **[x] `UI-DEV-1`:** Extract dev-panel preview & chart modules
+	- Files: `future/web/ui/dev-panel/dev-panel-preview.js`, `future/web/ui/dev-panel/dev-panel-chart-controller.js`
+	- Purpose: Remove monolithic "God Object" in `dev-panel.js`; provide dispose APIs for preview and charting loops. _(Completed 2025-11-21)_
+-   **[x] `UI-DEV-2`:** Implement UI manifest & registry
+	- Files: `future/web/ui/ui-manifest.js`, `future/web/ui/ui-registry.js`
+	- Purpose: Provide `AVAILABLE_UIS` and registration helpers for pluggable UIs. _(Completed 2025-11-21)_
+-   **[x] `UI-DEV-3`:** Defer UI imports until audio unlock & enforce single active UI
+	- File: `future/web/main.js`
+	- Purpose: Load selected UI only after user gesture (AudioContext resume) and dispose previous UI before initializing a new one. _(Completed 2025-11-21)_
+-   **[x] `UI-DEV-4`:** Fix manifest module paths & defensive CSS guard
+	- File: `future/web/ui/ui-manifest.js`, `future/web/ui/dev-panel/dev-panel.js`
+	- Purpose: Corrected import path typos that caused 404s; added one-shot guard and timeout-safe CSS fallback to avoid duplicate wiring. _(Completed 2025-11-21)_
+-   **[x] `UI-DEV-5`:** Make EventBus accessible to EventBusViewer
+	- File: `future/web/core/engine.js`
+	- Purpose: Expose injected EventBus via a compatibility getter (`engine.eventBus`) so viewers can initialize reliably. _(Completed 2025-11-21)_
+-   **[ ] `UI-DEV-6`:** Minimal integration smoke tests (automated)
+	- Status: Manual live verification completed by developer; add automated browser smoke tests to cover selector → Power On → UI activation flows. _(Pending)_
+
+-   **Next Steps:**
+	- Add automated smoke tests for `activateUI()` flows and dispose semantics.
+	- Consider a formal `engine.getEventBus()` API and small unit tests for the UI registry/manifest.
+	- Debounce high-frequency UI inputs (sliders) and address missing-key `getText` warnings observed in runtime logs.
+
+
 ## Phase 2A: Orchestration Visibility (Week 1-2)
 
 ### Week 1: Foundation (✅ APPROVED)

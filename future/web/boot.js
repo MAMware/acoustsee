@@ -190,7 +190,12 @@ if (location.protocol === 'file:') {
 
   // Import app entry with cache-busting based on build info so browsers don't serve stale main.js
   import('./core/constants.js').then(constants => {
-    const v = encodeURIComponent(constants.BUILD_TIMESTAMP || constants.BUILD_COMMIT || Date.now().toString());
+    // Prefer commit hash for a short, readable cache-buster. Fall back to
+    // BUILD_TIMESTAMP or Date.now(), but sanitize the timestamp so it
+    // doesn't include colons or dots which become URL-encoded (%3A, %2E).
+    const rawV = constants.BUILD_COMMIT || constants.BUILD_TIMESTAMP || Date.now().toString();
+    const sanitizedV = (typeof rawV === 'string') ? rawV.replace(/[:.]/g, '-') : String(rawV);
+    const v = encodeURIComponent(sanitizedV);
     return import(`./main.js?v=${v}`);
   }).then(async (mod) => {
     try {
