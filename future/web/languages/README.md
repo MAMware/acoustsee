@@ -24,27 +24,44 @@ languages/
 1. **Language Files** - JSON files per locale (e.g., `en-US.json`)
    - Keys: Semantic identifiers (e.g., `ui.buttons.start`)
    - Values: Translated strings
+   - **Bundled Fallback:** `en-US.js` is pre-bundled as an ES module for offline availability
 
 2. **Available Languages** - `available-languages.js`
    - Exports supported language metadata
    - Each entry: `{ id: 'en-US', name: 'English (USA)' }`
 
 3. **Core Utilities** - `utils/utils.js` implements:
-   - `getText(key, locale)` - Get translated string; returns key as fallback on fetch error
-   - `setLanguage(locale)` - Switch active language
-   - `translatePage(document)` - Translate DOM elements
+   - `initializeLanguage(state)` - **Must be called and awaited during startup**. Chooses language, preloads translations, and sets `state.i18n.ready = true`
+   - `getText(key, params, state)` - Get translated string; **fails fast** if `state.i18n.ready !== true`, returns `[missing:key]` for missing translations
+   - `setLanguage(locale, state)` - Switch active language and preload translations
+   - `translatePage(document, state)` - Translate DOM elements
    - **Base Path Resolution:** Language files loaded relative to `window.__ACOUSTSEE_BASE_PATH__`
 
 4. **DOM Translation** - Elements with `data-i18n` attribute
    - `<button data-i18n="ui.buttons.start">Start</button>`
    - Automatically translated by `translatePage()`
 
+### Initialization Pattern (REQUIRED)
+
+**The language system MUST be initialized before any UI text is rendered:**
+
+```javascript
+// In main.js startup sequence:
+await initializeLanguage(state);  // Sets state.i18n.ready = true
+translatePage(document, state);   // Safe to call after init
+```
+
+**Fail-Fast Behavior:**
+- If `getText()` is called before `initializeLanguage()` completes, it logs `I18N_NOT_INITIALIZED` (once) and returns `[missing:key]`
+- This enforces the initialization barrier and prevents race conditions
+
 ### Resilient Fallback Strategy
 
-The language subsystem is on a early development stage, thus it should never block audio initialization. If translation files are unavailable:
-- `getText()` returns the key itself (e.g., `"ui.buttons.start"`) instead of throwing.
-- UI continues with untranslated keys.
-- Audio and core functionality remain unaffected.
+The language subsystem uses a pre-bundled `en-US` fallback to ensure core UI strings are always available:
+- If the selected language file fails to fetch, the system automatically falls back to bundled `en-US`
+- Missing translation keys are recorded in `state.missingTranslations` for Dev Panel visibility
+- Only the first occurrence of each missing key is logged/sent to analytics (session-level deduplication)
+- Audio and core functionality remain unaffected by i18n errors
 
 ---
 

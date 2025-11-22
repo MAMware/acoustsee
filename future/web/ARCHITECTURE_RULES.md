@@ -1,15 +1,15 @@
 # Rule X: Critical Subsystems Must Fail Loudly
 
 **The Problem:**
-Silent fallback or graceful degradation for core subsystems (like audio) undermines the application's accessibility and reliability. If audio is not ready, commands must fail loudly and log an ERROR. Language subsystem may degrade gracefully (returns key), but must never block audio initialization.
+Silent fallback or graceful degradation for core subsystems (like audio) undermines the application's accessibility and reliability. If audio is not ready, commands must fail loudly and log an ERROR. Language subsystem enforces deterministic initialization and fails fast if `getText` is called before initialization completes.
 
 **Real Bug from Session:**
 - Audio system was not initialized, but commands attempted to play cues, resulting in silent failures and no sound for users.
-- Language fetch failures previously blocked audio initialization; now, language errors degrade gracefully and never block audio.
+- i18n race conditions caused repeated `getText` errors during boot when translations were called before language initialization completed.
 
 **Rule:**
 - Audio is required. If `engine.audioApi` is missing or not ready, commands must log ERROR and fail. No silent fallback or degradation.
-- Language subsystem may degrade gracefully (returns key), but must never block audio initialization.
+- Language subsystem enforces deterministic initialization: `await initializeLanguage(state)` must complete before any `getText()` calls. If `getText` is called before `state.i18n.ready === true`, it logs `I18N_NOT_INITIALIZED` and returns `[missing:key]`.
 
 **Example:**
 ```javascript

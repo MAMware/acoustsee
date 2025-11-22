@@ -23,51 +23,91 @@ export const ANNOUNCE_REWRITE_DELAY_MS = 150;
 // Module-scoped dedupe trackers to avoid flooding logs/analytics on repeat errors
 const _reportedMissingKeys = new Set();
 let _reportedInitError = false;
+let _reportedNotInitialized = false;
 
-export async function initializeLanguageIfNeeded(state) {
+export async function initializeLanguage(state) {
   const settings = state;
-  if (!settings.language) {
-    structuredLog('WARN', 'Language not initialized; attempting persisted or default');
-    // Try persisted user selection first
+  // Always perform initialization: choose language, preload translations/fallbacks, and mark ready
+  try {
+    // Determine chosen language: prefer existing, then persisted, then first available, then en-US
+    let chosen = settings.language;
     try {
       const persisted = (typeof localStorage !== 'undefined') ? localStorage.getItem('acoustsee.language') : null;
-      if (persisted && Array.isArray(settings.availableLanguages) && settings.availableLanguages.find(l => l.id === persisted)) {
-        settings.language = persisted;
-        structuredLog('INFO', 'Using persisted language', { language: settings.language });
-      } else if (settings.availableLanguages && settings.availableLanguages.length > 0) {
-        settings.language = settings.availableLanguages[0].id;
-        structuredLog('INFO', 'Auto-set language to first available', { language: settings.language });
-      } else {
-        // Fallback to ultimate default
-        settings.language = 'en-US';
-        structuredLog('INFO', 'Using ultimate fallback language', { language: settings.language });
+      if (!chosen && persisted && Array.isArray(settings.availableLanguages) && settings.availableLanguages.find(l => l.id === persisted)) {
+        chosen = persisted;
+        structuredLog('INFO', 'Using persisted language', { language: chosen });
       }
     } catch (e) {
-      structuredLog('WARN', 'Error reading persisted language; falling back', { error: e?.message || String(e) });
-      settings.language = settings.availableLanguages && settings.availableLanguages[0] ? settings.availableLanguages[0].id : 'en-US';
+      structuredLog('DEBUG', 'Failed reading persisted language (continuing)', { error: e?.message || String(e) });
     }
-  }
 
-  // Preload translations for the selected language (best-effort) and mark i18n state
-  try {
-    if (!settings.i18n) settings.i18n = { ready: false, languageId: settings.language };
-    await preloadTranslations(settings.language);
-    // mark ready if cache now has the language
-    settings.i18n.ready = Boolean(translationsCache[settings.language]);
-    settings.i18n.languageId = settings.language;
-    if (!settings.i18n.ready && settings.language === 'en-US') {
-      // If bundled enUS is present, use it as ready
-      settings.i18n.ready = (typeof enUS === 'object' && Object.keys(enUS).length > 0);
+    if (!chosen) {
+      if (settings.availableLanguages && settings.availableLanguages.length > 0) {
+        chosen = settings.availableLanguages[0].id;
+        structuredLog('INFO', 'Auto-set language to first available', { language: chosen });
+      } else {
+        chosen = 'en-US';
+        structuredLog('INFO', 'Using ultimate fallback language', { language: chosen });
+      }
     }
-  } catch (e) {
-    structuredLog('WARN', 'preloadTranslations failed in init', { error: e?.message || String(e) });
-    if (!settings.i18n) settings.i18n = { ready: false, languageId: settings.language };
+
+    settings.language = chosen;
+
+    // Ensure i18n container exists
+    if (!settings.i18n) settings.i18n = { ready: false, languageId: chosen };
+    settings.i18n.languageId = chosen;
+
+    // If chosen is bundled en-US, use the pre-bundled object immediately
+    if (chosen === 'en-US' && typeof enUS === 'object' && Object.keys(enUS).length > 0) {
+      translationsCache['en-US'] = enUS;
+      settings.i18n.ready = true;
+      structuredLog('DEBUG', 'initializeLanguage: using bundled en-US', { language: 'en-US' });
+      // Ensure missingTranslations exists
+      if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+      return chosen;
+    }
+
+    // Otherwise attempt to preload translations; mark ready if cache populated
+    try {
+      await preloadTranslations(chosen);
+      settings.i18n.ready = Boolean(translationsCache[chosen]);
+      if (settings.i18n.ready) {
+        structuredLog('DEBUG', 'initializeLanguage: translations preloaded', { language: chosen });
+      } else {
+        // If preload didn't populate cache, attempt fallback to bundled en-US
+        if (typeof enUS === 'object' && Object.keys(enUS).length > 0) {
+          translationsCache['en-US'] = enUS;
+          settings.language = 'en-US';
+          settings.i18n.languageId = 'en-US';
+          settings.i18n.ready = true;
+          structuredLog('WARN', 'initializeLanguage: preload failed, fell back to bundled en-US', { attempted: chosen });
+        } else {
+          settings.i18n.ready = false;
+          structuredLog('WARN', 'initializeLanguage: translations not available and no bundled fallback', { attempted: chosen });
+        }
+      }
+    } catch (e) {
+      structuredLog('WARN', 'preloadTranslations failed in initializeLanguage', { error: e?.message || String(e), attempted: chosen });
+      if (typeof enUS === 'object' && Object.keys(enUS).length > 0) {
+        translationsCache['en-US'] = enUS;
+        settings.language = 'en-US';
+        settings.i18n.languageId = 'en-US';
+        settings.i18n.ready = true;
+        structuredLog('WARN', 'initializeLanguage: using bundled en-US after preload error', { attempted: chosen });
+      } else {
+        settings.i18n.ready = false;
+      }
+    }
+
+    // Ensure missingTranslations container exists for dev visibility
+    if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+    return settings.language;
+  } catch (err) {
+    structuredLog('ERROR', 'initializeLanguage failed', { error: err?.message || String(err) });
+    if (!settings.i18n) settings.i18n = { ready: false, languageId: settings.language || 'en-US' };
+    if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+    return settings.language || 'en-US';
   }
-
-  // Ensure missingTranslations container exists for dev visibility
-  if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
-
-  return settings.language;
 }
 
 export function hapticCount(count) {
@@ -124,6 +164,17 @@ export async function getText(key, params = {}, state) {
     }
 
     const settings = state;
+    // Fail-fast: if i18n is not initialized, do not attempt lazy loads — log once and return fallback
+    if (!settings.i18n || settings.i18n.ready !== true) {
+      if (!_reportedNotInitialized) {
+        structuredLog('ERROR', 'I18N_NOT_INITIALIZED', { message: 'i18n not initialized before getText', key, language: settings.language });
+        _reportedNotInitialized = true;
+      }
+      // Record missingTranslations for dev visibility
+      if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+      if (!settings.missingTranslations.includes(key)) settings.missingTranslations.push(key);
+      return `[missing:${key}]`;
+    }
     // Ensure availableLanguages exists
     if (!settings.availableLanguages || !Array.isArray(settings.availableLanguages) || settings.availableLanguages.length === 0) {
       if (!_reportedInitError) {

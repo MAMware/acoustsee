@@ -66,13 +66,14 @@ Example: `http://mamware.github.io/acoustsee/future/web/index.html?debug=true`
 
 The application is built on a decoupled, headless architecture.
 
-- **`main.js`:** The entry point that initializes the system and loads the appropriate UI.
+- **`main.js`:** The entry point that initializes the system and loads the appropriate UI. Startup sequence: Engine creation → Config loading → **Language initialization (`await initializeLanguage(state)`)** → UI rendering.
 - **`core/engine.js`:** A "headless" state machine that manages all application logic via a command pattern. It has no knowledge of the DOM.
 - **`video/frame-processor.js`:** The Orchestrator that manages the video pipeline and delegates to Specialist Workers.
 - **`workers/frame-provider-worker.js`:** The entry point for camera data, running its own `requestAnimationFrame` loop.
 - **`workers/motion-worker.js` (and others):** Specialist Workers for analysis tasks like motion detection.
 - **`audio/audio-processor.js`:** Manages the Web Audio API, sound profiles, and synths.
 - **`ui/` directory:** Contains pluggable UI modules (e.g., `touch-gestures/` for accessible UI, `dev-panel/` for debugging).
+- **`languages/`:** Internationalization (i18n) system with pre-bundled `en-US` fallback. Language initialization is awaited during startup to prevent race conditions.
 
 ## Critical Integration Rules
 

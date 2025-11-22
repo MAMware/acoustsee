@@ -23,7 +23,7 @@ import {
   isCriticalSystem 
 } from './utils/error-handling.js';
 import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
-import { getText, initializeLanguageIfNeeded, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
+import { getText, initializeLanguage, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
 import AudioManager from './audio/audio-manager.js';
 import { initializeAudio, bindAudioManager as bindAudioProcessor, registerAudioListeners } from './audio/audio-processor.js';
 import { loadAvailableGrids } from './video/grids/available-grids.js';
@@ -259,7 +259,7 @@ export async function init() {
     });
 
     // Ensure language is initialized before UI translation (await to avoid races)
-    await initializeLanguageIfNeeded(configState);
+    await initializeLanguage(configState);
     try {
       await setLanguage(configState.language, configState);
       translatePage(document, configState);

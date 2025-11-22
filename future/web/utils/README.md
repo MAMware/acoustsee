@@ -1,9 +1,25 @@
-## getText Behavior & Language Subsystem
+## i18n / Language Subsystem
 
-`getText` now returns the key as a fallback instead of throwing on translation fetch errors. The language subsystem is v0.2 priority and does not block audio initialization. If translations are unavailable, the UI continues with untranslated keys.
+**Initialization (REQUIRED):**
+- `initializeLanguage(state)` must be called and awaited during startup (in `main.js` init sequence)
+- Sets `state.i18n.ready = true` when translations are loaded (or bundled fallback is available)
+- Pre-bundled `en-US` ensures offline availability for core UI strings
+
+**Fail-Fast Behavior:**
+- `getText(key, params, state)` returns `[missing:key]` if called before `state.i18n.ready === true`
+- Logs `I18N_NOT_INITIALIZED` once per session to enforce initialization order
+- Missing keys are recorded in `state.missingTranslations` for Dev Panel visibility
+
+**Analytics & Deduplication:**
+- Only the first occurrence of each missing key is logged and sent to analytics
+- Subsequent occurrences are logged at DEBUG level to avoid spam
+- Session-level deduplication in both `getText` and analytics mapping
 
 **Base Path:**
 Language files are loaded relative to the global base path (`window.__ACOUSTSEE_BASE_PATH__`).
+
+**Testing:**
+See `future/web/test/unit/i18n-init.test.js` for initialization tests and `future/web/test/unit/analytics-i18n.test.js` for analytics deduplication tests.
 # Utils Subsystem
 
 This directory contains cross-cutting utilities that are used by multiple subsystems. These are **stateless helper functions and lightweight services** - not business logic.
