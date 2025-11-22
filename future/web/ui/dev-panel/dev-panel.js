@@ -235,7 +235,7 @@ export function initializeDevPanel(arg1, arg2) {
         }
 
         await setupUI(); // setupUI is declared below
-        panel.style.display = 'flex';
+        panel.style.display = 'block'; // Use block display, not flex (flex causes layout issues)
       } catch (e) {
         console.error('Dev Panel setupUI failed during wiring', e);
       }

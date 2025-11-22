@@ -119,6 +119,22 @@ body.accessible-mode #mainContainer {
 
 
 
+/* UI Panel Root Container - Host for pluggable UI modules */
+#ui-panel-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Allow clicks to pass through to video */
+  z-index: 10; /* Above video (z-index: 1) but below splash (z-index: 30) */
+}
+
+/* Children of ui-panel-root should re-enable pointer events as needed */
+#ui-panel-root > * {
+  pointer-events: auto;
+}
+
 /* --- Accessibility & Overlay Styles R17925 why we have this here? didnt we agree to have plugable modular UIs? --- */
 .sr-only {
   position: absolute !important;
