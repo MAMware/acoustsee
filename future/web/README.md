@@ -41,11 +41,14 @@ This is the core experience for the end-user. The screen is an input surface, no
 
 ### 2. The Dev Panel (For Developers & Testers)
 
-This UI is a powerful dashboard for development and testing. It is enabled by the `?debug=true` query param.
+This UI is a powerful dashboard for development and testing.
 
 **How to Activate:**
-Add `?debug=true` to the end of the URL.
-Example: `http://mamware.github.io/acoustsee/future/web/index.html?debug=true`
+1. Load the app (the splash screen appears)
+2. Select "Developer Panel" from the UI selector dropdown
+3. Click the "Power" button to start
+
+**Note:** Legacy `?debug=true` URL parameter still works for backward compatibility.
 
 **Features:**
 - **Live Video Feed:** See what the camera sees.

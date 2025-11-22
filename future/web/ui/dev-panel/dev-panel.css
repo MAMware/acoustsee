@@ -1,18 +1,15 @@
 /*
   File: /workspaces/acoustsee/future/web/ui/dev-panel/dev-panel.css
-  Description: Full-screen Developer Panel stylesheet.
+  Description: Developer Panel stylesheet.
+  Note: Responsive positioning controlled by dev-panel-layout.js (single source of truth).
+        This CSS only handles colors, typography, spacing, and content layout.
 */
 
 /* Import EventBus Viewer styles */
 @import url('./eventbus-viewer.css');
 
 #acoustsee-dev-panel {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 10000;
+  /* Positioning/dimensions set by dev-panel-layout.js based on viewport width */
   background-color: rgba(30, 40, 50, 0.98);
   color: #ecf0f1;
   backdrop-filter: blur(5px);
@@ -473,42 +470,23 @@
   padding-bottom: 10px;
 }
 
-/* Responsive 3-Column Layout for State Inspector in Landscape Mode */
+/* Note: Responsive layout positioning controlled by dev-panel-layout.js (single source of truth) */
+/* These media queries handle content layout ONLY (columns, grids), not panel positioning */
 
-@media (orientation: landscape) and (min-width: 600px) {
+/* Responsive 3-Column Layout for State Inspector */
+@media (min-width: 600px) {
   #devpanel-state-view {
-    /* Automatically flow the text into 3 balanced columns */
     column-count: 3;
-    /* Add some space between the columns for readability */
     column-gap: 24px;
-    /* Allow it to use more vertical space in landscape */
-    max-height: 40vh; 
-  }
-}
-
-@media (orientation: landscape) and (max-width: 599px) {
-  #devpanel-state-view {
-    /* On very small landscape screens (like a phone), 2 columns is better */
-    column-count: 2;
-    column-gap: 20px;
     max-height: 40vh;
   }
 }
 
-/* Responsive Side-by-Side Layout for Portrait Mode */
-
-@media (orientation: portrait) {
-  .devpanel-row:not(.two-col) {
-    display: flex;
-    flex-direction: row;
-    gap: 16px; /* This creates space between the two columns */
-    align-items: stretch; /* Makes the two sections have equal height */
-  }
-
-  .devpanel-row:not(.two-col) > .devpanel-section {
-    flex: 1; /* Each section takes up 50% of the available width */
-    margin-bottom: 0; /* The container's gap now handles the spacing */
-    min-height: 220px; /* Prevents the sections from becoming too short */
+@media (max-width: 599px) {
+  #devpanel-state-view {
+    column-count: 2;
+    column-gap: 20px;
+    max-height: 40vh;
   }
 }
 

@@ -223,6 +223,17 @@ export function initializeDevPanel(arg1, arg2) {
         } catch (e) { console.error('Failed to wire Touch Pad', e); }
         // --- END NEW BLOCK ---
 
+        // --- Apply Responsive Layout with Cleanup ---
+        let layoutDispose = null;
+        try {
+          layoutDispose = applyLayoutAndBehaviors({ panel, DOM });
+          if (layoutDispose && typeof layoutDispose === 'function') {
+            panel.__layoutDispose = layoutDispose;
+          }
+        } catch (e) {
+          console.error('Failed to apply layout and behaviors', e);
+        }
+
         await setupUI(); // setupUI is declared below
         panel.style.display = 'flex';
       } catch (e) {
@@ -1203,7 +1214,14 @@ export function initializeDevPanel(arg1, arg2) {
         }
       } catch (e) { /* swallow */ }
 
-      // 7. Remove panel node from DOM
+      // 7. Layout cleanup (fixes memory leak)
+      try {
+        if (typeof panel.__layoutDispose === 'function') {
+          panel.__layoutDispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 8. Remove panel node from DOM
       try {
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
       } catch (e) { /* swallow */ }
