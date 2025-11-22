@@ -5,593 +5,641 @@
     <div id="devpanel-buildinfo" style="font-size: 11px; color: #7f8c8d; margin-top: 4px; font-family: monospace;">Build: Loading...</div>
   </div>
 
-  <!-- UI Settings Section -->
-  <div class="devpanel-section ui-settings-section">
-    <h2 class="section-header">
-      <span>UI Settings</span>
-      <span class="section-header-spacer"></span>
-      <button class="collapse-btn" data-target="ui-settings-content" aria-expanded="true" title="Collapse UI Settings">-</button>
-    </h2>
-    <div id="ui-settings-content" class="section-content">
-      <div class="control-column">
-        <label>Density (Spacing)</label>
-        <div class="density-controls">
-          <label class="density-option">
-            <input type="radio" name="density" value="0.8" id="density-compact">
-            <span>Compact</span>
-          </label>
-          <label class="density-option">
-            <input type="radio" name="density" value="1" id="density-comfortable" checked>
-            <span>Comfortable</span>
-          </label>
-          <label class="density-option">
-            <input type="radio" name="density" value="1.25" id="density-spacious">
-            <span>Spacious</span>
-          </label>
-        </div>
-        <p class="perf-note">Changes spacing across the entire panel. Preference saved to localStorage.</p>
-      </div>
-    </div>
-  </div>
+  <!-- ========================================
+       GROUP 1: UI & SYSTEM
+       ======================================== -->
+  <div class="devpanel-group" data-group="ui-system">
+    <h2 class="group-title">UI & System</h2>
 
-  <!-- Synth Sandbox: Manual cue sender for testing audio in isolation -->
-  <div class="devpanel-section synth-sandbox-section half-width-section">
-    <h2 class="section-header">
-      <span>Synth Sandbox</span>
-      <span class="section-header-spacer"></span>
-      <button class="collapse-btn" data-target="synth-sandbox-content" aria-expanded="true" title="Collapse Sandbox">-</button>
-    </h2>
-    <div id="synth-sandbox-content" class="section-content">
-      <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Manually send cues to the audio engine. Bypasses the video pipeline.</p>
-      <div class="controls-grid-2col">
+    <!-- UI Settings Section -->
+    <div class="devpanel-section ui-settings-section">
+      <h2 class="section-header">
+        <span>UI Settings</span>
+        <span class="section-header-spacer"></span>
+        <button class="collapse-btn" data-target="ui-settings-content" aria-expanded="true" title="Collapse UI Settings">-</button>
+      </h2>
+      <div id="ui-settings-content" class="section-content">
         <div class="control-column">
-          <label>Pitch (Hz)</label>
-          <div class="slider-container">
-            <input id="sandbox-pitch" type="range" min="100" max="2000" step="1" value="440">
-            <span id="sandbox-pitch-value">440</span>
-          </div>
-          <label>Intensity (Volume)</label>
-          <div class="slider-container">
-            <input id="sandbox-intensity" type="range" min="0" max="1" step="0.05" value="0.5">
-            <span id="sandbox-intensity-value">0.5</span>
-          </div>
-        </div>
-        <div class="control-column">
-          <label>Pan (Left/Right)</label>
-          <div class="slider-container">
-            <input id="sandbox-pan" type="range" min="-1" max="1" step="0.1" value="0">
-            <span id="sandbox-pan-value">0</span>
-          </div>
-          <div class="devpanel-actions-grid" style="margin-top: 16px;">
-              <button data-action="sandbox-play-note" type="button">Play Single Note</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="devpanel-section state-section">
-    <h2 class="section-header">
-      <span>State Inspector</span>
-      <input type="text" placeholder="Filter" id="state-filter-external" class="header-filter" />
-      <button class="collapse-btn" data-target="state-content" aria-expanded="true" title="Collapse Inspector">-</button>
-    </h2>
-    <div id="state-content" class="section-content">
-      <!-- StateInspector component will be rendered here -->
-    </div>
-  </div>
-
-  <!-- I18N: Missing Translations -->
-  <div class="devpanel-section i18n-missing-section">
-    <h2 class="section-header">
-      <span>Missing Translations</span>
-      <span class="section-header-spacer"></span>
-      <button class="collapse-btn" data-target="i18n-missing-content" aria-expanded="true" title="Collapse Missing Translations">-</button>
-    </h2>
-    <div id="i18n-missing-content" class="section-content">
-      <p style="font-size:12px; color:#95a5a6; margin:0 0 8px 0;">Keys that were requested but not found in the current language files. Useful to triage i18n gaps.</p>
-      <div id="i18n-missing-summary" style="font-size:12px; color:#bdc3c7; margin-bottom:8px;">No missing translations detected.</div>
-      <div id="i18n-missing-list" style="max-height:160px; overflow:auto; font-family: monospace; font-size:12px; background:#111; color:#eee; padding:8px; border-radius:4px;">&nbsp;</div>
-    </div>
-  </div>
-
-  <!-- EventBus Viewer Section -->
-  <div class="devpanel-section eventbus-viewer-section">
-    <h2 class="section-header">
-      <span>EventBus Viewer</span>
-      <button class="collapse-btn" data-target="eventbus-viewer-content" aria-expanded="true" title="Collapse EventBus Viewer">-</button>
-    </h2>
-    <div id="eventbus-viewer-content" class="section-content">
-      <div id="eventbus-viewer-container">
-        <div class="eventbus-controls">
-          <div class="eventbus-control-group">
-            <label>Event Type</label>
-            <select id="eventbus-filter-type">
-              <option value="all">All Types</option>
-              <option value="log">Log</option>
-              <option value="command">Command</option>
-            </select>
-          </div>
-          <div class="eventbus-control-group">
-            <label>Category</label>
-            <select id="eventbus-filter-category">
-              <option value="all">All Categories</option>
-              <option value="INFO">INFO</option>
-              <option value="DEBUG">DEBUG</option>
-              <option value="WARN">WARN</option>
-              <option value="ERROR">ERROR</option>
-            </select>
-          </div>
-          <div class="eventbus-control-group">
-            <label>
-              <input type="checkbox" id="eventbus-filter-frames" />
-              Show Frame Traces
+          <label>Density (Spacing)</label>
+          <div class="density-controls">
+            <label class="density-option">
+              <input type="radio" name="density" value="0.8" id="density-compact">
+              <span>Compact</span>
+            </label>
+            <label class="density-option">
+              <input type="radio" name="density" value="1" id="density-comfortable" checked>
+              <span>Comfortable</span>
+            </label>
+            <label class="density-option">
+              <input type="radio" name="density" value="1.25" id="density-spacious">
+              <span>Spacious</span>
             </label>
           </div>
-          <div class="eventbus-actions">
-            <button id="eventbus-refresh-btn">Refresh</button>
-            <button id="eventbus-export-btn">Export</button>
-            <button id="eventbus-clear-btn">Clear</button>
-            <span id="eventbus-event-count" class="eventbus-event-count">0 events</span>
-          </div>
+          <p class="perf-note">Changes spacing across the entire panel. Preference saved to localStorage.</p>
         </div>
-        <div id="eventbus-metrics-container" class="eventbus-metrics-container"></div>
-        <div id="eventbus-event-list" class="eventbus-event-list"></div>
-        <div id="eventbus-correlation-view" class="eventbus-correlation-view"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Side-by-side Worker and Video Preview, always aligned -->
-  <div class="devpanel-row devpanel-row-balanced">
-    <div id="worker-explorer-container" class="devpanel-section worker-section">
+    <!-- State Inspector -->
+    <div class="devpanel-section state-section">
       <h2 class="section-header">
-        <span>Worker Performance</span>
-        <span class="section-header-spacer"></span>
-        <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
+        <span>State Inspector</span>
+        <input type="text" placeholder="Filter" id="state-filter-external" class="header-filter" />
+        <button class="collapse-btn" data-target="state-content" aria-expanded="true" title="Collapse Inspector">-</button>
       </h2>
-      <div id="worker-content" class="section-content">
-        <div id="worker-explorer-legend"></div>
-        <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
+      <div id="state-content" class="section-content">
+        <!-- StateInspector component will be rendered here -->
       </div>
     </div>
 
-    <div class="devpanel-section video-section">
+    <!-- Missing Translations -->
+    <div class="devpanel-section i18n-missing-section">
       <h2 class="section-header">
-        <span>Live Video Preview</span>
+        <span>Missing Translations</span>
         <span class="section-header-spacer"></span>
-        <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
+        <button class="collapse-btn" data-target="i18n-missing-content" aria-expanded="true" title="Collapse Missing Translations">-</button>
       </h2>
-      <div id="video-content" class="section-content video-content">
-        <!-- Replaced the <video> preview with a low-overhead processing preview canvas. -->
-        <div id="devpanel-preview-container" class="preview-container">
-          <div class="preview-toggle-row">
-            <input type="checkbox" id="devpanel-preview-toggle" aria-label="Show processing preview (low FPS)" />
-            <label for="devpanel-preview-toggle">Low FPS Preview)</label>
+      <div id="i18n-missing-content" class="section-content">
+        <p style="font-size:12px; color:#95a5a6; margin:0 0 8px 0;">Keys that were requested but not found in the current language files. Useful to triage i18n gaps.</p>
+        <div id="i18n-missing-summary" style="font-size:12px; color:#bdc3c7; margin-bottom:8px;">No missing translations detected.</div>
+        <div id="i18n-missing-list" style="max-height:160px; overflow:auto; font-family: monospace; font-size:12px; background:#111; color:#eee; padding:8px; border-radius:4px;">&nbsp;</div>
+      </div>
+    </div>
+
+    <!-- Logging Configuration -->
+    <div class="devpanel-section logging-section">
+      <h2 class="section-header">
+        <span>Logging Configuration</span>
+        <button class="collapse-btn" data-target="logging-content" aria-expanded="true" title="Collapse Logging Config">-</button>
+      </h2>
+      <div id="logging-content" class="section-content">
+        <div class="controls-grid-2col">
+          <div class="control-column">
+            <label>Log Level</label>
+            <select id="log-level-select">
+              <option value="ERROR">Error Only</option>
+              <option value="WARN">Warnings + Errors</option>
+              <option value="INFO" selected>Info + Warnings (Default)</option>
+              <option value="DEBUG">Debug (All Logs) - ⚠️ High Volume</option>
+            </select>
+            <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 0;">Higher levels show more diagnostic info. DEBUG may produce per-frame logs (60fps).</p>
           </div>
-          <canvas id="devpanel-preview-canvas" width="320" height="240"></canvas>
-          <p class="perf-note">Note: This preview samples the processing canvas at low FPS to avoid extra decoders.</p>
+          <div class="control-column">
+            <label style="display: flex; align-items: center; margin-top: 12px;">
+              <input type="checkbox" id="logging-metadata-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;" checked>
+              <span>Include Metadata (source location, filename)</span>
+            </label>
+            <label style="display: flex; align-items: center; margin-top: 12px;">
+              <input type="checkbox" id="logging-stack-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;">
+              <span>Include Stack Traces (WARN/ERROR only)</span>
+            </label>
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <button id="logging-apply-btn" type="button">Apply Logging Settings</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="devpanel-section controls-section">
-    <h2 class="section-header"><span>Controls</span></h2>
-    <div class="section-content">
-      <div class="devpanel-actions-grid">
-        <button data-action="toggleProcessing" type="button">Start / Stop</button>
-        <button data-action="resumeAudio" type="button">Resume Audio</button>
-        <button data-action="playTestNote" type="button">Play Test Tone</button>
-        <button data-action="saveSettings" type="button">Save Settings</button>
-        <button data-action="loadSettings" type="button">Load Settings</button>
+  <!-- ========================================
+       GROUP 2: AUDIO & SYNTHESIS
+       ======================================== -->
+  <div class="devpanel-group" data-group="audio-synthesis">
+    <h2 class="group-title">Audio & Synthesis</h2>
+
+    <!-- Synth Sandbox -->
+    <div class="devpanel-section synth-sandbox-section half-width-section">
+      <h2 class="section-header">
+        <span>Synth Sandbox</span>
+        <span class="section-header-spacer"></span>
+        <button class="collapse-btn" data-target="synth-sandbox-content" aria-expanded="true" title="Collapse Sandbox">-</button>
+      </h2>
+      <div id="synth-sandbox-content" class="section-content">
+        <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Manually send cues to the audio engine. Bypasses the video pipeline.</p>
+        <div class="controls-grid-2col">
+          <div class="control-column">
+            <label>Pitch (Hz)</label>
+            <div class="slider-container">
+              <input id="sandbox-pitch" type="range" min="100" max="2000" step="1" value="440">
+              <span id="sandbox-pitch-value">440</span>
+            </div>
+            <label>Intensity (Volume)</label>
+            <div class="slider-container">
+              <input id="sandbox-intensity" type="range" min="0" max="1" step="0.05" value="0.5">
+              <span id="sandbox-intensity-value">0.5</span>
+            </div>
+          </div>
+          <div class="control-column">
+            <label>Pan (Left/Right)</label>
+            <div class="slider-container">
+              <input id="sandbox-pan" type="range" min="-1" max="1" step="0.1" value="0">
+              <span id="sandbox-pan-value">0</span>
+            </div>
+            <div class="devpanel-actions-grid" style="margin-top: 16px;">
+              <button data-action="sandbox-play-note" type="button">Play Single Note</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="controls-grid-2col">
-        <div class="control-column">
-          <label>Operating Mode</label>
-          <select id="mode-select">
-            <option value="flow">Flow (Navigation)</option>
-            <option value="focus">Focus (Identification)</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
-          <label>Grid Type</label>
-          <select id="grid-type-select"></select>
-          <label>Depth Path</label>
-          <select id="depth-path-select">
-            <option value="pseudo">Pseudo (Sobel/Gabor)</option>
-            <option value="cnn">CNN (Full Regression)</option>
-          </select>
-        </div>
-        <div class="control-column">
-          <label>Synth Engine</label>
-          <select id="synth-engine-select"></select>
-          <label>Max Notes</label>
-          <div class="slider-container">
-            <input id="max-notes-slider" type="range" min="1" max="64" value="16"><span id="max-notes-value">16</span>
+    </div>
+
+    <!-- Live Cues Display -->
+    <div class="devpanel-section cues-section half-width-section">
+      <h2 class="section-header">
+        <span>Live Cues Display</span>
+        <span class="section-header-spacer"></span>
+        <button class="collapse-btn" data-target="cues-content" aria-expanded="true" title="Collapse Cues">-</button>
+      </h2>
+      <div id="cues-content" class="section-content">
+        <div id="cues-panel"></div>
+      </div>
+    </div>
+
+    <!-- Manual Control Pad -->
+    <div class="devpanel-section touch-pad-section">
+      <h2 class="section-header">
+        <span>Manual Control Pad</span>
+        <span class="section-header-spacer"></span>
+        <button class="collapse-btn" data-target="touch-pad-content" aria-expanded="true" title="Collapse Pad">-</button>
+      </h2>
+      <div id="touch-pad-content" class="section-content">
+        <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Click and drag to generate cues using the currently selected Grid and Synth.</p>
+        <div class="controls-grid-2col" style="margin-bottom: 8px;">
+          <div class="control-column">
+            <!-- left column reserved for future controls -->
+          </div>
+          <div class="control-column">
+            <label>Note Duration (sec)</label>
+            <div class="slider-container">
+              <input id="pad-duration" type="range" min="0.1" max="5" step="0.1" value="0.5">
+              <span id="pad-duration-value">0.5</span>
+            </div>
           </div>
         </div>
-        <div class="control-column">
-          <label>Video Worker Filters (Debug)</label>
-          <div class="worker-toggle-row">
-            <input type="checkbox" id="worker-toggle-fast-motion" checked>
-            <label for="worker-toggle-fast-motion">Enable fast-motion-worker</label>
-          </div>
-          <div class="worker-toggle-row">
-            <input type="checkbox" id="worker-toggle-fast-grid" checked>
-            <label for="worker-toggle-fast-grid">Enable fast-grid-aggregator</label>
-          </div>
-          <div class="worker-toggle-row">
-            <input type="checkbox" id="worker-toggle-pan-mapper" checked>
-            <label for="worker-toggle-pan-mapper">Enable pan-intensity-mapper</label>
-          </div>
-          <p style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">
-            Debug-only: disable workers to isolate stalls. Manifest remains source of truth.
-          </p>
-        </div>
+        <div id="touch-pad-area" style="width: 100%; height: 200px; background-color: #222; border: 1px solid #555; cursor: crosshair; touch-action: none;"></div>
       </div>
     </div>
   </div>
 
-  <!-- CORE-15: Motion Detection Controls Section -->
-  <div class="devpanel-section motion-Controls-section">
-    <h2 class="section-header">
-      <span>Motion Detection Controls</span>
-      <button class="collapse-btn" data-target="motion-Controls-content" aria-expanded="true" title="Collapse Motion Controls">-</button>
-    </h2>
-    <div id="motion-controls-content" class="section-content">
-      <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Fine-tune motion detection and normalization. Changes persist to localStorage.</p>
-      <label style="display: flex; align-items: center; margin: 8px 0 0 0;">
-        <input type="checkbox" id="semantic-detection-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;">
-        <span>Semantic Detection (Educational)</span>
-      </label>
-      <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 8px 26px;">Heuristic-based person/tree/ground/trash/box detection</p>
-      
-      <!-- Telemetry Display -->
-      <div class="telemetry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; padding: 12px; background: #2c3e50; border-radius: 4px;">
-        <div class="telemetry-item">
-          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Recent Max</div>
-          <div id="telemetry-recent-max" style="font-size: 16px; font-weight: bold; color: #3498db;">0.00</div>
-        </div>
-        <div class="telemetry-item">
-          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Effective Max</div>
-          <div id="telemetry-effective-max" style="font-size: 16px; font-weight: bold; color: #2ecc71;">0.00</div>
-        </div>
-        <div class="telemetry-item">
-          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Clipping Rate</div>
-          <div id="telemetry-clipping-rate" style="font-size: 16px; font-weight: bold; color: #e74c3c;">0.0%</div>
-        </div>
-        <div class="telemetry-item">
-          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Regions</div>
-          <div id="telemetry-regions" style="font-size: 16px; font-weight: bold; color: #f39c12;">0</div>
+  <!-- ========================================
+       GROUP 3: VIDEO & MOTION
+       ======================================== -->
+  <div class="devpanel-group" data-group="video-motion">
+    <h2 class="group-title">Video & Motion</h2>
+
+    <!-- Worker Performance & Live Video Preview (side-by-side) -->
+    <div class="devpanel-row devpanel-row-balanced">
+      <div id="worker-explorer-container" class="devpanel-section worker-section">
+        <h2 class="section-header">
+          <span>Worker Performance</span>
+          <span class="section-header-spacer"></span>
+          <button class="collapse-btn" data-target="worker-content" aria-expanded="true" title="Collapse Worker Stats">-</button>
+        </h2>
+        <div id="worker-content" class="section-content">
+          <div id="worker-explorer-legend"></div>
+          <canvas id="worker-explorer-canvas" width="360" height="96"></canvas>
         </div>
       </div>
 
-      <!-- Stall Detection Telemetry -->
-      <div class="telemetry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; padding: 12px; background: #263445; border-radius: 4px;">
-        <div class="telemetry-item">
-          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Cue Silence (ms)</div>
-          <div id="stall-last-cue-age" style="font-size: 16px; font-weight: bold; color: #9b59b6;">0</div>
-        </div>
-        <div class="telemetry-item">
-          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Static Frames</div>
-          <div id="stall-unchanged-frames" style="font-size: 16px; font-weight: bold; color: #1abc9c;">0</div>
-        </div>
-        <div class="telemetry-item">
-          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Stall Flag</div>
-          <div id="stall-detected" style="font-size: 16px; font-weight: bold; color: #e67e22;">false</div>
-        </div>
-        <div class="telemetry-item">
-          <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Stall Count</div>
-          <div id="stall-count" style="font-size: 16px; font-weight: bold; color: #c0392b;">0</div>
+      <div class="devpanel-section video-section">
+        <h2 class="section-header">
+          <span>Live Video Preview</span>
+          <span class="section-header-spacer"></span>
+          <button class="collapse-btn" data-target="video-content" aria-expanded="true" title="Collapse Video Preview">-</button>
+        </h2>
+        <div id="video-content" class="section-content video-content">
+          <div id="devpanel-preview-container" class="preview-container">
+            <div class="preview-toggle-row">
+              <input type="checkbox" id="devpanel-preview-toggle" aria-label="Show processing preview (low FPS)" />
+              <label for="devpanel-preview-toggle">Low FPS Preview</label>
+            </div>
+            <canvas id="devpanel-preview-canvas" width="320" height="240"></canvas>
+            <p class="perf-note">Note: This preview samples the processing canvas at low FPS to avoid extra decoders.</p>
+          </div>
         </div>
       </div>
+    </div>
 
-      <!-- Delta Histogram Overview -->
-      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="font-size: 12px; font-weight: 600; color: #ecf0f1;">Pan Delta Histogram</div>
-          <div style="font-size: 11px; color: #bdc3c7;">Mean <span id="delta-pan-mean">0.000</span> · Zero streak <span id="delta-pan-zero">0</span></div>
+    <!-- Motion Detection Controls -->
+    <div class="devpanel-section motion-Controls-section">
+      <h2 class="section-header">
+        <span>Motion Detection Controls</span>
+        <button class="collapse-btn" data-target="motion-Controls-content" aria-expanded="true" title="Collapse Motion Controls">-</button>
+      </h2>
+      <div id="motion-controls-content" class="section-content">
+        <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Fine-tune motion detection and normalization. Changes persist to localStorage.</p>
+        <label style="display: flex; align-items: center; margin: 8px 0 0 0;">
+          <input type="checkbox" id="semantic-detection-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;">
+          <span>Semantic Detection (Educational)</span>
+        </label>
+        <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 8px 26px;">Heuristic-based person/tree/ground/trash/box detection</p>
+        
+        <!-- Telemetry Display -->
+        <div class="telemetry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; padding: 12px; background: #2c3e50; border-radius: 4px;">
+          <div class="telemetry-item">
+            <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Recent Max</div>
+            <div id="telemetry-recent-max" style="font-size: 16px; font-weight: bold; color: #3498db;">0.00</div>
+          </div>
+          <div class="telemetry-item">
+            <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Effective Max</div>
+            <div id="telemetry-effective-max" style="font-size: 16px; font-weight: bold; color: #2ecc71;">0.00</div>
+          </div>
+          <div class="telemetry-item">
+            <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Clipping Rate</div>
+            <div id="telemetry-clipping-rate" style="font-size: 16px; font-weight: bold; color: #e74c3c;">0.0%</div>
+          </div>
+          <div class="telemetry-item">
+            <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Regions</div>
+            <div id="telemetry-regions" style="font-size: 16px; font-weight: bold; color: #f39c12;">0</div>
+          </div>
         </div>
-        <div id="delta-histogram-pan" class="delta-histogram-bars" style="display: flex; gap: 3px; align-items: flex-end; height: 32px;"></div>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="font-size: 12px; font-weight: 600; color: #ecf0f1;">Intensity Delta Histogram</div>
-          <div style="font-size: 11px; color: #bdc3c7;">Mean <span id="delta-intensity-mean">0.000</span> · Zero streak <span id="delta-intensity-zero">0</span></div>
+
+        <!-- Stall Detection Telemetry -->
+        <div class="telemetry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; padding: 12px; background: #263445; border-radius: 4px;">
+          <div class="telemetry-item">
+            <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Cue Silence (ms)</div>
+            <div id="stall-last-cue-age" style="font-size: 16px; font-weight: bold; color: #9b59b6;">0</div>
+          </div>
+          <div class="telemetry-item">
+            <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Static Frames</div>
+            <div id="stall-unchanged-frames" style="font-size: 16px; font-weight: bold; color: #1abc9c;">0</div>
+          </div>
+          <div class="telemetry-item">
+            <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Stall Flag</div>
+            <div id="stall-detected" style="font-size: 16px; font-weight: bold; color: #e67e22;">false</div>
+          </div>
+          <div class="telemetry-item">
+            <div style="font-size: 10px; color: #95a5a6; text-transform: uppercase;">Stall Count</div>
+            <div id="stall-count" style="font-size: 16px; font-weight: bold; color: #c0392b;">0</div>
+          </div>
         </div>
-        <div id="delta-histogram-intensity" class="delta-histogram-bars" style="display: flex; gap: 3px; align-items: flex-end; height: 32px;"></div>
-      </div>
-      
-      <!-- Preset Buttons -->
-      <div class="preset-buttons" style="display: flex; gap: 8px; margin-bottom: 16px;">
-        <button data-action="motion-preset-subtle" type="button" style="flex: 1;">Subtle Motion</button>
-        <button data-action="motion-preset-normal" type="button" style="flex: 1;">Normal</button>
-        <button data-action="motion-preset-large" type="button" style="flex: 1;">Large Motion</button>
-      </div>
-      
-      <!-- Controls Grid -->
-      <div class="controls-grid-2col">
-        <div class="control-column">
-          <label>Sampling Step (4-12)</label>
-          <div class="slider-container">
-            <input id="motion-step-slider" type="range" min="4" max="12" step="1" value="6">
-            <span id="motion-step-value">6</span>
+
+        <!-- Delta Histogram Overview -->
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 12px; font-weight: 600; color: #ecf0f1;">Pan Delta Histogram</div>
+            <div style="font-size: 11px; color: #bdc3c7;">Mean <span id="delta-pan-mean">0.000</span> · Zero streak <span id="delta-pan-zero">0</span></div>
           </div>
-          
-          <label>Threshold (10-50)</label>
-          <div class="slider-container">
-            <input id="motion-threshold-slider" type="range" min="10" max="50" step="5" value="20">
-            <span id="motion-threshold-value">20</span>
+          <div id="delta-histogram-pan" class="delta-histogram-bars" style="display: flex; gap: 3px; align-items: flex-end; height: 32px;"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 12px; font-weight: 600; color: #ecf0f1;">Intensity Delta Histogram</div>
+            <div style="font-size: 11px; color: #bdc3c7;">Mean <span id="delta-intensity-mean">0.000</span> · Zero streak <span id="delta-intensity-zero">0</span></div>
           </div>
-          
-          <label>Max Regions (16-128)</label>
-          <div class="slider-container">
-            <input id="motion-maxregions-slider" type="range" min="16" max="128" step="16" value="64">
-            <span id="motion-maxregions-value">64</span>
-          </div>
-          
-          <label>Window Size (3-9)</label>
-          <div class="slider-container">
-            <input id="motion-windowsize-slider" type="range" min="3" max="9" step="2" value="5">
-            <span id="motion-windowsize-value">5</span>
-          </div>
+          <div id="delta-histogram-intensity" class="delta-histogram-bars" style="display: flex; gap: 3px; align-items: flex-end; height: 32px;"></div>
         </div>
         
-        <div class="control-column">
-          <label>Normalization Strategy</label>
-          <select id="motion-strategy-select">
-            <option value="adaptive">Adaptive (Recommended)</option>
-            <option value="fixedHeadroom" disabled>Fixed Headroom (Not Implemented)</option>
-            <option value="logarithmic" disabled>Logarithmic (Not Implemented)</option>
-          </select>
-          
-          <label style="display: flex; align-items: center; margin-top: 12px;">
-            <input type="checkbox" id="motion-adaptive-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;" checked>
-            <span>Adaptive Normalization</span>
-          </label>
-          
-          <label>Smoothing (0.8-0.99)</label>
-          <div class="slider-container">
-            <input id="motion-smoothing-slider" type="range" min="0.8" max="0.99" step="0.01" value="0.95">
-            <span id="motion-smoothing-value">0.95</span>
+        <!-- Preset Buttons -->
+        <div class="preset-buttons" style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button data-action="motion-preset-subtle" type="button" style="flex: 1;">Subtle Motion</button>
+          <button data-action="motion-preset-normal" type="button" style="flex: 1;">Normal</button>
+          <button data-action="motion-preset-large" type="button" style="flex: 1;">Large Motion</button>
+        </div>
+        
+        <!-- Controls Grid -->
+        <div class="controls-grid-2col">
+          <div class="control-column">
+            <label>Sampling Step (4-12)</label>
+            <div class="slider-container">
+              <input id="motion-step-slider" type="range" min="4" max="12" step="1" value="6">
+              <span id="motion-step-value">6</span>
+            </div>
+            
+            <label>Threshold (10-50)</label>
+            <div class="slider-container">
+              <input id="motion-threshold-slider" type="range" min="10" max="50" step="5" value="20">
+              <span id="motion-threshold-value">20</span>
+            </div>
+            
+            <label>Max Regions (16-128)</label>
+            <div class="slider-container">
+              <input id="motion-maxregions-slider" type="range" min="16" max="128" step="16" value="64">
+              <span id="motion-maxregions-value">64</span>
+            </div>
+            
+            <label>Window Size (3-9)</label>
+            <div class="slider-container">
+              <input id="motion-windowsize-slider" type="range" min="3" max="9" step="2" value="5">
+              <span id="motion-windowsize-value">5</span>
+            </div>
           </div>
           
-          <label>Min Headroom (0.3-0.8)</label>
-          <div class="slider-container">
-            <input id="motion-minheadroom-slider" type="range" min="0.3" max="0.8" step="0.05" value="0.5">
-            <span id="motion-minheadroom-value">0.5</span>
+          <div class="control-column">
+            <label>Normalization Strategy</label>
+            <select id="motion-strategy-select">
+              <option value="adaptive">Adaptive (Recommended)</option>
+              <option value="fixedHeadroom" disabled>Fixed Headroom (Not Implemented)</option>
+              <option value="logarithmic" disabled>Logarithmic (Not Implemented)</option>
+            </select>
+            
+            <label style="display: flex; align-items: center; margin-top: 12px;">
+              <input type="checkbox" id="motion-adaptive-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;" checked>
+              <span>Adaptive Normalization</span>
+            </label>
+            
+            <label>Smoothing (0.8-0.99)</label>
+            <div class="slider-container">
+              <input id="motion-smoothing-slider" type="range" min="0.8" max="0.99" step="0.01" value="0.95">
+              <span id="motion-smoothing-value">0.95</span>
+            </div>
+            
+            <label>Min Headroom (0.3-0.8)</label>
+            <div class="slider-container">
+              <input id="motion-minheadroom-slider" type="range" min="0.3" max="0.8" step="0.05" value="0.5">
+              <span id="motion-minheadroom-value">0.5</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="devpanel-section cues-section half-width-section">
-    <h2 class="section-header">
-      <span>Live Cues Display</span>
-      <span class="section-header-spacer"></span>
-      <button class="collapse-btn" data-target="cues-content" aria-expanded="true" title="Collapse Cues">-</button>
-    </h2>
-    <div id="cues-content" class="section-content">
-      <div id="cues-panel"></div>
-    </div>
-  </div>
+  <!-- ========================================
+       GROUP 4: PROCESSING & CONTROLS
+       ======================================== -->
+  <div class="devpanel-group" data-group="processing-controls">
+    <h2 class="group-title">Processing & Controls</h2>
 
-  <div class="devpanel-section touch-pad-section">
-    <h2 class="section-header">
-      <span>Manual Control Pad</span>
-      <span class="section-header-spacer"></span>
-      <button class="collapse-btn" data-target="touch-pad-content" aria-expanded="true" title="Collapse Pad">-</button>
-    </h2>
-    <div id="touch-pad-content" class="section-content">
-      <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Click and drag to generate cues using the currently selected Grid and Synth.</p>
-      <div class="controls-grid-2col" style="margin-bottom: 8px;">
-        <div class="control-column">
-          <!-- left column reserved for future controls -->
+    <!-- Main Controls -->
+    <div class="devpanel-section controls-section">
+      <h2 class="section-header"><span>Processing Controls</span></h2>
+      <div class="section-content">
+        <div class="devpanel-actions-grid">
+          <button data-action="toggleProcessing" type="button">Start / Stop</button>
+          <button data-action="resumeAudio" type="button">Resume Audio</button>
+          <button data-action="playTestNote" type="button">Play Test Tone</button>
+          <button data-action="saveSettings" type="button">Save Settings</button>
+          <button data-action="loadSettings" type="button">Load Settings</button>
         </div>
-        <div class="control-column">
-          <label>Note Duration (sec)</label>
-          <div class="slider-container">
-            <input id="pad-duration" type="range" min="0.1" max="5" step="0.1" value="0.5">
-            <span id="pad-duration-value">0.5</span>
+        <div class="controls-grid-2col">
+          <div class="control-column">
+            <label>Operating Mode</label>
+            <select id="mode-select">
+              <option value="flow">Flow (Navigation)</option>
+              <option value="focus">Focus (Identification)</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+            <label>Grid Type</label>
+            <select id="grid-type-select"></select>
+            <label>Depth Path</label>
+            <select id="depth-path-select">
+              <option value="pseudo">Pseudo (Sobel/Gabor)</option>
+              <option value="cnn">CNN (Full Regression)</option>
+            </select>
+          </div>
+          <div class="control-column">
+            <label>Synth Engine</label>
+            <select id="synth-engine-select"></select>
+            <label>Max Notes</label>
+            <div class="slider-container">
+              <input id="max-notes-slider" type="range" min="1" max="64" value="16"><span id="max-notes-value">16</span>
+            </div>
+          </div>
+          <div class="control-column">
+            <label>Video Worker Filters (Debug)</label>
+            <div class="worker-toggle-row">
+              <input type="checkbox" id="worker-toggle-fast-motion" checked>
+              <label for="worker-toggle-fast-motion">Enable fast-motion-worker</label>
+            </div>
+            <div class="worker-toggle-row">
+              <input type="checkbox" id="worker-toggle-fast-grid" checked>
+              <label for="worker-toggle-fast-grid">Enable fast-grid-aggregator</label>
+            </div>
+            <div class="worker-toggle-row">
+              <input type="checkbox" id="worker-toggle-pan-mapper" checked>
+              <label for="worker-toggle-pan-mapper">Enable pan-intensity-mapper</label>
+            </div>
+            <p style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">
+              Debug-only: disable workers to isolate stalls. Manifest remains source of truth.
+            </p>
           </div>
         </div>
       </div>
-      <div id="touch-pad-area" style="width: 100%; height: 200px; background-color: #222; border: 1px solid #555; cursor: crosshair; touch-action: none;"></div>
+    </div>
+
+    <!-- Performance & Analytics (side-by-side) -->
+    <div class="devpanel-row two-col">
+      <div class="devpanel-section performance-section">
+        <h2 class="section-header">
+          <span>Performance Controls</span>
+          <span class="section-header-spacer"></span>
+          <button class="collapse-btn" data-target="performance-controls-content" aria-expanded="true" title="Collapse Performance Controls">-</button>
+        </h2>
+        <div id="performance-controls-content" class="section-content">
+          <div class="performance-grid">
+            <div class="control-column">
+              <label>FPS Mode</label>
+              <select id="fps-mode-select">
+                <option value="auto">Auto (Adaptive)</option>
+                <option value="manual">Manual</option>
+              </select>
+              <label>Power Profile</label>
+              <select id="power-profile-select">
+                <option value="auto">Auto</option>
+                <option value="ultra-low">Power (160x120 @ 3fps)</option>
+              </select>
+              <label>Target FPS (Manual)</label>
+              <div class="slider-container">
+                <input id="target-fps-slider" type="range" min="4" max="30" step="1" value="15">
+                <span id="target-fps-value">15</span>
+              </div>
+            </div>
+            <div class="control-column">
+              <label>Frame Skip Rate</label>
+              <div class="slider-container">
+                <input id="frame-skip-slider" type="range" min="1" max="4" step="1" value="1">
+                <span id="frame-skip-value">1</span>
+              </div>
+              <label>Resolution Scale</label>
+              <div class="slider-container">
+                <input id="resolution-scale-slider" type="range" min="0.25" max="1.0" step="0.25" value="1.0">
+                <span id="resolution-scale-value">1.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="performance-actions">
+            <button data-action="resetThrottling" type="button">Reset Throttling</button>
+            <button data-action="applyThrottling" type="button">Apply Manual Throttling</button>
+          </div>
+          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #555;">
+            <label class="inline-checkbox">
+              <input id="disable-frame-skipping-toggle" type="checkbox" />
+              <span>Disable Frame Skipping (Native Only)</span>
+            </label>
+            <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 26px;">When checked: uses native 160×120@3fps, ignores manual skip/scale sliders. Recommended for low-end devices.</p>
+          </div>
+          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #555;">
+            <label class="inline-checkbox">
+              <input id="cap-high-freq-payloads-toggle" type="checkbox" checked />
+              <span>Cap High-Frequency Payloads (Performance)</span>
+            </label>
+            <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 26px;">Limits sizes of per-frame events for eventBus performance.</p>
+            <div class="controls-grid-2col" style="margin-top: 8px;">
+              <div class="control-column">
+                <label>Max Audio Cues</label>
+                <div class="slider-container">
+                  <input id="cap-audio-cues-slider" type="range" min="1" max="100" step="1" value="50">
+                  <span id="cap-audio-cues-value">50</span>
+                </div>
+                <label>Max Motion Regions</label>
+                <div class="slider-container">
+                  <input id="cap-motion-regions-slider" type="range" min="1" max="200" step="1" value="100">
+                  <span id="cap-motion-regions-value">100</span>
+                </div>
+              </div>
+              <div class="control-column">
+                <label>Max Flow Objects</label>
+                <div class="slider-container">
+                  <input id="cap-flow-objects-slider" type="range" min="1" max="100" step="1" value="50">
+                  <span id="cap-flow-objects-value">50</span>
+                </div>
+                <label>Max Depth Regions</label>
+                <div class="slider-container">
+                  <input id="cap-depth-regions-slider" type="range" min="1" max="200" step="1" value="50">
+                  <span id="cap-depth-regions-value">50</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="devpanel-section ingest-section">
+        <h2 class="section-header">
+          <span>Performance Analytics</span>
+          <button class="collapse-btn" data-target="ingest-content" aria-expanded="true" title="Collapse Analytics">-</button>
+        </h2>
+        <div id="ingest-content" class="section-content">
+          <div class="ingest-grid">
+            <div class="control-column">
+              <label class="inline-checkbox"><input id="ingest-enabled-checkbox" type="checkbox" checked> <span>Analytics Enabled</span></label>
+              <label class="inline-checkbox"><input id="battery-optimization-checkbox" type="checkbox" checked> <span>Battery Optimization</span></label>
+              <label>Max Events/Second</label>
+              <select id="ingest-rate-select">
+                <option value="1">Minimal (1/sec)</option>
+                <option value="2">Low Battery (2/sec)</option>
+                <option value="5">Low (5/sec)</option>
+                <option value="10" selected>Normal (10/sec)</option>
+                <option value="30">High (30/sec)</option>
+                <option value="60">Debug (60/sec)</option>
+              </select>
+            </div>
+            <div class="control-column">
+              <label>Event Categories</label>
+              <div class="category-toggles">
+                <label class="category-toggle">
+                  <input type="checkbox" data-category="user_workflow" checked>
+                  <span class="toggle-label">User Workflow</span>
+                </label>
+                <label class="category-toggle">
+                  <input type="checkbox" data-category="auto_optimization" checked>
+                  <span class="toggle-label">Auto Optimization</span>
+                </label>
+                <label class="category-toggle">
+                  <input type="checkbox" data-category="performance_critical">
+                  <span class="toggle-label">Performance Critical</span>
+                </label>
+                <label class="category-toggle">
+                  <input type="checkbox" data-category="performance_settings">
+                  <span class="toggle-label">Performance Settings</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="ingest-actions">
+            <button data-action="updateIngestSettings" type="button">Apply Settings</button>
+            <button data-action="exportIngestLogs" type="button">Export Analytics</button>
+            <button data-action="clearIdbLogs" type="button" class="danger-btn">Clear IDB Logs</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="devpanel-row two-col">
-    <div class="devpanel-section performance-section">
+  <!-- ========================================
+       GROUP 5: PIPELINE MONITORING
+       ======================================== -->
+  <div class="devpanel-group" data-group="pipeline-monitoring">
+    <h2 class="group-title">Pipeline Monitoring</h2>
+
+    <!-- EventBus Viewer -->
+    <div class="devpanel-section eventbus-viewer-section">
       <h2 class="section-header">
-        <span>Performance Controls</span>
+        <span>EventBus Viewer</span>
+        <button class="collapse-btn" data-target="eventbus-viewer-content" aria-expanded="true" title="Collapse EventBus Viewer">-</button>
+      </h2>
+      <div id="eventbus-viewer-content" class="section-content">
+        <div id="eventbus-viewer-container">
+          <div class="eventbus-controls">
+            <div class="eventbus-control-group">
+              <label>Event Type</label>
+              <select id="eventbus-filter-type">
+                <option value="all">All Types</option>
+                <option value="log">Log</option>
+                <option value="command">Command</option>
+              </select>
+            </div>
+            <div class="eventbus-control-group">
+              <label>Category</label>
+              <select id="eventbus-filter-category">
+                <option value="all">All Categories</option>
+                <option value="INFO">INFO</option>
+                <option value="DEBUG">DEBUG</option>
+                <option value="WARN">WARN</option>
+                <option value="ERROR">ERROR</option>
+              </select>
+            </div>
+            <div class="eventbus-control-group">
+              <label>
+                <input type="checkbox" id="eventbus-filter-frames" />
+                Show Frame Traces
+              </label>
+            </div>
+            <div class="eventbus-actions">
+              <button id="eventbus-refresh-btn">Refresh</button>
+              <button id="eventbus-export-btn">Export</button>
+              <button id="eventbus-clear-btn">Clear</button>
+              <span id="eventbus-event-count" class="eventbus-event-count">0 events</span>
+            </div>
+          </div>
+          <div id="eventbus-metrics-container" class="eventbus-metrics-container"></div>
+          <div id="eventbus-event-list" class="eventbus-event-list"></div>
+          <div id="eventbus-correlation-view" class="eventbus-correlation-view"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orchestration Inspector -->
+    <div class="devpanel-section orchestration-section">
+      <h2 class="section-header">
+        <span>Orchestration Inspector</span>
         <span class="section-header-spacer"></span>
-        <button class="collapse-btn" data-target="performance-controls-content" aria-expanded="true" title="Collapse Performance Controls">-</button>
+        <button class="collapse-btn" data-target="orchestration-content" aria-expanded="true" title="Collapse Orchestration">-</button>
       </h2>
-      <div id="performance-controls-content" class="section-content">
-        <div class="performance-grid">
-          <div class="control-column">
-            <label>FPS Mode</label>
-            <select id="fps-mode-select">
-              <option value="auto">Auto (Adaptive)</option>
-              <option value="manual">Manual</option>
-            </select>
-            <label>Power Profile</label>
-            <select id="power-profile-select">
-              <option value="auto">Auto</option>
-              <option value="ultra-low">Power (160x120 @ 3fps)</option>
-            </select>
-            <label>Target FPS (Manual)</label>
-            <div class="slider-container">
-              <input id="target-fps-slider" type="range" min="4" max="30" step="1" value="15">
-              <span id="target-fps-value">15</span>
-            </div>
-          </div>
-          <div class="control-column">
-            <label>Frame Skip Rate</label>
-            <div class="slider-container">
-              <input id="frame-skip-slider" type="range" min="1" max="4" step="1" value="1">
-              <span id="frame-skip-value">1</span>
-            </div>
-            <label>Resolution Scale</label>
-            <div class="slider-container">
-              <input id="resolution-scale-slider" type="range" min="0.25" max="1.0" step="0.25" value="1.0">
-              <span id="resolution-scale-value">1.0</span>
-            </div>
-          </div>
-        </div>
-        <div class="performance-actions">
-          <button data-action="resetThrottling" type="button">Reset Throttling</button>
-          <button data-action="applyThrottling" type="button">Apply Manual Throttling</button>
-        </div>
-        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #555;">
-          <label class="inline-checkbox">
-            <input id="disable-frame-skipping-toggle" type="checkbox" />
-            <span>Disable Frame Skipping (Native Only)</span>
-          </label>
-          <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 26px;">When checked: uses native 160×120@3fps, ignores manual skip/scale sliders. Recommended for low-end devices.</p>
-        </div>
-        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #555;">
-          <label class="inline-checkbox">
-            <input id="cap-high-freq-payloads-toggle" type="checkbox" checked />
-            <span>Cap High-Frequency Payloads (Performance)</span>
-          </label>
-          <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 26px;">Limits sizes of per-frame events for eventBus performance.</p>
-          <div class="controls-grid-2col" style="margin-top: 8px;">
-            <div class="control-column">
-              <label>Max Audio Cues</label>
-              <div class="slider-container">
-                <input id="cap-audio-cues-slider" type="range" min="1" max="100" step="1" value="50">
-                <span id="cap-audio-cues-value">50</span>
-              </div>
-              <label>Max Motion Regions</label>
-              <div class="slider-container">
-                <input id="cap-motion-regions-slider" type="range" min="1" max="200" step="1" value="100">
-                <span id="cap-motion-regions-value">100</span>
-              </div>
-            </div>
-            <div class="control-column">
-              <label>Max Flow Objects</label>
-              <div class="slider-container">
-                <input id="cap-flow-objects-slider" type="range" min="1" max="100" step="1" value="50">
-                <span id="cap-flow-objects-value">50</span>
-              </div>
-              <label>Max Depth Regions</label>
-              <div class="slider-container">
-                <input id="cap-depth-regions-slider" type="range" min="1" max="200" step="1" value="50">
-                <span id="cap-depth-regions-value">50</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="devpanel-section ingest-section">
-      <h2 class="section-header">
-        <span>Performance Analytics</span>
-        <button class="collapse-btn" data-target="ingest-content" aria-expanded="true" title="Collapse Analytics">-</button>
-      </h2>
-      <div id="ingest-content" class="section-content">
-        <div class="ingest-grid">
-          <div class="control-column">
-            <label class="inline-checkbox"><input id="ingest-enabled-checkbox" type="checkbox" checked> <span>Analytics Enabled</span></label>
-            <label class="inline-checkbox"><input id="battery-optimization-checkbox" type="checkbox" checked> <span>Battery Optimization</span></label>
-            <label>Max Events/Second</label>
-            <select id="ingest-rate-select">
-              <option value="1">Minimal (1/sec)</option>
-              <option value="2">Low Battery (2/sec)</option>
-              <option value="5">Low (5/sec)</option>
-              <option value="10" selected>Normal (10/sec)</option>
-              <option value="30">High (30/sec)</option>
-              <option value="60">Debug (60/sec)</option>
-            </select>
-          </div>
-          <div class="control-column">
-            <label>Event Categories</label>
-            <div class="category-toggles">
-              <label class="category-toggle">
-                <input type="checkbox" data-category="user_workflow" checked>
-                <span class="toggle-label">User Workflow</span>
-              </label>
-              <label class="category-toggle">
-                <input type="checkbox" data-category="auto_optimization" checked>
-                <span class="toggle-label">Auto Optimization</span>
-              </label>
-              <label class="category-toggle">
-                <input type="checkbox" data-category="performance_critical">
-                <span class="toggle-label">Performance Critical</span>
-              </label>
-              <label class="category-toggle">
-                <input type="checkbox" data-category="performance_settings">
-                <span class="toggle-label">Performance Settings</span>
-              </label>
-            </div>
-          </div>
-        </div>
-        <div class="ingest-actions">
-          <button data-action="updateIngestSettings" type="button">Apply Settings</button>
-          <button data-action="exportIngestLogs" type="button">Export Analytics</button>
-          <button data-action="clearIdbLogs" type="button" class="danger-btn">Clear IDB Logs</button>
-        </div>
+      <div id="orchestration-content" class="section-content">
+        <!-- OrchestrationInspector component will be rendered here -->
       </div>
     </div>
   </div>
 
-  <!-- Orchestration Inspector: Visual display of orchestration state (Phase 2A) -->
-  <div class="devpanel-section orchestration-section">
-    <h2 class="section-header">
-      <span>Orchestration Inspector</span>
-      <span class="section-header-spacer"></span>
-      <button class="collapse-btn" data-target="orchestration-content" aria-expanded="true" title="Collapse Orchestration">-</button>
-    </h2>
-    <div id="orchestration-content" class="section-content">
-      <!-- OrchestrationInspector component will be rendered here -->
-    </div>
-  </div>
+  <!-- ========================================
+       GROUP 6: DIAGNOSTICS & LOGS
+       ======================================== -->
+  <div class="devpanel-group" data-group="diagnostics-logs">
+    <h2 class="group-title">Diagnostics & Logs</h2>
 
-  <!-- Logging Configuration: Control debug output (Phase 2B) -->
-  <div class="devpanel-section logging-section">
-    <h2 class="section-header">
-      <span>Logging Configuration</span>
-      <button class="collapse-btn" data-target="logging-content" aria-expanded="true" title="Collapse Logging Config">-</button>
-    </h2>
-    <div id="logging-content" class="section-content">
-      <div class="controls-grid-2col">
-        <div class="control-column">
-          <label>Log Level</label>
-          <select id="log-level-select">
-            <option value="ERROR">Error Only</option>
-            <option value="WARN">Warnings + Errors</option>
-            <option value="INFO" selected>Info + Warnings (Default)</option>
-            <option value="DEBUG">Debug (All Logs) - ⚠️ High Volume</option>
-          </select>
-          <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 0;">Higher levels show more diagnostic info. DEBUG may produce per-frame logs (60fps).</p>
+    <!-- Live Logs -->
+    <div class="devpanel-section logs-section">
+      <h2 class="section-header"><span>Live Logs</span></h2>
+      <div class="section-content">
+        <div class="log-controls">
+          <button id="log-pause-btn" type="button">Pause</button>
+          <button id="log-clear-btn" type="button">Clear</button>
+          <button id="log-export-btn" type="button">Export</button>
         </div>
-        <div class="control-column">
-          <label style="display: flex; align-items: center; margin-top: 12px;">
-            <input type="checkbox" id="logging-metadata-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;" checked>
-            <span>Include Metadata (source location, filename)</span>
-          </label>
-          <label style="display: flex; align-items: center; margin-top: 12px;">
-            <input type="checkbox" id="logging-stack-toggle" style="width: 18px; height: 18px; margin-right: 8px; cursor: pointer;">
-            <span>Include Stack Traces (WARN/ERROR only)</span>
-          </label>
-        </div>
-      </div>
-      <div style="margin-top: 12px;">
-        <button id="logging-apply-btn" type="button">Apply Logging Settings</button>
+        <div id="devpanel-log-view"></div>
       </div>
     </div>
   </div>
 
-  <div class="devpanel-section logs-section">
-    <h2 class="section-header"><span>Live Logs</span></h2>
-    <div class="section-content">
-      <div class="log-controls">
-        <button id="log-pause-btn" type="button">Pause</button>
-        <button id="log-clear-btn" type="button">Clear</button>
-        <button id="log-export-btn" type="button">Export</button>
-      </div>
-      <div id="devpanel-log-view"></div>
-    </div>
-  </div>
 </div>
