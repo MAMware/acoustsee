@@ -7,7 +7,7 @@ The project is built with a focus on accessibility, performance, and extensibili
 ## Core Features
 
 - **Real-Time Motion Sonification:** Translates visual motion into musical, tonal and sound cues.
-- **Dual Operating Modes:** Flow Mode for spatial awareness and Focus Mode for detailed object identification.
+- **Multiple Operating Modes:** Flow Mode for spatial awareness and Focus Mode for detailed object identification and hybrid for automatic mode change (WIP).
 - **Pluggable UI Architecture:** Features distinct interfaces for different user needs.
 - **Gesture-Based Accessible UI:** A fully non-visual interface designed for blind users.
 - **Developer Panel (Dev Panel):** A comprehensive tool for sighted developers and testers to iterate and debug quickly. (Historically called "Debug UI"; the codebase now exposes it under `ui/dev-panel/`.)
@@ -81,7 +81,7 @@ The application is built on a decoupled, headless architecture.
 
 ### Module Import Rules (Dependency Flow)
 
-| Module | ✅ Can Import From | ❌ Cannot Import From |
+| Module |  Can Import From |  Cannot Import From |
 |--------|------------------|----------------------|
 | `main.js` | core/, audio/, video/, ui/, utils/ | (entry point) |
 | `core/` | utils/, state.js | audio/, video/, ui/ |
@@ -96,10 +96,10 @@ The application is built on a decoupled, headless architecture.
 Never use spread operator (`...`) on state objects. State mutations must preserve object identity:
 
 ```javascript
-// ❌ WRONG:
+//  WRONG:
 return { ...existingState, newField };  // Creates new object
 
-// ✅ CORRECT:
+//  CORRECT:
 existingState.newField = value;
 return existingState;  // Same object
 ```
@@ -111,11 +111,11 @@ return existingState;  // Same object
 State is no longer exported as a live object. Instead, `state.js` exports a factory function:
 
 ```javascript
-// ❌ OLD (BYPASSED):
+//  OLD (BYPASSED):
 import { settings } from './core/state.js';
 settings.gridType = 'hex';  // Direct mutation - bypasses engine!
 
-// ✅ NEW (ENFORCED):
+//  NEW (ENFORCED):
 // state.js exports:
 export function createInitialState() { return { gridType: 'hex', ... } }
 
@@ -146,10 +146,10 @@ In `main.js`, follow this sequence exactly:
 UI modules must receive dependencies as parameters, not import them:
 
 ```javascript
-// ❌ WRONG:
+//  WRONG:
 import { engine } from '../core/engine.js';
 
-// ✅ CORRECT:
+//  CORRECT:
 export function initializeMyUI(engine, DOM) {
   // Use injected engine
 }

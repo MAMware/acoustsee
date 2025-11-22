@@ -259,10 +259,18 @@ export async function init() {
     });
 
     // Ensure language is initialized before UI translation (await to avoid races)
-    await initializeLanguage(configState);
+    await initializeLanguage(configState, { persist: (partial) => engine.setState(partial) });
     try {
       await setLanguage(configState.language, configState);
+      // After potential preload, persist any changes
+      engine.setState({ language: configState.language, i18n: configState.i18n, missingTranslations: configState.missingTranslations });
       translatePage(document, configState);
+      const postInitState = engine.getState();
+      structuredLog('DEBUG', 'i18n initialization sync', {
+        copyReady: configState.i18n?.ready,
+        engineReady: postInitState.i18n?.ready,
+        engineLanguage: postInitState.language
+      });
     } catch (e) {
       structuredLog('WARN', 'setLanguage/translatePage failed', { error: e?.message || String(e) });
     }

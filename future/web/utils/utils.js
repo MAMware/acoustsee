@@ -25,7 +25,15 @@ const _reportedMissingKeys = new Set();
 let _reportedInitError = false;
 let _reportedNotInitialized = false;
 
-export async function initializeLanguage(state) {
+/**
+ * Initialize language subsystem.
+ * @param {Object} state - Shallow copy or live state object.
+ * @param {Object} [options]
+ * @param {Function} [options.persist] - Callback(partialState) to persist mutations (e.g. engine.setState).
+ * @returns {string} chosen language id
+ */
+export async function initializeLanguage(state, options = {}) {
+  const persist = typeof options.persist === 'function' ? options.persist : null;
   const settings = state;
   // Always perform initialization: choose language, preload translations/fallbacks, and mark ready
   try {
@@ -52,10 +60,12 @@ export async function initializeLanguage(state) {
     }
 
     settings.language = chosen;
+    if (persist) persist({ language: settings.language });
 
     // Ensure i18n container exists
     if (!settings.i18n) settings.i18n = { ready: false, languageId: chosen };
     settings.i18n.languageId = chosen;
+    if (persist) persist({ i18n: settings.i18n });
 
     // If chosen is bundled en-US, use the pre-bundled object immediately
     if (chosen === 'en-US' && typeof enUS === 'object' && Object.keys(enUS).length > 0) {
@@ -64,6 +74,7 @@ export async function initializeLanguage(state) {
       structuredLog('DEBUG', 'initializeLanguage: using bundled en-US', { language: 'en-US' });
       // Ensure missingTranslations exists
       if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+      if (persist) persist({ i18n: settings.i18n, missingTranslations: settings.missingTranslations });
       return chosen;
     }
 
@@ -101,11 +112,13 @@ export async function initializeLanguage(state) {
 
     // Ensure missingTranslations container exists for dev visibility
     if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+    if (persist) persist({ language: settings.language, i18n: settings.i18n, missingTranslations: settings.missingTranslations });
     return settings.language;
   } catch (err) {
     structuredLog('ERROR', 'initializeLanguage failed', { error: err?.message || String(err) });
     if (!settings.i18n) settings.i18n = { ready: false, languageId: settings.language || 'en-US' };
     if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
+    if (persist) persist({ language: settings.language || 'en-US', i18n: settings.i18n, missingTranslations: settings.missingTranslations });
     return settings.language || 'en-US';
   }
 }

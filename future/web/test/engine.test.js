@@ -256,9 +256,9 @@ describe('engine camera and benchmark handlers', () => {
     expect(media.stopCamera).toHaveBeenCalledWith(videoEl);
   });
 
-  test('cameraDidStart triggers benchmark when settings.autoFPS is true', async () => {
-    settings.autoFPS = true;
+  test('cameraDidStart triggers benchmark when autoFPS is true', async () => {
     const engine = createEngine();
+    engine.setState({ autoFPS: true });
     const cb = jest.fn();
     engine.onBenchmarkRequired(cb);
 
@@ -266,9 +266,9 @@ describe('engine camera and benchmark handlers', () => {
     expect(cb).toHaveBeenCalled();
   });
 
-  test('cameraDidStart does not trigger benchmark when settings.autoFPS is false', async () => {
-    settings.autoFPS = false;
+  test('cameraDidStart does not trigger benchmark when autoFPS is false', async () => {
     const engine = createEngine();
+    engine.setState({ autoFPS: false });
     const cb = jest.fn();
     engine.onBenchmarkRequired(cb);
 
@@ -285,7 +285,8 @@ describe('engine camera and benchmark handlers', () => {
 
     expect(spy).toHaveBeenCalledWith('setAutoFpsBenchmark', expect.objectContaining({ intervalMs: payload.intervalMs, sampleCount: payload.sampleCount }));
     // updateInterval should be set to nearest fps
-    expect(settings.updateInterval).toBeGreaterThan(0);
+    const st = engine.getState();
+    expect(st.updateInterval).toBeGreaterThan(0);
   });
 
   test('toggleMicrophone starts and stops mic stream and updates state', async () => {
@@ -317,8 +318,9 @@ describe('engine camera and benchmark handlers', () => {
 
   expect(media.startCamera).toHaveBeenCalled();
     // Timer ID should be stored on settings (may be a Timeout object)
-    expect(settings.processingTimerId).toBeDefined();
-    expect(settings.isProcessing).toBe(true);
+    const st = engine.getState();
+    expect(st.processingTimerId).toBeDefined();
+    expect(st.isProcessing).toBe(true);
     // Advance timers to allow scheduler to run at least once
     jest.advanceTimersByTime(50);
     jest.useRealTimers();
@@ -335,19 +337,20 @@ describe('engine camera and benchmark handlers', () => {
     const clearSpy = jest.spyOn(global, 'clearTimeout');
     const res = await engine.dispatch('stopProcessing', { videoEl });
     expect(clearSpy).toHaveBeenCalled();
-    expect(settings.processingTimerId).toBeNull();
-    expect(settings.isProcessing).toBe(false);
+    const st = engine.getState();
+    expect(st.processingTimerId).toBeNull();
+    expect(st.isProcessing).toBe(false);
     clearSpy.mockRestore();
     jest.useRealTimers();
   });
 
-  test('cycleLanguage updates settings.language', async () => {
-  const utils = require('../utils/utils.js');
-    settings.availableLanguages = [{ id: 'en-US' }, { id: 'es-ES' }];
-    settings.language = 'en-US';
+  test('cycleLanguage updates language', async () => {
+    const utils = require('../utils/utils.js');
     const engine = createEngine();
+    engine.setState({ availableLanguages: [{ id: 'en-US' }, { id: 'es-ES' }], language: 'en-US' });
     await engine.dispatch('cycleLanguage');
-    expect(settings.language).toBe('es-ES');
+    const st = engine.getState();
+    expect(st.language).toBe('es-ES');
     expect(utils.setLanguage).toHaveBeenCalled();
   });
 
@@ -365,45 +368,43 @@ describe('engine camera and benchmark handlers', () => {
     const sample = JSON.stringify({ gridType: 'hex-tonnetz', maxNotes: 32, language: 'es-ES' });
     jest.spyOn(window.localStorage.__proto__, 'getItem').mockReturnValue(sample);
     await engine.dispatch('loadSettings');
-    expect(settings.gridType).toBe('hex-tonnetz');
-    expect(settings.maxNotes).toBe(32);
+    const st = engine.getState();
+    expect(st.gridType).toBe('hex-tonnetz');
+    expect(st.maxNotes).toBe(32);
     window.localStorage.getItem.mockRestore();
   });
 
-  test('cycleGrid rotates settings.gridType', async () => {
-    settings.availableGrids = [{ id: 'g1' }, { id: 'g2' }, { id: 'g3', maxNotes: 20 }];
-    settings.gridType = 'g1';
+  test('cycleGrid rotates gridType', async () => {
     const engine = createEngine();
+    engine.setState({ availableGrids: [{ id: 'g1' }, { id: 'g2' }, { id: 'g3', maxNotes: 20 }], gridType: 'g1' });
     await engine.dispatch('cycleGrid');
-    expect(settings.gridType).toBe('g2');
+    expect(engine.getState().gridType).toBe('g2');
     await engine.dispatch('cycleGrid');
-    expect(settings.gridType).toBe('g3');
+    expect(engine.getState().gridType).toBe('g3');
   });
 
   test('cycleFramerate toggles autoFPS and cycles updateInterval', async () => {
     const engine = createEngine();
-    // Start with known state
-    settings.autoFPS = false;
-    settings.updateInterval = 1000 / 20; // 20 fps
-
-    // First dispatch -> should move to 30 fps
+    engine.setState({ autoFPS: false, updateInterval: 1000 / 20 });
+    // 20 -> 30
     await engine.dispatch('cycleFramerate');
-    expect(settings.autoFPS).toBe(false);
-    expect(Math.round(1000 / settings.updateInterval)).toBe(30);
-
-    // Second dispatch -> should move to 60 fps
+    let st = engine.getState();
+    expect(st.autoFPS).toBe(false);
+    expect(Math.round(1000 / st.updateInterval)).toBe(30);
+    // 30 -> 60
     await engine.dispatch('cycleFramerate');
-    expect(settings.autoFPS).toBe(false);
-    expect(Math.round(1000 / settings.updateInterval)).toBe(60);
-
-    // Third dispatch -> should set autoFPS true (since 60 is last option)
+    st = engine.getState();
+    expect(st.autoFPS).toBe(false);
+    expect(Math.round(1000 / st.updateInterval)).toBe(60);
+    // 60 -> autoFPS true
     await engine.dispatch('cycleFramerate');
-    expect(settings.autoFPS).toBe(true);
-
-    // Fourth dispatch -> should turn autoFPS off and set to 20 fps default
+    st = engine.getState();
+    expect(st.autoFPS).toBe(true);
+    // autoFPS -> 20
     await engine.dispatch('cycleFramerate');
-    expect(settings.autoFPS).toBe(false);
-    expect(Math.round(1000 / settings.updateInterval)).toBe(20);
+    st = engine.getState();
+    expect(st.autoFPS).toBe(false);
+    expect(Math.round(1000 / st.updateInterval)).toBe(20);
   });
 
   test('startProcessing allocates frame buffer when workerTransferEnabled is true', async () => {

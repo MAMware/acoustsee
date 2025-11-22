@@ -31,7 +31,7 @@ languages/
    - Each entry: `{ id: 'en-US', name: 'English (USA)' }`
 
 3. **Core Utilities** - `utils/utils.js` implements:
-   - `initializeLanguage(state)` - **Must be called and awaited during startup**. Chooses language, preloads translations, and sets `state.i18n.ready = true`
+  - `initializeLanguage(state, { persist })` - **Must be called and awaited during startup**. Chooses language, preloads translations, sets `state.i18n.ready = true`. Optional `persist(partial)` callback (e.g. `engine.setState`) is invoked with `{ language, i18n, missingTranslations }` as they change to avoid losing mutations when working on shallow copies.
    - `getText(key, params, state)` - Get translated string; **fails fast** if `state.i18n.ready !== true`, returns `[missing:key]` for missing translations
    - `setLanguage(locale, state)` - Switch active language and preload translations
    - `translatePage(document, state)` - Translate DOM elements
