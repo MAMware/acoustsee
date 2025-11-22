@@ -5,6 +5,9 @@
         This CSS only handles colors, typography, spacing, and content layout.
 */
 
+/* Import Design Tokens (Phase 2: Design System) */
+@import url('./dashboard-tokens.css');
+
 /* Import EventBus Viewer styles */
 @import url('./eventbus-viewer.css');
 
@@ -14,31 +17,31 @@
   color: #ecf0f1;
   backdrop-filter: blur(5px);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .devpanel-main-content {
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  padding: 16px;
+  padding: var(--space-4);
   box-sizing: border-box;
 }
 
 .devpanel-header {
-  padding-bottom: 12px;
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid #34495e;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .devpanel-header h1 {
-  font-size: 22px;
+  font-size: var(--text-xl);
   margin: 0;
 }
 #devpanel-subtitle {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: #95a5a6;
   font-family: monospace;
   opacity: 0.9;
@@ -47,19 +50,19 @@
 .devpanel-section {
   background: rgba(0,0,0,0.15);
   border: 1px solid #34495e;
-  border-radius: 6px;
-  margin-bottom: 16px;
-  padding: 12px;
-  transition: all 0.2s ease-in-out;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  transition: all var(--transition-base);
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   cursor: pointer;
   margin: 0 !important;
-  padding-bottom: 10px;
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid #34495e;
 }
 .section-header-spacer {
@@ -71,8 +74,8 @@
   background: rgba(52, 73, 94, 0.3);
   border: 1px solid #34495e;
   color: #ecf0f1;
-  border-radius: 4px;
-  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
 }
 .section-content {
   padding-top: 12px;
@@ -87,14 +90,14 @@
 /* Controls Section Layout */
 .devpanel-actions-grid {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 .controls-grid-2col {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px 24px;
+  gap: var(--space-4) var(--space-6);
 }
 .control-column {
   display: flex;

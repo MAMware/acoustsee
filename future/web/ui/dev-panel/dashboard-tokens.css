@@ -1,0 +1,168 @@
+/**
+ * Dashboard Design Tokens
+ * 
+ * Design system for Developer Panel with accessibility-first approach:
+ * - Typography: rem-based (respects browser font size settings)
+ * - Spacing: Hybrid rem + viewport units with clamp()
+ * - Density: Global multiplier for personalized spacing
+ * - Colors: Semantic naming for maintainability
+ * - Transitions: Consistent timing for UX polish
+ * 
+ * Strategy: Fluid scaling with min/ideal/max constraints
+ * - min: Prevents unreadable text on small screens
+ * - ideal: Optimal size for most viewports
+ * - max: Caps growth on ultra-wide displays
+ * 
+ * Phase 2 of Developer Panel Responsive Redesign (UI-12.2)
+ * ADR: docs/adr/0012-dev-panel-responsive-redesign.md
+ */
+
+:root {
+  /* ==================== DENSITY CONTROL ==================== */
+  /* Global multiplier for spacing personalization */
+  --density: 1;        /* Default: Comfortable */
+  /* Options: 0.8 (Compact), 1.0 (Comfortable), 1.25 (Spacious) */
+  
+  /* ==================== TYPOGRAPHY ==================== */
+  /* Fluid scaling: clamp(min, ideal, max) with rem base */
+  /* rem respects user's browser font size (critical for accessibility) */
+  
+  --text-xs: clamp(0.625rem, 0.75rem, 0.875rem);   /* 10-12-14px at 16px base */
+  --text-sm: clamp(0.75rem, 0.875rem, 1rem);       /* 12-14-16px */
+  --text-base: clamp(0.875rem, 1rem, 1.125rem);    /* 14-16-18px */
+  --text-lg: clamp(1rem, 1.125rem, 1.25rem);       /* 16-18-20px */
+  --text-xl: clamp(1.125rem, 1.25rem, 1.5rem);     /* 18-20-24px */
+  --text-2xl: clamp(1.25rem, 1.5rem, 1.875rem);    /* 20-24-30px */
+  
+  /* Font weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* Line heights (unitless for scalability) */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  
+  /* ==================== SPACING SCALE ==================== */
+  /* Hybrid rem + viewport units for fluid responsiveness */
+  /* Uses density multiplier for user personalization */
+  
+  --space-1: calc(clamp(0.25rem, 0.5vw, 0.375rem) * var(--density));     /* 4-6px */
+  --space-2: calc(clamp(0.375rem, 1vw, 0.5rem) * var(--density));        /* 6-8px */
+  --space-3: calc(clamp(0.5rem, 1.5vw, 0.75rem) * var(--density));       /* 8-12px */
+  --space-4: calc(clamp(0.75rem, 2vw, 1rem) * var(--density));           /* 12-16px */
+  --space-5: calc(clamp(0.875rem, 2.5vw, 1.25rem) * var(--density));     /* 14-20px */
+  --space-6: calc(clamp(1rem, 3vw, 1.5rem) * var(--density));            /* 16-24px */
+  --space-8: calc(clamp(1.5rem, 4vw, 2rem) * var(--density));            /* 24-32px */
+  --space-10: calc(clamp(2rem, 5vw, 2.5rem) * var(--density));           /* 32-40px */
+  --space-12: calc(clamp(2.5rem, 6vw, 3rem) * var(--density));           /* 40-48px */
+  
+  /* ==================== COLORS ==================== */
+  /* Semantic naming for dark-theme dashboard */
+  
+  /* Backgrounds */
+  --bg-panel: rgba(30, 40, 50, 0.98);              /* Main panel background */
+  --bg-section: rgba(40, 50, 60, 0.7);             /* Section container */
+  --bg-input: rgba(50, 60, 70, 0.8);               /* Input/select fields */
+  --bg-hover: rgba(60, 70, 80, 0.9);               /* Hover states */
+  --bg-active: rgba(70, 80, 90, 1);                /* Active/pressed states */
+  
+  /* Text */
+  --text-primary: #ecf0f1;                         /* Primary text (high contrast) */
+  --text-secondary: #bdc3c7;                       /* Secondary text (labels) */
+  --text-muted: #95a5a6;                           /* Muted text (hints, disabled) */
+  
+  /* Borders */
+  --border-default: rgba(200, 200, 200, 0.2);      /* Default border */
+  --border-focus: rgba(52, 152, 219, 0.6);         /* Focus ring */
+  --border-error: rgba(231, 76, 60, 0.6);          /* Error states */
+  
+  /* Accents */
+  --accent-primary: #3498db;                       /* Primary actions (blue) */
+  --accent-success: #2ecc71;                       /* Success states (green) */
+  --accent-warning: #f39c12;                       /* Warnings (orange) */
+  --accent-danger: #e74c3c;                        /* Errors/stop (red) */
+  --accent-info: #9b59b6;                          /* Info/secondary (purple) */
+  
+  /* ==================== DIMENSIONS ==================== */
+  /* Common size constraints for UI components */
+  
+  --input-height: calc(clamp(2rem, 2.5rem, 3rem) * var(--density));     /* Input/button height */
+  --button-min-width: clamp(4rem, 5rem, 6rem);                          /* Button minimum width */
+  --section-max-width: min(100%, clamp(22rem, 30rem, 36rem));           /* Section content width */
+  
+  /* ==================== TRANSITIONS ==================== */
+  /* Consistent timing for smooth interactions */
+  
+  --transition-fast: 150ms ease-in-out;            /* Quick interactions (hover) */
+  --transition-base: 250ms ease-in-out;            /* Standard (dropdowns, panels) */
+  --transition-slow: 400ms ease-in-out;            /* Deliberate (modals, drawers) */
+  
+  /* ==================== SHADOWS ==================== */
+  /* Depth system for layered UI */
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.25);
+  
+  /* ==================== BORDER RADIUS ==================== */
+  /* Consistent corner rounding */
+  
+  --radius-sm: 0.25rem;    /* 4px - Small elements (tags, badges) */
+  --radius-md: 0.375rem;   /* 6px - Inputs, buttons */
+  --radius-lg: 0.5rem;     /* 8px - Cards, sections */
+  --radius-xl: 0.75rem;    /* 12px - Modals, drawers */
+  --radius-full: 9999px;   /* Fully rounded (pills, avatars) */
+  
+  /* ==================== Z-INDEX SCALE ==================== */
+  /* Layering system for stacking contexts */
+  
+  --z-base: 1;             /* Base content layer */
+  --z-dropdown: 100;       /* Dropdowns, popovers */
+  --z-sticky: 200;         /* Sticky headers */
+  --z-overlay: 500;        /* Modal overlays */
+  --z-modal: 600;          /* Modal content */
+  --z-toast: 700;          /* Notifications */
+  --z-tooltip: 800;        /* Tooltips (always on top) */
+}
+
+/* ==================== DENSITY MODIFIERS ==================== */
+/* Apply density to specific component classes */
+
+.density-compact {
+  --density: 0.8;   /* 20% tighter spacing */
+}
+
+.density-comfortable {
+  --density: 1.0;   /* Default spacing */
+}
+
+.density-spacious {
+  --density: 1.25;  /* 25% looser spacing */
+}
+
+/* ==================== USAGE EXAMPLES ==================== */
+/*
+  Typography:
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+  
+  Spacing:
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
+  
+  Colors:
+    background: var(--bg-section);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+  
+  Transitions:
+    transition: background var(--transition-fast);
+  
+  Density Control:
+    <body class="density-compact">  <!-- Apply globally -->
+    <div class="density-spacious">  <!-- Override locally -->
+*/
