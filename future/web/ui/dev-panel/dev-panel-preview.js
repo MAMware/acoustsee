@@ -61,12 +61,19 @@ export function initializePreview(panel, DOM, engine) {
     };
 
     const resolvePreviewSource = () => {
+      // R221125vp: Prioritize processing canvas (the "truth") over raw video feed
+      // This avoids showing raw camera feed when we want to see what the engine sees
+      const processingCanvas = pickProcessingCanvas();
+      if (processingCanvas) {
+        const { width, height } = getSourceDimensions(processingCanvas);
+        if (width > 0 && height > 0) return processingCanvas;
+      }
+
+      // Fallback to video feed only if canvas is not available
       const candidates = [];
       if (DOM?.videoFeed) candidates.push(DOM.videoFeed);
       const docVideoFeed = document.querySelector('video#videoFeed');
       if (docVideoFeed && docVideoFeed !== DOM?.videoFeed) candidates.push(docVideoFeed);
-      const processingCanvas = pickProcessingCanvas();
-      if (processingCanvas) candidates.push(processingCanvas);
 
       for (const candidate of candidates) {
         const { width, height } = getSourceDimensions(candidate);
