@@ -3,13 +3,37 @@
     <h1>Developer Panel</h1>
     <div id="devpanel-subtitle">Versions: Loading...</div>
     <div id="devpanel-buildinfo" style="font-size: 11px; color: #7f8c8d; margin-top: 4px; font-family: monospace;">Build: Loading...</div>
+    <button id="customize-groups-btn" class="customize-btn" title="Customize visible groups" aria-label="Customize panel groups">⚙️</button>
+  </div>
+
+  <!-- Customization Modal (Phase 4) -->
+  <div id="customize-groups-modal" class="customize-modal" style="display: none;">
+    <div class="customize-modal-content">
+      <div class="customize-modal-header">
+        <h3>Customize Groups</h3>
+        <button id="customize-groups-close" class="customize-modal-close" aria-label="Close customization">×</button>
+      </div>
+      <div class="customize-modal-body">
+        <p style="font-size: 12px; color: #95a5a6; margin-bottom: 12px;">Show or hide feature groups:</p>
+        <div id="customize-groups-list" class="customize-groups-list">
+          <!-- Group checkboxes will be generated here by JS -->
+        </div>
+      </div>
+      <div class="customize-modal-footer">
+        <button id="customize-groups-reset-btn" class="btn-secondary">Reset to Default</button>
+        <button id="customize-groups-done-btn" class="btn-primary">Done</button>
+      </div>
+    </div>
   </div>
 
   <!-- ========================================
        GROUP 1: UI & SYSTEM
        ======================================== -->
   <div class="devpanel-group" data-group="ui-system">
-    <h2 class="group-title">UI & System</h2>
+    <div class="group-header">
+      <h2 class="group-title">UI & System</h2>
+      <button class="group-collapse-btn" data-group="ui-system" aria-expanded="true" title="Collapse group">−</button>
+    </div>
 
     <!-- UI Settings Section -->
     <div class="devpanel-section ui-settings-section">
@@ -106,7 +130,10 @@
        GROUP 2: AUDIO & SYNTHESIS
        ======================================== -->
   <div class="devpanel-group" data-group="audio-synthesis">
-    <h2 class="group-title">Audio & Synthesis</h2>
+    <div class="group-header">
+      <h2 class="group-title">Audio & Synthesis</h2>
+      <button class="group-collapse-btn" data-group="audio-synthesis" aria-expanded="true" title="Collapse group">−</button>
+    </div>
 
     <!-- Synth Sandbox -->
     <div class="devpanel-section synth-sandbox-section half-width-section">
@@ -186,7 +213,10 @@
        GROUP 3: VIDEO & MOTION
        ======================================== -->
   <div class="devpanel-group" data-group="video-motion">
-    <h2 class="group-title">Video & Motion</h2>
+    <div class="group-header">
+      <h2 class="group-title">Video & Motion</h2>
+      <button class="group-collapse-btn" data-group="video-motion" aria-expanded="true" title="Collapse group">−</button>
+    </div>
 
     <!-- Worker Performance & Live Video Preview (side-by-side) -->
     <div class="devpanel-row devpanel-row-balanced">
@@ -358,7 +388,10 @@
        GROUP 4: PROCESSING & CONTROLS
        ======================================== -->
   <div class="devpanel-group" data-group="processing-controls">
-    <h2 class="group-title">Processing & Controls</h2>
+    <div class="group-header">
+      <h2 class="group-title">Processing & Controls</h2>
+      <button class="group-collapse-btn" data-group="processing-controls" aria-expanded="true" title="Collapse group">−</button>
+    </div>
 
     <!-- Main Controls -->
     <div class="devpanel-section controls-section">
@@ -560,7 +593,10 @@
        GROUP 5: PIPELINE MONITORING
        ======================================== -->
   <div class="devpanel-group" data-group="pipeline-monitoring">
-    <h2 class="group-title">Pipeline Monitoring</h2>
+    <div class="group-header">
+      <h2 class="group-title">Pipeline Monitoring</h2>
+      <button class="group-collapse-btn" data-group="pipeline-monitoring" aria-expanded="true" title="Collapse group">−</button>
+    </div>
 
     <!-- EventBus Viewer -->
     <div class="devpanel-section eventbus-viewer-section">
@@ -626,7 +662,10 @@
        GROUP 6: DIAGNOSTICS & LOGS
        ======================================== -->
   <div class="devpanel-group" data-group="diagnostics-logs">
-    <h2 class="group-title">Diagnostics & Logs</h2>
+    <div class="group-header">
+      <h2 class="group-title">Diagnostics & Logs</h2>
+      <button class="group-collapse-btn" data-group="diagnostics-logs" aria-expanded="true" title="Collapse group">−</button>
+    </div>
 
     <!-- Live Logs -->
     <div class="devpanel-section logs-section">

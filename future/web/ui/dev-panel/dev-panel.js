@@ -16,6 +16,7 @@ import { initializeOrchestrationInspector } from '../orchestration-inspector.js'
 import { initEventBusViewer } from './eventbus-viewer.js'; // Phase 2: EventBus viewer
 import { initializePreview } from './dev-panel-preview.js'; // Extracted preview logic
 import { initializeChartController } from './dev-panel-chart-controller.js'; // Extracted chart logic
+import { initializeCustomization } from './dev-panel-customization.js'; // Phase 4: Customization System
 // Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
 
@@ -232,6 +233,17 @@ export function initializeDevPanel(arg1, arg2) {
           }
         } catch (e) {
           console.error('Failed to apply layout and behaviors', e);
+        }
+
+        // --- Initialize Customization System (Phase 4) ---
+        let customizationDispose = null;
+        try {
+          customizationDispose = initializeCustomization(panel);
+          if (customizationDispose && typeof customizationDispose === 'function') {
+            panel.__customizationDispose = customizationDispose;
+          }
+        } catch (e) {
+          console.error('Failed to initialize customization system', e);
         }
 
         await setupUI(); // setupUI is declared below
@@ -1252,7 +1264,14 @@ export function initializeDevPanel(arg1, arg2) {
         }
       } catch (e) { /* swallow */ }
 
-      // 8. Remove panel node from DOM
+      // 8. Customization system cleanup (Phase 4)
+      try {
+        if (typeof panel.__customizationDispose === 'function') {
+          panel.__customizationDispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 9. Remove panel node from DOM
       try {
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
       } catch (e) { /* swallow */ }
