@@ -14,8 +14,8 @@ export const LOG_LEVELS = {
 export const BUILD_VERSION = '0.9.5';
 export const AUDIO_VERSION = '0.8.4-improvedUnlock';
 export const VIDEO_VERSION = '0.8.4-flowOrchestration';
-export const UI_VERSION = '0.8.2-deltaHistogram';
-export const LANGUAGES_VERSION = '0.2-spaEng';
+export const UI_VERSION = '0.8.4-missingTranslationDetections';
+export const LANGUAGES_VERSION = '0.4-enhancedI18N+';
 export const UTILS_VERSION = '0.9.8-eventBus';
 
 // Build information (auto-injected by scripts/inject-build-info.js)

@@ -1,9 +1,9 @@
-// Standalone test script for analytics i18n mapping
+// Standalone dedupe test for analytics i18n mapping
 // Run with: node --input-type=module future/web/test/unit/analytics-i18n.test.js
 
 import { initializeAnalytics, getGlobalBatcher } from '../../core/event-bus-analytics.js';
 
-async function run() {
+async function runDedupeTest() {
   // Simple mock EventBus with subscribe/emit
   const handlers = {};
   const eventBus = {
@@ -38,62 +38,73 @@ async function run() {
   const batcher = getGlobalBatcher();
   if (!batcher) {
     console.error('FAIL: global batcher not initialized');
+    cleanup && cleanup();
     process.exit(2);
   }
 
-  // Emit a log event that should be mapped
-  const event = {
+  // Ensure buffer exists and is empty
+  if (!Array.isArray(batcher.buffer)) batcher.buffer = [];
+  batcher.buffer.length = 0;
+
+  // 1) Emit the same I18N_KEY_MISSING twice for dedupe.test (en-US)
+  const eventA = {
     type: 'log',
     category: 'DEBUG',
     timestamp: Date.now(),
     traceId: null,
     data: {
       message: 'I18N_KEY_MISSING',
-      key: 'test.missing',
-      languageId: 'es-ES'
+      key: 'dedupe.test',
+      languageId: 'en-US'
     }
   };
 
-  // Emit
-  eventBus._emit('log', event);
+  eventBus._emit('log', eventA);
+  eventBus._emit('log', eventA);
 
   // Allow microtask queue to process
   await new Promise(r => setTimeout(r, 50));
 
-  // Inspect batcher buffer
-  const buffer = batcher.buffer || [];
-  if (buffer.length === 0) {
-    console.error('FAIL: no events were added to batcher.buffer');
+  const buf1 = batcher.buffer || [];
+  const countDedupeTest = buf1.filter(e => e && e.type === 'i18n_error' && e.data && e.data.missingKey === 'dedupe.test').length;
+
+  if (countDedupeTest !== 1) {
+    console.error('FAIL: dedupe test expected 1 event for dedupe.test but found', countDedupeTest, 'buffer:', buf1);
     cleanup && cleanup();
     process.exit(2);
   }
 
-  // Find first i18n_error event
-  const mapped = buffer.find(e => e && e.type === 'i18n_error');
-  if (!mapped) {
-    console.error('FAIL: no i18n_error event found in batcher buffer', buffer);
+  // 2) Emit a different key and assert buffer increases by 1 (now total 2)
+  const eventB = {
+    type: 'log',
+    category: 'DEBUG',
+    timestamp: Date.now(),
+    traceId: null,
+    data: {
+      message: 'I18N_KEY_MISSING',
+      key: 'dedupe.other',
+      languageId: 'en-US'
+    }
+  };
+
+  eventBus._emit('log', eventB);
+  await new Promise(r => setTimeout(r, 50));
+
+  const buf2 = batcher.buffer || [];
+  const totalI18n = buf2.filter(e => e && e.type === 'i18n_error' && e.data && e.data.currentLanguage === 'en-US' && (e.data.missingKey === 'dedupe.test' || e.data.missingKey === 'dedupe.other')).length;
+
+  if (totalI18n !== 2) {
+    console.error('FAIL: expected 2 i18n events total after emitting second key; found', totalI18n, 'buffer:', buf2);
     cleanup && cleanup();
     process.exit(2);
   }
 
-  // Assertions
-  const passType = mapped.type === 'i18n_error';
-  const passCategory = mapped.category === 'I18N_KEY_MISSING';
-  const passMissingKey = mapped.data && mapped.data.missingKey === 'test.missing';
-  const passLang = mapped.data && mapped.data.currentLanguage === 'es-ES';
-
-  if (passType && passCategory && passMissingKey && passLang) {
-    console.log('PASS: analytics i18n mapping test succeeded');
-    cleanup && cleanup();
-    process.exit(0);
-  } else {
-    console.error('FAIL: assertions failed', { mapped });
-    cleanup && cleanup();
-    process.exit(2);
-  }
+  console.log('PASS: analytics i18n dedupe test succeeded');
+  cleanup && cleanup();
+  process.exit(0);
 }
 
-run().catch(err => {
+runDedupeTest().catch(err => {
   console.error('TEST ERROR', err);
   process.exit(2);
 });

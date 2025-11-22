@@ -20,7 +20,11 @@ export const ANNOUNCE_REWRITE_DELAY_MS = 150;
  * @param {Object} state - The application state object
  * @returns {string} The selected language ID.
  */
-export function initializeLanguageIfNeeded(state) {
+// Module-scoped dedupe trackers to avoid flooding logs/analytics on repeat errors
+const _reportedMissingKeys = new Set();
+let _reportedInitError = false;
+
+export async function initializeLanguageIfNeeded(state) {
   const settings = state;
   if (!settings.language) {
     structuredLog('WARN', 'Language not initialized; attempting persisted or default');
@@ -44,8 +48,24 @@ export function initializeLanguageIfNeeded(state) {
     }
   }
 
-  // Preload translations for the selected language (best-effort)
-  try { preloadTranslations(settings.language); } catch (e) { structuredLog('WARN', 'preloadTranslations failed in init', { error: e?.message || String(e) }); }
+  // Preload translations for the selected language (best-effort) and mark i18n state
+  try {
+    if (!settings.i18n) settings.i18n = { ready: false, languageId: settings.language };
+    await preloadTranslations(settings.language);
+    // mark ready if cache now has the language
+    settings.i18n.ready = Boolean(translationsCache[settings.language]);
+    settings.i18n.languageId = settings.language;
+    if (!settings.i18n.ready && settings.language === 'en-US') {
+      // If bundled enUS is present, use it as ready
+      settings.i18n.ready = (typeof enUS === 'object' && Object.keys(enUS).length > 0);
+    }
+  } catch (e) {
+    structuredLog('WARN', 'preloadTranslations failed in init', { error: e?.message || String(e) });
+    if (!settings.i18n) settings.i18n = { ready: false, languageId: settings.language };
+  }
+
+  // Ensure missingTranslations container exists for dev visibility
+  if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
 
   return settings.language;
 }
@@ -106,7 +126,10 @@ export async function getText(key, params = {}, state) {
     const settings = state;
     // Ensure availableLanguages exists
     if (!settings.availableLanguages || !Array.isArray(settings.availableLanguages) || settings.availableLanguages.length === 0) {
-      structuredLog('ERROR', I18N_INIT_ERROR, { message: 'availableLanguages missing on state', key, params });
+      if (!_reportedInitError) {
+        structuredLog('ERROR', I18N_INIT_ERROR, { message: 'availableLanguages missing on state', key, params });
+        _reportedInitError = true;
+      }
       // Attempt to set a safe fallback language and continue
       settings.language = settings.availableLanguages && settings.availableLanguages[0] ? settings.availableLanguages[0].id : 'en-US';
     }
@@ -166,7 +189,14 @@ export async function getText(key, params = {}, state) {
 
     // If missing, record and return visible indicator
     if (typeof finalMessage !== 'string') {
-      structuredLog('INFO', I18N_KEY_MISSING, { key, languageId });
+      // Only log/emit analytics for the first occurrence of a missing key to avoid spam
+      if (!_reportedMissingKeys.has(key)) {
+        structuredLog('INFO', I18N_KEY_MISSING, { key, languageId });
+        _reportedMissingKeys.add(key);
+      } else {
+        // For subsequent occurrences, log at debug level to preserve some telemetry without flooding
+        structuredLog('DEBUG', 'I18N_KEY_MISSING_DUP', { key, languageId });
+      }
       if (!Array.isArray(settings.missingTranslations)) settings.missingTranslations = [];
       if (!settings.missingTranslations.includes(key)) settings.missingTranslations.push(key);
       return `[missing:${key}]`;

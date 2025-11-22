@@ -16,6 +16,8 @@ import { AnalyticsBatcher, shouldBatchEvent, sendCriticalEventBeacon } from './a
 
 // Global analytics batcher instance (30-second batches)
 let globalBatcher = null;
+// Session-scoped dedupe for i18n events to avoid flooding analytics with repeats
+const _reportedI18nEvents = new Set();
 
 /**
  * Initialize analytics subscribers on the EventBus.
@@ -64,14 +66,24 @@ export function initializeAnalytics(eventBus, state, options = {}) {
         const msg = event.data && event.data.message;
         if (typeof msg === 'string' && msg.startsWith('I18N_')) {
           // Map to a dedicated i18n event type
+          const missingKey = event.data.key || event.data.missingKey || null;
+          const currentLanguage = event.data.languageId || event.data.language || null;
+          const dedupeId = `${msg}|${missingKey || '<no-key>'}|${currentLanguage || '<no-lang>'}`;
+          // If we've already reported this i18n issue this session, skip batching
+          if (_reportedI18nEvents.has(dedupeId)) {
+            structuredLog('DEBUG', 'i18n duplicate skipped', { dedupeId });
+            return;
+          }
+          _reportedI18nEvents.add(dedupeId);
+
           const mapped = {
             type: 'i18n_error',
             category: msg, // e.g. I18N_KEY_MISSING
             timestamp: event.timestamp || Date.now(),
             traceId: event.traceId || null,
             data: {
-              missingKey: event.data.key || event.data.missingKey || null,
-              currentLanguage: event.data.languageId || event.data.language || null,
+              missingKey: missingKey,
+              currentLanguage: currentLanguage,
               originalMessage: msg,
               // include any extra context for downstream debugging
               meta: { ...event.data }

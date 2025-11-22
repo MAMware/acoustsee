@@ -258,8 +258,8 @@ export async function init() {
       language: configState.language
     });
 
-    // Ensure language is initialized before UI translation
-    initializeLanguageIfNeeded(configState);
+    // Ensure language is initialized before UI translation (await to avoid races)
+    await initializeLanguageIfNeeded(configState);
     try {
       await setLanguage(configState.language, configState);
       translatePage(document, configState);
