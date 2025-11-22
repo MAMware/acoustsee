@@ -52,19 +52,9 @@ export function applyLayoutAndBehaviors({ panel, DOM }) {
     }
   }
 
-  // Ensure z-index hierarchy (video < panel)
-  (function ensureVideoOnTop() {
-    try {
-      const videoEl = DOM.videoFeed || document.querySelector('video');
-      if (videoEl && !videoEl.style.zIndex) {
-        videoEl.style.position = 'relative';
-        videoEl.style.zIndex = '50';
-      }
-      panel.style.zIndex = '1000';
-    } catch (e) {
-      console.error('[dev-panel-layout] Error setting z-index:', e);
-    }
-  })();
+  // Ensure panel z-index and background are always set
+  panel.style.zIndex = '1000';
+  panel.style.backgroundColor = 'rgba(30, 40, 50, 0.98)';
 
   // Apply initial layout
   applyResponsiveLayout();
