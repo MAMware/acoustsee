@@ -5,6 +5,35 @@
     <div id="devpanel-buildinfo" style="font-size: 11px; color: #7f8c8d; margin-top: 4px; font-family: monospace;">Build: Loading...</div>
   </div>
 
+  <!-- UI Settings Section -->
+  <div class="devpanel-section ui-settings-section">
+    <h2 class="section-header">
+      <span>UI Settings</span>
+      <span class="section-header-spacer"></span>
+      <button class="collapse-btn" data-target="ui-settings-content" aria-expanded="true" title="Collapse UI Settings">-</button>
+    </h2>
+    <div id="ui-settings-content" class="section-content">
+      <div class="control-column">
+        <label>Density (Spacing)</label>
+        <div class="density-controls">
+          <label class="density-option">
+            <input type="radio" name="density" value="0.8" id="density-compact">
+            <span>Compact</span>
+          </label>
+          <label class="density-option">
+            <input type="radio" name="density" value="1" id="density-comfortable" checked>
+            <span>Comfortable</span>
+          </label>
+          <label class="density-option">
+            <input type="radio" name="density" value="1.25" id="density-spacious">
+            <span>Spacious</span>
+          </label>
+        </div>
+        <p class="perf-note">Changes spacing across the entire panel. Preference saved to localStorage.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Synth Sandbox: Manual cue sender for testing audio in isolation -->
   <div class="devpanel-section synth-sandbox-section half-width-section">
     <h2 class="section-header">

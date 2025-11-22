@@ -457,6 +457,37 @@ export function initializeDevPanel(arg1, arg2) {
         URL.revokeObjectURL(url);
     });
 
+    // --- Wire Density Controls ---
+    try {
+      const DENSITY_STORAGE_KEY = 'acoustsee-dev-panel-density';
+      const densityRadios = panel.querySelectorAll('input[name="density"]');
+      
+      // Load saved density preference
+      const savedDensity = localStorage.getItem(DENSITY_STORAGE_KEY);
+      if (savedDensity) {
+        const radio = panel.querySelector(`input[name="density"][value="${savedDensity}"]`);
+        if (radio) {
+          radio.checked = true;
+          document.documentElement.style.setProperty('--density', savedDensity);
+          structuredLog('INFO', 'Dev Panel: Loaded density preference', { density: savedDensity });
+        }
+      }
+      
+      // Handle density changes
+      densityRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          const newDensity = e.target.value;
+          document.documentElement.style.setProperty('--density', newDensity);
+          localStorage.setItem(DENSITY_STORAGE_KEY, newDensity);
+          structuredLog('INFO', 'Dev Panel: Density changed', { density: newDensity });
+        });
+      });
+      
+      structuredLog('INFO', 'Dev Panel: Density controls initialized');
+    } catch (e) {
+      structuredLog('WARN', 'Dev Panel: Failed to initialize density controls', { error: e?.message || String(e) });
+    }
+
     // --- Wire Logging Configuration Controls ---
     const { loggingConfig } = await import('../../utils/logging.js');
     const logLevelSelect = panel.querySelector('#log-level-select');
