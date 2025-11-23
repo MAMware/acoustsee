@@ -8,12 +8,12 @@ This document tracks active and future development tasks to provide a clear proj
 
 -   **[ ] `ARCH-2`:** Standardize the export contract for all synth and grid modules, including OSC output contracts for video-to-synth communication.
 -   **[ ] `UI-6`:** Refactor the settings logic in `touch-gesture-commands.js` to be data-driven.
--   **[ ] `UI-12`:** Developer Panel Responsive Redesign - Improved JS layout, feature grouping, accessibility improvements. See `docs/adr/0012-dev-panel-responsive-redesign.md` (Revised approach: fix JS instead of migrate to CSS).
-       - **[ ] `UI-12.1`:** Fix Layout System - Refactor `dev-panel-layout.js` (add cleanup tracking, return dispose), delete conflicting CSS media queries, convert to content-driven breakpoints. (Week 1)
-       - **[ ] `UI-12.2`:** Design System & Responsive - Create `dashboard-tokens.css`, implement density controls, replace 156+ fixed pixels with tokens, accessibility audit. (Week 1-2)
-       - **[ ] `UI-12.3`:** Feature Grouping - Reorganize 15 sections into 6 groups (Audio Testing, Video Pipeline, Performance Tuning, System Inspection, Diagnostics, i18n Tools), create Dashboard Toolbar. (Week 2-3)
-       - **[ ] `UI-12.4`:** Customization System - Build `dashboard-preferences.js`, implement section visibility toggles, add layout presets (QA Testing, Performance Analysis, Full Development). (Week 3-4)
-       - **[ ] `UI-12.5`:** Integration Testing & Validation - **AFTER all phases complete:** Test on multiple viewports (320px-4K), verify memory leak fix (50x open/close cycles), accessibility audit, performance validation (1hr session profiling). (Week 4)
+-   **[x] `UI-12`:** Developer Panel Responsive Redesign - Improved JS layout, feature grouping, accessibility improvements. See `docs/adr/0012-dev-panel-responsive-redesign.md` (Revised approach: fix JS instead of migrate to CSS).
+       - **[x] `UI-12.1`:** Fix Layout System - Refactor `dev-panel-layout.js` (add cleanup tracking, return dispose), delete conflicting CSS media queries, convert to content-driven breakpoints. _(Completed 2025-11-22)_
+       - **[x] `UI-12.2`:** Design System & Responsive - Create `dashboard-tokens.css`, implement density controls, replace 156+ fixed pixels with tokens, accessibility audit. _(Completed 2025-11-22)_
+       - **[x] `UI-12.3`:** Feature Grouping - Reorganize 15 sections into 6 groups (UI & System, Audio & Synthesis, Video & Motion, Processing & Controls, Pipeline Monitoring, Diagnostics & Logs), create group headers. _(Completed 2025-11-22)_
+       - **[x] `UI-12.4`:** Customization System - Build `dev-panel-customization.js`, implement group visibility toggles, group collapse/expand, localStorage persistence. _(Completed 2025-11-22)_
+       - **[x] `UI-12.5`:** Integration Testing & Validation - Test on multiple viewports (320px-4K), verify memory leak fix, accessibility audit, performance validation, automated test suite. _(Completed 2025-11-22)_
 -   **[ ] `ARCH-3`:** Define and implement a multi-paradigm architecture ("Flow", "Focus", and "Enhanced Perception" modes). See `docs/adr/0002-dual-paradigm-navigation-and-identification-modes.md`. (Updated to include depth melody, egomotion modulation, object detection, pointer mode, BPM inference.)
        - **[ ] `ARCH-3.1`:** Implement mode switching in engine (state.currentMode = 'flow'|'focus'|'hybrid').
        - **[~] `ARCH-3.2`:** Add dep-free object detection (person/tree/rough_ground/trash/box) in motion worker using thresholds and Gabor textures. _(Status: Abstract features (textureRich, fastMotion, edgeConcentration) implemented as primary signal path 2025-10-17; optional semantic detection layer available in feature-detector.js)_
