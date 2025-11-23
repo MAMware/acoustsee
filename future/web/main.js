@@ -782,3 +782,19 @@ window.addEventListener('pagehide', () => {
 
 window.pingIngest = pingIngest;
 console.log('Ingest ping function is available. Type `pingIngest()` in the console to test.');
+
+// Helper: toggle visibility of mainContainer
+function toggleMainContainerVisibility() {
+  const mainContainer = document.getElementById('mainContainer');
+  if (mainContainer) {
+    const isVisible = mainContainer.style.display !== 'none';
+    mainContainer.style.display = isVisible ? 'none' : 'block';
+    mainContainer.setAttribute('aria-hidden', isVisible);
+  }
+}
+
+// Example usage: Attach to a button or event
+const toggleButton = document.getElementById('toggleMainContainer');
+if (toggleButton) {
+  toggleButton.addEventListener('click', toggleMainContainerVisibility);
+}

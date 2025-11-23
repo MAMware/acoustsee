@@ -35,3 +35,31 @@ export function applyLayoutAndBehaviors({ panel, DOM }) {
     // Fullscreen layout has no listeners to clean up
   };
 }
+
+export function adjustPanelAndMainContainer({ panel, mainContainer }) {
+  try {
+    // Adjust dev panel to coexist with mainContainer
+    Object.assign(panel.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: '70%', // Allow space for mainContainer
+      height: '100%',
+      zIndex: '9999',
+      backgroundColor: 'rgba(30, 40, 50, 0.98)',
+    });
+
+    // Ensure mainContainer is visible and positioned correctly
+    Object.assign(mainContainer.style, {
+      position: 'absolute',
+      top: '0',
+      right: '0',
+      width: '30%',
+      height: '100%',
+      zIndex: '9998', // Below the dev panel
+      backgroundColor: '#fff',
+    });
+  } catch (e) {
+    console.error('[dev-panel-layout] Error adjusting layout for coexistence:', e);
+  }
+}
