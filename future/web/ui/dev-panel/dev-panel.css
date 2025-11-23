@@ -28,11 +28,14 @@
 }
 
 .devpanel-main-content {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
+  width: calc(100% - var(--space-4)); /* Adjusted to prevent overflow */
+  height: calc(100% - var(--space-4)); /* Adjusted to prevent overflow */
+  margin: auto; /* Center content */
   padding: var(--space-4);
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center align items */
 }
 
 /* Phase 3: Feature Grouping - organize sections into logical groups */
@@ -57,7 +60,8 @@
   border-bottom: 1px solid #34495e;
   margin-bottom: var(--space-3);
   display: flex;
-  align-items: baseline;
+  align-items: center; /* Adjusted alignment */
+  justify-content: space-between; /* Space between title and buttons */
   gap: var(--space-3);
 }
 .devpanel-header h1 {
