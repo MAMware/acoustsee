@@ -6,6 +6,7 @@ import { structuredLog } from '../../utils/logging.js';
 
 const STORAGE_KEY = 'devpanel-group-preferences';
 const DEFAULT_GROUPS = [
+  { id: 'ui-settings', label: 'UI Settings', visible: true },
   { id: 'ui-system', label: 'UI & System', visible: true },
   { id: 'audio-synthesis', label: 'Audio & Synthesis', visible: true },
   { id: 'video-motion', label: 'Video & Motion', visible: true },

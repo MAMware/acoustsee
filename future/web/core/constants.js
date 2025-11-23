@@ -19,7 +19,7 @@ export const LANGUAGES_VERSION = '0.4.4-enhancedI18N+';
 export const UTILS_VERSION = '0.9.8-eventBus';
 
 // Build information (auto-injected by scripts/inject-build-info.js)
-export const BUILD_COMMIT = '4ecae80';
+export const BUILD_COMMIT = '41198e4';
 export const BUILD_BRANCH = 'v0.9.5-eDPLayout';
-export const BUILD_TIMESTAMP = '2025-11-22T23:55:15.917Z';
+export const BUILD_TIMESTAMP = '2025-11-23T04:01:28.593Z';
 
