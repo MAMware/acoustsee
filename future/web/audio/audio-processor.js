@@ -13,6 +13,7 @@ import { availableEnginesData } from './synths/available-synths.js';
 let audioManager = null;
 let _config = {};
 let _selectedSynthPlayFn = null;
+let _profileOverrides = new Map();
 
 // Allow UI/commands to select a global synth engine to apply to notes
 export function setSelectedSynthEngine(engineId) {
@@ -25,6 +26,28 @@ export function setSelectedSynthEngine(engineId) {
     _selectedSynthPlayFn = null;
   }
 }
+
+// Allow UI to override the synth for a specific object type (Granular Override)
+export function setSoundProfileOverride(objectType, synthId) {
+  try {
+    if (!synthId) {
+      _profileOverrides.delete(objectType);
+      structuredLog('INFO', 'audio: cleared sound profile override', { objectType });
+      return;
+    }
+    
+    const entry = (availableEnginesData || []).find(e => e.id === synthId);
+    if (entry) {
+      _profileOverrides.set(objectType, entry.playFunction);
+      structuredLog('INFO', 'audio: set sound profile override', { objectType, synthId });
+    } else {
+      structuredLog('WARN', 'audio: failed to set override, synth not found', { objectType, synthId });
+    }
+  } catch (e) {
+    structuredLog('ERROR', 'audio: setSoundProfileOverride failed', { error: e?.message });
+  }
+}
+
 let oscillatorPool = [];
 const activeOscillators = new Map();
 let masterGain = null;
@@ -152,7 +175,7 @@ export async function initializeAudio(config = {}) {
     structuredLog('INFO', 'Audio system initialized successfully');
     // Return the initialized API surface so callers can invoke playCues
     // and allow commands to adjust runtime settings such as pool size.
-    return { playCues, resizeOscillatorPool, setSelectedSynthEngine };
+    return { playCues, resizeOscillatorPool, setSelectedSynthEngine, setSoundProfileOverride };
   }, {
     contextState: context?.state,
     hasAudioManager: !!audioManager
@@ -424,18 +447,39 @@ export function playCues(cues) { // The argument is now just the cues array
   // cues should be an array. Find the primary cue (if any) via isPrimary flag
   const cuesArray = Array.isArray(cues) ? cues : [];
   const primaryCue = cuesArray.find(c => c && c.isPrimary);
-  const primaryProfile = primaryCue ? soundProfileManifest[primaryCue.objectType] : null;
+  
+  // Resolve primary profile with overrides (Focus Mode)
+  let resolvedPrimaryProfile = null;
+  if (primaryCue) {
+    const pType = primaryCue.objectType;
+    const pManifest = soundProfileManifest[pType];
+    const pOverride = _profileOverrides.get(pType);
+    if (pManifest) {
+      resolvedPrimaryProfile = pOverride ? { ...pManifest, playFunction: pOverride } : pManifest;
+    }
+  }
 
   const notesBySynth = new Map();
   const maxNotes = Number(_config.maxNotes) || 12;
 
   for (const cue of cuesArray.slice(0, maxNotes)) {
-    // If in Focus mode, we force the synth from the primary object's profile.
-    // Otherwise, in Flow mode, we look up the profile for each individual cue.
-    let profile = primaryProfile || (soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion']);
+    // Resolve individual profile from manifest
+    let profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
+    
+    // Apply granular override
+    const overrideFn = _profileOverrides.get(cue.objectType);
+    if (overrideFn && profile) {
+      profile = { ...profile, playFunction: overrideFn };
+    }
+
+    // If in Focus mode (primaryCue exists), we force the synth from the primary object's profile.
+    if (resolvedPrimaryProfile) {
+      profile = resolvedPrimaryProfile;
+    }
+
     if (!profile || typeof profile.playFunction !== 'function') continue;
 
-    // Override with globally selected synth engine if provided
+    // Override with globally selected synth engine if provided (Debug/Master override)
     if (_selectedSynthPlayFn) {
       profile = { ...profile, playFunction: _selectedSynthPlayFn };
     }

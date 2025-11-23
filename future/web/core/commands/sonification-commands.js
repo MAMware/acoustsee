@@ -43,4 +43,15 @@ export function registerSonificationCommands(engine) {
       structuredLog('ERROR', 'Audio API not initialized on engine. Cannot play cues.', { hasAudioApi: !!engine.audioApi, hasPlayCues: engine.audioApi ? typeof engine.audioApi.playCues : 'N/A' });
     }
   });
+
+  // Command to override the synth for a specific object type (Granular Override)
+  engine.registerCommandHandler('setSoundProfileOverride', (payload) => {
+    const { objectType, synthId } = payload;
+    if (engine.audioApi && typeof engine.audioApi.setSoundProfileOverride === 'function') {
+      engine.audioApi.setSoundProfileOverride(objectType, synthId);
+      structuredLog('INFO', 'sonification: dispatched setSoundProfileOverride', { objectType, synthId });
+    } else {
+      structuredLog('WARN', 'sonification: audioApi.setSoundProfileOverride not available');
+    }
+  });
 }

@@ -9,6 +9,7 @@ import {
 } from '../utils/error-handling.js';
 import { WorkerContract } from './workers/worker-contract.js';
 import { FrameConductor } from './frame-conductor.js';
+import { AudioRouter } from '../audio/audio-router.js';
 
 // ============================================================================
 // FrameConductor is the exclusive orchestrator for motion-to-sound mapping.
@@ -17,69 +18,6 @@ import { FrameConductor } from './frame-conductor.js';
 // High-frequency payload optimization is configurable from dev panel (window.__audioSeeDebug.capHighFreqPayloads).
 // See EVENT_BUS_IMPLEMENTATION_AUDIT_ISSUES.md for details.
 
-function shouldCapHighFreqPayloads() {
-  // Check dev panel override first
-  if (window.__audioSeeDebug?.capHighFreqPayloads !== undefined) {
-    return window.__audioSeeDebug.capHighFreqPayloads;
-  }
-  // Default: enabled (safe, reduces bus load)
-  return true;
-}
-
-function getPayloadLimits() {
-  // Allow dev panel to customize limits at runtime
-  if (window.__audioSeeDebug?.payloadLimits) {
-    return window.__audioSeeDebug.payloadLimits;
-  }
-  // Default limits
-  return {
-    'audioCuesReady': { cues: 50, motionRegions: 100 },
-    'flowCuesReady': { objects: 50, regions: 100 },
-    'depthCuesReady': { depthRegions: 50 }
-  };
-}
-
-function capHighFreqPayload(commandName, payload) {
-  if (!shouldCapHighFreqPayloads()) return payload;
-  
-  const limits = getPayloadLimits()[commandName];
-  if (!limits) return payload;  // No cap for this command
-  
-  const capped = { ...payload };
-  
-  switch (commandName) {
-    case 'audioCuesReady':
-      if (limits.cues && Array.isArray(capped.cues)) {
-        capped.cues = capped.cues.slice(0, limits.cues);
-      }
-      if (limits.motionRegions && capped.motion?.movingRegions) {
-        capped.motion = { ...capped.motion };
-        capped.motion.movingRegions = capped.motion.movingRegions.slice(0, limits.motionRegions);
-      }
-      // Note: Don't send full specialists data to reduce payload size
-      capped.specialists = undefined;
-      break;
-      
-    case 'flowCuesReady':
-      if (limits.objects && Array.isArray(capped.objects)) {
-        capped.objects = capped.objects.slice(0, limits.objects);
-      }
-      // Optionally cap regions if present
-      if (limits.regions && capped.regions) {
-        capped.regions = capped.regions.slice(0, limits.regions);
-      }
-      break;
-      
-    case 'depthCuesReady':
-      if (limits.depthRegions && capped.depthRegions) {
-        capped.depthRegions = capped.depthRegions.slice(0, limits.depthRegions);
-      }
-      break;
-  }
-  
-  return capped;
-}
-
 // --- Module State ---
 let _config = {};
 let frameProviderWorker = null;
@@ -87,6 +25,7 @@ let previousDepthPath = null;  // Track depth path for change detection
 
 // FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
 let frameConductor = null;
+let audioRouter = null;
 const DELTA_HISTOGRAM_BINS = 16;
 const DELTA_STATS_FLUSH_INTERVAL = 120;
 const PAN_MAX_DELTA = 2;
@@ -229,7 +168,7 @@ async function processFlowMode(frameData, width, height, state) {
       };
       
       // Convert to cues for audio system
-      cues = createCuesFromAudioParams(panIntensity, state);
+      // cues = createCuesFromAudioParams(panIntensity, state);
       
       structuredLog('DEBUG', 'Flow mode: Using conductor pan/intensity', { 
         panIntensity,
@@ -277,7 +216,7 @@ async function processFlowMode(frameData, width, height, state) {
     
     // Fallback
     if (cues.length === 0) {
-      cues = createCuesFromAudioParams({ pan: 0, intensity: 0 }, state);
+      // cues = createCuesFromAudioParams({ pan: 0, intensity: 0 }, state);
     }
     
     // CORE-15: Return telemetry along with cues for state update R151125C15ingest 
@@ -289,68 +228,6 @@ async function processFlowMode(frameData, width, height, state) {
   } catch (error) {
     structuredLog('ERROR', 'processFlowMode error', { error: error.message });
     return { cues: [], panIntensity: { pan: 0, intensity: 0 } };
-  }
-}
-
-/**
- * Convert audio parameters (pan, intensity) to audio cues
- */
-function createCuesFromAudioParams(params, state) {
-  try {
-    const baseFreq = state.baseFrequency || 440;
-    const { pan, intensity } = params;
-
-    // If no motion, return empty cues
-    // Fix: Normalize intensity for proper threshold comparison
-    // - If intensity > 1: Assume uint8 range (0-255), normalize to 0-1
-    // - If intensity <= 1: Assume already normalized (0-1)
-    // - Threshold 0.001 works for normalized range (0.255 in uint8 = effectively zero)
-    const normalizedIntensity = intensity > 1 ? intensity / 255 : intensity;
-    const threshold = 0.001;
-    
-    if (normalizedIntensity === 0 || normalizedIntensity < threshold) {
-      structuredLog('DEBUG', 'createCuesFromAudioParams: No motion (intensity below threshold)', // R111125hot what is structuredLog doing on a hot path, what about eventBus or even console.log?
-        { rawIntensity: intensity, normalizedIntensity, threshold }, 
-        false, shouldSample('cueGeneration'));
-      return [];
-    }
-    
-    structuredLog('DEBUG', 'createCuesFromAudioParams: Motion detected', // R111125hot what is structuredLog doing on a hot path, what about eventBus or even console.log?
-      { intensity, normalizedIntensity, pan }, 
-      false, shouldSample('cueGeneration'));
-
-    // Create single cue with pan and intensity for Flow mode
-    // Map pan -> pitch so motion position changes tone (Bug: previously pitch was constant) R111125warn this looks like a silent fallback that mocks the real purpose and could drive a fake happy path
-    const panClamped = Math.max(-1, Math.min(1, pan || 0));
-    // Allow configuration via state; default to 12 semitones (1 octave)
-    const semitoneRange = (state && state.semitoneRange) || 12;
-    const semitones = panClamped * semitoneRange; // -semitoneRange .. +semitoneRange
-    const pitch = baseFreq * Math.pow(2, semitones / 12);
-
-    const cue = {
-      objectType: 'flow_motion',
-      pitch,
-      pan: panClamped, // R111125evo this would be the evolution to the use of pan-intensity-mapper.js but i have doubts about this approach, i dont really see why  rely on another worker for the pan intensity, instead anotherworker could be doing something more useful like helping to build a mesh of grids  
-      intensity: Math.max(0, Math.min(1, normalizedIntensity)),
-      position: {
-        x: panClamped,
-        y: 0.5, // R111125y is the y plane hardcoded? here where coul a octaver changer based on z plane momtion location trigger 
-        z: 0
-      }
-    };
-
-    // Small debug log so we can verify pitch changes in user logs
-    structuredLog('DEBUG', 'createCuesFromAudioParams: Generated cue', { // R111125hot what is structuredLog doing on a hot path, what about eventBus or even console.log?
-      pitch,
-      semitones,
-      pan: panClamped,
-      intensity: cue.intensity
-    }, false, shouldSample('cueGeneration'));
-
-    return [cue];
-  } catch (error) {
-    structuredLog('WARN', 'createCuesFromAudioParams failed', { error: error.message });
-    return [];
   }
 }
 
@@ -561,9 +438,9 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
         };
       }
       
-      // Dispatch audio cues if we have them
-      if (dispatchPayload && dispatchPayload.cues && dispatchPayload.cues.length > 0) {
-        engine.dispatch('audioCuesReady', capHighFreqPayload('audioCuesReady', dispatchPayload));
+      // Dispatch audio cues via AudioRouter (ADR-0006)
+      if (dispatchPayload && audioRouter) {
+        audioRouter.route(dispatchPayload, state);
       }
       
     } catch (e) {
@@ -629,6 +506,9 @@ export async function initializeVideo(config) {
     debugWorkerEnabled: config.debugWorkerEnabled || null,
   });
   
+  // Initialize AudioRouter (ADR-0006)
+  audioRouter = new AudioRouter(config.engine);
+
   // Initialize conductor for default mode
   try {
     await frameConductor.initializeForMode(currentMode);
@@ -847,15 +727,13 @@ export async function initializeVideo(config) {
         } else {
           stallStats.unchangedPanFrames++;
         }
-        structuredLog('INFO', 'Dispatching audioCuesReady', { cueCount: dispatchPayload.cues ? dispatchPayload.cues.length : 0, mode: state.currentMode });
-        engine.dispatch('audioCuesReady', capHighFreqPayload('audioCuesReady', {
-          cues: dispatchPayload.cues || [],
-          frameId: payload.frameId,
-          startTime: payload.startTime
-        }));
+        
+        // Use AudioRouter to dispatch cues (ADR-0006)
+        const routeResult = audioRouter.route(dispatchPayload, state);
+        
         // Update stall stats post audio dispatch
         stallStats.lastAudioCueTs = Date.now();
-        stallStats.lastCueCount = dispatchPayload.cues ? dispatchPayload.cues.length : 0;
+        stallStats.lastCueCount = routeResult.cueCount;
         if (stallStats.stallDetected && stallStats.lastCueCount > 0) {
           // Clear stall flag after successful cue dispatch
             stallStats.stallDetected = false;
@@ -901,14 +779,6 @@ export async function initializeVideo(config) {
         }
         // Persist updated stallStats in engine state
         engine.setState({ stallStats });
-        // Robust fallback: also dispatch direct audio play command which may be
-        // consumed by older or alternate audio handlers expecting this event.
-        try {
-          engine.dispatch && engine.dispatch('audioPlayCues', { cues: dispatchPayload.cues || [] });
-          structuredLog('DEBUG', 'Frame processor: Also dispatched audioPlayCues fallback', { cueCount: dispatchPayload.cues.length });
-        } catch (e) {
-          structuredLog('WARN', 'Frame processor: Failed to dispatch audioPlayCues fallback', { error: e?.message || String(e) });
-        }
       }
     };
 
