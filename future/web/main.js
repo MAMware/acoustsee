@@ -797,3 +797,28 @@ const toggleButton = document.getElementById('toggleMainContainer');
 if (toggleButton) {
   toggleButton.addEventListener('click', toggleMainContainerVisibility);
 }
+
+// Log rendered data groups for debugging visibility issues
+function logRenderedGroups() {
+  const groups = [
+    'UI-settings',
+    'UI-system',
+    'audio-synthesis',
+    'video-motion',
+    'processing-controls',
+    'pipeline-monitoring',
+    'diagnostics-logs',
+  ];
+
+  groups.forEach(group => {
+    const element = document.querySelector(`[data-group="${group}"]`);
+    if (element) {
+      console.log(`Group rendered: ${group}`);
+    } else {
+      console.warn(`Group missing: ${group}`);
+    }
+  });
+}
+
+// Call the function after the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', logRenderedGroups);

@@ -43,9 +43,9 @@ export function adjustPanelAndMainContainer({ panel, mainContainer }) {
       position: 'absolute',
       top: '0',
       left: '0',
-      width: '70%', // Allow space for mainContainer
+      width: '90%', 
       height: '100%',
-      zIndex: '9999',
+      zIndex: '10', // Lowered z-index to avoid overlap
       backgroundColor: 'rgba(30, 40, 50, 0.98)',
     });
 
@@ -54,9 +54,9 @@ export function adjustPanelAndMainContainer({ panel, mainContainer }) {
       position: 'absolute',
       top: '0',
       right: '0',
-      width: '30%',
+      width: '85%', // Increased width for mainContainer
       height: '100%',
-      zIndex: '9998', // Below the dev panel
+      zIndex: '5', // Lowered z-index to maintain proper layering
       backgroundColor: '#fff',
     });
   } catch (e) {
