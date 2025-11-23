@@ -869,10 +869,10 @@
 }
 
 .state-group {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
   border: 1px solid #34495e;
   border-radius: var(--radius-md);
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.05);
   overflow: hidden;
 }
 
@@ -883,15 +883,15 @@
 .state-group-header {
   display: flex;
   align-items: center;
-  padding: var(--space-2) var(--space-3);
-  background: rgba(52, 73, 94, 0.3);
+  padding: var(--space-1) var(--space-2);
+  background: rgba(255, 255, 255, 0.1);
   cursor: pointer;
   user-select: none;
   border-bottom: 1px solid #34495e;
 }
 
 .state-group-header:hover {
-  background: rgba(52, 73, 94, 0.5);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .group-title {
@@ -943,7 +943,7 @@
 }
 
 .state-property:hover {
-  background: rgba(52, 73, 94, 0.3);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .property-key {
