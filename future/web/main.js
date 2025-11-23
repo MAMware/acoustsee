@@ -106,7 +106,8 @@ class CustomError extends Error {
 
 // Helper to validate DOM elements
 function validateDOM() {
-  const requiredIds = ['videoFeed', 'powerOn', 'splashScreen', 'mainContainer', 'frameCanvas'];
+  // Removed 'videoFeed' from requiredIds
+  const requiredIds = ['powerOn', 'splashScreen', 'mainContainer', 'frameCanvas'];
   const missing = requiredIds.filter(id => !DOM[id]);
   if (missing.length > 0) {
     throw new CustomError('Missing DOM elements', { missing });
