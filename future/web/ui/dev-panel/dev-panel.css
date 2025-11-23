@@ -33,21 +33,26 @@
   margin: auto; /* Center content */
   padding: var(--space-4);
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center; /* Center align items */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+  overflow-y: auto;
 }
 
 /* Phase 3: Feature Grouping - organize sections into logical groups */
 .devpanel-group {
   margin-bottom: var(--space-5);
+  background: rgba(0, 0, 0, 0.2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
 }
 
 .group-title {
   font-size: var(--text-lg);
   font-weight: 600;
   color: #ecf0f1;
-  margin: var(--space-4) 0 var(--space-3) 0;
+  margin: 0 0 var(--space-3) 0;
   padding-bottom: var(--space-2);
   border-bottom: 2px solid #34495e;
   text-transform: uppercase;
@@ -56,6 +61,7 @@
 }
 
 .devpanel-header {
+  grid-column: 1 / -1;
   padding-bottom: var(--space-3);
   border-bottom: 1px solid #34495e;
   margin-bottom: var(--space-3);
