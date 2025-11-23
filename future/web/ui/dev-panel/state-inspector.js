@@ -241,7 +241,7 @@ export class StateInspector {
   createStateGroup(groupName, properties) {
   const groupEl = document.createElement('div');
   groupEl.className = 'state-group';
-  groupEl.style = 'min-width: 0; background: rgba(255, 255, 255, 0.05); border-radius: 6px; box-shadow: 0 1px 2px #0001; padding: 8px 10px 10px 10px;';
+  groupEl.style = 'min-width: 0; background: #f8f9fa; border-radius: 6px; box-shadow: 0 1px 2px #0001; padding: 8px 10px 10px 10px;';
   groupEl.dataset.group = groupName.toLowerCase().replace(/\s+/g, '-');
     
     // Group header with collapse functionality
