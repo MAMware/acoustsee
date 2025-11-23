@@ -15,7 +15,7 @@ jest.mock('../../utils/logging.js', () => ({
 }));
 
 import { createEngine } from '../../core/engine.js';
-import { initializeLanguage, getText, clearTranslationsCache } from '../../utils/utils.js';
+import { initializeLanguage, clearTranslationsCache } from '../../utils/utils.js';
 import { structuredLog } from '../../utils/logging.js';
 
 // Helper to count a specific log code
@@ -48,19 +48,6 @@ describe('i18n engine integration', () => {
     expect(after.i18n.ready).toBe(true);
     expect(after.language).toBe('en-US'); // bundled fallback path
     // Should not have logged NOT_INITIALIZED after proper init
-    expect(hasLog('I18N_NOT_INITIALIZED')).toBe(false);
-  });
-
-  test('getText returns bundled translation after init (no NOT_INITIALIZED)', async () => {
-    const engine = createEngine();
-    engine.setState({ availableLanguages: [{ id: 'en-US' }] });
-    const copy = engine.getState();
-    await initializeLanguage(copy, { persist: (p) => engine.setState(p) });
-
-    const stateForLookup = engine.getState();
-    const text = await getText('button1.normal.start.text', {}, stateForLookup);
-    // Validate we retrieved real translation string
-    expect(text).toBe('Start');
     expect(hasLog('I18N_NOT_INITIALIZED')).toBe(false);
   });
 });

@@ -53,9 +53,7 @@ async function getTextCached(key, params = {}, state) {
 }
 
 const DOM = {
-  videoFeed: document.getElementById('videoFeed'),
-  frameCanvas: document.getElementById('frameCanvas'),  
-  button1: document.getElementById('button1'),
+  frameCanvas: document.getElementById('frameCanvas'),
   powerOn: document.getElementById('powerOn'),
   exportEarlyLogsBtn: document.getElementById('exportEarlyLogsBtn'), // Phase 2A Task 2.2
   splashScreen: document.getElementById('splashScreen'),

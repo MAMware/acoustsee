@@ -1,5 +1,5 @@
 {
-"powerOn": {
+  "powerOn": {
     "text": "Power On",
     "aria": "Power On to enable audio",
     "failed": {
@@ -8,40 +8,11 @@
     },
     "initializing": "Initializing..."
   },
-  "videoFeed": {
-    "aria": "Video Feed"
-  },
   "frameCanvas": {
     "aria": "Hidden Frame Processing Canvas"
   },
   "debugPanel": {
     "aria": "Dev Panel"
-  },
-  
-  "button1": {
-    "normal": {
-      "start": {
-        "text": "Start",
-        "aria": "Processing video started"
-      },
-      "stop": {
-        "text": "Stop",
-        "aria": "Processing video stopped"
-      }
-    },
-    "settings": {
-      "text": "Kernel: {gridType}",
-      "aria": "Kernel selection {gridType}"
-    },
-    "tts": {
-      "startStop": {
-        "starting": "Startinng syneshesia",
-        "stopping": "Stopping synesthesia",
-        "error": "Error starting or stopping processing"
-      },
-      "cameraError": "Camera access error",
-      "gridSelect": "Kernel set to {state}"
-    }
   },
   "button2": {
     "normal": {
