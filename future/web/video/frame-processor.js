@@ -667,8 +667,9 @@ export async function initializeVideo(config) {
       } else if (state.currentMode === 'focus') {
         // In Focus mode, use FrameConductor for all worker orchestration
         const motionResults = await frameConductor.processFrame(frameData, payload.width, payload.height, state);
+        const objectResults = motionResults.result || {};
 
-        if (objectResults.detectedObjects.length > 0) {
+        if (objectResults.detectedObjects && objectResults.detectedObjects.length > 0) {
           const mainObject = objectResults.detectedObjects[0];
           const shapeResults = await simulateShapeAnalysis(mainObject);
 
