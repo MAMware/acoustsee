@@ -173,15 +173,25 @@ export function output(level, entry, legacyData = {}) {
   addToRingBuffer(upperLevel, consoleText, logEntry);
   
   // ===== Output to browser console =====
-  // Output formatted text AND data object for debuggability
   const method = console[level] || console.log;
   
-  // Check if there's meaningful data to display (beyond metadata)
-  const hasData = logEntry.data && Object.keys(logEntry.data).length > 0;
+  // Extract meaningful data (exclude metadata to avoid duplication with consoleText)
+  // Also exclude empty objects to reduce console noise
+  const meaningfulData = logEntry.data && typeof logEntry.data === 'object'
+    ? Object.keys(logEntry.data)
+        .filter(key => key !== 'filename' && key !== 'lineno' && key !== 'colno')
+        .reduce((acc, key) => {
+          acc[key] = logEntry.data[key];
+          return acc;
+        }, {})
+    : null;
+  
+  const hasData = meaningfulData && Object.keys(meaningfulData).length > 0;
   
   if (hasData) {
-    // Output message with data object (browser will pretty-print it)
-    method(consoleText, logEntry.data);
+    // Output message with cleaned data object (browser will pretty-print it)
+    // Freeze the object to prevent console from showing prototype chain
+    method(consoleText, Object.freeze({ ...meaningfulData }));
   } else {
     // Just the message
     method(consoleText);
