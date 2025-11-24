@@ -13,6 +13,7 @@ This directory contains all logic related to sound generation and processing. Th
 ## Key Files
 
 -   **`audio-processor.js`:** The central "Conductor" that orchestrates all sound production via its `playCues` function. **This is the ONLY file that should manage the oscillator pool.**
+-   **`audio-router.js`:** (ADR-0006) Decouples the video pipeline from the audio engine. Receives raw analysis data from `FrameConductor`, applies sonification mapping, and dispatches `audioCuesReady` events.
 -   **`audio-manager.js`:** Manages the lifecycle of the Web Audio API `AudioContext`. **AudioContext is created immediately in the constructor (eager initialization, fail-fast).** Unlocking (power-on) resumes the context and triggers synthesis initialization.
 -   **`sound-profiles.js`:** A manifest mapping a semantic `objectType` (from a video `cue`) to a specific synthesizer and its base parameters.
 -   **`synths/`:** A directory of pluggable synthesizer modules, each an independent "instrument."

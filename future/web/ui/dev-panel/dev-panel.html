@@ -261,6 +261,24 @@
       </div>
     </div>
 
+    <!-- Processing Strategy -->
+    <div class="devpanel-section processing-strategy-section">
+      <h2 class="section-header">
+        <span>Processing Strategy</span>
+        <button class="collapse-btn" data-target="processing-strategy-content" aria-expanded="true" title="Collapse Processing Strategy">-</button>
+      </h2>
+      <div id="processing-strategy-content" class="section-content">
+        <div class="control-column">
+          <label>Depth Estimation Strategy</label>
+          <select id="depth-strategy-select">
+            <option value="pseudo">Pseudo-Depth (CPU/Sobel)</option>
+            <option value="cnn">WebGPU (Compute Shader)</option>
+          </select>
+          <p style="font-size: 11px; color: #7f8c8d; margin: 4px 0 0 0;">Selects the underlying implementation for depth estimation. Requires restart of processing.</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Motion Detection Controls -->
     <div class="devpanel-section motion-Controls-section">
       <h2 class="section-header">

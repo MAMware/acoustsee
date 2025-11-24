@@ -61,6 +61,12 @@ This document tracks active and future development tasks to provide a clear proj
 	- Debounce high-frequency UI inputs (sliders) and address missing-key `getText` warnings observed in runtime logs.
 
 
+## Phase 3: Architecture Alignment (ADR Implementation)
+
+-   **[x] `ARCH-ADR-0006`:** Implement `AudioRouter` to decouple Video Pipeline from Audio Engine. _(Completed 2025-11-24)_
+-   **[x] `ARCH-ADR-0005`:** Implement "Manifest Strategy" for Depth Worker with WebGPU and Pseudo-depth paths. _(Completed 2025-11-24)_
+-   **[x] `ARCH-AUDIO-1`:** Implement "User Override" layer for Sound Profiles (`setSoundProfileOverride`). _(Completed 2025-11-23)_
+
 ## Phase 2A: Orchestration Visibility (Week 1-2)
 
 ### Week 1: Foundation (✅ APPROVED)

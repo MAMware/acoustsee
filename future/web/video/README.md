@@ -26,7 +26,7 @@ This matrix helps you understand which components are ready for testing vs. whic
 | **Frame Conductor** | WIP | Orchestrates workers ✓ | Yes | Manifest-driven, hot-swap support |
 | **Grid System** |  WIP | Maps motion → pitch ✓ | Yes | Linear-pitch + Circle-of-fifths, working |
 | **Focus Mode** | 🟡 WIP | Framework exists | No | Semantic detection incomplete, produces placeholder cues |
-| **Depth Worker** | 🟡 WIP | Stub implemented | No | Produces dummy data currently |
+| **Depth Worker** | ✅ STABLE | WebGPU/Pseudo Strategies | Yes | Implements ADR-0005 Manifest Strategy (WebGPU/Pseudo) |
 | **Hybrid Mode** | 🟡 WIP | Decision logic sketched | No | Auto-switching not yet working |
 | **Segment Worker** | ❌ PLACEHOLDER | Not implemented | No | Object detection not started |
 
@@ -204,18 +204,29 @@ conductor.dispose(); // Terminates all workers
 
 ---
 
-### 3. Specialist Workers (`workers/fast-motion-worker.js`, etc.)
+### 4. `workers/depth-worker.js` (Depth Estimation)
 
-**Purpose:** Experts in a single, computationally expensive analysis task.
+**Purpose:** Compute depth maps for spatial audio modulation.
 
-**Current Specialists:**
-- `fast-motion-worker.js`: Detects motion regions via Lucas-Kanade optical flow on Y-plane (optimized for Flow mode, <15ms latency)
+**Architecture (ADR-0005):**
+-   **Manifest Strategy:** Uses `strategies/depth-strategies.js` to select the best implementation.
+-   **Strategies:**
+    -   `WebGPUDepthStrategy`: High-performance CNN-based estimation using WebGPU compute shaders.
+    -   `PseudoDepthStrategy`: CPU-based fallback using Sobel edge detection and Gabor textures.
+-   **Strict Gating:** No automatic silent downgrade. If a strategy is selected (by user or system) and fails, it errors loudly.
 
-**Future Specialists:**
-- `segment-worker.js`: Object segmentation using ML models
-- `depth-worker.js`: Depth estimation from monocular video
+### 5. `frame-processor.js` (The Bridge)
 
-**Contract:**
+**Purpose:** Connects the worker pipeline to the main application state.
+
+**Responsibilities:**
+-   Initializes `FrameConductor` and `AudioRouter`.
+-   Manages the `FrameProvider` worker.
+-   Passes results from Conductor to `AudioRouter`.
+
+---
+
+## Worker Communication Contract
 ```javascript
 // To specialist:
 { type: 'processingRequest', data: ArrayBuffer, width, height, state }

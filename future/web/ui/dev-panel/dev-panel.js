@@ -699,6 +699,7 @@ export function initializeDevPanel(arg1, arg2) {
     const motionMinHeadroomSlider = panel.querySelector('#motion-minheadroom-slider');
     const motionMinHeadroomValue = panel.querySelector('#motion-minheadroom-value');
     const motionStrategySelect = panel.querySelector('#motion-strategy-select');
+    const depthStrategySelect = panel.querySelector('#depth-strategy-select');
     const telemetryRecentMax = panel.querySelector('#telemetry-recent-max');
     const telemetryEffectiveMax = panel.querySelector('#telemetry-effective-max');
     const telemetryClippingRate = panel.querySelector('#telemetry-clipping-rate');
@@ -763,6 +764,7 @@ export function initializeDevPanel(arg1, arg2) {
         if (gridTypeSelect) gridTypeSelect.value = state.gridType;
         if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
         if (modeSelect) modeSelect.value = state.currentMode;
+        if (depthStrategySelect) depthStrategySelect.value = state.depthPath;
         if (fpsModeSelect) fpsModeSelect.value = state.autoFPS ? 'auto' : 'manual';
         if (powerProfileSelect) powerProfileSelect.value = state.settings?.qualityProfileOverride || state.orchestration?.qualityProfile?.name || 'auto';
         if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
@@ -943,6 +945,15 @@ export function initializeDevPanel(arg1, arg2) {
         const traceId = generateTraceId ? generateTraceId() : null;
         structuredLog('DEBUG', 'Mode dropdown changed', { mode: selectedValue, traceId });
         engine.dispatch('setMode', { mode: selectedValue }, { traceId });
+      });
+    }
+
+    if (depthStrategySelect) {
+      depthStrategySelect.addEventListener('change', (e) => {
+        const selectedValue = e.target.value;
+        const traceId = generateTraceId ? generateTraceId() : null;
+        structuredLog('DEBUG', 'Depth strategy dropdown changed', { path: selectedValue, traceId });
+        engine.dispatch('setDepthPath', { path: selectedValue }, { traceId });
       });
     }
     
