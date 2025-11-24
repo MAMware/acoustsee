@@ -84,7 +84,21 @@ self.onmessage = async (e) => {
         width = msg.width;
         height = msg.height;
         data = msg.data; // Uint8ClampedArray or ImageData
-        if (data.data) data = data.data; // Handle ImageData
+        
+        // CRITICAL: Validate data exists before accessing properties
+        if (!data) {
+          throw new Error('No image data provided in processingRequest');
+        }
+        
+        // Handle ImageData format
+        if (data.data) {
+          data = data.data; // Extract Uint8ClampedArray from ImageData
+        }
+        
+        // Validate data is correct type
+        if (!(data instanceof Uint8ClampedArray) && !(data instanceof Uint8Array)) {
+          throw new Error(`Invalid data type: expected Uint8ClampedArray, got ${data?.constructor?.name || typeof data}`);
+        }
         
         // Extract grid config from state if available
         const state = msg.state || {};
@@ -162,11 +176,20 @@ self.onmessage = async (e) => {
     // ADR-0005: Stop execution, Log STRATEGY_FAILURE
     structuredLog('ERROR', 'DepthWorker: STRATEGY_FAILURE', { 
         strategy: activeStrategy ? activeStrategy.name : 'none',
-        error: error.message 
+        error: error.message,
+        stack: error.stack ? error.stack.split('\n').slice(0, 3).join('\n') : 'no-stack'
     });
     
     if (type === 'processingRequest') {
-       throw error; // Let FrameConductor handle it
+      // Send error response instead of throwing to prevent uncaught promise rejection
+      self.postMessage({
+        type: 'processingResponse',
+        error: {
+          message: error.message,
+          strategy: activeStrategy?.name || 'none'
+        }
+      });
+      return; // Don't throw - error already sent
     }
   }
 };

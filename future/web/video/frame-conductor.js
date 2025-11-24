@@ -63,6 +63,15 @@ import { detectDeviceTier, getWorkerTimeoutConfig } from '../utils/performance.j
  * - Prevents audio dropout during the ~50-200ms worker swap window
  */
 export class FrameConductor {
+  // Private fields
+  #currentMode;
+  #currentChain;
+  #timingMetrics;
+  #lastNormalizationTelemetry;
+  #isTransitioning;
+  #initializationFrameCount;
+  #initializationTimeoutMs;
+
   /**
    * @param {Object} config - Configuration
    * @param {number} config.flowTimeout - Diagnostic SLA for Flow mode (default 100ms, not a hard timeout)
@@ -105,7 +114,12 @@ export class FrameConductor {
       totalErrorsEncountered: 0,
       workerTimings: {}, // { workerName: [measurements] }
       deviceTier: deviceTier,
+      frameCount: 0, // Track frames for initialization phase
     };
+
+    // Initialization phase: first 3 frames get extended timeout
+    this.#initializationFrameCount = 3;
+    this.#initializationTimeoutMs = 2000; // 2s for initialization
 
     structuredLog('DEBUG', 'FrameConductor created', {
       config: this.config,
@@ -501,13 +515,18 @@ export class FrameConductor {
           console.log('[Conductor] pan-mapper result:', workerResult.result);
         }
 
-        structuredLog('DEBUG', `FrameConductor: ${workerConfig.name} completed`, {
-          workerName: workerConfig.name,
+        // Sample high-frequency worker completion logs to reduce noise
+        const shouldLog = shouldSample('workerCompletion') || !workerStatus.onTarget;
+        
+        if (shouldLog) {
+          structuredLog('DEBUG', `FrameConductor: ${workerConfig.name} completed`, {
+            workerName: workerConfig.name,
           durationMs: workerDurationMs,
           capabilitiesCount: capabilities.length,
           latencyTargetMs: workerConfig.latencyTargetMs,
           onTarget: workerDurationMs <= workerConfig.latencyTargetMs,
         });
+        }
       } catch (error) {
         this.#timingMetrics.totalErrorsEncountered += 1;
         
@@ -521,9 +540,11 @@ export class FrameConductor {
           structuredLog('ERROR', `FrameConductor: ${workerConfig.name} error`, {
             workerName: workerConfig.name,
             error: error.message || 'no-message',
-            stack: error.stack || 'no-stack',
+            stackLines: (error.stack || 'no-stack').split('\n').slice(0, 5),
             name: error.name || 'Error',
             occurrences: throttle.occurrences,
+            latencyTarget: workerStatus?.latencyTarget,
+            capabilities: workerStatus?.capabilities?.length || 0,
           });
         }
         // Continue with current input (graceful degradation)
@@ -534,6 +555,7 @@ export class FrameConductor {
     const totalFrameTimeMs = performance.now() - frameStartTime;
     this.#timingMetrics.lastFrameTimeMs = totalFrameTimeMs;
     this.#timingMetrics.totalFramesProcessed += 1;
+    this.#timingMetrics.frameCount += 1; // Track for initialization phase
 
     // Log metrics (sampled to avoid overhead)
     if (this.config.logMetrics && Math.random() < 0.05) {
@@ -667,11 +689,15 @@ export class FrameConductor {
       timeout = this.config.hybridTimeout;
     }
 
+    // Use extended timeout during initialization phase
+    const isInitializing = this.#timingMetrics.frameCount < this.#initializationFrameCount;
+    const actualTimeout = isInitializing ? this.#initializationTimeoutMs : timeout;
+
     return new Promise((resolve, reject) => {
       // Setup timeout
       const timeoutHandle = setTimeout(() => {
-        reject(new Error(`Worker ${workerName} timed out after ${timeout}ms`));
-      }, timeout);
+        reject(new Error(`Worker ${workerName} timed out after ${actualTimeout}ms${isInitializing ? ' (initialization)' : ''}`));
+      }, actualTimeout);
 
       // One-shot message handler
       const onMessage = (event) => {
@@ -777,17 +803,6 @@ export class FrameConductor {
   // =========================================================================
 
   #workers = new Map();
-  #currentMode = null;
-  #currentChain = null;
-  #isTransitioning = false;  // Phase 3.1b-hotfix: Graceful mode transition to prevent audio dropout
-  #timingMetrics = {};
-  // CORE-15: Track latest normalization telemetry from motion worker
-  #lastNormalizationTelemetry = {
-    recentMax: 0,
-    effectiveMax: 0,
-    clippingRate: 0,
-    frameCount: 0
-  };
 }
 
 export default FrameConductor;

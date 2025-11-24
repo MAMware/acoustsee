@@ -255,7 +255,7 @@ export async function getText(key, params = {}, state) {
     if (typeof finalMessage !== 'string') {
       // Only log/emit analytics for the first occurrence of a missing key to avoid spam
       if (!_reportedMissingKeys.has(key)) {
-        structuredLog('INFO', I18N_KEY_MISSING, { key, languageId });
+        structuredLog('WARN', I18N_KEY_MISSING, { key, languageId, context: 'Translation key not found in bundle' });
         _reportedMissingKeys.add(key);
       } else {
         // For subsequent occurrences, log at debug level to preserve some telemetry without flooding

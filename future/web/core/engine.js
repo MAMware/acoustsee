@@ -109,13 +109,6 @@ export function createEngine() {
   }
 
   function setState(newState) {
-    // --- TEMPORARY DEBUGGING LOG ---
-    if ('isProcessing' in newState) {
-      console.log(`ENGINE: setState called to set isProcessing=${newState.isProcessing}`);
-      console.trace("Stack trace for isProcessing change:");
-    }
-    // --- END DEBUGGING LOG ---
-
     Object.assign(state, newState);
     notifyListeners();
   }

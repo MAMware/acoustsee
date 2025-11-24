@@ -67,10 +67,16 @@ function openDB(retries = 3) {
 }
 
 // Lazy-init DB promise with error handling.
+let hasLoggedIdbFailure = false; // Track if we've already warned about IDB failure
+
 async function getDB() {
   if (!dbPromise) {
     dbPromise = openDB().catch(err => {
-      console.warn('IndexedDB init failed; falling back to console-only logging:', err.message);
+      // Log ONCE with WARN level to avoid spam
+      if (!hasLoggedIdbFailure) {
+        console.warn('[IDB] Falling back to console-only logging:', err.message);
+        hasLoggedIdbFailure = true;
+      }
       return null;  // Null signals fallback.
     });
   }
@@ -81,8 +87,8 @@ async function getDB() {
 export async function addIdbLog(logEntry) {
   const db = await getDB();
   if (!db) {
-  // Directly call native console.warn to avoid recursive logging; use safe stringify
-  console.warn(`[IDB FALLBACK] DB unavailable; logging to console: ${safeStringify(logEntry)}`);
+    // DB unavailable - normal logging path will handle console output
+    // No need to log here as it creates duplicates
     return;  
   }
   return new Promise((resolve, reject) => {

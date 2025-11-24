@@ -26,7 +26,10 @@ export function registerSonificationCommands(engine) {
     }
 
     const cuesToProcess = payload.cues;
-    structuredLog('DEBUG', 'sonification: audioCuesReady handler received', { cuesCount: cuesToProcess ? cuesToProcess.length : 'undefined', isArray: Array.isArray(cuesToProcess) }, false, shouldSample('cueGeneration'));
+    structuredLog('DEBUG', 'sonification: audioCuesReady handler received', { 
+      cuesCount: cuesToProcess?.length ?? null, 
+      isArray: Array.isArray(cuesToProcess) 
+    }, false, shouldSample('cueGeneration'));
 
     if (!cuesToProcess || !Array.isArray(cuesToProcess) || cuesToProcess.length === 0) {
       structuredLog('DEBUG', 'sonification: No cues to process', { cuesToProcess: !!cuesToProcess, isArray: Array.isArray(cuesToProcess), length: cuesToProcess?.length }, false, shouldSample('cueGeneration'));

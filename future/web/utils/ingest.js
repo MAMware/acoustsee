@@ -382,12 +382,14 @@ function flushEventQueue() {
     return acc;
   }, {});
   
-  // Log batch summary instead of individual events
-  structuredLog('DEBUG', 'Performance events flushed', { 
-    batchSize: events.length,
-    events: eventSummary,
-    source: 'ingest-system'
-  });
+  // Log batch summary only for significant batches or sampled
+  if (events.length >= 10 || shouldSample('eventFlush')) {
+    structuredLog('DEBUG', 'Performance events flushed', { 
+      batchSize: events.length,
+      eventTypes: Object.keys(eventSummary),
+      source: 'ingest-system'
+    });
+  }
 }
 
 /**

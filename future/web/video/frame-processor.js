@@ -22,6 +22,7 @@ import { AudioRouter } from '../audio/audio-router.js';
 let _config = {};
 let frameProviderWorker = null;
 let previousDepthPath = null;  // Track depth path for change detection
+let lastLoggedMode = null; // Track last logged mode to avoid duplicate logs
 
 // FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
 let frameConductor = null;
@@ -867,8 +868,11 @@ export async function initializeVideo(config) {
       // Grid configuration IS embedded in frame message (stateless by design)
       // This keeps frame-processor lean (no per-frame grid state) and lets frame-provider
       // stream independent of orchestration concerns. See docs: "stateless pattern"
-      if (state.currentMode) {
+      
+      // Only log mode changes, not every frame
+      if (state.currentMode && state.currentMode !== lastLoggedMode) {
         structuredLog('DEBUG', 'Operating mode active', { mode: state.currentMode });
+        lastLoggedMode = state.currentMode;
       }
     });
     

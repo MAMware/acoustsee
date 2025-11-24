@@ -176,7 +176,6 @@ export function output(level, entry, legacyData = {}) {
   const method = console[level] || console.log;
   
   // Extract meaningful data (exclude metadata to avoid duplication with consoleText)
-  // Also exclude empty objects to reduce console noise
   const meaningfulData = logEntry.data && typeof logEntry.data === 'object'
     ? Object.keys(logEntry.data)
         .filter(key => key !== 'filename' && key !== 'lineno' && key !== 'colno')
@@ -186,12 +185,20 @@ export function output(level, entry, legacyData = {}) {
         }, {})
     : null;
   
-  const hasData = meaningfulData && Object.keys(meaningfulData).length > 0;
+  const dataKeys = meaningfulData ? Object.keys(meaningfulData) : [];
+  const hasData = dataKeys.length > 0;
   
   if (hasData) {
-    // Output message with cleaned data object (browser will pretty-print it)
-    // Freeze the object to prevent console from showing prototype chain
-    method(consoleText, Object.freeze({ ...meaningfulData }));
+    // Performance optimization: avoid JSON.stringify for objects with >3 keys
+    if (dataKeys.length <= 3) {
+      // Small object: format as inline key=value (minimal stringify)
+      const inline = dataKeys.map(k => `${k}=${JSON.stringify(meaningfulData[k])}`).join(', ');
+      method(`${consoleText} { ${inline} }`);
+    } else {
+      // Larger object: Use native console object display (let browser handle it)
+      // This is FASTER than JSON.stringify and preserves clickable objects
+      method(consoleText, meaningfulData);
+    }
   } else {
     // Just the message
     method(consoleText);
