@@ -182,6 +182,27 @@ export class AnalyticsBatcher {
         batchInterval: this.flushInterval
       };
 
+      // Validate payload schema before sending (catch 400 Bad Request early)
+      const validationErrors = this._validatePayload(payload);
+      if (validationErrors.length > 0) {
+        this.failedBatches++;
+        this.consecutiveFailures++;
+        
+        // Log validation errors with sample of offending events
+        const import_logger = await import('../utils/logging.js').then(m => m.structuredLog).catch(() => console.error);
+        if (import_logger && typeof import_logger === 'function') {
+          import_logger('ERROR', 'Analytics payload validation failed', {
+            validationErrors,
+            batchSize: batch.length,
+            sampleEvents: batch.slice(0, 2),
+            payloadSize: JSON.stringify(payload).length
+          });
+        } else {
+          console.error('[AnalyticsBatcher] Payload validation failed:', validationErrors, 'Sample:', batch.slice(0, 2));
+        }
+        return; // Skip sending invalid payload
+      }
+
       const response = await fetch(this.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,7 +225,23 @@ export class AnalyticsBatcher {
       } else {
         this.failedBatches++;
         this.consecutiveFailures++;
-        if (this.debugLogging) {
+        
+        // Enhanced 400 Bad Request debugging
+        if (response.status === 400) {
+          const responseText = await response.text().catch(() => 'no response body');
+          const import_logger = await import('../utils/logging.js').then(m => m.structuredLog).catch(() => console.error);
+          if (import_logger && typeof import_logger === 'function') {
+            import_logger('ERROR', 'Analytics 400 Bad Request', {
+              status: response.status,
+              responseBody: responseText.slice(0, 200),
+              payloadSize: JSON.stringify(payload).length,
+              batchSize: batch.length,
+              endpoint: this.endpoint
+            });
+          } else {
+            console.error('[AnalyticsBatcher] 400 Bad Request:', responseText.slice(0, 200));
+          }
+        } else if (this.debugLogging) {
           console.warn(`[AnalyticsBatcher] Flush failed (${response.status}), will retry next interval`);
         }
       }
@@ -316,6 +353,55 @@ export class AnalyticsBatcher {
     }
 
     this.buffer = [];
+  }
+
+  /**
+   * Validate payload schema to catch 400 Bad Request errors early
+   * 
+   * Checks for:
+   * - Circular references / non-serializable objects
+   * - Missing required fields
+   * - Overly large payloads
+   * 
+   * @param {object} payload - Payload to validate
+   * @returns {array} - Array of validation error strings (empty if valid)
+   */
+  _validatePayload(payload) {
+    const errors = [];
+    
+    // Check required top-level fields
+    if (!payload.type || typeof payload.type !== 'string') {
+      errors.push('Missing or invalid "type" field');
+    }
+    if (!Array.isArray(payload.events)) {
+      errors.push('Missing or invalid "events" array');
+    }
+    if (typeof payload.batchSize !== 'number') {
+      errors.push('Missing or invalid "batchSize" field');
+    }
+    
+    // Check payload size (Worker likely has limits)
+    const payloadStr = JSON.stringify(payload);
+    if (payloadStr.length > 5 * 1024 * 1024) { // 5MB limit
+      errors.push(`Payload too large: ${payloadStr.length} bytes (max 5MB)`);
+    }
+    
+    // Validate events array contents
+    if (Array.isArray(payload.events) && payload.events.length > 0) {
+      payload.events.slice(0, 5).forEach((event, idx) => {
+        if (!event || typeof event !== 'object') {
+          errors.push(`Event[${idx}] is not an object`);
+        }
+        // Check for non-serializable fields (functions, circular refs are caught by JSON.stringify)
+        try {
+          JSON.stringify(event);
+        } catch (e) {
+          errors.push(`Event[${idx}] contains non-serializable data: ${e.message}`);
+        }
+      });
+    }
+    
+    return errors;
   }
 
   /**

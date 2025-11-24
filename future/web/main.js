@@ -145,7 +145,6 @@ export async function init() {
     engine.setState({ buildInfo });
     // Expose globally as fallback for dev panel
     window.__ACOUSTSEE_BUILD = buildInfo;
-    console.log('%c🔧 Build Info (main.js)', 'font-weight:bold;color:#0ea5e9;', buildInfo);
     structuredLog('INFO', 'buildInfo', buildInfo);
 
     // STEP 0.5: Create unified EventBus for logging and command tracking

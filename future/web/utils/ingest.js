@@ -10,7 +10,7 @@
 // ingest.js handles performance-specific concerns like event categorization
 // and battery optimization for the analytics pipeline.
 
-import { structuredLog } from './logging.js';
+import { structuredLog, shouldSample } from './logging.js';
 import { deviceSummary } from './performance.js';
 
 // Module-scoped queue for analytics events to avoid ReferenceError from closures
@@ -355,6 +355,12 @@ function queueEvent(eventData, engine) {
   const minInterval = 1000 / optimizationSettings.maxEventsPerSecond;
   
   if (timeSinceLastFlush < minInterval) return;
+  
+  // Guard: skip scheduling if video processing active (avoid starving requestIdleCallback)
+  const orchState = state.orchestration || {};
+  if (orchState.isProcessing) {
+    return; // Queue will be flushed by next event or timeout
+  }
   
   // Use requestIdleCallback for performance optimization
   if (optimizationSettings.useIdleCallback && 'requestIdleCallback' in window) {

@@ -510,12 +510,18 @@ export class FrameConductor {
           this.#lastNormalizationTelemetry = workerResult.result.normalizationTelemetry;
         }
         
-        // TEMPORARY DIAGNOSTIC: Log what we're extracting R111125 could the use of eventBus by optimal than console.log here in the citrical hot path?
-        if (workerConfig.name === 'pan-intensity-mapper') {
-          console.log('[Conductor] pan-mapper result:', workerResult.result);
-        }
+      // TEMPORARY DIAGNOSTIC: Log what we're extracting R111125 could the use of eventBus by optimal than console.log here in the citrical hot path?
+        // if (workerConfig.name === 'pan-intensity-mapper') {
+        //   console.log('[Conductor] pan-mapper result:', workerResult.result);
+        // }
 
         // Sample high-frequency worker completion logs to reduce noise
+        // Define workerStatus to avoid ReferenceError (captures latency target and performance)
+        const workerStatus = {
+          latencyTarget: workerConfig.latencyTargetMs,
+          capabilities,
+          onTarget: workerDurationMs <= workerConfig.latencyTargetMs
+        };
         const shouldLog = shouldSample('workerCompletion') || !workerStatus.onTarget;
         
         if (shouldLog) {
@@ -543,8 +549,8 @@ export class FrameConductor {
             stackLines: (error.stack || 'no-stack').split('\n').slice(0, 5),
             name: error.name || 'Error',
             occurrences: throttle.occurrences,
-            latencyTarget: workerStatus?.latencyTarget,
-            capabilities: workerStatus?.capabilities?.length || 0,
+            latencyTarget: workerStatus.latencyTarget,
+            capabilities: workerStatus.capabilities.length || 0,
           });
         }
         // Continue with current input (graceful degradation)
