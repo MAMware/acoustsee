@@ -13,7 +13,18 @@ export function registerModeCommands(engine) {
     const { mode } = payload;
     const validModes = ['flow', 'focus'];
     if (!validModes.includes(mode)) {
-      structuredLog('WARN', 'Invalid mode requested', { mode, validModes }, { traceId });
+      structuredLog('WARN', 'Invalid mode requested', { 
+        mode, 
+        validModes,
+        action: 'Mode not implemented yet'
+      }, { traceId });
+      
+      // Notify user via engine dispatch (dev panel can show this)
+      engine.dispatch('showUserNotification', {
+        message: `Mode "${mode}" is not yet implemented. Available modes: ${validModes.join(', ')}`,
+        severity: 'warning',
+        duration: 5000
+      });
       return;
     }
     

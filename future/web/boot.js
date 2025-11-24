@@ -179,15 +179,8 @@ if (location.protocol === 'file:') {
     // still attempt to start app — app may handle degradation
   }
 
-  // Log build information at startup for version verification
-  import('./core/constants.js').then(constants => {
-    console.log(`%c🔧 Build Info`, 'font-weight: bold; color: #0ea5e9;');
-    console.log(`  Commit:    ${constants.BUILD_COMMIT || 'unknown'}`);
-    console.log(`  Branch:    ${constants.BUILD_BRANCH || 'unknown'}`);
-    console.log(`  Timestamp: ${constants.BUILD_TIMESTAMP || 'unknown'}`);
-    console.log(`  Version:   ${constants.BUILD_VERSION || 'unknown'}`);
-  }).catch(() => console.warn('Build info unavailable'));
-
+  // Build info is logged via structuredLog in main.js (no need for duplicate console.log)
+  
   // Import app entry with cache-busting based on build info so browsers don't serve stale main.js
   import('./core/constants.js').then(constants => {
     // Prefer commit hash for a short, readable cache-buster. Fall back to

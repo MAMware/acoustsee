@@ -34,6 +34,11 @@ async function provideFrame() {
       canvas.width = scaledWidth;
       canvas.height = scaledHeight;
     }
+    
+    // Create context with willReadFrequently option if not already created
+    if (!ctx) {
+      ctx = canvas.getContext('2d', { willReadFrequently: true });
+    }
 
     // Draw the video frame to the canvas
     ctx.drawImage(videoFrame, 0, 0, scaledWidth, scaledHeight);
@@ -72,7 +77,7 @@ self.onmessage = (event) => {
   switch (type) {
     case 'init':
       canvas = payload.canvas;
-      ctx = canvas.getContext('2d');
+      ctx = canvas.getContext('2d', { willReadFrequently: true });
       streamReader = payload.streamReader;
       reader = streamReader.getReader();
       self.postMessage({ type: 'ready' });

@@ -353,13 +353,6 @@ export async function initializeFloatingExportButton(engine, DOM) {
 }
 
 /**
- * Fallback for structuredLog if not available
+ * Import structuredLog for consistent logging
  */
-if (typeof structuredLog === 'undefined') {
-  window.structuredLog = function(level, text, data) {
-    const out = { level, text, data };
-    if (level === 'ERROR') console.error('[FLOATING-BTN]', JSON.stringify(out));
-    else if (level === 'WARN') console.warn('[FLOATING-BTN]', JSON.stringify(out));
-    else console.info('[FLOATING-BTN]', JSON.stringify(out));
-  };
-}
+import { structuredLog } from './logging.js';

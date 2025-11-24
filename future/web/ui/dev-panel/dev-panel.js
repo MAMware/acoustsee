@@ -915,7 +915,6 @@ export function initializeDevPanel(arg1, arg2) {
     }
     if (synthEngineSelect) {
       synthEngineSelect.addEventListener('change', (e) => {
-        console.log('=== SYNTH DROPDOWN CHANGE EVENT FIRED ===');
         const selectedValue = e.target.value;
         const optionsCount = e.target.options.length;
         const selectedIndex = e.target.selectedIndex;
