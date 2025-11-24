@@ -42,7 +42,7 @@
  */
 
 import { structuredLog, throttleError } from '../utils/logging.js';
-import { WorkerContract } from './workers/worker-contract.js';
+import { WorkerContract, WORKER_TYPES } from './workers/worker-contract.js';
 import { getWorkersForMode, getTotalLatencyBudget } from './workers/worker-manifest.js';
 import { detectDeviceTier, getWorkerTimeoutConfig } from '../utils/performance.js';
 
@@ -111,6 +111,32 @@ export class FrameConductor {
       config: this.config,
       deviceTier: this.#timingMetrics.deviceTier,
     });
+  }
+
+  /**
+   * Update depth estimation path (pseudo vs cnn)
+   * 
+   * Called by frame-processor when state.depthPath changes.
+   * Finds the depth worker (if active) and sends configuration update.
+   * 
+   * @param {string} path - 'pseudo' | 'cnn'
+   */
+  updateDepthPath(path) {
+    const workerName = WORKER_TYPES.DEPTH;
+    const worker = this.#workers.get(workerName);
+
+    if (worker) {
+      structuredLog('INFO', 'FrameConductor: updating depth path', { 
+        worker: workerName, 
+        path 
+      });
+      worker.postMessage({ type: 'setPath', path });
+    } else {
+      structuredLog('DEBUG', 'FrameConductor: depth worker not active, path update deferred', { 
+        path,
+        currentMode: this.#currentMode 
+      });
+    }
   }
 
   // =========================================================================

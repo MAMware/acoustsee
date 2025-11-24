@@ -394,16 +394,6 @@ export function createAndWireActions(panel, engine, DOM, skipDiagnostics) {
     }
   }
 
-  const depthPathSel = panel.querySelector('#depth-path-select');
-    if (depthPathSel) {
-      const onDepthPath = (e) => {
-        const path = e.target.value;
-        engine.dispatch && engine.dispatch('setDepthPath', { path });
-      };
-      depthPathSel.addEventListener('change', onDepthPath);
-      attachedHandlers.push({ el: depthPathSel, type: 'change', fn: onDepthPath });
-    }
-
   // Semantic Detection Toggle (Educational Mode)
   const semanticDetectionToggle = panel.querySelector('#semantic-detection-toggle');
     if (semanticDetectionToggle) {
