@@ -43,7 +43,7 @@ export async function initializeLanguage(state, options = {}) {
       const persisted = (typeof localStorage !== 'undefined') ? localStorage.getItem('acoustsee.language') : null;
       if (!chosen && persisted && Array.isArray(settings.availableLanguages) && settings.availableLanguages.find(l => l.id === persisted)) {
         chosen = persisted;
-        structuredLog('INFO', 'Using persisted language', { language: chosen });
+        structuredLog('INFO', 'Using persisted language from localStorage', { language: chosen, source: 'localStorage' });
       }
     } catch (e) {
       structuredLog('DEBUG', 'Failed reading persisted language (continuing)', { error: e?.message || String(e) });

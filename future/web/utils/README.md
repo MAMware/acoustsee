@@ -1,30 +1,8 @@
-## i18n / Language Subsystem
-
-**Initialization (REQUIRED):**
-- `initializeLanguage(state)` must be called and awaited during startup (in `main.js` init sequence)
-- Sets `state.i18n.ready = true` when translations are loaded (or bundled fallback is available)
-- Pre-bundled `en-US` ensures offline availability for core UI strings
-
-**Fail-Fast Behavior:**
-- `getText(key, params, state)` returns `[missing:key]` if called before `state.i18n.ready === true`
-- Logs `I18N_NOT_INITIALIZED` once per session to enforce initialization order
-- Missing keys are recorded in `state.missingTranslations` for Dev Panel visibility
-
-**Analytics & Deduplication:**
-- Only the first occurrence of each missing key is logged and sent to analytics
-- Subsequent occurrences are logged at DEBUG level to avoid spam
-- Session-level deduplication in both `getText` and analytics mapping
-
-**Base Path:**
-Language files are loaded relative to the global base path (`window.__ACOUSTSEE_BASE_PATH__`).
-
-**Testing:**
-See `future/web/test/unit/i18n-init.test.js` for initialization tests and `future/web/test/unit/analytics-i18n.test.js` for analytics deduplication tests.
 # Utils Subsystem
 
 This directory contains cross-cutting utilities that are used by multiple subsystems. These are **stateless helper functions and lightweight services** - not business logic.
 
-**⚠️ CRITICAL ARCHITECTURAL RULES:**
+**CRITICAL ARCHITECTURAL RULES:**
 1. **Utils are PURE** - No side effects, no global state (except loggers).
 2. **Utils don't know about subsystems** - They can't import from `core/`, `audio/`, `video/`, or `ui/`.
 3. **Utils are REUSABLE** - If it's specific to one subsystem, it doesn't belong here.
@@ -37,7 +15,8 @@ This directory contains cross-cutting utilities that are used by multiple subsys
 | File | Purpose | When to Use |
 |------|---------|-------------|
 | `async.js` | Async/await helpers, debounce, throttle | When you need controlled async execution |
-| `core-logger.js` | Console output with log levels (DEBUG, INFO, WARN, ERROR) | For simple console logging with filtering |
+| `core-logger.js` | **Ring buffer + console output** (DEBUG, INFO, WARN, ERROR) | For simple console logging with filtering |
+| `early-logs.js` | Captures pre-dev-panel logs from ring buffer | For exporting boot logs, splash screen diagnostics |
 | `error-handling.js` | Graceful error boundaries, try/catch wrappers | When you need non-critical error handling |
 | `idb-logger.js` | IndexedDB persistence for logs/analytics | For persistent error tracking (Performance Analytics) |
 | `ingest.js` | Performance event ingestion with throttling | For tracking performance-critical events |
@@ -79,10 +58,10 @@ structuredLog('DEBUG', 'Detailed info', { data }, true, true);
 
 | Level | When to Use | Persisted? | Visible by Default? |
 |-------|-------------|------------|---------------------|
-| `DEBUG` | Detailed diagnostic info | ❌ No | ❌ No (only with `?debug=true`) |
-| `INFO` | General informational messages | ❌ No | ✅ Yes |
-| `WARN` | Warnings that don't break functionality | ✅ Yes | ✅ Yes |
-| `ERROR` | Errors that need attention | ✅ Yes | ✅ Yes |
+| `DEBUG` | Detailed diagnostic info |  No |  No (only with `?debug=true`) |
+| `INFO` | General informational messages |  No |  Yes |
+| `WARN` | Warnings that don't break functionality |  Yes |  Yes |
+| `ERROR` | Errors that need attention |  Yes |  Yes |
 
 ### Configuration
 
@@ -104,16 +83,15 @@ loggingConfig.includeUserAgent = false;
 
 ### When to Use
 
-✅ **ALWAYS use `structuredLog` for:**
+ **ALWAYS use `structuredLog` for:**
 - Command handler entry/exit
 - Error conditions
 - Performance milestones
 - State transitions
 - User actions
 
-❌ **DON'T use for:**
+ **AVOID ITS use for:**
 - Per-frame logs in tight loops (use sampling: `if (Math.random() < 0.01)`)
-- Debug logs in production code without `?debug=true` check
 - Sensitive user data (PII, credentials)
 
 ### Logging Strategy & Performance Implications
@@ -150,10 +128,9 @@ if (urlSearchParams.get('debug')) {
   });
 }
 ```
-- ✅ Only visible with `?debug=true`
-- ✅ Disabled in production
-- ✅ NO performance cost when disabled
-- ❌ Never use for per-frame logs
+-  Disabled in production
+-  NO performance cost when disabled
+-  Never use for per-frame logs
 
 **INFO** - General milestones and user actions
 ```javascript
@@ -161,11 +138,11 @@ structuredLog('INFO', 'User started processing');
 structuredLog('INFO', 'Grid selected: hex-tonnetz');
 structuredLog('INFO', 'Audio context unlocked');
 ```
-- ✅ Important milestones
-- ✅ User actions
-- ✅ State transitions
-- ✅ NOT persisted (console only)
-- ❌ Don't use for every state change
+-  Important milestones
+-  User actions
+-  State transitions
+-  NOT persisted (console only)
+-  Don't use for every state change
 
 **WARN** - Important but recoverable issues
 ```javascript
@@ -178,11 +155,11 @@ structuredLog('WARN', 'Oscillator pool exhausted', {
   available: 0
 });
 ```
-- ✅ Persisted to IndexedDB
-- ✅ Visible in dev-panel
-- ✅ Sent to analytics
-- ✅ Doesn't crash the app
-- ❌ Should NOT happen frequently
+-  Persisted to IndexedDB
+-  Visible in dev-panel
+-  Sent to analytics
+-  Doesn't crash the app
+-  Should NOT happen frequently
 
 **ERROR** - Critical issues that need attention
 ```javascript
@@ -195,23 +172,23 @@ structuredLog('ERROR', 'Worker failed to load', {
   path: workerPath
 });
 ```
-- ✅ Always persisted
-- ✅ High priority in analytics
-- ✅ Triggers recovery (if handler exists)
-- ✅ User should be aware
-- ❌ Performance implications OK (errors are exceptional)
+-  Always persisted
+-  High priority in analytics
+-  Triggers recovery (if handler exists)
+-  User should be aware
+-  Performance implications OK (errors are exceptional)
 
 #### Performance Implications of Logging
 
 **Per-frame logging in main loop:**
 ```javascript
-// ❌ BAD - 60 logs per second, 3600 per minute!
+//  BAD - 60 logs per second, 3600 per minute!
 function processFrame(frame) {
   structuredLog('INFO', 'Processing frame', { frameId: frame.id });
   // ... processing ...
 }
 
-// ✅ GOOD - Sampled, ~1 log per second
+//  GOOD - Sampled, ~1 log per second
 function processFrame(frame) {
   if (Math.random() < 0.01) {  // 1% sampling
     structuredLog('DEBUG', 'Processing frame', { frameId: frame.id });
@@ -219,7 +196,7 @@ function processFrame(frame) {
   // ... processing ...
 }
 
-// ✅ BETTER - Periodic, every Nth frame
+//  BETTER - Periodic, every Nth frame
 let frameCount = 0;
 function processFrame(frame) {
   frameCount++;
@@ -234,56 +211,56 @@ function processFrame(frame) {
 
 **High-frequency locations that need sampling:**
 ```javascript
-// Frame processor (60fps)
-// ⚠️ Cap logs to ~1 per second
+// Frame processor 
+//  Cap logs to ~1 per second
 if (frameCount % 60 === 0) {
   structuredLog('DEBUG', 'Frame processed', { ... });
 }
 
 // Motion worker (60fps per frame)
-// ⚠️ Only log on ERROR, not per-frame
+//  Only log on ERROR, not per-frame
 if (regions.length > expectedMax) {
   structuredLog('WARN', 'Too many motion regions', { ... });
 }
 
 // Audio synthesis (per note)
-// ✅ Don't log per-note, aggregate
+//  Don't log per-note, aggregate
 if (totalNotesGenerated % 100 === 0) {
   structuredLog('DEBUG', 'Notes generated', { total: totalNotesGenerated });
 }
 
 // State changes (variable frequency)
-// ✅ OK to log all (usually rare)
+//  OK to log all (usually rare)
 structuredLog('INFO', 'State changed: ' + newState);
 ```
 
 #### Structured Logging Best Practices
 
 ```javascript
-// ✅ DO THIS - Structured with context
+//  DO THIS - Structured with context
 structuredLog('INFO', 'Audio context created', {
   sampleRate: audioContext.sampleRate,
   state: audioContext.state,
   timestamp: Date.now()
 });
 
-// ✅ DO THIS - Clear message + selective data
+//  DO THIS - Clear message + selective data
 structuredLog('WARN', 'Grid mapping slow', {
   duration: gridTime,
   gridId: grid.id,
   cuesCount: cues.length
 });
 
-// ❌ DON'T DO THIS - Unstructured
+//  DON'T DO THIS - Unstructured
 console.log('Audio OK');
 
-// ❌ DON'T DO THIS - Too much data
+//  DON'T DO THIS - Too much data
 console.log('Audio', audioContext);  // Entire object
 
-// ❌ DON'T DO THIS - Serialization issues
+//  DON'T DO THIS - Serialization issues
 structuredLog('INFO', `Audio: ${JSON.stringify(audioContext)}`);  // Circular!
 
-// ❌ DON'T DO THIS - Sensitive data
+//  DON'T DO THIS - Sensitive data
 structuredLog('INFO', 'User email: ' + userEmail);  // PII leak
 ```
 
@@ -325,19 +302,28 @@ function trackFrame(duration) {
 
 ---
 
-## 2. `core-logger.js` - Console Output with Levels
+## 2. core-logger.js - Console Output with Ring Buffer
 
 **This is the LOW-LEVEL console abstraction used by `logging.js`.**
 
 ### Purpose
+- Maintains in-memory ring buffer as **single source of truth** for all logs
 - Formats log output to browser console
 - Filters logs based on current log level
-- Provides color-coding in console
+- Provides real-time callback for dev panel integration
 
 ### API
 
 ```javascript
-import { LOG_LEVELS, setLogLevel } from '../utils/core-logger.js';
+import { 
+  LOG_LEVELS, 
+  setLogLevel, 
+  getCurrentLogLevel,
+  getRingBufferLogs,
+  clearRingBuffer,
+  getRingBufferCount,
+  setOutputCallback
+} from '../utils/core-logger.js';
 
 // Set minimum log level
 setLogLevel('DEBUG'); // Show all logs
@@ -347,15 +333,253 @@ setLogLevel('ERROR'); // Only show errors
 
 // Get current level
 const currentLevel = getCurrentLogLevel();
+
+// Query ring buffer
+const allLogs = getRingBufferLogs(); // Get all logs in chronological order
+const count = getRingBufferCount();  // How many logs stored
+clearRingBuffer();                   // Clear all logs
+
+// Real-time callback for dev panel
+setOutputCallback((level, text) => {
+  displayInUI(level, text);
+});
+```
+
+### The Ring Buffer: Single Source of Truth
+
+The ring buffer is a **circular in-memory log storage** that solves the "lost logs" problem.
+
+#### Architecture
+
+**Data Structure:**
+```javascript
+{
+  timestamp: "2025-11-24T17:41:46.210Z",  // ISO 8601 string
+  level: "INFO",                           // DEBUG | INFO | WARN | ERROR
+  text: "[...] LEVEL: message (file.js:123)", // Formatted for display
+  data: { ...structured data... }         // Original metadata
+}
+```
+
+**Capacity:** 1000 entries (configurable via `DEFAULT_BUFFER_SIZE`)
+
+**Circular Behavior:**
+- Fills linearly from index 0 to 999
+- Once full, wraps around and overwrites oldest entries
+- Always maintains most recent 1000 logs
+
+#### Problem It Solves
+
+**Before the ring buffer:**
+```javascript
+// Early boot logs
+structuredLog('INFO', 'Engine initializing...');  // Lost!
+structuredLog('INFO', 'Video grid loaded...');    // Lost!
+structuredLog('ERROR', 'Audio unlock failed!');   // Lost!
+
+// Dev panel opens 3 seconds later
+// User has no visibility into what happened during boot
+```
+
+**After the ring buffer:**
+```javascript
+// All logs captured immediately in memory
+structuredLog('INFO', 'Engine initializing...');  // ✅ Stored
+structuredLog('INFO', 'Video grid loaded...');    // ✅ Stored  
+structuredLog('ERROR', 'Audio unlock failed!');   // ✅ Stored
+
+// Dev panel opens and queries ring buffer
+const earlyLogs = getRingBufferLogs();
+//  All boot logs instantly available, no async delay
+```
+
+#### Consumers of Ring Buffer
+
+**1. Browser Console (immediate)**
+- Every log written to console in real-time
+- Data objects now printed alongside messages (as of Nov 24, 2025 fix)
+
+**2. Dev Panel Live Logs (log-viewer.js)**
+```javascript
+// On dev panel init
+const logs = getRingBufferLogs();
+logs.forEach(log => displayInLogViewer(log));
+
+// For real-time updates
+setOutputCallback((level, text) => {
+  appendToLogViewer(level, text);
+});
+```
+
+**3. Early Logs Export (early-logs.js)**
+```javascript
+// Splash screen "Export Logs" button
+const allLogs = getRingBufferLogs();
+downloadAsJSON(allLogs);  // Fresh data, no stale IDB pollution
+```
+
+**4. Analytics Ingestion (future)**
+- Can sample from ring buffer for telemetry
+- Structured data already available
+
+#### Why "Ring" Instead of Array?
+
+A simple array would either:
+1. **Grow unbounded** → Memory leak (60 logs/sec = 216k logs/hour)
+2. **Require expensive shifts** → `array.shift()` is O(n)
+
+The ring buffer gives you:
+-  **Fixed memory** (~1MB for 1000 entries)
+-  **Constant-time writes** - O(1) insertion
+-  **Automatic disposal** - Old logs replaced by new
+-  **No blocking** - All synchronous, no async overhead
+
+#### How It Works
+
+```javascript
+// Internal state
+let ringBuffer = [];      // The array (max 1000 items)
+let bufferIndex = 0;      // Next write position
+let bufferFull = false;   // Has it wrapped around yet?
+
+// Writing (constant time)
+function addToRingBuffer(level, text, data) {
+  const entry = { timestamp, level, text, data };
+  
+  if (ringBuffer.length < 1000) {
+    ringBuffer.push(entry);  // Still filling
+  } else {
+    ringBuffer[bufferIndex] = entry;  // Overwrite oldest
+    bufferIndex = (bufferIndex + 1) % 1000;  // Wrap around
+    bufferFull = true;
+  }
+}
+
+// Reading (returns chronological order)
+export function getRingBufferLogs() {
+  if (!bufferFull) {
+    return ringBuffer.slice();  // Not yet full, return in order
+  }
+  
+  // Buffer full: reconstruct chronological order
+  // Start from bufferIndex (oldest) and wrap around
+  const result = [];
+  for (let i = 0; i < 1000; i++) {
+    result.push(ringBuffer[(bufferIndex + i) % 1000]);
+  }
+  return result;
+}
+```
+
+#### Performance Characteristics
+
+| Operation | Complexity | Notes |
+|-----------|------------|-------|
+| Write | O(1) | Constant time, no shifts |
+| Read all | O(n) | Creates copy, capped at 1000 |
+| Memory | Fixed | ~1MB max (1000 × ~1KB/entry) |
+| Blocking | None | All synchronous |
+
+#### Integration with Logging Pipeline
+
+```javascript
+// Every structuredLog call flows through this:
+
+structuredLog('ERROR', 'Something failed', { detail: 'value' })
+    ↓
+logging.js (formats structured entry)
+    ↓
+core-logger.js output()
+    ├─ Adds to ring buffer (single source of truth)
+    ├─ Prints to browser console
+    ├─ Calls outputCallback (dev panel)
+    └─ Returns
+    ↓
+idb-logger.js (if WARN/ERROR)
+    └─ Persists to IndexedDB for long-term storage
+```
+
+### When to Use Ring Buffer APIs
+
+ **Use `getRingBufferLogs()` for:**
+- Dev panel initialization (backfill logs before panel existed)
+- Early logs export from splash screen
+- Debugging: manual console inspection
+- Testing: verify logging behavior
+
+ **Use `setOutputCallback()` for:**
+- Real-time log display in dev panel
+- Custom log viewers
+- Testing: capture logs for assertion
+
+ **Use `clearRingBuffer()` for:**
+- App reset
+- User-requested log clear
+- Testing: clean slate between tests
+
+ **DON'T use ring buffer APIs for:**
+- Creating new logs (use `structuredLog()`)
+- Per-frame queries (expensive, use sampling)
+- Persistent storage (use `idb-logger.js`)
+
+---
+
+## 3. early-logs.js - Pre-Dev-Panel Log Capture
+
+**Captures logs from boot/splash before dev panel is available.**
+
+### Purpose
+- Queries ring buffer for logs before dev panel initialization
+- Powers "Export Logs" button on splash screen
+- Ensures no early logs are lost due to timing
+
+### API
+
+```javascript
+import { captureEarlyLogs, markDevPanelInitTime } from '../utils/early-logs.js';
+
+// Mark when dev panel starts initializing
+markDevPanelInitTime();
+
+// Get all logs before that timestamp
+const earlyLogs = await captureEarlyLogs();
+// Returns: [{timestamp, level, text, data}, ...]
+```
+
+### How It Works
+
+```javascript
+// During boot (main.js, boot.js)
+structuredLog('INFO', 'Engine starting...');     // t=0ms
+structuredLog('INFO', 'Video initialized...');   // t=150ms
+structuredLog('ERROR', 'Audio unlock failed!');  // t=300ms
+
+// Splash screen "Export Logs" clicked at t=500ms
+const logs = await captureEarlyLogs();
+// Returns all logs (no dev panel init time set yet)
+
+// Later: Dev panel initializes at t=3000ms
+markDevPanelInitTime();  // Sets cutoff timestamp
+
+const earlyLogs = await captureEarlyLogs();
+// Returns only logs with timestamp < 3000ms
 ```
 
 ### When to Use
 
-❌ **DON'T use directly** - Use `structuredLog()` instead, which calls this internally.
+ **Use for:**
+- Splash screen "Export Logs" functionality
+- Debugging boot sequence issues
+- Analyzing initialization problems
+
+ **DON'T use for:**
+- Real-time log display (use `setOutputCallback()`)
+- Creating logs (use `structuredLog()`)
+- Querying all logs (use `getRingBufferLogs()`)
 
 ---
 
-## 3. `idb-logger.js` - Persistent Storage (IndexedDB)
+## 4. `idb-logger.js` - Persistent Storage (IndexedDB)
 
 **This handles persistent storage for Performance Analytics.**
 
@@ -403,16 +627,16 @@ await clearIdbLogs();
 
 ### When to Use
 
-❌ **DON'T use directly** - `structuredLog()` automatically persists WARN/ERROR logs.
+ **DON'T use directly** - `structuredLog()` automatically persists WARN/ERROR logs.
 
-✅ **DO use for:**
+ **DO use for:**
 - Exporting analytics (Dev Panel)
 - Clearing old logs
 - Manual log injection (rare)
 
 ---
 
-## 4. `ingest.js` - Performance Event Ingestion
+## 5. `ingest.js` - Performance Event Ingestion
 
 **This tracks performance-critical events with throttling and batching.**
 
@@ -454,19 +678,19 @@ ingestEvent('logFrameBenchmark', {});   // performance_critical
 
 ### When to Use
 
-✅ **Use for:**
+ **Use for:**
 - High-frequency performance metrics (frame timing, audio cue generation)
 - User workflow tracking (start/stop, mode switches)
 - Auto-optimization events (FPS adjustments)
 
-❌ **DON'T use for:**
+ **DON'T use for:**
 - One-time events (use `structuredLog` instead)
 - Error conditions (use `structuredLog('ERROR')`)
 - User input events (use command dispatch)
 
 ---
 
-## 5. `performance.js` - Performance Measurement & Worker Timeout Adaptation 
+## 6. `performance.js` - Performance Measurement & Worker Timeout Adaptation 
 
 **This provides data structures, utilities for measuring system performance, AND adaptive timeout configuration based on device tier and capture method.**
 
@@ -628,20 +852,20 @@ const tier = detectDeviceTier();  // 'desktop' | 'tablet' | 'low-end'
 
 ### When to Use Performance.js
 
-✅ **Use for:**
+ **Use for:**
 - Frame timing analysis
 - AutoFPS decision-making
 - Timeout configuration (device-aware)
 - Performance diagnostics in Dev Panel
 
-❌ **DON'T use for:**
+ **DON'T use for:**
 - Real-time per-frame logs (use sampling)
 - Non-performance metrics
 - Anything else should be its own function
 
 ---
 
-## 6. `error-handling.js` - Graceful Error Boundaries
+## 7. `error-handling.js` - Graceful Error Boundaries
 
 **This provides try/catch wrappers for non-critical operations.**
 
@@ -669,19 +893,19 @@ const result = executeNonCriticalOperation(
 
 ### When to Use
 
-✅ **Use for:**
+ **Use for:**
 - Optional features (analytics, UI enhancements)
 - External API calls
 - User preference loading
 
-❌ **DON'T use for:**
+ **DON'T use for:**
 - Critical operations (video capture, audio initialization)
 - Command handlers (they should handle errors explicitly)
 - Performance-critical code (adds overhead)
 
 ---
 
-## 7. `async.js` - Async Utilities
+## 8. `async.js` - Async Utilities
 
 **This provides helpers for managing asynchronous operations.**
 
@@ -706,19 +930,19 @@ await delay(1000); // Wait 1 second
 
 ### When to Use
 
-✅ **Use for:**
+ **Use for:**
 - Resize handlers (debounce)
 - Scroll handlers (throttle)
 - User input (debounce search queries)
 - Controlled delays in tests
 
-❌ **DON'T use for:**
+ **DON'T use for:**
 - Performance-critical paths
 - Frame processing (use dedicated scheduler)
 
 ---
 
-## 8. `utils.js` - Miscellaneous Helpers
+## 9. `utils.js` - Miscellaneous Helpers
 
 **General-purpose utility functions.**
 
@@ -746,13 +970,13 @@ const normalized = normalize(50, 0, 100);  // Map to 0-1
 
 ### When to Use
 
-✅ **Use for:**
+ **Use for:**
 - Platform-specific behavior
 - Feature detection
 - Math utilities
 - Type checking helpers
 
-❌ **DON'T add:**
+ **DON'T add:**
 - Business logic
 - Subsystem-specific code
 - Complex stateful utilities
@@ -764,10 +988,10 @@ const normalized = normalize(50, 0, 100);  // Map to 0-1
 ### Checklist
 
 1. **Is it really a utility?**
-   - ❌ Does it belong in a specific subsystem? → Put it there instead
-   - ❌ Does it maintain state? → Consider creating a service/manager
-   - ❌ Is it used by only one place? → Keep it local
-   - ✅ Is it reusable, stateless, and cross-cutting? → Continue
+   -  Does it belong in a specific subsystem? → Put it there instead
+   -  Does it maintain state? → Consider creating a service/manager
+   -  Is it used by only one place? → Keep it local
+   -  Is it reusable, stateless, and cross-cutting? → Continue
 
 2. **Which file does it belong in?**
    - Logging? → Add to `logging.js`
@@ -816,7 +1040,7 @@ test('myUtility handles edge cases', () => {
 
 ## Common Anti-Patterns to Avoid
 
-### ❌ The Stateful Utility
+###  The Stateful Utility
 ```javascript
 // DON'T maintain state
 let cachedValue = null;
@@ -825,7 +1049,7 @@ export function getCached() {
 }
 ```
 
-### ❌ The Subsystem Importer
+###  The Subsystem Importer
 ```javascript
 // DON'T import from subsystems
 import { engine } from '../core/engine.js';
@@ -834,7 +1058,7 @@ export function logToEngine(msg) {
 }
 ```
 
-### ❌ The Kitchen Sink
+###  The Kitchen Sink
 ```javascript
 // DON'T make one util that does everything
 export function doAllTheThings(a, b, c, d, e, f) {
@@ -842,7 +1066,7 @@ export function doAllTheThings(a, b, c, d, e, f) {
 }
 ```
 
-### ❌ The Global Polluter
+###  The Global Polluter
 ```javascript
 // DON'T create globals
 window.myUtil = function() { ... };
@@ -885,12 +1109,18 @@ describe('myUtility', () => {
 - Don't log in tight loops without throttling
 - Prefer `INFO` over `DEBUG` for production code
 
+### Ring Buffer Performance
+- Fixed memory: ~1MB (1000 entries × ~1KB each)
+- Write: O(1) constant time
+- Read: O(n) but capped at 1000 entries
+- No blocking: All synchronous
+
 ### IndexedDB Performance
 - Batch writes when possible (ingest.js does this)
 - Don't query on every frame
 - Use capped collections (1000 entries max)
 
-### RingBuffer Performance
+### RingBuffer (performance.js) Performance
 - Pre-allocate size based on expected sample count
 - Use `isFull()` to avoid unnecessary calculations
 - Keep buffer sizes reasonable (<100 samples)
@@ -900,15 +1130,15 @@ describe('myUtility', () => {
 ## File Checklist
 
 When working in this directory:
-- [ ] Did you add state? **Stop. Utils must be stateless.**
-- [ ] Did you import from a subsystem? **Stop. Utils are independent.**
-- [ ] Did you add business logic? **Stop. It belongs in a command handler.**
+- [ ] Did you add state? **AVOID. Utils must be stateless.**
+- [ ] Did you import from a subsystem? **AVOID. Utils are independent.**
+- [ ] Did you add business logic? **AVOID. It belongs in a command handler.**
 - [ ] Did you write tests? **Required for all new utilities.**
-- [ ] Did you document the API? **Update this README.**
+- [ ] Did you document the API? **IMPORTANT: Update this README.**
 - [ ] Is it used in multiple places? **If no, keep it local.**
 - [ ] Is it pure (no side effects)? **Exception: loggers are allowed side effects.**
 
 ---
 
-Created by Claude Sonnet 4.5
-**Last Updated:** 7 October 2025 - Utils architecture finalized- 
+**Last Updated:** 24 November 2025 - Added ring buffer architecture documentation
+

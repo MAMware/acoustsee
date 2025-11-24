@@ -218,8 +218,8 @@ function updateOptimizationPreferences(engine) {
   // Only update if preferences changed (no JSON.stringify overhead)
   if (preferencesChanged(oldPreferences, newPreferences)) {
     state.ingestPreferences = newPreferences;
-    structuredLog('INFO', 'performance_optimization_applied', {
-      message: 'Auto-adjusted ingest preferences',
+    structuredLog('INFO', 'Ingest preferences auto-adjusted based on device capabilities', {
+      optimization: 'device-aware-throttling',
       cores: performanceProfile.cores,
       memory: performanceProfile.memory,
       isMobile: performanceProfile.isMobile,

@@ -428,10 +428,7 @@ export async function init() {
     throw new Error('CRITICAL: AudioContext not created. This application requires Web Audio API.');
   }
   
-  structuredLog('INFO', 'AudioContext created at startup', { 
-    state: audioManager.context.state,
-    sampleRate: audioManager.context.sampleRate
-  });
+  // AudioContext creation already logged by AudioManager constructor
   
   // Store audioManager separately; audioApi will be assigned AFTER synthesis init
   engine.audioManager = audioManager;

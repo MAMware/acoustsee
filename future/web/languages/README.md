@@ -1,3 +1,31 @@
+2025-11-24: DISREGARD THE CONTENT OF THIS FILE, IT IS OUTDATED //REMOVE THIS LINE ONCE UPDATED
+
+
+## i18n / Language Subsystem
+
+**Initialization (REQUIRED):**
+- `initializeLanguage(state)` must be called and awaited during startup (in `main.js` init sequence)
+- Sets `state.i18n.ready = true` when translations are loaded (or bundled fallback is available)
+- Pre-bundled `en-US` ensures offline availability for core UI strings
+
+**Fail-Fast Behavior:**
+- `getText(key, params, state)` returns `[missing:key]` if called before `state.i18n.ready === true`
+- Logs `I18N_NOT_INITIALIZED` once per session to enforce initialization order
+- Missing keys are recorded in `state.missingTranslations` for Dev Panel visibility
+
+**Analytics & Deduplication:**
+- Only the first occurrence of each missing key is logged and sent to analytics
+- Subsequent occurrences are logged at DEBUG level to avoid spam
+- Session-level deduplication in both `getText` and analytics mapping
+
+**Base Path:**
+Language files are loaded relative to the global base path (`window.__ACOUSTSEE_BASE_PATH__`).
+
+**Testing:**
+See `future/web/test/unit/i18n-init.test.js` for initialization tests and `future/web/test/unit/analytics-i18n.test.js` for analytics deduplication tests.
+
+---
+
 # Languages (Internationalization - i18n)
 
 This directory contains the language files and internationalization utilities for the application.

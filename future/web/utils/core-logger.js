@@ -173,9 +173,19 @@ export function output(level, entry, legacyData = {}) {
   addToRingBuffer(upperLevel, consoleText, logEntry);
   
   // ===== Output to browser console =====
-  // Only output the formatted text, let browser add its own location prefix
+  // Output formatted text AND data object for debuggability
   const method = console[level] || console.log;
-  method(consoleText);
+  
+  // Check if there's meaningful data to display (beyond metadata)
+  const hasData = logEntry.data && Object.keys(logEntry.data).length > 0;
+  
+  if (hasData) {
+    // Output message with data object (browser will pretty-print it)
+    method(consoleText, logEntry.data);
+  } else {
+    // Just the message
+    method(consoleText);
+  }
 
   // ===== Notify dev panel callback (log-viewer.js) =====
   if (outputCallback) {

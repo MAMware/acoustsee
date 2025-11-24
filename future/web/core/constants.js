@@ -19,7 +19,7 @@ export const LANGUAGES_VERSION = '0.4.4-enhancedI18N+';
 export const UTILS_VERSION = '0.9.8-eventBus';
 
 // Build information (auto-injected by scripts/inject-build-info.js)
-export const BUILD_COMMIT = 'f3d786a';
+export const BUILD_COMMIT = '05e2478';
 export const BUILD_BRANCH = 'v0.9.5-audioRouter';
-export const BUILD_TIMESTAMP = '2025-11-24T04:27:23.449Z';
+export const BUILD_TIMESTAMP = '2025-11-24T19:13:29.936Z';
 

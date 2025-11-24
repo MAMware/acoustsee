@@ -56,5 +56,7 @@ export function registerModeCommands(engine) {
     // Depth worker will be notified via state change listener in frame-processor
   });
   
-  structuredLog('DEBUG', 'Mode commands registered');
+  structuredLog('DEBUG', 'Mode commands registered', {
+    commands: ['SWITCH_TO_FLOW_MODE', 'SWITCH_TO_GRID_MODE', 'SWITCH_TO_REALTIME_MODE']
+  });
 }
