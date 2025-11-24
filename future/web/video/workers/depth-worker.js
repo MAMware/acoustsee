@@ -60,31 +60,54 @@ async function updateStrategy(preference) {
 }
 
 self.onmessage = async (e) => {
-  const { type, frame, prevFrame, gridSize, path, gridConfig } = e.data;
+  // Handle both legacy and FrameConductor message formats
+  const msg = e.data;
+  const type = msg.type;
   
   try {
     if (type === 'setPath') {
-      currentPathPreference = path;
-      await updateStrategy(path);
+      currentPathPreference = msg.path;
+      await updateStrategy(msg.path);
     }
     
-    if (type === 'processFrame') {
+    if (type === 'processFrame' || type === 'processingRequest') {
       // Ensure strategy is initialized
       if (!activeStrategy) {
           await updateStrategy(currentPathPreference);
       }
 
-      const width = frame.width;
-      const height = frame.height;
-      const data = frame.data; // Uint8ClampedArray
+      // Normalize input data based on message format
+      let width, height, data, gridConfig;
+      
+      if (type === 'processingRequest') {
+        // FrameConductor format
+        width = msg.width;
+        height = msg.height;
+        data = msg.data; // Uint8ClampedArray or ImageData
+        if (data.data) data = data.data; // Handle ImageData
+        
+        // Extract grid config from state if available
+        const state = msg.state || {};
+        gridConfig = { 
+          rows: (state.orchestration && state.orchestration.gridType === '8x8') ? 8 : 4,
+          cols: (state.orchestration && state.orchestration.gridType === '8x8') ? 8 : 4,
+          aggregation: 'mean', 
+          skipThreshold: 0.2 
+        };
+      } else {
+        // Legacy format
+        width = msg.frame.width;
+        height = msg.frame.height;
+        data = msg.frame.data;
+        gridConfig = msg.gridConfig || (msg.gridSize && { rows: msg.gridSize.rows, cols: msg.gridSize.cols });
+      }
 
       // Process using active strategy
       // Note: Strategy returns Float32Array [width * height]
       const depthMap = await activeStrategy.process(data, width, height);
 
       // Average into gridDepths per cell
-      // Use gridConfig passed with this frame (stateless); fallback to legacy gridSize parameter
-      const config = gridConfig || (gridSize && { rows: gridSize.rows, cols: gridSize.cols }) || { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.2 };
+      const config = gridConfig || { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.2 };
       
       const rows = config.rows;
       const cols = config.cols;
@@ -114,15 +137,26 @@ self.onmessage = async (e) => {
       const result = {
         depthMap: gridDepths, // The grid-averaged depths
         rawDepth: null, // We don't send the full map to main thread to save bandwidth
-        confidence: 1.0
+        confidence: 1.0,
+        timestamp: msg.timestamp || Date.now(),
+        gridConfig: config
       };
 
-      self.postMessage(WorkerContract.createResult(
-        WORKER_TYPES.DEPTH,
-        e.data.mode || 'hybrid',
-        [CAPABILITIES.DEPTH_MAP],
-        result
-      ));
+      if (type === 'processingRequest') {
+        self.postMessage(WorkerContract.createResult(
+          WORKER_TYPES.DEPTH,
+          'focus',
+          [CAPABILITIES.DEPTH_MAP, CAPABILITIES.DEPTH_CONFIDENCE],
+          result
+        ));
+      } else {
+        // Legacy return
+        self.postMessage({ 
+          type: 'depthResult', 
+          depthMap: gridDepths,
+          timestamp: Date.now() 
+        });
+      }
     }
   } catch (error) {
     // ADR-0005: Stop execution, Log STRATEGY_FAILURE
@@ -131,7 +165,8 @@ self.onmessage = async (e) => {
         error: error.message 
     });
     
-    // We do NOT fallback here. We report the error.
-    // The FrameConductor will handle the worker failure (graceful degradation of the pipeline).
+    if (type === 'processingRequest') {
+       throw error; // Let FrameConductor handle it
+    }
   }
 };

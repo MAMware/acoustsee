@@ -335,6 +335,11 @@ self.onmessage = (ev) => {
       const ts = msg.timestamp || 0;
       const w = msg.width || msg.w || 0;
       const h = msg.height || msg.h || 0;
+
+      // Handle ImageData structure (common in FrameConductor)
+      if (frameData && frameData.data) {
+        frameData = frameData.data;
+      }
       
       // TEMPORARY DIAGNOSTIC: Log frame data details (sample 1% of frames) R111125eb considered eventBus?
       if (Math.random() < 0.01) {

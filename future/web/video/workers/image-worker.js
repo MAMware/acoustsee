@@ -60,27 +60,51 @@ let prevData = null;
 // Workers no longer maintain configuration state
 
 self.onmessage = (e) => {
-  const { 
-    type, 
-    frame, 
-    prevFrame, 
-    gridConfig = { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 },
-    mode = 'hybrid', 
-    enableSemantic = false 
-  } = e.data;
+  const msg = e.data;
+  const type = msg.type;
+
+  // Normalize input data based on message format
+  let frame, prevFrame, gridConfig, mode, enableSemantic;
+
+  if (type === 'processingRequest') {
+    // FrameConductor format
+    // Note: Image worker needs prevFrame for optical flow. 
+    // FrameConductor might need to be updated to pass prevFrame or worker needs to store it.
+    // For now, we'll assume the worker stores the previous frame internally if not provided.
+    frame = {
+      width: msg.width,
+      height: msg.height,
+      data: msg.data.data ? msg.data.data : msg.data // Handle ImageData vs Uint8ClampedArray
+    };
+    
+    // Extract config from state
+    const state = msg.state || {};
+    gridConfig = { 
+      rows: (state.orchestration && state.orchestration.gridType === '8x8') ? 8 : 4,
+      cols: (state.orchestration && state.orchestration.gridType === '8x8') ? 8 : 4,
+      aggregation: 'mean', 
+      skipThreshold: 0.1 
+    };
+    mode = 'focus'; // Image worker is primarily for focus mode
+    enableSemantic = false; // Default off
+  } else {
+    // Legacy format
+    frame = msg.frame;
+    prevFrame = msg.prevFrame;
+    gridConfig = msg.gridConfig || { rows: 4, cols: 4, aggregation: 'mean', skipThreshold: 0.1 };
+    mode = msg.mode || 'hybrid';
+    enableSemantic = msg.enableSemantic || false;
+  }
 
   // Process frame with inline configuration (stateless)
   // gridConfig, mode, and enableSemantic are passed with every frame, not stored in worker state
-  if (type === 'processFrame') {
+  if (type === 'processFrame' || type === 'processingRequest') {
     try {
       if (!prevData) {
-        prevData = prevFrame.data.slice();
-        self.postMessage(
-          WorkerContract.createResult(
-            WORKER_TYPES.IMAGE,
-            mode,
-            [CAPABILITIES.FLOW_VECTORS, CAPABILITIES.MOTION_MAGNITUDE, CAPABILITIES.TEXTURE_ANALYSIS],
-            {
+        // Initialize prevData with current frame data
+        prevData = new Uint8ClampedArray(frame.data);
+        
+        const result = {
               gridFlows: [], 
               textureGrid: [], 
               abstractFeatures: [],
@@ -90,9 +114,24 @@ self.onmessage = (e) => {
               timestamp: Date.now(),
               gridConfig,
               mode,
-            }
-          )
-        );
+            };
+
+        if (type === 'processingRequest') {
+             self.postMessage(WorkerContract.createResult(
+                WORKER_TYPES.IMAGE,
+                mode,
+                [CAPABILITIES.FLOW_VECTORS, CAPABILITIES.MOTION_MAGNITUDE, CAPABILITIES.TEXTURE_ANALYSIS],
+                result
+              ));
+        } else {
+             // Legacy behavior (might not post message on first frame)
+             self.postMessage(WorkerContract.createResult(
+                WORKER_TYPES.IMAGE,
+                mode,
+                [CAPABILITIES.FLOW_VECTORS, CAPABILITIES.MOTION_MAGNITUDE, CAPABILITIES.TEXTURE_ANALYSIS],
+                result
+              ));
+        }
         return;
       }
 
