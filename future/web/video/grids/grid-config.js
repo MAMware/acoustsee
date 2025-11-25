@@ -1,21 +1,44 @@
 /**
  * Adaptive Grid Configuration Module
  * 
- * Defines paradigm-aware grid sizes and processing parameters.
- * Used to parameterize gridSize, aggregation strategy, and skip thresholds
- * across frame-processor and all video workers (motion, depth, image).
+ * SINGLE SOURCE OF TRUTH FOR GRID DIMENSIONS
  * 
- * Design:
+ * ALL grid configuration must come from this module. Workers should NOT hardcode grid values.
+ * 
+ * Usage Pattern (REQUIRED):
+ * 1. Main thread: Call getGridConfig(mode) to get config for current mode
+ * 2. Send config with frame message: { data: frame, gridConfig: getGridConfig(state.currentMode) }
+ * 3. Worker receives: msg.gridConfig with rows, cols, aggregation, skipThreshold
+ * 4. If worker doesn't receive gridConfig, use fallback: getGridConfig('hybrid')
+ * 
+ * Architecture:
  * - Flow mode: Coarse grid (3×3) for fast, low-latency spatial awareness
- * - Focus mode: Fine grid (8×8) for detailed spatial feature extraction
+ * - Focus mode: Fine grid (8×8) for detailed spatial feature extraction  
  * - Hybrid mode: Balanced grid (5×5) for transitional scenarios
  * 
- * This enables paradigm-adaptive performance: fast in navigation, detailed in exploration.
+ * Enables paradigm-adaptive performance: fast in navigation, detailed in exploration.
  * 
- * R171025 / R111125gc it would be usefull to have this settingsconfigurable at the developer panel
+ * ---
  * 
- * R111125gc better documentation is needed, e.g. is this module used by fas-grid-aggregator.js? who and why? 
- * R111125gc IMO this is an incomplete implementation from a misuderstood use case
+ * IMPLEMENTATION AUDIT (R111125gc):
+ * 
+ * ✓ CORRECT (Uses getGridConfig):
+ * - frame-conductor.js: Passes gridConfig with every frame message
+ * 
+ * ⚠️ NEEDS FIXING (Hardcoded fallbacks): R251125gc
+ * - depth-worker.js line 106-107: Hardcoded { rows: 4, cols: 4 } vs reading GRID_CONFIGS
+ * - image-worker.js line 83-84: Hardcoded { rows: 4, cols: 4 } vs reading GRID_CONFIGS
+ * - image-worker.js line 94: Hardcoded { rows: 4, cols: 4 } fallback
+ * - fast-motion-worker.js line 363: Hardcoded { rows: 4, cols: 4 } fallback
+ * - fast-grid-aggregator.js line 69-70: Hardcoded { rows: 4, cols: 4 } fallback
+ * - pan-intensity-mapper.js line 79-80: Hardcoded { rows: 4, cols: 4 } fallback
+ * 
+ * SYNC VALIDATION STRATEGY:
+ * Workers hardcode { rows: 4, cols: 4 } as safety fallback (never sent without gridConfig).
+ * When gridConfig is passed, use it instead. This prevents crashes if message is malformed.
+ * 
+ * FUTURE: Replace hardcoded 4x4 with hybrid mode from GRID_CONFIGS to align with design.
+ * See ADR: Grid Configuration Synchronization
  * 
  */
 

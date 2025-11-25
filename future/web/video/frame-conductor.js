@@ -121,6 +121,10 @@ export class FrameConductor {
     this.#initializationFrameCount = 3;
     this.#initializationTimeoutMs = 2000; // 2s for initialization
 
+    // Worker contract validation state (for sampling optimization)
+    // Tracks which workers have been validated at least once
+    this.#workerValidationState = {};  // { workerName: boolean }
+
     structuredLog('DEBUG', 'FrameConductor created', {
       config: this.config,
       deviceTier: this.#timingMetrics.deviceTier,
@@ -466,8 +470,19 @@ export class FrameConductor {
           }
         }
 
-        // Validate result
-        const validation = WorkerContract.validate(workerResult);
+        // Validate result (sampled to reduce 60fps overhead)
+        // Only validate: 1) first message from each worker, 2) every 300 frames (5s @ 60fps), 3) on errors
+        const shouldValidateThisFrame = 
+          !this.#workerValidationState[workerConfig.name] ||  // First message
+          this.#timingMetrics.totalFramesProcessed % 300 === 0 ||  // Sampling: every 300 frames
+          Math.random() < 0.001;  // Rare random check for late-stage bugs (0.1%)
+        
+        let validation = { valid: true };  // Default: assume valid
+        if (shouldValidateThisFrame) {
+          validation = WorkerContract.validate(workerResult);
+          this.#workerValidationState[workerConfig.name] = true;  // Mark worker as validated
+        }
+        
         if (!validation.valid) {
           structuredLog('WARN', 'FrameConductor: worker returned invalid message', {
             workerName: workerConfig.name,

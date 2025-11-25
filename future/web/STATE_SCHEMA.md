@@ -25,7 +25,7 @@ The application state is a single JSON object that represents all persistent and
   language: string,
   currentMode: 'flow' | 'focus',
   depthPath: 'pseudo' | 'cnn',
-  dualModeWIP: boolean,
+  enableDualModeDetection: boolean,  // See: ADR-dual-mode-detection, v0.10.0 migration
   enableSemanticDetection: boolean,
   motionThreshold: number,
   maxNotes: number,
@@ -176,7 +176,7 @@ The application state is a single JSON object that represents all persistent and
   language: 'en-US',               // UI language
   currentMode: 'flow',             // Operating mode ('flow' for navigation, 'focus' for identification)
   depthPath: 'pseudo',             // Depth estimation method ('pseudo' for Sobel, 'cnn' for ML model)
-  dualModeWIP: true,               // Experimental dual-paradigm mode (under development)
+  enableDualModeDetection: false,  // Dual-paradigm mode (v0.10.0 will enable by default, see ADR)
   enableSemanticDetection: false,  // Use semantic object detection (experimental)
   motionThreshold: 20,             // Motion sensitivity (0-100, higher = less sensitive)
   maxNotes: 24                     // Maximum polyphonic voices

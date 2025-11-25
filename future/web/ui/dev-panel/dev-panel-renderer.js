@@ -42,7 +42,7 @@ function render(state) {
     drawFocusModeDebug(result);
   }
   try {
-    if (state && state.dualModeWIP) {
+    if (state && state.enableDualModeDetection) {
       ctx.save();
       ctx.fillStyle = 'rgba(180,20,20,0.06)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);

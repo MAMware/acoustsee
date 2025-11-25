@@ -121,19 +121,22 @@ export function createInitialState() {
   },
   dayNightMode: 'day',
   resetStateOnError: true,
-  // TODO R311025 update this work inprogress below
-  //  --- WIP: ARCH-3 --- 
-  // Dual-mode prototype flags and runtime guard. R151025 WE ARE NOW DEVELOPENT A MULTI PARADGIM 
-  // This is an experimental feature. Do not remove or change without referencing TASKS.md ARCH-3.
-  // Current operating mode: 'flow' (navigation) or 'focus' (identification) R151025: UPDATE the hybrid approach
+  
+  //  --- ARCH-3: Dual-Mode Detection (v0.10.0+ feature) ---
+  // Dual-mode prototype flags and runtime guard. 
+  // This experimental feature supports 'flow' (navigation) and 'focus' (identification) modes.
+  // Updated hybrid approach combines both paradigms.
+  // 
+  // **DEPRECATION NOTICE:** Replace with proper feature flags in v0.10.0
+  // See: docs/adr/feature-flags.md for architecture decision record
   currentMode: 'flow',
-  depthPath: 'pseudo', // 'pseudo' or 'cnn' // R151025: i had the idea that will do WebGL/vanilly JS paths, is it this?
-  // When true, mode switches are simulated and heavy ML paths should be blocked by producers.
-  dualModeWIP: true, // R151025: WIP was meant to indicate Work In Progress, having it the declaration it self is qute a code smell: dualModeWIP 
+  depthPath: 'pseudo', // 'pseudo' or 'cnn' - detection strategy (WebGL/vanilla JS vs model-based) R251125-dP is this hardcoded or we have a selector at GUI?
+  // When true, mode switches are simulated and heavy ML paths are blocked by producers.
+  enableDualModeDetection: false, // Feature flag: dual-mode detection (ARCH-3). Replace with feature-flag system in v0.10.0. R251125-dmd explain more how this detection takes place, we talked in the past about being automatic from egomotion, when the image is aparent still we could switch to focus
   // Enable optional semantic detection (person/tree/rough_ground/trash/box) for educational purposes
   // Default: false (off) for performance. Can be toggled via dev panel for learning/exploration
   enableSemanticDetection: false,
-  // --- END WIP ---
+  // --- END ARCH-3 ---
   motionThreshold: 20,
   maxNotes: computeDefaultMaxNotes(24) // <<< The new decoupled polyphony setting, later we should work in dinamical setting for this value R151025: lets check this limit is not a issue in regard of soem sound issues like the lack of persistence
   ,
