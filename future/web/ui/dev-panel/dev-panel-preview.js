@@ -123,19 +123,39 @@ export function initializePreview(panel, DOM, engine) {
       } catch (_) {}
     };
 
+    let rafId = null;
+    let lastFrameTime = 0;
+    const frameIntervalMs = Math.max(1000 / 4, 200); // Default 4 FPS with 200ms minimum
+
+    const drawFrameRAF = (timestamp) => {
+      if (!previewInterval) return; // Stop if stopPreview() was called
+      
+      // Throttle frame draws to configured FPS
+      if (timestamp - lastFrameTime >= frameIntervalMs) {
+        lastFrameTime = timestamp;
+        drawFrame();
+      }
+      
+      // Schedule next frame (syncs with screen refresh)
+      rafId = requestAnimationFrame(drawFrameRAF);
+    };
+
     const startPreview = (fps = 4) => {
       if (previewInterval) return;
       previewCanvas.style.display = 'block';
       ensureSource();
-      const intervalMs = Math.max(1000 / fps, 200);
-      previewInterval = setInterval(drawFrame, intervalMs);
+      // RAF-based loop syncs with screen refresh, reducing battery/CPU waste
+      previewInterval = true; // Flag to indicate preview is active
+      lastFrameTime = 0;
+      rafId = requestAnimationFrame(drawFrameRAF);
     };
 
     const stopPreview = () => {
-      if (previewInterval) {
-        clearInterval(previewInterval);
-        previewInterval = null;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
       }
+      previewInterval = null;
       detachSource();
       loggedMissingSource = false;
       if (previewCanvas && previewCtx) {

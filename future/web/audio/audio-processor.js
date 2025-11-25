@@ -495,6 +495,16 @@ export function playCues(cues) { // The argument is now just the cues array
   const notesBySynth = new Map();
   const maxNotes = Number(_config.maxNotes) || 12;
 
+  // Reuse synthContext across all synth calls to avoid per-frame allocation (~3600 allocations/min)
+  const synthContext = { 
+    audioContext: context, 
+    getOscillator, 
+    releaseOscillator, 
+    masterGain, 
+    oscillatorPool,
+    settings: _config.settings 
+  };
+
   for (const cue of cuesArray.slice(0, maxNotes)) {
     // Resolve individual profile from manifest
     let profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
@@ -540,14 +550,6 @@ export function playCues(cues) { // The argument is now just the cues array
   for (const [playFunction, notes] of notesBySynth.entries()) { // TODO R291025 Clarify "notesBySynth" implementatio we might not have proper documentation, check audio pipeline README.md and confirm.
     try {
       structuredLog('DEBUG', 'playCues: Calling synth function', { notesCount: notes.length, synthName: playFunction.name || 'anonymous' }, false, shouldSample('audioSynthesis'));
-      const synthContext = { 
-        audioContext: context, 
-        getOscillator, 
-        releaseOscillator, 
-        masterGain, 
-        oscillatorPool,  // Add oscillatorPool for synths that check for it
-        settings: _config.settings 
-      };
       playFunction(notes, synthContext);
       // Log that notes were handed to the synth. If any of the notes were the test-note,
       // log an INFO message indicating the test tone was passed to the synth.

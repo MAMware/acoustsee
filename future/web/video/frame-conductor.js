@@ -480,14 +480,17 @@ export class FrameConductor {
         }
         
         if (!validation.valid) {
-          structuredLog('WARN', 'FrameConductor: worker returned invalid message', {
-            workerName: workerConfig.name,
-            error: validation.error,
-          });
+          // Only log if should sample, preventing object allocation in non-sampled cases
+          if (shouldSample('workerValidation')) {
+            structuredLog('WARN', 'FrameConductor: worker returned invalid message', {
+              workerName: workerConfig.name,
+              error: validation.error,
+            });
+          }
           continue; // Skip this worker's output, feed next worker the current input
         }
 
-        if (validation.warning) {
+        if (validation.warning && shouldSample('workerValidation')) {
           structuredLog('WARN', 'FrameConductor: worker message validation warning', {
             workerName: workerConfig.name,
             warning: validation.warning,

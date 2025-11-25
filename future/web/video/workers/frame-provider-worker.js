@@ -44,6 +44,10 @@ async function provideFrame() {
     // Close the video frame to free memory
     videoFrame.close();
     
+    // Performance Optimization: Use Transferable objects (transfer list) to avoid structured cloning
+    // of large ImageData buffers on the main thread. This passes ownership of the ArrayBuffer
+    // to the receiver and detaches it from this context, eliminating expensive memory copy.
+    // See: https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage#transfer
     self.postMessage({
       type: 'frame',
       payload: {

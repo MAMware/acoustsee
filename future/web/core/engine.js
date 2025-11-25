@@ -67,6 +67,8 @@ export function createEngine() {
   // Keep a small in-memory registry to avoid noisy repeated errors R171025 lets explain this approach better, e.g. "how much memory? is it ram?"
   const _invalidListenerSeen = new Set();
   const _listenerErrorCounts = new Map();
+  const _selectiveListeners = new Map(); // Maps selector functions to callbacks and their last state
+  
   function notifyListeners() {
     for (const candidate of Array.from(listeners)) {
       // Validate listener is callable. If not, remove and warn once.
@@ -90,6 +92,24 @@ export function createEngine() {
         }
       }
     }
+    
+    // Notify selective listeners: only if their selector result changed
+    for (const [selector, entry] of _selectiveListeners) {
+      try {
+        const newValue = selector(state);
+        const oldValue = entry.lastValue;
+        // Only call callback if selected value changed (shallow equality)
+        if (newValue !== oldValue) {
+          entry.lastValue = newValue;
+          entry.callback(newValue, oldValue);
+        }
+      } catch (e) {
+        const t = throttleError(e, { sampleEvery: 50 });
+        if (t.log) {
+          structuredLog('WARN', 'engine selective listener error', { error: e?.message, stack: e?.stack });
+        }
+      }
+    }
   }
 
   function onStateChange(fn) {
@@ -106,6 +126,31 @@ export function createEngine() {
       if (prev === 0) structuredLog('WARN', 'engine listener initial call failed', { error: e?.message });
     }
     return () => listeners.delete(fn);
+  }
+
+  /**
+   * Selective subscription: only calls callback when selector(state) changes.
+   * Reduces re-renders by only firing callbacks for state slices that matter to the listener.
+   * Example: subscribe(s => s.isProcessing, (processing) => {...})
+   * @param {Function} selector - Function that extracts a value from state
+   * @param {Function} callback - Called with (newValue, oldValue) when selector result changes
+   * @returns {Function} Unsubscribe function
+   */
+  function subscribe(selector, callback) {
+    if (typeof selector !== 'function' || typeof callback !== 'function') {
+      structuredLog('WARN', 'subscribe: selector and callback must be functions', { selectorType: typeof selector, callbackType: typeof callback });
+      return () => {};
+    }
+    try {
+      const initialValue = selector(state);
+      const entry = { lastValue: initialValue, callback };
+      _selectiveListeners.set(selector, entry);
+      // Call once with initial value
+      callback(initialValue, undefined);
+    } catch (e) {
+      structuredLog('WARN', 'subscribe: initial selector call failed', { error: e?.message });
+    }
+    return () => _selectiveListeners.delete(selector);
   }
 
   function setState(newState) {
@@ -217,6 +262,7 @@ export function createEngine() {
     dispatch,
     registerCommandHandler,
     onStateChange,
+    subscribe,
     getState,
     setState,
     onBenchmarkRequired,
