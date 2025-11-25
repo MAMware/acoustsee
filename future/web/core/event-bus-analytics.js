@@ -20,6 +20,76 @@ let globalBatcher = null;
 const _reportedI18nEvents = new Set();
 
 /**
+ * Sanitize event object to match Cloudflare Worker schema
+ * 
+ * Worker expects:
+ * - timestamp: ISO string or numeric
+ * - event_type: string
+ * - category: string (optional)
+ * - data: object (optional, will be JSON.stringify'd)
+ * - trace_id, session_id, message, etc. (optional)
+ * 
+ * EventBus log objects may have:
+ * - Non-serializable fields (functions, circular refs)
+ * - Nested data structures not compatible with Worker schema
+ * - Missing required fields
+ * 
+ * @param {object} event - Raw event from EventBus
+ * @returns {object} - Sanitized event ready for Worker
+ */
+function sanitizeEventForAnalytics(event) {
+  if (!event || typeof event !== 'object') {
+    return {
+      timestamp: new Date().toISOString(),
+      event_type: 'invalid_event',
+      category: 'error',
+      message: 'Invalid event object'
+    };
+  }
+  
+  // Extract core fields
+  const sanitized = {
+    timestamp: event.timestamp || new Date().toISOString(),
+    event_type: event.category || event.type || 'generic',
+    category: event.category || null,
+    trace_id: event.traceId || null,
+    session_id: event.sessionId || null,
+    message: event.message || null,
+    filename: event.filename || event.source || null,
+    lineno: event.lineno || null,
+    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+  };
+  
+  // Sanitize data field - remove non-serializable content
+  if (event.data && typeof event.data === 'object') {
+    try {
+      // Create shallow copy and remove problematic fields
+      const dataCopy = {};
+      for (const key in event.data) {
+        const value = event.data[key];
+        // Skip functions, undefined, and large objects
+        if (typeof value === 'function' || value === undefined) {
+          continue;
+        }
+        // Test serializability
+        try {
+          JSON.stringify(value);
+          dataCopy[key] = value;
+        } catch (e) {
+          // Skip non-serializable values
+          dataCopy[key] = `[Non-serializable ${typeof value}]`;
+        }
+      }
+      sanitized.data = dataCopy;
+    } catch (e) {
+      sanitized.data = { sanitization_error: e.message };
+    }
+  }
+  
+  return sanitized;
+}
+
+/**
  * Initialize analytics subscribers on the EventBus.
  * This replaces the direct engine.dispatch() tracking from ingest.js.
  * 
@@ -104,11 +174,13 @@ export function initializeAnalytics(eventBus, state, options = {}) {
       }
 
       // OPTIMIZATION: Use batcher for non-critical events
+      // Sanitize event to match Worker schema before sending
+      const sanitizedEvent = sanitizeEventForAnalytics(event);
       if (shouldBatchEvent(event)) {
-        globalBatcher.add(event);
+        globalBatcher.add(sanitizedEvent);
       } else {
         // Send ERROR/WARNING immediately
-        sendCriticalEventBeacon(event, endpoint);
+        sendCriticalEventBeacon(sanitizedEvent, endpoint);
       }
     } catch (err) {
       // Isolate errors - don't break EventBus if analytics fails
@@ -136,11 +208,13 @@ export function initializeAnalytics(eventBus, state, options = {}) {
       
       // OPTIMIZATION: User commands (setMode, setGridType) sent immediately
       // High-frequency commands (audioCuesReady) sent via batcher
+      // Sanitize event to match Worker schema before sending
+      const sanitizedEvent = sanitizeEventForAnalytics(event);
       if (shouldBatchEvent(event)) {
-        globalBatcher.add(event);
+        globalBatcher.add(sanitizedEvent);
       } else {
         // User interaction - send immediately via beacon
-        sendCriticalEventBeacon(event, endpoint);
+        sendCriticalEventBeacon(sanitizedEvent, endpoint);
       }
       
       // LEGACY: Also send user workflows to old endpoint for backward compatibility

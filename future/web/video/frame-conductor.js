@@ -41,7 +41,7 @@
  * - Structured logging for debugging
  */
 
-import { structuredLog, throttleError } from '../utils/logging.js';
+import { structuredLog, throttleError, shouldSample } from '../utils/logging.js';
 import { WorkerContract, WORKER_TYPES } from './workers/worker-contract.js';
 import { getWorkersForMode, getTotalLatencyBudget } from './workers/worker-manifest.js';
 import { detectDeviceTier, getWorkerTimeoutConfig } from '../utils/performance.js';
