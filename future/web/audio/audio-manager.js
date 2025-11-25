@@ -179,10 +179,14 @@ export class AudioManager {
   }
 
   _bindVisibility() {
-    this._onVisibility = async () => {
-      if (document.visibilityState === 'visible' && this._ctx && this._ctx.state === 'suspended') {
-        try { await this._ctx.resume(); this._emit('resumed'); } catch(e){}
-      }
+    // Note: We DON'T try to resume on visibility change because:
+    // 1. Browser requires a user gesture to resume AudioContext
+    // 2. Visibility change is NOT a user gesture, so resume() will fail
+    // 3. Attempting resume triggers unhelpful browser warnings
+    // Real unlock happens only after user interaction via unlockAudio()
+    this._onVisibility = () => {
+      // This could be extended to handle other visibility-related logic
+      // but should NOT attempt to resume AudioContext
     };
     document.addEventListener('visibilitychange', this._onVisibility);
   }

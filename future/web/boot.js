@@ -183,8 +183,7 @@ if (location.protocol === 'file:') {
   import('./core/constants.js').then(constants => {
     // Log build info FIRST (before main.js loads) so it appears at top of console
     console.log(
-      `%c🎵 AcoustSee v${constants.APP_VERSION || 'dev'} (${constants.BUILD_COMMIT?.substring(0, 8) || constants.BUILD_TIMESTAMP || 'local'})`,
-      'color: #4CAF50; font-weight: bold; font-size: 14px;'
+      `AcoustSee COMMIT: (${constants.BUILD_COMMIT})`,
     );
     
     // Prefer commit hash for a short, readable cache-buster. Fall back to
