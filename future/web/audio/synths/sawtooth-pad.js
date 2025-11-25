@@ -8,6 +8,15 @@
 }
 */
 
+import {
+  SAWTOOTH_ATTACK_TIME,
+  SAWTOOTH_RELEASE_TIME,
+  SAWTOOTH_FILTER_CUTOFF,
+  SAWTOOTH_AMPLITUDE_SCALE,
+  SAWTOOTH_DEFAULT_DURATION,
+  SAWTOOTH_SMOOTHING_TIME
+} from '../AUDIO_CONSTANTS.js';
+
 // A simple polyphonic sawtooth synthesizer plugin.
 export const synthMeta = {
   id: 'sawtooth-pad',
@@ -27,8 +36,8 @@ export function playSawtoothPad(notes = [], ctx = {}) {
   }
 
   const now = audioContext.currentTime;
-  const attackTime = 0.1;  // Slow attack for a "pad" sound
-  const releaseTime = 0.5; // A bit of a tail
+  const attackTime = SAWTOOTH_ATTACK_TIME;
+  const releaseTime = SAWTOOTH_RELEASE_TIME;
 
   // CRITICAL FIX: Stop all voices when notes array is empty (camera stopped)
   if (!notes || notes.length === 0) {
@@ -63,7 +72,7 @@ export function playSawtoothPad(notes = [], ctx = {}) {
         panner.connect(masterGain);
     }
     filter = oscObj.filter;
-    filter.frequency.setValueAtTime(1200, now); // A good starting point for a pad
+    filter.frequency.setValueAtTime(SAWTOOTH_FILTER_CUTOFF, now);
     
     // Start the oscillator
     try {
@@ -74,12 +83,12 @@ export function playSawtoothPad(notes = [], ctx = {}) {
     
     // --- Standard note parameters ---
   const freq = note.pitch;
-  const amp = note.intensity * 0.5; // Pads are usually a bit quieter
+  const amp = note.intensity * SAWTOOTH_AMPLITUDE_SCALE;
   // Spatialization: prefer note.position.x (normalized -1..1) for azimuth/panning.
   const azimuth = note.position ? note.position.x : (note.pan || 0);
 
-    osc.frequency.setTargetAtTime(freq, now, 0.01);
-  panner.pan.setTargetAtTime(azimuth, now, 0.01);
+    osc.frequency.setTargetAtTime(freq, now, SAWTOOTH_SMOOTHING_TIME);
+  panner.pan.setTargetAtTime(azimuth, now, SAWTOOTH_SMOOTHING_TIME);
 
     // --- Envelope (Attack -> Sustain -> Release) ---
     gain.gain.cancelScheduledValues(now);
@@ -88,7 +97,7 @@ export function playSawtoothPad(notes = [], ctx = {}) {
     // This is a simplification; a real pad would have a decay/sustain phase
     // Schedule stop and cleanup for this voice
     try {
-  const stopTime = now + (note.duration || 0.5) + releaseTime; // Use provided duration, or a short default
+  const stopTime = now + (note.duration || SAWTOOTH_DEFAULT_DURATION) + releaseTime;
       try { osc.stop(stopTime); } catch (e) { /* ignore */ }
       osc.onended = () => {
         try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscObj.id, synth: 'sawtooth-pad' }); } catch (_) {}

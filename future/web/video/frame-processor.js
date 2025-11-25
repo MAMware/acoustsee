@@ -241,10 +241,21 @@ async function processFlowMode(frameData, width, height, state) {
  * Simulates object detection based on motion results.
  * In Focus mode, this converts motion data into detected semantic objects.
  * 
+ * ⚠️  DEVELOPMENT-ONLY: This is a placeholder function for testing without ML model.
+ * It returns simulated confidence/labels and should NOT be used in production.
+ * Gate this behind debugConfig.useMocks or similar flag in production code.
+ * 
  * @param {object} motionResults - Results from motion worker containing movingRegions, etc.
+ * @param {boolean} useMocks - Whether to allow mock/simulated data (development-only)
  * @returns {object} Object detection results with detectedObjects array
  */
-async function simulateObjectDetection(motionResults = {}) {
+async function simulateObjectDetection(motionResults = {}, useMocks = false) {
+  // STRICT GATING: Do not return simulated data unless explicitly enabled for development
+  if (!useMocks) {
+    structuredLog('DEBUG', 'simulateObjectDetection blocked: useMocks=false. Placeholder function for development only.');
+    return { detectedObjects: [] };
+  }
+
   try {
     // If no semantic detection is enabled or no motion, return empty
     if (!motionResults.objects || motionResults.objects.length === 0) {
@@ -272,10 +283,26 @@ async function simulateObjectDetection(motionResults = {}) {
  * Simulates shape analysis for a detected object.
  * Provides additional shape metadata (texture, edges, corners) for grid mapping.
  * 
+ * ⚠️  DEVELOPMENT-ONLY: This is a placeholder function for testing without ML model.
+ * It returns simulated shape data and should NOT be used in production.
+ * Gate this behind debugConfig.useMocks or similar flag in production code.
+ * 
  * @param {object} detectedObject - A detected object from object detection
+ * @param {boolean} useMocks - Whether to allow mock/simulated data (development-only)
  * @returns {object} Shape analysis results
  */
-async function simulateShapeAnalysis(detectedObject = {}) {
+async function simulateShapeAnalysis(detectedObject = {}, useMocks = false) {
+  // STRICT GATING: Do not return simulated data unless explicitly enabled for development
+  if (!useMocks) {
+    structuredLog('DEBUG', 'simulateShapeAnalysis blocked: useMocks=false. Placeholder function for development only.');
+    return {
+      shapeType: 'unknown',
+      edges: [],
+      texture: [],
+      movingRegions: []
+    };
+  }
+
   try {
     if (!detectedObject.id) {
       return { 
@@ -673,7 +700,9 @@ export async function initializeVideo(config) {
 
         if (objectResults.detectedObjects && objectResults.detectedObjects.length > 0) {
           const mainObject = objectResults.detectedObjects[0];
-          const shapeResults = await simulateShapeAnalysis(mainObject);
+          // Gate simulateShapeAnalysis behind debugConfig.useMocks
+          const useMocks = state.debugConfig && state.debugConfig.useMocks === true;
+          const shapeResults = await simulateShapeAnalysis(mainObject, useMocks);
 
           // Part A: Create the Primary "Identity" Cue with an 'isPrimary' flag
           const primaryCue = {

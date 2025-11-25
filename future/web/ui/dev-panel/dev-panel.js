@@ -1,5 +1,24 @@
 // File: web/ui/dev-panel/dev-panel.js (Renamed from debug-ui.js)
 
+/**
+ * DOM SCOPING ARCHITECTURE
+ * 
+ * This module uses a scoped ID namespacing pattern to prevent DOM collisions
+ * if multiple UI instances are loaded (e.g., A/B testing, parallel UIs).
+ * 
+ * Scoping Pattern:
+ * - Top-level IDs (index.html): Simple names like 'splashScreen', 'powerOn', 'debugPanel'
+ * - Dev-panel scoped IDs: Prefixed with 'devpanel-' (e.g., 'devpanel-status', 'devpanel-logs')
+ * - Other UI panels: Prefixed with module name (e.g., 'customize-panel', 'sandbox-controls')
+ * 
+ * Selector Usage:
+ * - Query within scoped container: panel.querySelector('#devpanel-status')
+ * - Never use global getElementById for panel elements
+ * 
+ * Benefit: If multiple UIs need to coexist, scoped IDs prevent namespace collision
+ * while maintaining clean, readable element naming.
+ */
+
 // Settings will be provided via initializer config to avoid implicit global coupling
 let _config = {};
 import { setOutputCallback, setLogLevel } from '../../utils/core-logger.js';

@@ -1,3 +1,11 @@
+import {
+  FM_MODULATION_INDEX_DEFAULT,
+  FM_RELEASE_TIME,
+  FM_SMOOTHING_TIME,
+  FM_DEFAULT_DURATION,
+  FM_MAX_GAIN
+} from '../AUDIO_CONSTANTS.js';
+
 export const synthMeta = {
   id: 'fm-synthesis',
   name: 'FM Synthesis',
@@ -16,7 +24,7 @@ export function playFmSynthesis(notes, ctx = {}) {
   const masterGain = ctx.masterGain;
   const oscillatorPool = ctx.oscillatorPool || [];
   const modulators = ctx.modulators || [];
-  const modulationIndex = typeof ctx.modulationIndex === 'number' ? ctx.modulationIndex : (ctx.settings?.modulationIndex ?? 50);
+  const modulationIndex = typeof ctx.modulationIndex === 'number' ? ctx.modulationIndex : (ctx.settings?.modulationIndex ?? FM_MODULATION_INDEX_DEFAULT);
 
   if (!audioContext || typeof getOscillator !== 'function') {
     console.warn('playFmSynthesis: missing required ctx.audioContext or ctx.getOscillator — synth cannot run in isolation');
@@ -24,7 +32,7 @@ export function playFmSynthesis(notes, ctx = {}) {
   }
 
   const now = audioContext.currentTime;
-  const releaseTime = 0.05; // seconds for fade-out
+  const releaseTime = FM_RELEASE_TIME;
 
   // Normalize notes: accept pitch / freq / frequency and intensity / amplitude
   // Note: spatial information is provided via `position: { x, y, z }`. Use
@@ -51,15 +59,15 @@ export function playFmSynthesis(notes, ctx = {}) {
     // Carrier oscillator
     oscData.osc.type = 'sine';
     if (typeof oscData.osc.frequency.setTargetAtTime === 'function') {
-      oscData.osc.frequency.setTargetAtTime(pitch, now, 0.015);
+      oscData.osc.frequency.setTargetAtTime(pitch, now, FM_SMOOTHING_TIME);
     } else if ('value' in oscData.osc.frequency) {
       oscData.osc.frequency.value = pitch;
     }
     if (oscData.gain && typeof oscData.gain.gain.setTargetAtTime === 'function') {
-      oscData.gain.gain.setTargetAtTime(Math.min(1, intensity), now, 0.015);
+      oscData.gain.gain.setTargetAtTime(Math.min(FM_MAX_GAIN, intensity), now, FM_SMOOTHING_TIME);
     }
     if (oscData.panner && typeof oscData.panner.pan.setTargetAtTime === 'function') {
-      oscData.panner.pan.setTargetAtTime(azimuth, now, 0.015);
+      oscData.panner.pan.setTargetAtTime(azimuth, now, FM_SMOOTHING_TIME);
     }
     oscData.active = true;
 
@@ -76,8 +84,7 @@ export function playFmSynthesis(notes, ctx = {}) {
     try {
       oscData.osc.start(now);
       // Schedule stop and cleanup for carrier (respect provided duration or a short default)
-      const noteDuration = allNotes[i].duration || 0.5;
-      try { oscData.osc.stop(now + noteDuration); } catch (e) { /* ignore */ }
+      const noteDuration = allNotes[i].duration || FM_DEFAULT_DURATION;
       oscData.osc.onended = () => {
         try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscData.id, synth: 'fm-synthesis' }); } catch (_) {}
         // try { if (ctx.releaseOscillator) ctx.releaseOscillator(oscData); } catch (e) {} // TEMPORARILY DISABLED FOR DEBUGGING
