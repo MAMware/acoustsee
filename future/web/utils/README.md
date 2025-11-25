@@ -12,17 +12,64 @@ This directory contains cross-cutting utilities that are used by multiple subsys
 
 ## File Overview
 
+### Core Infrastructure
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| `logging.js` | Structured logging with metadata | For ALL application logging (REQUIRED) |
+| `core-logger.js` | **Ring buffer + console output** (DEBUG, INFO, WARN, ERROR) | For simple console logging with filtering |
+| `early-logs.js` | Captures pre-dev-panel logs from ring buffer | For exporting boot logs, splash screen diagnostics |
+
+### Feature Modules (Focused & Tree-Shakeable)
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| `tts.js` | Text-to-speech with cooldown throttling | For accessible spoken announcements |
+| `haptics.js` | Vibration pattern generation | For tactile feedback on devices |
+| `accessibility.js` | Screen reader announcements & ARIA attributes | For accessible UI interactions |
+
+### Performance & Quality
 | File | Purpose | When to Use |
 |------|---------|-------------|
 | `async.js` | Async/await helpers, debounce, throttle | When you need controlled async execution |
-| `core-logger.js` | **Ring buffer + console output** (DEBUG, INFO, WARN, ERROR) | For simple console logging with filtering |
-| `early-logs.js` | Captures pre-dev-panel logs from ring buffer | For exporting boot logs, splash screen diagnostics |
 | `error-handling.js` | Graceful error boundaries, try/catch wrappers | When you need non-critical error handling |
 | `idb-logger.js` | IndexedDB persistence for logs/analytics | For persistent error tracking (Performance Analytics) |
 | `ingest.js` | Performance event ingestion with throttling | For tracking performance-critical events |
-| `logging.js` | Structured logging with metadata | For ALL application logging (REQUIRED) |
 | `performance.js` | Performance measurement (RingBuffer, FPS calculation) | For measuring frame processing time |
-| `utils.js` | Miscellaneous helpers (platform detection, etc.) | For general-purpose utilities |
+| `trace-id.js` | Distributed trace ID generation | For request tracing and causality |
+
+### Backward Compatibility
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| `utils.js` | Re-export shim for backward compatibility | (Existing code only; prefer direct imports to new modules) |
+
+---
+
+## Module Organization: From Junk Drawer to Focused Modules
+
+**Prior:** `utils.js` contained 50+ functions mixing TTS, haptics, i18n, and generic helpers (high cognitive load, poor tree-shaking).
+
+**Current:** Functions split into focused modules by concern:
+- **`tts.js`** — Text-to-speech with module-scoped cooldown state
+- **`haptics.js`** — Vibration patterns and pulse generation
+- **`accessibility.js`** — Screen reader & ARIA management
+- **`languages/i18n.js`** — Internationalization (moved from utils)
+- **`utils.js`** — Re-export shim maintaining backward compatibility
+
+**Benefits:**
+- ✅ Tree-shakeable: Unused modules don't ship
+- ✅ Testable: Each module has a clear contract
+- ✅ Maintainable: Low coupling, high cohesion
+- ✅ Discoverable: Clear naming convention (e.g., `tts.js` = speech synthesis)
+
+**Migration Path:**
+```javascript
+// ✅ Old way (still works via re-exports)
+import { speakText, hapticCount } from './utils.js';
+
+// ✅ New way (preferred)
+import { speakText } from './tts.js';
+import { hapticCount } from './haptics.js';
+import { announceMessage } from './accessibility.js';
+```
 
 ---
 

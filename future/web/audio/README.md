@@ -15,6 +15,7 @@ This directory contains all logic related to sound generation and processing. Th
 -   **`audio-processor.js`:** The central "Conductor" that orchestrates all sound production via its `playCues` function. **This is the ONLY file that should manage the oscillator pool.**
 -   **`audio-router.js`:** (ADR-0006) Decouples the video pipeline from the audio engine. Receives raw analysis data from `FrameConductor`, applies sonification mapping, and dispatches `audioCuesReady` events.
 -   **`audio-manager.js`:** Manages the lifecycle of the Web Audio API `AudioContext`. **AudioContext is created immediately in the constructor (eager initialization, fail-fast).** Unlocking (power-on) resumes the context and triggers synthesis initialization.
+-   **`AUDIO_CONSTANTS.js`:** Centralized DSP parameter repository for all synths (amplitude caps, decay ranges, filter frequencies, envelope times). Replaces magic numbers with named constants for tuning without code changes.
 -   **`sound-profiles.js`:** A manifest mapping a semantic `objectType` (from a video `cue`) to a specific synthesizer and its base parameters.
 -   **`synths/`:** A directory of pluggable synthesizer modules, each an independent "instrument."
 
@@ -148,17 +149,81 @@ export const synthMeta = {
 
 ### Common Mistakes to Avoid:
 
-❌ **DON'T** assume pool oscillators are connected or started
-❌ **DON'T** use `oscillatorPool` directly without extracting it from `ctx`
-❌ **DON'T** forget to connect to `masterGain` (no sound without this!)
-❌ **DON'T** try to start an oscillator twice (it will throw)
-❌ **DON'T** create global variables or maintain state between calls
+ **DON'T** assume pool oscillators are connected or started
+ **DON'T** use `oscillatorPool` directly without extracting it from `ctx`
+ **DON'T** forget to connect to `masterGain` (no sound without this!)
+ **DON'T** try to start an oscillator twice (it will throw)
+ **DON'T** create global variables or maintain state between calls
+ **DON'T** hardcode magic numbers like `0.15` or `0.90` in synth code
 
-✅ **DO** extract all dependencies from `ctx`
-✅ **DO** validate required dependencies exist
-✅ **DO** connect your audio graph to `masterGain`
-✅ **DO** start oscillators after connecting them
-✅ **DO** schedule cleanup to prevent memory leaks
+ **DO** extract all dependencies from `ctx`
+ **DO** validate required dependencies exist
+ **DO** connect your audio graph to `masterGain`
+ **DO** start oscillators after connecting them
+ **DO** schedule cleanup to prevent memory leaks
+ **DO** use `AUDIO_CONSTANTS` for all DSP parameters
+
+---
+
+## DSP Constants & Parameter Tuning
+
+**File:** `AUDIO_CONSTANTS.js`
+
+To avoid "magic numbers" scattered through synth code, all DSP parameters are centralized in `AUDIO_CONSTANTS.js`. This allows tuning without code changes and improves maintainability.
+
+### Using Constants in Your Synth
+
+```javascript
+import {
+  STRINGS_AMPLITUDE_CAP,
+  STRINGS_DECAY_FEEDBACK_DEFAULT,
+  STRINGS_FILTER_FREQ_BASE,
+  STRINGS_FILTER_FREQ_MULTIPLIER,
+  SYNTH_MIN_FREQUENCY,
+  SYNTH_MAX_FREQUENCY
+} from '../AUDIO_CONSTANTS.js';
+
+export function playStrings(notes = [], ctx = {}) {
+  const { audioContext, getOscillator, masterGain } = ctx;
+  const now = audioContext.currentTime;
+  
+  notes.forEach(note => {
+    const oscData = getOscillator();
+    if (!oscData) return;
+    
+    const { osc, gain, filter } = oscData;
+    
+    // ✅ Use constants instead of magic numbers
+    const frequency = Math.max(SYNTH_MIN_FREQUENCY, Math.min(SYNTH_MAX_FREQUENCY, note.pitch));
+    const amplitude = Math.min(STRINGS_AMPLITUDE_CAP, note.intensity * STRINGS_AMPLITUDE_CAP);
+    const decay = STRINGS_DECAY_FEEDBACK_DEFAULT;
+    const filterFreq = Math.min(12000, STRINGS_FILTER_FREQ_BASE + frequency * STRINGS_FILTER_FREQ_MULTIPLIER);
+    
+    osc.frequency.value = frequency;
+    gain.gain.value = amplitude;
+    filter.frequency.value = filterFreq;
+    
+    // ... rest of synth logic
+  });
+}
+```
+
+### Categories of Constants
+
+| Category | Examples | Purpose |
+|----------|----------|---------|
+| **Per-Synth Amplitude** | `STRINGS_AMPLITUDE_CAP`, `SAWTOOTH_AMPLITUDE_SCALE` | Prevent clipping and normalize volume across synths |
+| **Per-Synth Envelopes** | `STRINGS_NOISE_DURATION`, `SAWTOOTH_ATTACK_TIME` | Shape transient and sustain character |
+| **Per-Synth Decay/Feedback** | `STRINGS_DECAY_FEEDBACK_MIN/MAX` | Control resonance and sustain length |
+| **Global Frequency Bounds** | `SYNTH_MIN_FREQUENCY`, `SYNTH_MAX_FREQUENCY` | Prevent aliasing and sub-sonic frequencies |
+| **MIDI Reference** | `MIDI_A4_NOTE`, `MIDI_A4_FREQUENCY` | Consistent pitch calculations |
+| **Device-Aware Polyphony** | `SYNTH_MAX_VOICES_DESKTOP/TABLET/MOBILE` | Allocate pool size by device capability |
+
+### When to Add New Constants
+
+1. **Hardcoded value in two or more synths?** → Extract to `AUDIO_CONSTANTS.js`
+2. **DSP parameter you want to tune dynamically?** → Add to constants and export
+3. **Safety bound (min/max frequency)?** → Add as global constant
 
 ---
 

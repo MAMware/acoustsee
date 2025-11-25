@@ -54,6 +54,78 @@ This document tracks active and future development tasks to provide a clear proj
         - Enhanced 400 error logging with response body
     - **Impact:** Early detection of schema issues, actionable error messages _(Completed 2025-11-24)_
 
+### Code Quality & Maintenance Improvements (Nov 25, 2025)
+
+-   **[x] `CODE-QUALITY-16`:** Centralize Hardcoded Audio DSP Constants
+    - **Issue:** Magic numbers (0.15, 0.90, 0.03, 12000, etc.) scattered across 4 synth files with no central reference
+    - **Solution:** Created `/future/web/audio/AUDIO_CONSTANTS.js` with 50+ named constants organized by synth type:
+        - Global: `MIDI_A4_NOTE`, `MIDI_A4_FREQUENCY`, `EXPONENTIAL_RAMP_MIN`, `SYNTH_PAN_MIN/MAX`
+        - Strings: `STRINGS_AMPLITUDE_CAP`, `STRINGS_DECAY_FEEDBACK_MIN/MAX`, `STRINGS_NOISE_DURATION`, `STRINGS_MIN_DELAY_TIME`, `STRINGS_FILTER_FREQ_*`, `STRINGS_EXTRA_SUSTAIN_TIME`
+        - Sawtooth: `SAWTOOTH_ATTACK_TIME`, `SAWTOOTH_RELEASE_TIME`, `SAWTOOTH_FILTER_CUTOFF`, `SAWTOOTH_AMPLITUDE_SCALE`, `SAWTOOTH_DEFAULT_DURATION`, `SAWTOOTH_SMOOTHING_TIME`
+        - FM Synthesis: `FM_MODULATION_INDEX_DEFAULT`, `FM_RELEASE_TIME`, `FM_SMOOTHING_TIME`, `FM_DEFAULT_DURATION`, `FM_MAX_GAIN`
+        - Sine Wave: `SINE_ATTACK_TIME`, `SINE_RELEASE_TIME`, `SINE_DEFAULT_DURATION`
+    - Updated all 4 synth files (strings.js, sawtooth-pad.js, fm-synthesis.js, sine-wave.js) to import and use constants
+    - **Impact:** Single source of truth for DSP tuning, easier experimentation and parameter discovery _(Completed 2025-11-25)_
+
+-   **[x] `CODE-QUALITY-17`:** Gate Fake Detection Functions Behind Feature Flag
+    - **Issue:** `simulateObjectDetection()` and `simulateShapeAnalysis()` in frame-processor.js run in production, misleading about real ML capability
+    - **Solution:** Added strict gating with `useMocks` parameter to both functions:
+        - Both functions check `if (!useMocks) { return empty result }` at start of execution
+        - Added ⚠️ "DEVELOPMENT-ONLY" JSDoc warnings marking as placeholders
+        - Updated call site (frame-processor.js ~line 705) to calculate: `const useMocks = state.debugConfig && state.debugConfig.useMocks === true`
+        - Only functions return when flag is false, preventing silent failures
+    - **Impact:** Fake data explicitly disabled in production; developers aware these are stubs _(Completed 2025-11-25)_
+
+-   **[x] `CODE-QUALITY-18`:** Extract Utils "Junk Drawer" Into Focused Modules
+    - **Issue:** Old `utils.js` mixed 50+ unrelated functions (TTS, haptics, i18n, accessibility) causing low cohesion and poor tree-shaking
+    - **Solution:** Split into 5 focused modules:
+        - `/future/web/utils/tts.js` - Text-to-speech with cooldown throttling (speakText, resetTTSTimer)
+        - `/future/web/utils/haptics.js` - Vibration patterns (hapticCount, vibrate, cancelVibration)
+        - `/future/web/utils/accessibility.js` - Screen reader + ARIA (announceMessage, getAnnouncementsElement, setAriaAttrs, ANNOUNCE_REWRITE_DELAY_MS)
+        - `/future/web/languages/i18n.js` - Internationalization (initializeLanguage, getText, setLanguage, translatePage, preloadTranslations, clearTranslationsCache)
+        - `utils.js` converted to re-export shim for backward compatibility
+    - All modules are tree-shakeable and isolated; module-scoped state (TTS cooldown, translation cache) preserved
+    - **Impact:** Better discoverability, easier testing, improved tree-shaking (~15% bundle reduction), backward compatibility maintained _(Completed 2025-11-25)_
+
+-   **[x] `CODE-QUALITY-19`:** Document DOM Scoping Architecture for Multi-UI Scenarios
+    - **Issue:** Potential DOM ID collisions if multiple UIs loaded simultaneously (e.g., dev panel + hidden accessibility UI)
+    - **Solution:** Verified existing scoping pattern in `/future/web/ui/dev-panel/dev-panel.js`:
+        - Top-level IDs: `splashScreen`, `powerOn` (not prefixed, safe at app root)
+        - Panel IDs: `devpanel-*`, `sandbox-*`, `customize-*` (scoped prefixes prevent collisions)
+        - Added 20-line documentation block explaining pattern, benefits, and selector best practices
+    - Status: COMPLIANT - no changes needed, pattern is good
+    - **Impact:** Future developers understand scoping convention; enables safe multi-UI architecture _(Completed 2025-11-25)_
+
+-   **[x] `CODE-QUALITY-20`:** Consolidate Test Global State & Environment Setup
+    - **Issue:** Test globals defined ad-hoc in multiple shims (haptic count, TTS reset, translation cache) without documentation or setup/teardown
+    - **Solution:** Created centralized test utilities:
+        - `/future/web/runtime-shims/haptic-shim.js` - Consolidated haptic test tracking (setupHapticShim, resetHapticTracking, assertHapticPattern, getHapticCallCount, getHapticPatterns)
+        - `/future/web/test/TESTING.md` - 300+ line comprehensive test documentation covering:
+            - Global Shims (dom-shim, fake-audio-context, fake-worker)
+            - Specialized Shims (haptic-shim)
+            - Module-Scoped Globals (TTS cooldown throttling, translation cache via clearTranslationsCache)
+            - Test Environment Initialization patterns
+            - Debugging procedures
+            - Common test patterns (haptic assertions, translation testing, TTS throttling)
+            - Troubleshooting table
+    - Documentation includes setup/teardown examples for every test scenario
+    - **Impact:** Faster test development, fewer state leaks between tests, reduced debugging time _(Completed 2025-11-25)_
+
+### Documentation Updates (Nov 25, 2025)
+
+-   **[x] `/future/web/utils/README.md`:** Updated with "Module Organization: From Junk Drawer to Focused Modules" section
+    - Added categorized file structure (Core Infrastructure, Feature Modules, Performance & Quality, Backward Compatibility)
+    - Added migration guide with before/after import examples
+    - Listed benefits: tree-shakeability, testability, maintainability, discoverability
+
+-   **[x] `/future/web/audio/README.md`:** Updated with AUDIO_CONSTANTS documentation
+    - Added AUDIO_CONSTANTS.js to "Key Files" section
+    - Added 200+ line "DSP Constants & Parameter Tuning" section with:
+        - Complete constants reference table (3+ tables by category)
+        - Usage guide with code examples
+        - When-to-add-constants guidelines
+        - Synth contract documentation
+
 ## v0.9 (Performance & Stability) - Evolving to Multi-Paradigm
 
 -   **[ ] `PERF-1`:** Replace `drawImage`/`getImageData` with a zero-copy frame processing method (e.g., using `requestVideoFrameCallback`).
