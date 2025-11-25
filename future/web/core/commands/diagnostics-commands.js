@@ -165,17 +165,24 @@ export function registerDiagnosticsCommands(engine) {
   
   engine.registerCommandHandler('deltaHistogramSnapshot', ({ state: s, payload, metadata }) => {
     try {
-      // Lightweight trace for debugging correlation if needed
-      if (Math.random() < 0.02) {
-        structuredLog('DEBUG', 'deltaHistogramSnapshot received', {
-          frameId: payload?.frameId,
-          meanPanDelta: payload?.meanPanDelta,
-          meanIntensityDelta: payload?.meanIntensityDelta,
-          panBins: Array.isArray(payload?.pan) ? payload.pan.length : 0,
-          intensityBins: Array.isArray(payload?.intensity) ? payload.intensity.length : 0
+      // Update state with delta snapshot for dev panel rendering (stored inside stallStats)
+      if (payload && (Array.isArray(payload.pan) || Array.isArray(payload.intensity))) {
+        return Object.assign({}, s, {
+          stallStats: Object.assign({}, s.stallStats, {
+            deltaSnapshot: {
+              pan: Array.isArray(payload.pan) ? payload.pan : [],
+              intensity: Array.isArray(payload.intensity) ? payload.intensity : [],
+              meanPanDelta: typeof payload.meanPanDelta === 'number' ? payload.meanPanDelta : 0,
+              meanIntensityDelta: typeof payload.meanIntensityDelta === 'number' ? payload.meanIntensityDelta : 0,
+              zeroPanStreak: typeof payload.zeroPanStreak === 'number' ? payload.zeroPanStreak : 0,
+              zeroIntensityStreak: typeof payload.zeroIntensityStreak === 'number' ? payload.zeroIntensityStreak : 0
+            }
+          })
         });
       }
-    } catch (_) {}
-    return s; // No state mutation; event exists for EventBus export/telemetry
+    } catch (e) {
+      structuredLog('WARN', 'deltaHistogramSnapshot handler failed', { error: e?.message || String(e) });
+    }
+    return s; // Return unchanged state on error or missing payload
   });
 }
