@@ -179,10 +179,14 @@ if (location.protocol === 'file:') {
     // still attempt to start app — app may handle degradation
   }
 
-  // Build info is logged via structuredLog in main.js (no need for duplicate console.log)
-  
   // Import app entry with cache-busting based on build info so browsers don't serve stale main.js
   import('./core/constants.js').then(constants => {
+    // Log build info FIRST (before main.js loads) so it appears at top of console
+    console.log(
+      `%c🎵 AcoustSee v${constants.APP_VERSION || 'dev'} (${constants.BUILD_COMMIT?.substring(0, 8) || constants.BUILD_TIMESTAMP || 'local'})`,
+      'color: #4CAF50; font-weight: bold; font-size: 14px;'
+    );
+    
     // Prefer commit hash for a short, readable cache-buster. Fall back to
     // BUILD_TIMESTAMP or Date.now(), but sanitize the timestamp so it
     // doesn't include colons or dots which become URL-encoded (%3A, %2E).

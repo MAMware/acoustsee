@@ -121,10 +121,6 @@ export class FrameConductor {
     this.#initializationFrameCount = 3;
     this.#initializationTimeoutMs = 2000; // 2s for initialization
 
-    // Worker contract validation state (for sampling optimization)
-    // Tracks which workers have been validated at least once
-    this.#workerValidationState = {};  // { workerName: boolean }
-
     structuredLog('DEBUG', 'FrameConductor created', {
       config: this.config,
       deviceTier: this.#timingMetrics.deviceTier,
@@ -831,6 +827,7 @@ export class FrameConductor {
   // =========================================================================
 
   #workers = new Map();
+  #workerValidationState = {};  // Tracks which workers have been validated
 }
 
 export default FrameConductor;
