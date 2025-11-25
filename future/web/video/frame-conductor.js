@@ -435,6 +435,13 @@ export class FrameConductor {
     for (const workerConfig of this.#currentChain) {
       const workerStartTime = performance.now();
       let workerResult;
+      
+      // Define workerStatus before try block so it's accessible in catch block for error logging
+      let workerStatus = {
+        latencyTarget: workerConfig.latencyTargetMs,
+        capabilities: [],
+        onTarget: false
+      };
 
       try {
         // Run worker with timeout
@@ -516,10 +523,10 @@ export class FrameConductor {
         // }
 
         // Sample high-frequency worker completion logs to reduce noise
-        // Define workerStatus to avoid ReferenceError (captures latency target and performance)
-        const workerStatus = {
+        // Update workerStatus with actual results
+        workerStatus = {
           latencyTarget: workerConfig.latencyTargetMs,
-          capabilities,
+          capabilities: workerResult.capabilities || [],
           onTarget: workerDurationMs <= workerConfig.latencyTargetMs
         };
         const shouldLog = shouldSample('workerCompletion') || !workerStatus.onTarget;
