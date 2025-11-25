@@ -383,7 +383,8 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
       
       // Simulate frame processing (same interface as worker-based approach)
       const state = engine.getState();
-      const frameData = new Uint8ClampedArray(imageData.data);
+      // Use direct reference to avoid unnecessary buffer copy (imageData.data is already Uint8ClampedArray)
+      const frameData = imageData.data;
       const grid = _config.getCurrentGrid();
       let dispatchPayload = null;
       

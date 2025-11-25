@@ -23,6 +23,44 @@ import { registerComponent } from '../ui-registry.js';
 // Module loaded. Version information is read from engine.getState().buildInfo at runtime.
 console.log('dev-panel module loaded. Version info will be read from engine state at runtime.');
 
+/**
+ * EventListener registry helper to track and clean up all added listeners.
+ * Solves the "zombie event listeners" problem where listeners persist across panel toggles.
+ */
+class ListenerRegistry {
+  constructor() {
+    this.listeners = [];  // Array of { element, event, handler, options }
+  }
+
+  /**
+   * Add a listener to an element and track it for cleanup.
+   * @param {Element} element - DOM element to attach listener to
+   * @param {string} event - Event name (e.g., 'click', 'input', 'change')
+   * @param {Function} handler - Event handler function
+   * @param {Object} options - Optional addEventListener options (passive, capture, etc.)
+   */
+  on(element, event, handler, options = false) {
+    if (!element) return;  // Silently skip if element doesn't exist
+    element.addEventListener(event, handler, options);
+    this.listeners.push({ element, event, handler, options });
+  }
+
+  /**
+   * Remove all tracked listeners from their elements.
+   * Call during dispose() to prevent zombie listeners.
+   */
+  removeAll() {
+    for (const { element, event, handler, options } of this.listeners) {
+      try {
+        element.removeEventListener(event, handler, options);
+      } catch (e) {
+        // Silently ignore removal failures
+      }
+    }
+    this.listeners = [];
+  }
+}
+
 export function initializeDevPanel(arg1, arg2) {
   // Support both signatures:
   //  - New (v0.10.0+): initializeDevPanel(uiContext)
@@ -81,6 +119,10 @@ export function initializeDevPanel(arg1, arg2) {
   panel.id = 'acoustsee-dev-panel';
   const root = (DOM && DOM.uiPanelRoot) || document.body;
   root.appendChild(panel);
+
+  // Create listener registry to track all addEventListener calls for proper cleanup
+  const listenerRegistry = new ListenerRegistry();
+  panel.__listenerRegistry = listenerRegistry;  // Store for access in dispose()
 
   // Start hidden. Panel will be rendered, styled, and wired on activation.
   panel.style.display = 'none';
@@ -526,9 +568,10 @@ export function initializeDevPanel(arg1, arg2) {
     }
 
     // --- Dynamically Populate Grid and Synth Dropdowns from Central State ---
-    try {
-      const state = engine.getState(); // Get the current application state
-
+    const state = engine.getState(); // Get the current application state
+    if (!state) {
+      structuredLog('WARN', 'Failed to populate dropdowns: state is unavailable');
+    } else {
       // Populate Grid Type Select
       const gridSelect = panel.querySelector('#grid-type-select');
       if (gridSelect && Array.isArray(state.availableGrids)) {
@@ -562,8 +605,6 @@ export function initializeDevPanel(arg1, arg2) {
           synthSelect.value = state.synthesisEngine;
         }
       }
-    } catch (e) {
-      structuredLog('ERROR', 'Failed to dynamically populate dropdowns from state', { error: e.message });
     }
 
     // --- Initialize Visual State Inspector ---
@@ -1214,6 +1255,13 @@ export function initializeDevPanel(arg1, arg2) {
   return {
     dispose() {
       structuredLog('INFO', 'Disposing Dev Panel...');
+
+      // 0. Remove all tracked event listeners (prevents zombie listeners)
+      try {
+        if (panel.__listenerRegistry && typeof panel.__listenerRegistry.removeAll === 'function') {
+          panel.__listenerRegistry.removeAll();
+        }
+      } catch (e) { /* swallow */ }
 
       // 1. Dispose of StateInspector
       try {

@@ -286,7 +286,7 @@ export function resizeOscillatorPool(size) {
   const afterGC = oscillatorPool.length;
   
   // Count fresh oscillators
-  const freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
+  let freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
   
   structuredLog('DEBUG', 'Resizing oscillator pool', { 
     requestedSize: size, 
@@ -310,17 +310,18 @@ export function resizeOscillatorPool(size) {
       oscillatorPool.push({ osc, gain, panner, state: 'fresh' });
     }
     
+    freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
     structuredLog('DEBUG', 'Resized oscillator pool', { 
       added: toAdd,
-      newFreshCount: oscillatorPool.filter(item => item.state === 'fresh').length,
+      newFreshCount: freshCount,
       totalSize: oscillatorPool.length 
     });
   }
   
-  // Remove excess fresh oscillators if pool is too large
+  // Remove excess fresh oscillators if pool is too large (recalculate freshCount each iteration)
   while (freshCount > bufferedSize) {
     const freshIndex = oscillatorPool.findIndex(item => item.state === 'fresh');
-    if (freshIndex === -1) break;
+    if (freshIndex === -1) break;  // Safety check: no more fresh oscillators
     
     const oscObj = oscillatorPool.splice(freshIndex, 1)[0];
     // Clean up the removed oscillator
@@ -333,9 +334,41 @@ export function resizeOscillatorPool(size) {
     if (oscObj && oscObj.panner) {
       try { oscObj.panner.disconnect(); } catch (e) { /* ignore */ }
     }
+    // Recalculate freshCount for next iteration to avoid infinite loop
+    freshCount = oscillatorPool.filter(item => item.state === 'fresh').length;
   }
 }
 
+/**
+ * Retrieves an oscillator from the pool for use in audio synthesis.
+ * 
+ * Returns an oscillator object from the pool of fresh (unused) oscillators.
+ * If no fresh oscillators are available, creates a new one and logs an error.
+ * 
+ * @returns {Object|null} Returns an oscillator object with the following shape:
+ *   - {OscillatorNode} osc - The Web Audio API OscillatorNode (pre-configured but not started)
+ *   - {GainNode} gain - A GainNode connected to osc for volume control
+ *   - {PannerNode} panner - A PannerNode for spatial panning
+ *   - {string} state - Current state: 'fresh', 'active', or 'dead'
+ *   - {string} id - Unique identifier for tracking in logs (format: 'osc_RANDOM')
+ *   
+ *   Returns null ONLY if audioContext is not available (context?.destroy() called).
+ *   
+ * @example
+ *   const oscData = getOscillator();
+ *   if (!oscData) {
+ *     console.error('Audio system not initialized');
+ *     return;
+ *   }
+ *   oscData.osc.connect(oscData.gain);
+ *   oscData.gain.connect(masterGain);
+ *   oscData.osc.start(audioContext.currentTime);
+ * 
+ * @throws {Error} Throws if osc, gain, or panner nodes fail to create (internal Web Audio error)
+ * 
+ * @see releaseOscillator - Call when oscillator is no longer needed
+ * @see oscillatorPool - Internal pool tracked by oscillator state
+ */
 function getOscillator() {
   const context = audioManager?.context;
   if (!context) return null;

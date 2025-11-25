@@ -10,6 +10,70 @@ import { getAllIdbLogs } from '../../utils/idb-logger.js';
 import { trackFeatureUse } from '../ingest.js';
 // Do not import audio-processor directly; use engine.audioApi
 
+/**
+ * Settings manifest for touch gesture controls.
+ * Data-driven approach: each setting defines how to read/write/cycle values.
+ * Replaces two large switch statements with a single generic handler.
+ */
+const SETTINGS_MANIFEST = {
+  grid: {
+    getOptions: (s) => s.availableGrids?.map(g => g.id) || [],
+    getSelected: (s) => s.gridType,
+    getName: (s, value) => s.availableGrids?.find(g => g.id === value)?.name || value,
+    onUpdate: (engine, newValue) => engine.setState({ gridType: newValue })
+  },
+  synth: {
+    getOptions: (s) => s.availableEngines?.map(e => e.id) || [],
+    getSelected: (s) => s.synthesisEngine,
+    getName: (s, value) => s.availableEngines?.find(e => e.id === value)?.name || value,
+    onUpdate: (engine, newValue) => engine.setState({ synthesisEngine: newValue })
+  },
+  language: {
+    getOptions: (s) => s.availableLanguages?.map(l => l.id) || [],
+    getSelected: (s) => s.language,
+    getName: (s, value) => s.availableLanguages?.find(l => l.id === value)?.name || value,
+    onUpdate: async (engine, newValue, s) => {
+      await setLanguage(newValue, s);
+      engine.setState({ language: newValue });
+      try { await translatePage(document, s); } catch (e) { /* best-effort */ }
+    }
+  },
+  maxNotes: {
+    type: 'numeric',
+    min: 1,
+    getSelected: (s) => Number(s.maxNotes) || 0,
+    getName: async (s, value) => await getText('settings.value.notes', { count: value }, s),
+    onUpdate: (engine, newValue) => {
+      engine.setState({ maxNotes: newValue });
+      try {
+        if (engine.audioApi?.resizeOscillatorPool) {
+          engine.audioApi.resizeOscillatorPool(newValue);
+        } else if (engine.audioApi?.setMaxNotes) {
+          engine.audioApi.setMaxNotes(newValue);
+        } else {
+          structuredLog('WARN', 'maxNotes: audioApi not available');
+        }
+      } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
+    }
+  },
+  motionThreshold: {
+    type: 'numeric',
+    min: 20,
+    max: 120,
+    step: 20,
+    getSelected: (s) => Number(s.motionThreshold) || 20,
+    getName: async (s, value) => {
+      let sensitivity = 'Medium';
+      if (value <= 40) sensitivity = 'High';
+      if (value >= 80) sensitivity = 'Low';
+      return await getText('settings.value.sensitivity', {
+        level: await getText(`settings.sensitivity.${sensitivity.toLowerCase()}`, {}, s)
+      }, s);
+    },
+    onUpdate: (engine, newValue) => engine.setState({ motionThreshold: newValue })
+  }
+};
+
 export function registerTouchGestureCommands(engine) {
   const { registerCommandHandler, dispatch } = engine;
 
@@ -73,57 +137,30 @@ export function registerTouchGestureCommands(engine) {
     if (!s.isSettingsMode) return;
     const direction = payload.direction || 1; // 1 for up/right, -1 for down/left
     const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
+    const config = SETTINGS_MANIFEST[categoryId];
     
-  // TODO: This switch statement is becoming difficult to maintain.
-  // Consider refactoring to a data-driven settings manifest where each
-  // setting defines: type (e.g., 'cycle', 'numeric'), allowed values/range,
-  // and the state property it controls. A small generic handler can then
-  // perform updates and side-effects (e.g., saving, calling resize functions).
-  // This will make adding settings easier and reduce bugs from manual
-  // per-case implementations.
-  // Logic to change the value based on the category
-  switch (categoryId) {
-      case 'grid':
-        const grids = s.availableGrids.map(g => g.id);
-        const currentGridIndex = grids.indexOf(s.gridType);
-        const nextGridIndex = (currentGridIndex + direction + grids.length) % grids.length;
-        engine.setState({ gridType: grids[nextGridIndex] });
-        break;
-      case 'synth':
-        const synths = s.availableEngines.map(e => e.id);
-        const currentSynthIndex = synths.indexOf(s.synthesisEngine);
-        const nextSynthIndex = (currentSynthIndex + direction + synths.length) % synths.length;
-        engine.setState({ synthesisEngine: synths[nextSynthIndex] });
-        break;
-      case 'language':
-        const langs = s.availableLanguages.map(l => l.id);
-        const currentLangIndex = langs.indexOf(s.language);
-        const nextLangIndex = (currentLangIndex + direction + langs.length) % langs.length;
-        const newLang = langs[nextLangIndex];
-        await setLanguage(newLang, s); // This also saves it
-        engine.setState({ language: newLang });
-        try { await translatePage(document, s); } catch (e) { /* best-effort */ }
-        break;
-      case 'maxNotes':
-        const current = Number(s.maxNotes) || 0;
-        const next = Math.max(1, current + (direction > 0 ? 1 : -1));
-        engine.setState({ maxNotes: next });
-        try {
-          if (engine.audioApi && typeof engine.audioApi.resizeOscillatorPool === 'function') {
-            engine.audioApi.resizeOscillatorPool(next);
-          } else if (engine.audioApi && typeof engine.audioApi.setMaxNotes === 'function') {
-            engine.audioApi.setMaxNotes(next);
-          } else {
-            structuredLog('WARN', 'maxNotes: audioApi not available to update pool size');
-          }
-        } catch (e) { structuredLog('WARN', 'resizeOscillatorPool failed', { error: e?.message }); }
-        break;
-      case 'motionThreshold':
-        let newThreshold = (Number(s.motionThreshold) || 20) + (direction * 20);
-        newThreshold = Math.max(20, Math.min(120, newThreshold));
-        engine.setState({ motionThreshold: newThreshold });
-        break;
+    if (!config) {
+      structuredLog('WARN', 'Unknown setting category', { categoryId });
+      return;
     }
+    
+    // Handle numeric settings
+    if (config.type === 'numeric') {
+      const current = config.getSelected(s);
+      const step = config.step || 1;
+      let next = current + (direction > 0 ? step : -step);
+      if (config.min !== undefined) next = Math.max(config.min, next);
+      if (config.max !== undefined) next = Math.min(config.max, next);
+      config.onUpdate(engine, next);
+    } else {
+      // Handle cycle settings (grid, synth, language, etc.)
+      const options = config.getOptions(s);
+      const current = config.getSelected(s);
+      const currentIndex = options.indexOf(current);
+      const nextIndex = (currentIndex + direction + options.length) % options.length;
+      await config.onUpdate?.(engine, options[nextIndex], s);
+    }
+    
     await dispatch('announceCurrentSettingValue');
   });
 
@@ -137,31 +174,14 @@ export function registerTouchGestureCommands(engine) {
   registerCommandHandler('announceCurrentSettingValue', async ({ state: s }) => {
     if (!s.isSettingsMode) return;
     const categoryId = s.settings.categories[s.settings.currentCategoryIndex];
-    let valueText = '';
+    const config = SETTINGS_MANIFEST[categoryId];
+    
+    if (!config) return;
+    
     try {
-      switch (categoryId) {
-        case 'grid':
-          valueText = s.availableGrids.find(g => g.id === s.gridType)?.name || s.gridType;
-          break;
-        case 'synth':
-          valueText = s.availableEngines.find(e => e.id === s.synthesisEngine)?.name || s.synthesisEngine;
-          break;
-        case 'language':
-          valueText = s.availableLanguages.find(l => l.id === s.language)?.name || s.language;
-          break;
-        case 'maxNotes':
-          valueText = await getText('settings.value.notes', { count: s.maxNotes }, s);
-          break;
-        case 'motionThreshold':
-          let sensitivity = 'Medium';
-          if ((Number(s.motionThreshold) || 0) <= 40) sensitivity = 'High';
-          if ((Number(s.motionThreshold) || 0) >= 80) sensitivity = 'Low';
-          valueText = await getText('settings.value.sensitivity', {
-            level: await getText(`settings.sensitivity.${sensitivity.toLowerCase()}`, {}, s)
-          }, s);
-          break;
-      }
-        speakText(s, valueText, 'tts');
+      const current = config.getSelected(s);
+      const valueText = await config.getName(s, current);
+      speakText(s, valueText, 'tts');
     } catch (err) {
       structuredLog('ERROR', 'Failed to announce setting value', { error: err.message });
     }
