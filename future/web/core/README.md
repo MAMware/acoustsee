@@ -49,6 +49,30 @@ The Engine is the single source of truth. All state is created via `createInitia
 
 This clean, predictable cycle makes the application easy to debug, reason about, and extend.
 
+### Selective Subscriptions (Nov 25, 2025)
+
+**For high-frequency state updates, use selective subscriptions to avoid unnecessary re-renders:**
+
+```javascript
+// Subscribes to isProcessing changes ONLY
+engine.subscribe(
+  state => state.isProcessing,
+  (isProcessing, oldValue) => {
+    if (isProcessing) {
+      startMonitoring();
+    } else {
+      stopMonitoring();
+    }
+  }
+);
+```
+
+**Why?** At 60fps, state updates happen frequently. Selective subscriptions prevent callbacks from firing for changes to unrelated state slices, reducing unnecessary re-renders and improving frame stability. This addresses ARCHITECTURE_RULES.md Rule 11 (60fps Hot Path Performance).
+
+**Available APIs:**
+- `onStateChange(callback)` - Called for every state change
+- `subscribe(selector, callback)` - Called only when selector result changes
+
 ## State Structure & Rules
 
 ### What CAN Be in State

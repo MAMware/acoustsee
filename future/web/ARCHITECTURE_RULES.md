@@ -1148,6 +1148,92 @@ Before submitting code changes, verify:
 
 ---
 
+## Rule 11: 60fps Hot Path Performance Anti-Patterns
+
+**The Problem:**
+High-frequency operations (60fps loops in audio synthesis, frame processing, state notifications) accumulate small inefficiencies into frame drops, audio glitches, and battery drain. Common anti-patterns:
+
+1. **Allocation in Hot Path:** Creating new objects in loops causes GC pressure
+2. **Expensive Logging Construction:** Building log objects before sampling gate rejects them
+3. **Main Thread Decoupling Failure:** Structured cloning of large buffers on main thread
+4. **Redundant State Notification:** All listeners notified for every change, even if they don't care
+5. **setTimeout/setInterval for Animation:** Desynchronizes from screen refresh
+
+**Real Bugs from Session (November 25, 2025):**
+- `synthContext` created 3,600 times/min in playCues loop → GC pauses
+- Worker validation logs created 60 times/sec before sampling check
+- Dev panel setInterval preview desynchronizes from 60Hz display
+- State listeners called for unrelated changes → unnecessary re-renders
+
+**Rule:**
+1. **No object allocation in hot paths** (>60Hz): Create once outside loop, reuse
+2. **Check sampling BEFORE constructing logs:** `if (shouldSample(...)) { structuredLog(...) }`
+3. **Use Transferable objects** for worker postMessage to avoid structured cloning
+4. **Use selective subscriptions** for state: `subscribe(selector, callback)` only fires on selector change
+5. **Use requestAnimationFrame** for animation, not setInterval
+
+**Example Fixes:**
+
+```javascript
+// ❌ WRONG: Creates 3600 objects/min in 60fps loop
+for (const [synth, notes] of notesBySynth) {
+  const synthContext = { audioContext, getOscillator, ... };  // NEW every iteration!
+  synth(notes, synthContext);
+}
+
+// ✅ CORRECT: Reuse single object
+const synthContext = { audioContext, getOscillator, ... };
+for (const [synth, notes] of notesBySynth) {
+  synth(notes, synthContext);
+}
+
+// ❌ WRONG: Constructs object even when not logged
+structuredLog('DEBUG', 'Worker done', { complexData: expensiveComputation() });
+
+// ✅ CORRECT: Check before constructing
+if (shouldSample('workerValidation')) {
+  structuredLog('DEBUG', 'Worker done', { complexData: expensiveComputation() });
+}
+
+// ❌ WRONG: All listeners called for every state change
+function notifyListeners() {
+  for (const listener of listeners) {
+    listener(state);  // Re-render even if listener doesn't care about the change
+  }
+}
+
+// ✅ CORRECT: Selective notification
+function subscribe(selector, callback) {
+  const entry = { lastValue: selector(state), callback };
+  _selectiveListeners.set(selector, entry);
+  return () => _selectiveListeners.delete(selector);
+}
+function notifyListeners() {
+  for (const [selector, entry] of _selectiveListeners) {
+    const newValue = selector(state);
+    if (newValue !== entry.lastValue) {
+      entry.lastValue = newValue;
+      entry.callback(newValue);
+    }
+  }
+}
+
+// ❌ WRONG: setInterval desynchronizes from screen refresh
+const previewInterval = setInterval(drawFrame, 250);
+
+// ✅ CORRECT: requestAnimationFrame syncs with display
+let rafId, lastFrameTime = 0;
+const drawFrameRAF = (timestamp) => {
+  if (timestamp - lastFrameTime >= 250) {
+    lastFrameTime = timestamp;
+    drawFrame();
+  }
+  rafId = requestAnimationFrame(drawFrameRAF);
+};
+```
+
+---
+
 ## Common Bugs We've Fixed
 
 ### Bug 0: State Bypass Anti-Pattern (November 18, 2025)

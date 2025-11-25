@@ -60,6 +60,15 @@ The `playCues` function in `audio-processor.js` is the **sole entry point** for 
 ### Why This Pattern?
 
 This "Conductor" pattern is highly efficient and allows for complex soundscapes to be generated without overwhelming the audio engine. It also cleanly decouples the "what to play" (from the video pipeline) from the "how to play it" (managed by the audio pipeline).
+
+### Performance Optimization: synthContext Reuse (Nov 25, 2025)
+
+**Issue:** synthContext object was created inside synth loop, causing ~3,600 allocations/minute at 60fps.
+
+**Fix:** Created once outside loop, reused for all synths (line 502 in audio-processor.js).
+
+**Impact:** Eliminates GC pressure, reduces audio glitches. See ARCHITECTURE_RULES.md Rule 11.
+
 ## Error Handling Policy
 
 **Audio is required.** If `engine.audioApi` is missing or not ready, commands must fail loudly (ERROR log, no silent fallback). Language subsystem may degrade gracefully (returns key), but must never block audio initialization.

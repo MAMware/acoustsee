@@ -126,9 +126,36 @@ This document tracks active and future development tasks to provide a clear proj
         - When-to-add-constants guidelines
         - Synth contract documentation
 
+### Performance Anti-Patterns Fixes (The 60fps Loop) - Nov 25, 2025
+
+-   **[x] `PERF-1`:** Allocation in Hot Path (Garbage Collection) - `audio-processor.js`
+    - **Issue:** `synthContext` object created on every synth iteration (~3,600/min at 60fps)
+    - **Solution:** Moved creation outside loop (line 502), reused across all synths
+    - **Impact:** Eliminates GC pressure, reduces audio glitches _(Completed 2025-11-25)_
+
+-   **[x] `PERF-2`:** Expensive Logging Construction - `frame-conductor.js`
+    - **Issue:** Structured logs created when sampling rejects them
+    - **Solution:** Added `shouldSample('workerValidation')` guard (lines 495-502)
+    - **Impact:** Prevents object allocation in non-sampled paths _(Completed 2025-11-25)_
+
+-   **[x] `PERF-3`:** Main Thread Decoupling - `frame-provider-worker.js`
+    - **Issue:** ImageData structured cloning on main thread
+    - **Solution:** Verified Transferable objects in postMessage, added docs (line 47)
+    - **Impact:** No memory copy _(Completed 2025-11-25)_
+
+-   **[x] `PERF-4`:** Redundant State Notification - `engine.js`
+    - **Issue:** All listeners notified for every state change
+    - **Solution:** Added `subscribe(selector, callback)` API (lines 69-95, 120-149)
+    - **Impact:** Reduces unnecessary re-renders _(Completed 2025-11-25)_
+
+-   **[x] `PERF-5`:** setTimeout/setInterval for Animation - `dev-panel-preview.js`
+    - **Issue:** setInterval desynchronizes from screen refresh
+    - **Solution:** Replaced with requestAnimationFrame (lines 101-137)
+    - **Impact:** Syncs with display, reduces battery _(Completed 2025-11-25)_
+
 ## v0.9 (Performance & Stability) - Evolving to Multi-Paradigm
 
--   **[ ] `PERF-1`:** Replace `drawImage`/`getImageData` with a zero-copy frame processing method (e.g., using `requestVideoFrameCallback`).
+-   **[ ] `PERF-6`:** Replace `drawImage`/`getImageData` with a zero-copy frame processing method (e.g., using `requestVideoFrameCallback`).
 
 -   **[ ] `ARCH-2`:** Standardize the export contract for all synth and grid modules, including OSC output contracts for video-to-synth communication.
 -   **[ ] `UI-6`:** Refactor the settings logic in `touch-gesture-commands.js` to be data-driven.

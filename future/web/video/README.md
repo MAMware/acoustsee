@@ -50,6 +50,7 @@ This matrix helps you understand which components are ready for testing vs. whic
 - This is the ONLY place that touches the raw video stream
 - It does NOT analyze frames - it just provides them
 - Performance is measured END-TO-END (from this `startTime` to final audio cue)
+- **Performance (Nov 25, 2025):** ImageData buffer is transferred using Transferable objects in postMessage, avoiding expensive structured cloning on the main thread. See ARCHITECTURE_RULES.md Rule 11.
 
 **Message Contract:**
 ```javascript
@@ -59,6 +60,7 @@ This matrix helps you understand which components are ready for testing vs. whic
 
 // From worker:
 { type: 'frame', imageData, width, height, timestamp, startTime }
+// Transfer list: [imageData.data.buffer] - Transfers ownership, no copy
 ```
 
 ---

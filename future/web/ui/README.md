@@ -233,14 +233,18 @@ import { playCues } from '../audio/audio-processor.js'; // ❌ Use dispatch
 - State Inspector (current application state)
 - Control Panel (test commands directly)
 - Worker Monitor (frame processing metrics)
+- Preview Canvas (synced with display refresh via requestAnimationFrame)
 
 **Files:**
 - `dev-panel.js` - Main coordinator + HTML template
 - `dev-panel.behavior.js` - Layout and collapsible sections
 - `dev-panel.actions.js` - Button click handlers
 - `dev-panel.controls.js` - Dropdown/checkbox factories
+- `dev-panel-preview.js` - Preview rendering (RAF-based, Nov 25, 2025)
 - `worker-charts.js` - Performance visualization
 - `dev-panel.css` - Scoped styles
+
+**Performance (Nov 25, 2025):** Preview canvas rendering uses requestAnimationFrame with deltaTime throttling instead of setInterval, syncing with screen refresh and reducing battery drain. See ARCHITECTURE_RULES.md Rule 11.
 
 **Special Notes:**
 - Loads IndexedDB logger for persistent analytics
