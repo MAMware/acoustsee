@@ -2,7 +2,59 @@
 
 This document tracks active and future development tasks to provide a clear project roadmap. Each task has a unique ID for easy reference in commits, pull requests, and code comments.
 
-## Current Focus: v0.9 (Performance & Stability) - Evolving to Multi-Paradigm
+## Current Focus: v0.9.5 (Logging & Diagnostics Improvements - Nov 2025)
+
+### Critical Bug Fixes Completed (Nov 24-25, 2025)
+
+-   **[x] `LOG-1`:** Fix ReferenceError: shouldSample is not defined
+    - **Issue:** Missing import in `ingest.js` caused event flush to crash
+    - **Solution:** Added `shouldSample` to imports from `logging.js`
+    - **Impact:** Event queue flushing now works correctly with sampling _(Completed 2025-11-24)_
+
+-   **[x] `LOG-2`:** Fix ReferenceError: workerStatus is not defined  
+    - **Issue:** Variable scoped inside try block but accessed in catch block
+    - **Solution:** Moved `workerStatus` declaration before try block in `frame-conductor.js`
+    - **Impact:** Worker error logging no longer crashes, captures performance metrics _(Completed 2025-11-24)_
+
+-   **[x] `LOG-3`:** Fix ReferenceError: shouldSample in frame-conductor.js
+    - **Issue:** Missing import for worker completion sampling
+    - **Solution:** Added `shouldSample` to imports in `frame-conductor.js`
+    - **Impact:** Worker completion logs sample correctly (10% rate) _(Completed 2025-11-25)_
+
+-   **[x] `LOG-4`:** Remove duplicate buildInfo console logs
+    - **Issue:** Raw console + structured log causing noise
+    - **Solution:** Removed raw `console.log` banner in `main.js`, kept structured only
+    - **Impact:** Cleaner startup output, single source of truth _(Completed 2025-11-24)_
+
+-   **[x] `LOG-5`:** Optimize requestIdleCallback latency
+    - **Issue:** 8+ second idle callback violations during video processing
+    - **Solution:** Added guard to skip scheduling when `orchState.isProcessing` is true
+    - **Impact:** Reduced jank and performance violations _(Completed 2025-11-24)_
+
+-   **[x] `LOG-6`:** Analytics 400 Bad Request schema mismatch
+    - **Issue:** EventBus log objects don't match Cloudflare Worker D1 schema
+    - **Solution:** Created `sanitizeEventForAnalytics()` in `event-bus-analytics.js` to:
+        - Normalize field names (`traceId` → `trace_id`)
+        - Remove non-serializable content (functions, circular refs)
+        - Test each data field for JSON serializability
+        - Provide defaults for required fields
+    - **Impact:** Analytics endpoint accepts events, proper telemetry collection _(Completed 2025-11-25)_
+
+-   **[x] `LOG-7`:** Clean up diagnostic console noise
+    - **Issue:** Raw `console.log` in hot path (pan-mapper result)
+    - **Solution:** Removed diagnostic log from `frame-conductor.js`
+    - **Impact:** Reduced console noise in high-frequency worker chain _(Completed 2025-11-24)_
+
+-   **[x] `LOG-8`:** Add analytics payload validation
+    - **Issue:** No early detection of malformed payloads before network roundtrip
+    - **Solution:** Added `_validatePayload()` in `analytics-batcher.js` checking:
+        - Required fields (type, events, batchSize)
+        - Payload size limits (5MB max)
+        - Non-serializable event data
+        - Enhanced 400 error logging with response body
+    - **Impact:** Early detection of schema issues, actionable error messages _(Completed 2025-11-24)_
+
+## v0.9 (Performance & Stability) - Evolving to Multi-Paradigm
 
 -   **[ ] `PERF-1`:** Replace `drawImage`/`getImageData` with a zero-copy frame processing method (e.g., using `requestVideoFrameCallback`).
 

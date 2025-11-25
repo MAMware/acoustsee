@@ -31,8 +31,97 @@ Monkey-patching console methods to route through structuredLog creates feedback 
 - Never override console methods. Use `structuredLog` explicitly for all logging.
 # Architecture Rules - Critical for Avoiding Bugs
 
-**Last Updated:** October 23, 2025  
+**Last Updated:** November 25, 2025  
 **Purpose:** Central reference for architectural rules that prevent AI coding agents from introducing bugs.
+
+---
+
+## Rule 0: Import Dependencies Explicitly (Logging & Utilities)
+
+**The Problem:**
+Missing imports for utility functions cause ReferenceErrors at runtime, often in critical paths like error handlers or sampling logic. These errors can cascade and prevent proper logging of the original issue.
+
+**Real Bugs from Session (Nov 24-25, 2025):**
+1. **ingest.js:** `ReferenceError: shouldSample is not defined`
+   - Missing import caused event flush to crash
+   - 8+ second requestIdleCallback violations
+   
+2. **frame-conductor.js:** `ReferenceError: shouldSample is not defined`
+   - Missing import prevented worker completion sampling
+   - All worker chains failed with ReferenceError
+   
+3. **frame-conductor.js:** `ReferenceError: workerStatus is not defined`
+   - Variable scoped inside try block but accessed in catch block
+   - Worker error logging crashed, hiding actual errors
+
+**❌ WRONG:**
+```javascript
+// ingest.js
+import { structuredLog } from './logging.js';  // Missing shouldSample!
+
+function flushEventQueue() {
+  if (events.length >= 10 || shouldSample('eventFlush')) {  // ReferenceError!
+    structuredLog('DEBUG', 'Performance events flushed', ...);
+  }
+}
+```
+
+**❌ WRONG - Scope Issue:**
+```javascript
+// frame-conductor.js
+for (const workerConfig of this.#currentChain) {
+  try {
+    const workerStatus = { /* ... */ };  // Defined inside try
+    // ... worker execution
+  } catch (error) {
+    structuredLog('ERROR', `Worker error`, {
+      latencyTarget: workerStatus.latencyTarget,  // ReferenceError! Out of scope
+    });
+  }
+}
+```
+
+**✅ CORRECT:**
+```javascript
+// ingest.js
+import { structuredLog, shouldSample } from './logging.js';  // ✓ Complete imports
+
+function flushEventQueue() {
+  if (events.length >= 10 || shouldSample('eventFlush')) {
+    structuredLog('DEBUG', 'Performance events flushed', ...);
+  }
+}
+
+// frame-conductor.js
+for (const workerConfig of this.#currentChain) {
+  // Define before try block so it's accessible in catch
+  let workerStatus = {
+    latencyTarget: workerConfig.latencyTargetMs,
+    capabilities: [],
+    onTarget: false
+  };
+  
+  try {
+    // ... worker execution
+    // Update with actual results
+    workerStatus = {
+      latencyTarget: workerConfig.latencyTargetMs,
+      capabilities: workerResult.capabilities || [],
+      onTarget: workerDurationMs <= workerConfig.latencyTargetMs
+    };
+  } catch (error) {
+    structuredLog('ERROR', `Worker error`, {
+      latencyTarget: workerStatus.latencyTarget,  // ✓ In scope
+    });
+  }
+}
+```
+
+**Prevention Checklist:**
+- [ ] All utility functions imported explicitly (shouldSample, throttleError, etc.)
+- [ ] Variables used in catch blocks declared before try
+- [ ] Error handlers don't rely on imports that might be missing
+- [ ] Critical paths have defensive null checks
 
 ---
 
@@ -635,7 +724,122 @@ settings.availableGrids = grids;  // ❌ Too late, UI already rendered
 
 ---
 
-## Rule 9: Logging Sampling for High-Frequency Events
+## Rule 9: External API Schema Compatibility (Analytics)
+
+**The Problem:**
+EventBus log objects don't match external API schemas (e.g., Cloudflare Worker D1 database). Sending raw log objects causes 400 Bad Request errors because:
+- Field names differ (traceId vs trace_id)
+- Required fields missing (event_type, category)
+- Non-serializable content (functions, undefined, MediaStream)
+- Field types incompatible (nested objects vs JSON strings)
+
+**Real Bug from Session (Nov 24-25, 2025):**
+**analytics-batcher.js:** `POST https://acoustsee-analytics.mamware.workers.dev/ 400 (Bad Request)`
+- EventBus sent log objects with `traceId`, `sessionId`, `context` (arbitrary object)
+- Worker expected `trace_id`, `session_id`, `data` (JSON string)
+- Worker rejected payloads with non-serializable fields
+- No sanitization layer existed between EventBus and analytics endpoint
+
+**❌ WRONG - Direct Send:**
+```javascript
+// event-bus-analytics.js
+function onLogEvent(logEntry) {
+  const analyticsEvent = {
+    ...logEntry,  // ❌ Raw log object: traceId, sessionId, context
+  };
+  
+  batcher.addEvent(analyticsEvent);  // ❌ 400 Bad Request from Worker
+}
+```
+
+**✅ CORRECT - Schema Transformation:**
+```javascript
+// event-bus-analytics.js
+function sanitizeEventForAnalytics(logEntry) {
+  const sanitized = {
+    trace_id: logEntry.traceId || logEntry.trace_id || 'unknown',  // ✓ Normalize
+    session_id: logEntry.sessionId || logEntry.session_id || 'unknown',
+    timestamp: logEntry.timestamp || Date.now(),
+    event_type: logEntry.level || logEntry.event_type || 'INFO',
+    category: logEntry.category || 'general',
+    data: {}  // ✓ Separate data field
+  };
+  
+  // Test serializability for each field
+  Object.entries(logEntry.context || {}).forEach(([key, value]) => {
+    try {
+      JSON.stringify(value);  // ✓ Test before adding
+      sanitized.data[key] = value;
+    } catch (err) {
+      sanitized.data[key] = String(value);  // ✓ Fallback to string
+    }
+  });
+  
+  return sanitized;
+}
+
+function onLogEvent(logEntry) {
+  const analyticsEvent = sanitizeEventForAnalytics(logEntry);  // ✓ Transform
+  batcher.addEvent(analyticsEvent);
+}
+```
+
+**Validation Before Send:**
+```javascript
+// analytics-batcher.js
+_validatePayload(payload) {
+  const errors = [];
+  
+  // Check required fields
+  if (!payload.type) errors.push('Missing field: type');
+  if (!Array.isArray(payload.events)) errors.push('Invalid field: events must be array');
+  
+  // Check payload size (5MB limit for Cloudflare Workers)
+  const payloadSize = JSON.stringify(payload).length;
+  if (payloadSize > 5 * 1024 * 1024) {
+    errors.push(`Payload too large: ${payloadSize} bytes`);
+  }
+  
+  // Test serializability
+  payload.events.forEach((event, idx) => {
+    try {
+      JSON.stringify(event);
+    } catch (err) {
+      errors.push(`Event ${idx} not serializable: ${err.message}`);
+    }
+  });
+  
+  return errors;
+}
+
+async flush() {
+  const errors = this._validatePayload(payload);
+  if (errors.length > 0) {
+    structuredLog('ERROR', 'Invalid analytics payload', {
+      errors,
+      sampleEvents: payload.events.slice(0, 2)  // ✓ Log samples for debugging
+    });
+    return;
+  }
+  
+  // Send payload...
+}
+```
+
+**Prevention Checklist:**
+- [ ] External API schema documented (field names, types, required fields)
+- [ ] Transformation layer between internal and external formats
+- [ ] Field name normalization (camelCase vs snake_case)
+- [ ] Serializability testing before send (JSON.stringify each field)
+- [ ] Payload size limits enforced (Cloudflare Workers: 5MB)
+- [ ] Validation errors logged with sample events
+- [ ] 400 error responses logged with full context (status, body, payloadSize)
+
+**Rule:** Never send raw internal objects to external APIs. Always create a sanitization/transformation layer that validates schema compatibility.
+
+---
+
+## Rule 10: Logging Sampling for High-Frequency Events
 
 **The Problem:**
 The frame processor runs at 60fps. If you log every frame, you get 3600 logs per minute, which:
@@ -658,8 +862,21 @@ function processFrame(imageData) {
 **✅ CORRECT - With Sampling:**
 ```javascript
 // frame-processor.js
-let frameCount = 0;
+import { shouldSample } from '../utils/logging.js';  // ✓ Import sampling utility
+
 function processFrame(imageData) {
+  // Log 10% of frames (default rate for 'frameProcessing')
+  if (shouldSample('frameProcessing')) {
+    structuredLog('DEBUG', 'Processing frame', { 
+      width: imageData.width,
+      height: imageData.height
+    });
+  }
+}
+
+// Or use modulo for deterministic sampling:
+let frameCount = 0;
+function processFrameAlternative(imageData) {
   frameCount++;
   
   // Log every 60th frame (1 per second at 60fps)
@@ -671,29 +888,25 @@ function processFrame(imageData) {
     });  // ✅ 1 log per second
   }
 }
-
-// Or use probability:
-if (Math.random() < 0.01) {  // 1% of frames
-  structuredLog('DEBUG', 'Sample frame', { /* ... */ });
-}
 ```
 
 **Where to Sample:**
 
 | Location | Frequency | Sampling |
 |----------|-----------|----------|
-| frame-processor.js | 60fps | Every 60th frame (1/sec) |
-| motion-worker.js | 60fps | Every 60th (1/sec) |
+| frame-processor.js | 60fps | shouldSample('frameProcessing') or every 60th frame |
+| frame-conductor.js | Per worker | shouldSample('workerCompletion') |
+| ingest.js | Per batch | shouldSample('eventFlush') |
 | Audio synth loop | Per note | Only on ERROR |
 | UI state changes | Variable | Only on DEBUG |
 | Command dispatch | Variable | Always log |
 | Initialization | Once | Always log |
 
-**Rule:** High-frequency code (>10fps) must use sampling. Every Nth frame or probability-based.
+**Rule:** High-frequency code (>10fps) must use sampling via `shouldSample()` or modulo. Import sampling utilities explicitly.
 
 ---
 
-## Rule 10: Error Handling in Async Initialization
+## Rule 11: Error Handling in Async Initialization
 
 **The Problem:**
 If any async operation fails during initialization (loading grids, detecting capabilities, etc.), the app silently fails with incomplete state.
@@ -772,7 +985,7 @@ async function safeLoadGrids() {
 
 ---
 
-## Rule 11: State Factory Pattern - Prevent State Bypass (Nov 18: Fixed)
+## Rule 12: State Factory Pattern - Prevent State Bypass (Nov 18: Fixed)
 
 **The Problem:**
 If `state.js` exports a live state object, any module can import it directly and mutate state without going through the engine. This breaks the Single Source of Truth principle and creates invisible state mutations.

@@ -33,10 +33,7 @@ async function provideFrame() {
     if (canvas.width !== scaledWidth || canvas.height !== scaledHeight) {
       canvas.width = scaledWidth;
       canvas.height = scaledHeight;
-    }
-    
-    // Create context with willReadFrequently option if not already created
-    if (!ctx) {
+      // Set willReadFrequently for better performance with getImageData
       ctx = canvas.getContext('2d', { willReadFrequently: true });
     }
 
@@ -77,7 +74,7 @@ self.onmessage = (event) => {
   switch (type) {
     case 'init':
       canvas = payload.canvas;
-      ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx = canvas.getContext('2d');
       streamReader = payload.streamReader;
       reader = streamReader.getReader();
       self.postMessage({ type: 'ready' });
