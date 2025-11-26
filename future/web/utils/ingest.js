@@ -57,6 +57,15 @@ const PIPELINE_EVENTS = {
     'setMaxNotes',         // Audio polyphony affects processing load
     'setMotionThreshold',  // Video sensitivity affects computation
     'setAutoFPS'          // Performance mode changes
+  ],
+
+  // Media Permission & Error Events (critical for understanding user blockers)
+  media_permission_errors: [
+    'cameraDenied',         // User denied camera permission (NotAllowedError)
+    'cameraNotFound',       // No camera hardware available (NotFoundError)
+    'cameraNotSupported',   // Browser doesn't support getUserMedia
+    'microphoneDenied',     // User denied microphone permission
+    'mediaAccessError'      // Generic media access error
   ]
 };
 
@@ -271,23 +280,28 @@ function shouldTrackEvent(command, engine) {
   // Skip if ingest disabled
   if (!state.ingestEnabled) return false;
   
+  // ALWAYS track media permission errors (critical for debugging user blockers)
+  const category = getDynamicCategory(command, state);
+  if (category === 'media_permission_errors') {
+    return true;
+  }
+  
   // Performance-based optimization (replaces battery detection)
   if (optimizationSettings.enableOnLowPerformance && performanceProfile?.isLowPerformance) {
     // Reduced tracking on low-performance devices
-    return getDynamicCategory(command, state) === 'user_workflow';
+    return category === 'user_workflow';
   }
   
   // Mobile optimization
   if (optimizationSettings.enableOnMobile && performanceProfile?.isMobile) {
     // Reduced tracking on mobile
-    return getDynamicCategory(command, state) === 'user_workflow';
+    return category === 'user_workflow';
   }
   
   // Developer mode - track everything
   if (state.debugLogging) return true;
   
   // Production mode - selective tracking
-  const category = getDynamicCategory(command, state);
   return category === 'user_workflow' || category === 'auto_optimization';
 }
 
@@ -346,6 +360,14 @@ function createLightweightEvent(command, engine) {
       benchmark_interval: state.autoFpsBenchmark?.intervalMs,
       performance_health: state.sessionHealth
     };
+  }
+  
+  // Capture camera error details for media permission events
+  if (category === 'media_permission_errors') {
+    event.event_type = 'media_error';
+    event.level = 'WARN';
+    event.device_context = DEVICE_CONTEXT;
+    // Additional context will be added by trackCameraPermissionDenial
   }
   
   return event;
@@ -802,4 +824,147 @@ function generateSessionId() {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);
   return `${timestamp}-${random}`;
+}
+
+// ============================================================================
+// CAMERA PERMISSION ERROR HANDLING & CATEGORIZATION
+// Helpers for tracking and categorizing camera-specific permission errors
+// ============================================================================
+
+/**
+ * Categorize getUserMedia errors into specific error types for analytics.
+ * This helps us understand which permission denials or hardware issues users face.
+ * 
+ * @param {Error} error - Error from getUserMedia rejection
+ * @returns {object} - { errorType, errorCategory, isDenial, isHardwareIssue, analyticsCategory }
+ */
+export function categorizeMediaError(error) {
+  const result = {
+    errorType: 'unknown',
+    errorCategory: 'mediaAccessError',
+    isDenial: false,
+    isHardwareIssue: false,
+    analyticsCategory: 'media_permission_errors',
+    message: error?.message || 'Unknown error',
+    name: error?.name || 'Error'
+  };
+
+  if (!error) return result;
+
+  const errorName = error.name || '';
+  const errorMessage = error.message || '';
+
+  // NotAllowedError: User explicitly denied camera/microphone access
+  if (errorName === 'NotAllowedError' || errorMessage.includes('Permission denied')) {
+    result.errorType = 'NotAllowedError';
+    result.errorCategory = 'cameraDenied';
+    result.isDenial = true;
+    result.analyticsCategory = 'media_permission_errors';
+    
+    // Distinguish between camera and microphone denials
+    if (errorMessage.toLowerCase().includes('camera')) {
+      result.denialType = 'camera';
+    } else if (errorMessage.toLowerCase().includes('microphone') || errorMessage.toLowerCase().includes('audio')) {
+      result.denialType = 'microphone';
+    } else {
+      result.denialType = 'both';
+    }
+  }
+  
+  // NotFoundError: No camera hardware available
+  else if (errorName === 'NotFoundError' || errorMessage.includes('Requested device not found')) {
+    result.errorType = 'NotFoundError';
+    result.errorCategory = 'cameraNotFound';
+    result.isHardwareIssue = true;
+    result.analyticsCategory = 'media_permission_errors';
+  }
+  
+  // NotSupportedError: Browser doesn't support getUserMedia
+  else if (errorName === 'NotSupportedError' || errorMessage.includes('getUserMedia is not supported')) {
+    result.errorType = 'NotSupportedError';
+    result.errorCategory = 'cameraNotSupported';
+    result.isHardwareIssue = true;
+    result.analyticsCategory = 'media_permission_errors';
+  }
+  
+  // SecurityError: HTTPS or same-origin policy violation
+  else if (errorName === 'SecurityError') {
+    result.errorType = 'SecurityError';
+    result.errorCategory = 'mediaSecurityError';
+    result.analyticsCategory = 'media_permission_errors';
+  }
+  
+  // Generic catch-all
+  else {
+    result.errorType = errorName;
+    result.analyticsCategory = 'media_permission_errors';
+  }
+
+  return result;
+}
+
+/**
+ * Track a camera permission denial for analytics.
+ * Should be called from media-commands.js when getUserMedia fails with NotAllowedError.
+ * 
+ * @param {Error} error - The error from getUserMedia rejection
+ * @param {object} options - Additional tracking options
+ * @param {string} options.traceId - Trace ID for correlation
+ */
+export function trackCameraPermissionDenial(error, options = {}) {
+  const categorized = categorizeMediaError(error);
+  
+  // Only track denials and hardware issues, not temporary failures
+  if (!categorized.isDenial && !categorized.isHardwareIssue) {
+    return;
+  }
+
+  const payload = {
+    event_type: 'media_permission_error',
+    level: 'WARN',
+    error_type: categorized.errorType,
+    error_category: categorized.errorCategory,
+    error_message: categorized.message,
+    is_denial: categorized.isDenial,
+    is_hardware_issue: categorized.isHardwareIssue,
+    denial_type: categorized.denialType || null,
+    timestamp: Date.now(),
+    url: typeof window !== 'undefined' ? window.location.href : null,
+    device_context: DEVICE_CONTEXT,
+    trace_id: options.traceId || null,
+    ...options.additionalContext
+  };
+
+  structuredLog('WARN', `camera_${categorized.errorCategory}`, payload);
+}
+
+/**
+ * Emit a structured event for camera-specific issues that can be tracked separately.
+ * This allows the ingest system to categorize camera denials as distinct analytics events.
+ * 
+ * @param {object} engine - Engine instance
+ * @param {string} errorType - Type of error (cameraDenied, cameraNotFound, etc.)
+ * @param {object} context - Error context
+ */
+export function emitCameraErrorEvent(engine, errorType, context = {}) {
+  if (!engine || typeof engine.dispatch !== 'function') {
+    return;
+  }
+
+  try {
+    // Dispatch camera-specific event that ingest system will categorize
+    engine.dispatch('cameraPerm issionError', {
+      errorType,
+      errorMessage: context.message || '',
+      isDenial: context.isDenial || false,
+      isHardwareIssue: context.isHardwareIssue || false,
+      timestamp: Date.now(),
+      ...context
+    });
+  } catch (err) {
+    // Silently fail - don't let error tracking break the app
+    try {
+      structuredLog('WARN', 'Failed to emit camera error event', { error: err.message });
+    } catch (_) {}
+  }
 }

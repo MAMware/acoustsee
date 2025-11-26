@@ -7,6 +7,11 @@ import {
   AccessibilityError, 
   showCriticalError 
 } from '../../utils/error-handling.js';
+import { 
+  categorizeMediaError, 
+  trackCameraPermissionDenial, 
+  emitCameraErrorEvent 
+} from '../../utils/ingest.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive, startMic, stopMic } from '../media-controller.js';
 // Do not import audio-processor directly in command modules; use engine.audioApi
 import { initializeVideo } from '../../video/frame-processor.js';
@@ -114,7 +119,35 @@ export function registerMediaCommands(engine) {
 
         structuredLog('INFO', 'COMMAND: startProcessing initiation completed.');
       } catch (err) {
-        structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { error: err.message, stack: err.stack });
+        // Enhanced error handling: categorize camera-specific errors
+        const categorized = categorizeMediaError(err);
+        
+        structuredLog('ERROR', 'COMMAND: startProcessing FAILED.', { 
+          error: err.message, 
+          stack: err.stack,
+          errorType: categorized.errorType,
+          errorCategory: categorized.errorCategory,
+          isDenial: categorized.isDenial
+        });
+
+        // Track camera-specific permission denials and hardware issues for analytics
+        if (categorized.isDenial || categorized.isHardwareIssue) {
+          trackCameraPermissionDenial(err, {
+            traceId: payload?.traceId || null,
+            additionalContext: {
+              command: 'startProcessing',
+              stage: 'getUserMedia'
+            }
+          });
+          
+          // Emit structured event for ingest system to categorize separately
+          emitCameraErrorEvent(engine, categorized.errorCategory, {
+            message: err.message,
+            isDenial: categorized.isDenial,
+            isHardwareIssue: categorized.isHardwareIssue
+          });
+        }
+
         if (_activeMediaStream) {
           try { _activeMediaStream.getTracks().forEach(track => track.stop()); } catch (_) {}
           _activeMediaStream = null;
