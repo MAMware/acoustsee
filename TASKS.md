@@ -61,6 +61,20 @@ This document tracks active and future development tasks to provide a clear proj
     - **Documentation:** State Selectors, Resource Request API, Media Adapter, Video Source Manifest
     - **Impact:** All ADR-0011 patterns documented in subsystem READMEs _(Completed 2025-11-26)_
 
+-   **[x] `ARCH-15`:** Implement Maintenance-Friendly Bootstrap Validation ✅
+    - **Issue Fixed:** 404 error in main.js (imported from deleted `core/ingest.js` → fixed to `utils/ingest.js`)
+    - **Test Gap Addressed:** No bootstrap validation existed to catch ESM import errors at build time
+    - **Solution:** Created v2 validation script with three-tier categorization:
+        - **CORE TESTS** (5): Architectural invariants - build BLOCKING
+        - **REFACTOR TESTS** (3): File locations - warnings only (update during refactoring)
+        - **REFERENCE TESTS** (2): Documentation - info only (awareness)
+    - **Files:** 
+        - `scripts/validate-bootstrap-imports.js` (redesigned v2, 223 lines)
+        - `docs/BOOTSTRAP_VALIDATION_V2_REDESIGN.md` (implementation guide + design rationale)
+    - **npm script:** `npm run validate:bootstrap [--strict|--warnings|--info]`
+    - **Exit Code:** 1 only if CORE failures; warnings don't block builds
+    - **Impact:** Prevents false failures from outdated tests during refactoring; clear distinction between architectural invariants and changeable file paths _(Completed 2025-11-26)_
+
 ---
 
 ### Critical Bug Fixes Completed (Nov 24-25, 2025)

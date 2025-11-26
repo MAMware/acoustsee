@@ -14,7 +14,8 @@
     "playwright:install": "npx playwright install",
     "start:static": "node ./scripts/static-server.cjs",
     "test:e2e:http": "npx playwright test --config=playwright.config.cjs",
-    "collect:artifacts": "node ./scripts/collect-artifacts.cjs"
+    "collect:artifacts": "node ./scripts/collect-artifacts.cjs",
+    "validate:bootstrap": "node scripts/validate-bootstrap-imports.js"
   },
   "keywords": ["accessibility", "sonification", "audio", "video", "computer-vision"],
   "author": "MAMware",
