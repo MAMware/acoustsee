@@ -22,7 +22,7 @@ import {
   showCriticalError, 
   isCriticalSystem 
 } from './utils/error-handling.js';
-import { trackFeatureUse, emergencyTrack, pingIngest } from './core/ingest.js';
+import { trackFeatureUse, emergencyTrack, pingIngest } from './utils/ingest.js';
 import { getText, initializeLanguage, speakText, announceMessage, setLanguage, translatePage } from './utils/utils.js';
 import AudioManager from './audio/audio-manager.js';
 import { initializeAudio, bindAudioManager as bindAudioProcessor, registerAudioListeners } from './audio/audio-processor.js';
