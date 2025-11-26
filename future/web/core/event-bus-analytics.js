@@ -9,7 +9,7 @@
  * 
  * @module core/event-bus-analytics
  */
-import { trackFeatureUse, sendToUnifiedAnalytics } from './ingest.js';
+import { trackFeatureUse, sendToUnifiedAnalytics } from '../utils/ingest.js';
 import { structuredLog } from '../utils/logging.js';
 import { isFrameTrace } from '../utils/trace-id.js';
 import { AnalyticsBatcher, shouldBatchEvent, sendCriticalEventBeacon } from './analytics-batcher.js';
