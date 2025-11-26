@@ -2,16 +2,24 @@
 // Uses requestIdleCallback and pre-computed contexts to minimize overhead
 // Provides developer-friendly dynamic categorization through engine state
 //
-// ARCHITECTURE NOTE: This module builds ON TOP of utils/logging.js:
+// ARCHITECTURE NOTE (ADR-0011): Consolidated from core/ingest.js and utils/ingest.js
+// - Single source of truth for analytics/telemetry
+// - Battery optimization + categorization + network transport
+// - Eliminates ambiguous imports between core/ingest.js and utils/ingest.js
+//
+// This module builds ON TOP of utils/logging.js:
 // - logging.js: Core infrastructure (level filtering, console output, IndexedDB persistence)
 // - ingest.js: Performance analytics layer (categorization, battery optimization, analytics export)
-//
-// This separation ensures logging.js remains focused on core logging while
-// ingest.js handles performance-specific concerns like event categorization
-// and battery optimization for the analytics pipeline.
 
 import { structuredLog, shouldSample } from './logging.js';
 import { deviceSummary } from './performance.js';
+
+const INGEST_ENDPOINT = 'https://acoustsee-analytics.mamware.workers.dev';
+
+// Detect obvious local/test environments to avoid noisy network calls during
+// developer runs and headless tests. This is intentionally conservative.
+const IS_LOCALHOST = (typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname))
+  || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test');
 
 // Module-scoped queue for analytics events to avoid ReferenceError from closures
 let eventQueue = [];
@@ -496,4 +504,302 @@ export function cleanupPerformanceMonitoring() {
     performanceCheckInterval = null;
   }
   performanceProfile = null;
+}
+// ============================================================================
+// CONSOLIDATED FUNCTIONS FROM core/ingest.js (ADR-0011)
+// These were previously in core/ingest.js and are now merged here
+// ============================================================================
+
+/**
+ * Get engine state (helper function)
+ */
+function getState() {
+  // Priority: Use engine.getState() if available, else return empty object
+  if (typeof window !== 'undefined' && window.engine && typeof window.engine.getState === 'function') {
+    try {
+      return window.engine.getState();
+    } catch (e) {
+      return {};
+    }
+  }
+  return {};
+}
+
+/**
+ * Check if we should send ingest events
+ */
+function shouldSendIngest() {
+  try {
+    const state = getState();
+    if (!state.ingestEnabled) return false;
+  } catch (e) {
+    return false;
+  }
+  if (IS_LOCALHOST) return false;
+  return true;
+}
+
+/**
+ * Track feature usage or send analytics events (merged from core/ingest.js)
+ * This is the main public API used across the codebase
+ * 
+ * @param {string} event - Event name or level
+ * @param {object} payload - Event payload
+ */
+export async function trackFeatureUse(event, payload = {}) {
+  // Fast-path: do not attempt network calls in local/test environments.
+  if (!shouldSendIngest()) {
+    try {
+      const state = getState();
+      if (state.debugLogging) console.debug('ingest: suppressed trackFeatureUse for', event);
+    } catch (e) {}
+    return;
+  }
+
+  try {
+    // Determine final payload format
+    let finalPayload;
+    if (event === 'user-report') {
+      // For user reports, the payload is already perfectly formatted.
+      finalPayload = payload;
+    } else {
+      // For automatic errors/events, build the payload
+      const device = (() => {
+        try { return deviceSummary(); } catch (e) { return { error: 'device-summary-failed' }; }
+      })();
+      const { message, source, stack, ...rest } = payload || {};
+      finalPayload = {
+        level: event,
+        message: message || event,
+        source: source ?? null,
+        stack: stack ?? null,
+        ...rest,
+        device,
+        timestamp_client: Date.now()
+      };
+    }
+
+    // CRITICAL FIX: Use analytics batcher if available to prevent 429 rate limiting 
+    // Batcher queues events and sends in batches every 30 seconds instead of real-time
+    const batcher = window.__audioSee?.analyticsBatcher;
+    
+    if (batcher) {
+      // Queue event for batched delivery (30-second intervals)
+      batcher.add(finalPayload);
+    } else {
+      // Fallback to direct fetch if batcher not initialized
+      await fetch(INGEST_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify(finalPayload)
+      });
+    }
+  } catch (err) {
+    console.error('Ingest send failed:', err);
+  }
+}
+
+/**
+ * Best-effort emergency beacon. Uses sendBeacon when available.
+ * Merged from core/ingest.js
+ */
+export function emergencyTrack(eventName, errorPayload = {}) {
+  try {
+    if (!shouldSendIngest()) {
+      try {
+        const state = getState();
+        if (state.debugLogging) console.debug('ingest: suppressed emergencyTrack for', eventName);
+      } catch (e) {}
+      return;
+    }
+    const payload = {
+      event: eventName,
+      payload: errorPayload,
+      timestamp: Date.now(),
+      isEmergency: true
+    };
+    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+      navigator.sendBeacon(INGEST_ENDPOINT, blob);
+      return;
+    }
+    fetch(INGEST_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  } catch (e) {
+    // silent
+  }
+}
+
+/**
+ * Developer helper to ping the ingest endpoint from the console.
+ * Merged from core/ingest.js
+ */
+export function pingIngest() {
+  try {
+    if (!shouldSendIngest()) {
+      console.log('pingIngest: suppressed in local/test environment');
+      return;
+    }
+    const endpoint = INGEST_ENDPOINT;
+    const testPayload = {
+      event: 'ingest-ping',
+      payload: { message: 'Ping from client at ' + new Date().toISOString(), randomId: Math.random().toString(36).substring(7) },
+      timestamp: Date.now()
+    };
+    console.log('Pinging ingest endpoint:', endpoint);
+    console.log('Payload:', testPayload);
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify(testPayload)
+    }).then(r => {
+      if (r.ok) console.log('%cIngest Ping Succeeded!', 'color: green; font-weight: bold;');
+      else console.error('%cIngest Ping Failed!', 'color: red; font-weight: bold;');
+      return r.text().catch(() => '');
+    }).then(t => { if (t) console.log('Response Body:', t); }).catch(err => console.error('Fetch Error:', err));
+  } catch (e) {
+    // silent
+  }
+}
+
+/**
+ * Send enriched analytics event with traceId correlation support.
+ * This is called by event-bus-analytics.js to forward events to D1.
+ * Merged from core/ingest.js
+ * 
+ * @param {object} event - Event object from EventBus
+ * @param {string} event.traceId - TraceId for correlation
+ * @param {string} event.type - Event type (log, command, error)
+ * @param {string} event.category - Event category (INFO, DEBUG, etc.)
+ * @param {number} event.timestamp - Unix timestamp (ms)
+ * @param {object} event.data - Event payload
+ */
+export async function sendToUnifiedAnalytics(event) {
+  if (!shouldSendIngest()) {
+    return;
+  }
+
+  try {
+    // Extract action timestamp from traceId (first 13 chars are milliseconds)
+    let actionTimestamp = null;
+    if (event.traceId && !event.traceId.startsWith('frame-')) {
+      const timestampStr = event.traceId.split('-')[0];
+      actionTimestamp = parseInt(timestampStr, 10);
+    }
+
+    // Determine action type from event data
+    const actionType = determineActionType(event);
+
+    // Get device type from capabilities
+    const deviceType = getDeviceType();
+
+    // Get current mode from state
+    const mode = getCurrentMode();
+
+    // Get session ID (or generate one)
+    const sessionId = getSessionId();
+
+    const payload = {
+      type: 'analytics', // Routes to unified_analytics table
+      trace_id: event.traceId || null,
+      session_id: sessionId,
+      timestamp: Math.floor(event.timestamp / 1000), // Convert ms to seconds
+      action_timestamp: actionTimestamp,
+      event_type: event.type,
+      category: event.category,
+      action_type: actionType,
+      device_type: deviceType,
+      mode: mode,
+      message: event.data?.message || null,
+      data: event.data,
+      filename: event.data?.filename || null,
+      lineno: event.data?.lineno || null,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+    };
+
+    await fetch(INGEST_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error('Unified analytics send failed:', err);
+  }
+}
+
+// --- Helper Functions for sendToUnifiedAnalytics ---
+
+function determineActionType(event) {
+  // Map event data to human-readable action types
+  const message = event.data?.message || '';
+  const category = event.category || '';
+
+  if (message.includes('Synth') || message.includes('synth')) return 'synth_change';
+  if (message.includes('Grid') || message.includes('grid')) return 'grid_change';
+  if (message.includes('Mode') || message.includes('mode')) return 'mode_change';
+  if (message.includes('Power') || message.includes('power')) return 'power_on';
+  if (message.includes('Camera') || message.includes('camera')) return 'camera_action';
+  if (message.includes('Motion threshold')) return 'threshold_change';
+  if (message.includes('Ingest')) return 'analytics_setting';
+  if (category === 'audioCuesReady') return 'audio_cues';
+  if (event.type === 'error') return 'error';
+  
+  return event.type; // Fallback to event type
+}
+
+function getDeviceType() {
+  try {
+    const device = deviceSummary();
+    if (device.isMobile) return 'mobile';
+    if (device.isTablet) return 'tablet';
+    return 'desktop';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+function getCurrentMode() {
+  try {
+    const state = getState();
+    return state.currentMode || 'unknown';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+// Session ID management (persists across page reloads)
+let sessionId = null;
+function getSessionId() {
+  if (sessionId) return sessionId;
+  
+  try {
+    // Try to get from sessionStorage (persists across page reloads in same tab)
+    if (typeof sessionStorage !== 'undefined') {
+      sessionId = sessionStorage.getItem('acoustsee_session_id');
+      if (!sessionId) {
+        sessionId = generateSessionId();
+        sessionStorage.setItem('acoustsee_session_id', sessionId);
+      }
+      return sessionId;
+    }
+  } catch (e) {
+    // Fallback if sessionStorage not available
+  }
+  
+  sessionId = generateSessionId();
+  return sessionId;
+}
+
+function generateSessionId() {
+  // Generate short session ID: timestamp + random
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${random}`;
 }

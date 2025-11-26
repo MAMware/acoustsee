@@ -6,8 +6,9 @@
 import { addIdbLog } from './idb-logger.js';
 import { output } from './core-logger.js';
 import { DEFAULT_LOG_LEVEL, LOG_LEVELS } from '../core/constants.js';
-// DO NOT import from utils.js here - creates circular dependency!
-// Instead, lazily import getText, announceMessage, speakText when needed
+import { safeStringify } from './common-formatting.js';
+// Circular dependency resolved by extracting shared formatting to common-formatting.js (ADR-0011).
+// common-formatting.js is a leaf node (no dependencies), safe to import from any module.
 // Avoid importing `isMobile` from ./performance.js here because that module
 // imports `state.js` which in turn imports this logger. That circular import
 // can cause a temporal-dead-zone (TDZ) where logger internals aren't
@@ -21,21 +22,6 @@ function detectIsMobile() {
   } catch (e) {
     return false;
   }
-}
-
-// Safely stringify objects, handling circular refs and Error instances
-function safeStringify(obj) {
-  const seen = new WeakSet();
-  return JSON.stringify(obj, (key, val) => {
-    if (typeof val === 'object' && val !== null) {
-      if (seen.has(val)) return '[Circular]';
-      seen.add(val);
-    }
-    if (val instanceof Error) {
-      return { message: val.message, stack: val.stack };
-    }
-    return val;
-  });
 }
 
 // LOG_LEVELS now imported from constants.js

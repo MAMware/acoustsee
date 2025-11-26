@@ -1,5 +1,5 @@
 // File: web/core/media-controller.js
-import { trackFeatureUse } from '../core/ingest.js';
+import { trackFeatureUse } from '../utils/ingest.js';
 import { addSessionError } from '../utils/performance.js';
 import { structuredLog } from '../utils/logging.js';
 import { getText, announceMessage, speakText } from '../utils/utils.js';
