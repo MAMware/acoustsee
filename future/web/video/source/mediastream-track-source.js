@@ -191,6 +191,12 @@ export class MediaStreamTrackSource {
    */
   async start() {
     this.isRunning = true;
+    
+    // Send start message to worker to begin frame loop
+    if (this.worker) {
+      this.worker.postMessage({ type: 'start' });
+    }
+    
     structuredLog('INFO', 'MediaStreamTrack source: Frame capture started (worker-based)');
   }
   
