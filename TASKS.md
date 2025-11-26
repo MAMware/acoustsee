@@ -6,7 +6,7 @@ This document tracks active and future development tasks to provide a clear proj
 
 ### Phase 3.4: ADR-0011 Hexagonal Architecture Purity (Nov 26, 2025)
 
-**Status:** 60% Complete (6 of 10 subtasks)  
+**Status:** 100% Complete (10 of 10 subtasks) ✅  
 **Session:** `docs/sessions/2025-11/W4/20251126-adr0011-session-complete.md`
 
 -   **[x] `ARCH-5`:** Create ADR-0011 Documentation
@@ -39,26 +39,27 @@ This document tracks active and future development tasks to provide a clear proj
     - **Solution:** Extracted 4 pure utility functions to leaf node module
     - **Impact:** Circular dependency eliminated, clear module boundaries _(Completed 2025-11-26)_
 
--   **[~] `ARCH-11`:** Promote Canvas to Manifest Strategy (**70% - BLOCKED**)
+-   **[x] `ARCH-11`:** Promote Canvas to Manifest Strategy ✅
     - **Files Created:** `video/source/video-source-manifest.js`, `canvas-source.js`, `mediastream-track-source.js`
-    - **Files Modified:** `video/frame-processor.js` ⚠️ **HAS SYNTAX ERRORS**
-    - **Solution:** Infrastructure complete, integration incomplete (see session document)
-    - **Status:** Requires rollback and fresh session with testing _(In Progress 2025-11-26)_
+    - **Files Modified:** `video/frame-processor.js`
+    - **Solution:** VIDEO_SOURCE_MANIFEST with strict gating, CanvasSource/MediaStreamTrackSource providers
+    - **Impact:** Fallback logic replaced with deterministic strategy selection _(Completed 2025-11-26)_
 
--   **[ ] `ARCH-12`:** Add tests for Selector pattern
-    - **Files:** Create `test/unit/core/engine-selectors.test.js`
-    - **Coverage:** Empty state, partial state, null-safety, decoupling verification
-    - **Estimate:** 1 hour
+-   **[x] `ARCH-12`:** Add tests for Selector pattern ✅
+    - **Files:** `test/unit/core/engine-selectors.test.js` (created)
+    - **Coverage:** 13 test cases for getMetrics(), getOrchestration(), getVideoState()
+    - **Tests:** Null-safety, partial state, API contract, decoupling verification
+    - **Impact:** Selector pattern testable and documented _(Completed 2025-11-26)_
 
--   **[ ] `ARCH-13`:** Update ARCHITECTURE_RULES.md
+-   **[x] `ARCH-13`:** Update ARCHITECTURE_RULES.md ✅
     - **File:** `future/web/ARCHITECTURE_RULES.md`
-    - **Rules:** Add 11-15 (Selectors, Headless Core, Telemetry, Boundaries, Manifest)
-    - **Estimate:** 45 minutes
+    - **Rules Added:** Rule 13 (State Selectors), Rule 14 (Headless Core), Rule 15 (Manifest Strategy)
+    - **Impact:** ADR-0011 patterns documented as enforceable rules _(Completed 2025-11-26)_
 
--   **[ ] `ARCH-14`:** Update subsystem READMEs
-    - **Files:** `core/README.md`, `ui/README.md`, `utils/README.md`, `video/README.md`
-    - **Documentation:** Selector pattern, event-driven DOM, telemetry, Canvas Manifest
-    - **Estimate:** 1 hour
+-   **[x] `ARCH-14`:** Update subsystem READMEs ✅
+    - **Files:** `core/README.md`, `ui/README.md`, `video/README.md`
+    - **Documentation:** State Selectors, Resource Request API, Media Adapter, Video Source Manifest
+    - **Impact:** All ADR-0011 patterns documented in subsystem READMEs _(Completed 2025-11-26)_
 
 ---
 

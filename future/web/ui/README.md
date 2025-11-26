@@ -9,6 +9,41 @@ This directory contains all user interface modules. The project uses a **pluggab
 2. **UI modules communicate with core ONLY via `engine.dispatch()`.** No direct function calls.
 3. **UI modules react to state ONLY via `engine.onStateChange()`.** No polling the state.
 4. **Each UI must be independently disposable.** Cleanup is mandatory, not optional.
+5. **UI adapters provide resources to Core.** Core requests resources; UI provides them.
+
+---
+
+## Media Adapter Pattern (ADR-0011: Nov 2025)
+
+**Core layer cannot access DOM directly. UI provides resources via adapters.**
+
+The `media-adapter.js` module bridges the gap between headless Core and DOM elements:
+
+```javascript
+// ui/media-adapter.js - UI provides resources to Core
+export function registerMediaAdapter(engine, DOM) {
+  // Register resource provider for VIDEO_ELEMENT
+  engine.registerResourceHandler('VIDEO_ELEMENT', () => {
+    return DOM.videoElement || document.getElementById('videoElement');
+  });
+  
+  // ... other resource handlers
+}
+```
+
+**Why This Pattern?**
+- Core layer remains testable (no DOM in tests)
+- Clear boundary between "business logic" (Core) and "DOM access" (UI)
+- Core requests what it needs; UI decides how to provide it
+
+**Resource Types:**
+| Resource | Provider | Consumer |
+|----------|----------|----------|
+| `VIDEO_ELEMENT` | media-adapter.js | media-commands.js |
+| `AUDIO_CONTEXT` | audio-adapter.js | audio-processor.js | R261125-ac WARNING this file is not present
+| `CANVAS_ELEMENT` | video-adapter.js | frame-processor.js | R261125-ce WARNING this file is not present
+
+See `ARCHITECTURE_RULES.md` Rule 14 and `core/README.md` for detailed examples.
 
 ---
 

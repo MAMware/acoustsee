@@ -22,7 +22,6 @@ import { trackFeatureUse } from '../utils/ingest.js';
 
 // --- Module State ---
 let _config = {};
-let frameProviderWorker = null; // DEPRECATED: Legacy worker reference (use activeVideoSource instead)
 let activeVideoSource = null; // Active video source provider (Canvas or MediaStreamTrack)
 let previousDepthPath = null;  // Track depth path for change detection
 let lastLoggedMode = null; // Track last logged mode to avoid duplicate logs
@@ -768,217 +767,6 @@ export async function initializeVideo(config) {
       manifest: VIDEO_SOURCE_MANIFEST.map(s => ({ name: s.name, supported: s.isSupported() }))
     });
     throw error;
-
-        if (objectResults.detectedObjects && objectResults.detectedObjects.length > 0) {
-          const mainObject = objectResults.detectedObjects[0];
-          // Gate simulateShapeAnalysis behind debugConfig.useMocks
-          const useMocks = state.debugConfig && state.debugConfig.useMocks === true;
-          const shapeResults = await simulateShapeAnalysis(mainObject, useMocks);
-
-          // Part A: Create the Primary "Identity" Cue with an 'isPrimary' flag
-          const primaryCue = {
-            objectType: mainObject.label, // 'bottle' from our simulation
-            intensity: mainObject.confidence,
-            position: mainObject.position,
-            isPrimary: true
-          };
-
-          // Part B: Use the Grid as a "Sonic Sculptor" to create the "sheet music"
-          let secondaryCues = [];
-          if (grid && grid.mapFunction) {
-             const gridOutput = grid.mapFunction(null, payload.width, payload.height, null, shapeResults);
-             secondaryCues = (gridOutput && gridOutput.cues) || [];
-          }
-          structuredLog('DEBUG', 'Grid cues generated', { cueCount: secondaryCues.length, mode: state.currentMode, motionPresent: !!objectResults });
-
-          // If the grid didn't produce any "form" cues, create a simple default one.
-          if (secondaryCues.length === 0) {
-            secondaryCues.push({ pitch: 440, intensity: 0.8, position: mainObject.position });
-          }
-
-          // Combine into a single standardized cues array (primary first)
-          const combinedCues = [primaryCue, ...secondaryCues];
-          dispatchPayload = { cues: combinedCues };
-        } else {
-          // FALLBACK: If no objects detected in Focus mode, fall back to Flow mode grid mapping // R181025 isnt this the purpose of the hybrid mode? 
-          // This ensures audio continues even when object detection fails or finds nothing
-          if (grid && grid.mapFunction) {
-            const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
-            if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
-              dispatchPayload = { cues: gridOutput.cues };
-              structuredLog('DEBUG', 'Focus mode fallback: Using motion-based cues', { cueCount: gridOutput.cues.length });
-            }
-          }
-        }
-      }
-      
-      if (dispatchPayload) {
-        // Update stall metrics prior to dispatch
-        const panIntensity = dispatchPayload.panIntensity || { pan: 0, intensity: 0 };
-        const pan = panIntensity.pan ?? 0;
-        const intensity = panIntensity.intensity ?? 0;
-        updateDeltaHistogram(pan, intensity, stallStats);
-        // Determine if pan/intensity materially changed (avoid floating noise)
-        const PAN_DELTA_THRESHOLD = 0.01;
-        const INTENSITY_DELTA_THRESHOLD = 0.01;
-        const panChanged = Math.abs(pan - stallStats.lastPan) > PAN_DELTA_THRESHOLD;
-        const intensityChanged = Math.abs(intensity - stallStats.lastIntensity) > INTENSITY_DELTA_THRESHOLD;
-        if (panChanged || intensityChanged) {
-          stallStats.unchangedPanFrames = 0;
-          stallStats.lastPan = pan;
-          stallStats.lastIntensity = intensity;
-        } else {
-          stallStats.unchangedPanFrames++;
-        }
-        
-        // Use AudioRouter to dispatch cues (ADR-0006)
-        const routeResult = audioRouter.route(dispatchPayload, state);
-        
-        // Update stall stats post audio dispatch
-        stallStats.lastAudioCueTs = Date.now();
-        stallStats.lastCueCount = routeResult.cueCount;
-        if (stallStats.stallDetected && stallStats.lastCueCount > 0) {
-          // Clear stall flag after successful cue dispatch
-            stallStats.stallDetected = false;
-        }
-        // Sampled telemetry logging every 60 frames
-        if (payload.frameId && payload.frameId % 60 === 0) {
-          // Export scalar stall stats
-          structuredLog('DEBUG', 'STALL_STATS_SAMPLE', {
-            lastAudioCueTs: stallStats.lastAudioCueTs,
-            unchangedPanFrames: stallStats.unchangedPanFrames,
-            stallDetected: stallStats.stallDetected,
-            stallCount: stallStats.stallCount,
-            lastCueCount: stallStats.lastCueCount
-          });
-          // Export compact delta histogram snapshot to EventBus (command event)
-          try {
-            const snap = stallStats.deltaSnapshot || createDeltaSnapshot({
-              pan: new Uint32Array(DELTA_HISTOGRAM_BINS),
-              intensity: new Uint32Array(DELTA_HISTOGRAM_BINS)
-            });
-            // Keep payload compact: 16-bin arrays + summary stats
-            const payloadSnapshot = {
-              frameId: payload.frameId,
-              meanPanDelta: snap.meanPanDelta,
-              meanIntensityDelta: snap.meanIntensityDelta,
-              zeroPanStreak: snap.zeroPanStreak,
-              zeroIntensityStreak: snap.zeroIntensityStreak,
-              pan: Array.from(snap.pan || []),
-              intensity: Array.from(snap.intensity || [])
-            };
-            engine.dispatch && engine.dispatch('deltaHistogramSnapshot', payloadSnapshot);
-            // Optional low-volume log for correlation in logs pane
-            if (Math.random() < 0.1) {
-              structuredLog('DEBUG', 'DELTA_HISTOGRAM_SNAPSHOT', {
-                frameId: payloadSnapshot.frameId,
-                meanPanDelta: payloadSnapshot.meanPanDelta,
-                meanIntensityDelta: payloadSnapshot.meanIntensityDelta
-              });
-            }
-          } catch (e) {
-            structuredLog('WARN', 'Failed to export delta histogram snapshot', { error: e?.message || String(e) });
-          }
-        }
-        // Persist updated stallStats in engine state
-        engine.setState({ stallStats });
-      }
-    };
-
-    engine.onStateChange(state => {
-      if (!frameProviderWorker) return;
-      if (state.isProcessing) {
-        frameProviderWorker.postMessage({ type: 'start' });
-        // Start stall watchdog if not already running
-        if (!stallWatchdogInterval) {
-          const STALL_INTERVAL_MS = 500; // evaluation cadence
-          const MAX_SILENCE_MS = 2000;   // time threshold without cues (increased for 3fps low-power mode)
-          const MAX_UNCHANGED_FRAMES = 90; // unchanged pan/intensity threshold
-          stallWatchdogInterval = setInterval(() => {
-            try {
-              const currentState = engine.getState();
-              const stats = currentState.stallStats;
-              if (!stats) return; // safety
-              if (stats.lastAudioCueTs === 0) return; // no cues yet
-              const silenceDuration = Date.now() - stats.lastAudioCueTs;
-              const stallBySilence = silenceDuration > MAX_SILENCE_MS;
-              const stallByStaticPan = stats.unchangedPanFrames > MAX_UNCHANGED_FRAMES;
-              if ((stallBySilence || stallByStaticPan) && !stats.stallDetected) {
-                stats.stallDetected = true;
-                stats.stallCount++;
-                structuredLog('WARN', 'STALL_DETECTED', {
-                  stallBySilence,
-                  stallByStaticPan,
-                  silenceDuration,
-                  unchangedPanFrames: stats.unchangedPanFrames,
-                  lastCueCount: stats.lastCueCount
-                });
-                // Stall recovery: FrameConductor will timeout and restart workers automatically
-                // No explicit worker reset needed; let conductor handle recovery
-                // Reset dynamic counters (keep stallCount history)
-                stats.unchangedPanFrames = 0;
-                engine.setState({ stallStats: stats });
-              }
-            } catch (err) {
-              structuredLog('ERROR', 'Stall watchdog error', { error: err?.message || String(err) });
-            }
-          }, STALL_INTERVAL_MS);
-          structuredLog('INFO', 'Stall watchdog started');
-        }
-      } else {
-        frameProviderWorker.postMessage({ type: 'stop' });
-        // Stop stall watchdog when processing halts
-        if (stallWatchdogInterval) {
-          clearInterval(stallWatchdogInterval);
-          stallWatchdogInterval = null;
-          structuredLog('INFO', 'Stall watchdog stopped');
-        }
-        resetDeltaHistogramState();
-      }
-      
-      // Phase 3.1b: Hot-swap workers when mode changes via FrameConductor
-      if (state.currentMode && frameConductor) {
-        // Mode change detection is efficient (getMetrics is O(1))
-        // Only calls initializeForMode if mode actually changed (cached comparison)
-        const metrics = frameConductor.getMetrics?.();
-        const currentConductorMode = metrics?.currentMode;
-        if (currentConductorMode !== state.currentMode) {
-          frameConductor.initializeForMode(state.currentMode).then(() => {
-            structuredLog('INFO', 'Mode switched via FrameConductor', { 
-              newMode: state.currentMode,
-              previousMode: currentConductorMode
-            });
-          }).catch((error) => {
-            structuredLog('ERROR', 'Failed to switch mode in FrameConductor', { 
-              mode: state.currentMode, 
-              error: error.message 
-            });
-          });
-        }
-      }
-      
-      // Check for depth path changes
-      if (state.depthPath && state.depthPath !== previousDepthPath) {
-        // FrameConductor handles depth path updates via updateDepthPath method
-        if (frameConductor && frameConductor.updateDepthPath) {
-          frameConductor.updateDepthPath(state.depthPath);
-        }
-        previousDepthPath = state.depthPath;
-      }
-      
-      // Grid configuration IS embedded in frame message (stateless by design)
-      // This keeps frame-processor lean (no per-frame grid state) and lets frame-provider
-      // stream independent of orchestration concerns. See docs: "stateless pattern"
-      
-      // Only log mode changes, not every frame
-      if (state.currentMode && state.currentMode !== lastLoggedMode) {
-        structuredLog('DEBUG', 'Operating mode active', { mode: state.currentMode });
-        lastLoggedMode = state.currentMode;
-      }
-    });
-    
-    structuredLog('INFO', 'initializeVideo: Video pipeline initialization completed successfully');
-    return true; // Success indicator
   }, { 
     videoElement: config?.videoElement, 
     hasCamera: !!config?.videoElement?.srcObject 
@@ -1073,17 +861,17 @@ async function initializeSource(strategy, videoElement, engine, onFrameCallback)
  * Call this on app shutdown to terminate workers and free memory.
  * 
  * This function:
- * - Terminates frame provider worker
+ * - Disposes active video source provider (CanvasSource or MediaStreamTrackSource)
  * - Disposes FrameConductor and all its manifest-managed workers
  * - Clears module state
  */
 export function disposeVideo() {
   try {
-    // Terminate frame provider worker
-    if (frameProviderWorker) {
-      frameProviderWorker.terminate();
-      frameProviderWorker = null;
-      structuredLog('INFO', 'Frame provider worker terminated');
+    // Dispose active video source provider (Manifest Strategy ADR-0011)
+    if (activeVideoSource) {
+      activeVideoSource.dispose();
+      activeVideoSource = null;
+      structuredLog('INFO', 'Active video source provider disposed');
     }
     
     // Phase 3.1b: Dispose FrameConductor (terminates all manifest-managed workers)

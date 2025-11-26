@@ -34,6 +34,70 @@ This matrix helps you understand which components are ready for testing vs. whic
 
 ---
 
+## Video Source Manifest Strategy (ADR-0011: Nov 2025)
+
+**Video frame capture uses a Manifest Strategy pattern**
+
+The `source/` directory contains:
+- `video-source-manifest.js` - Priority-ordered list of frame capture strategies
+- `canvas-source.js` - Canvas 2D-based frame capture (CPU, universal support)
+- `mediastream-track-source.js` - MediaStreamTrackProcessor-based capture (GPU, modern browsers)
+
+### Manifest Philosophy
+
+**NO SILENT FALLBACKS.** Once a strategy is selected and initialized, we lock it in:
+
+```javascript
+// video/source/video-source-manifest.js
+export const VIDEO_SOURCE_MANIFEST = [
+  {
+    name: 'MediaStreamTrackProcessor',
+    strategy: MediaStreamTrackSource,
+    isSupported: () => typeof MediaStreamTrackProcessor !== 'undefined',
+    priority: 10  // Highest priority (GPU path)
+  },
+  {
+    name: 'Canvas2D',
+    strategy: CanvasSource,
+    isSupported: () => typeof HTMLCanvasElement !== 'undefined',
+    priority: 1   // Lowest priority (CPU path)
+  }
+];
+```
+
+### Selection Rules
+
+1. **User Override:** If user explicitly selects "Canvas 2D" in settings, use ONLY that
+2. **Auto-Select:** Otherwise, iterate manifest by priority, use first supported strategy
+3. **Strict Gating:** Once initialized, DO NOT swap to another strategy on failure
+4. **Fail Loud:** If selected strategy fails, log to telemetry and alert user
+
+### Adding a New Source Strategy
+
+1. Create `source/your-source.js` implementing the SourceProviderContract:
+   ```javascript
+   export class YourSource {
+     constructor(videoElement, config) { }
+     static isSupported() { return /* boolean */; }
+     async initialize() { /* setup */ }
+     async start() { /* begin frame capture */ }
+     stop() { /* pause capture */ }
+     dispose() { /* cleanup */ }
+   }
+   ```
+
+2. Add to manifest in `video-source-manifest.js`:
+   ```javascript
+   import { YourSource } from './your-source.js';
+   
+   // Insert at appropriate priority position
+   { name: 'YourSource', strategy: YourSource, isSupported: YourSource.isSupported, priority: 5 }
+   ```
+
+See `ARCHITECTURE_RULES.md` Rule 15 for detailed implementation patterns.
+
+---
+
 ## Core Architecture
 
 ### 1. `workers/frame-provider-worker.js` (The Frame Provider)

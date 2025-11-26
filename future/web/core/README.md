@@ -73,6 +73,63 @@ engine.subscribe(
 - `onStateChange(callback)` - Called for every state change
 - `subscribe(selector, callback)` - Called only when selector result changes
 
+### State Selectors (ADR-0011: Nov 2025)
+
+**UI modules must access state through selectors, not by drilling into state structure.**
+
+This decouples UI from internal state organization. When state structure changes, only selectors need updating—UI code remains unchanged.
+
+**Selector API:**
+
+| Method | Purpose | Returns |
+|--------|---------|---------|
+| `getMetrics()` | FPS, memory, latency stats | `{ fps, memoryUsageMB, activeWorkers, frameLatencyMs, audioLatencyMs }` |
+| `getOrchestration()` | Active extractors, capabilities | `{ activeExtractor, activeFrameProvider, capabilities, decisionLog, ... }` |
+| `getVideoState()` | Video capture configuration | `{ currentMode, usingCanvas, detectedAt, activeFrameProvider, ... }` |
+
+**Usage Pattern:**
+
+```javascript
+// ❌ WRONG: UI knows internal state structure
+function render(state) {
+  const fps = state.orchestration?.metrics?.fps ?? 0;  // Tight coupling!
+}
+
+// ✅ CORRECT: UI uses selectors
+function render(engine) {
+  const { fps, activeWorkers } = engine.getMetrics();  // Decoupled!
+}
+```
+
+**Why Selectors?**
+- **Law of Demeter:** Don't reach through objects (`state.orchestration.metrics.fps`)
+- **Null-safety:** Selectors handle missing/undefined state gracefully
+- **Contract Stability:** UI depends on selector API, not internal state shape
+- **Testability:** Selectors can be mocked independently
+
+See `ARCHITECTURE_RULES.md` Rule 13 for detailed examples.
+
+### Resource Request API (ADR-0011: Headless Core)
+
+**Core layer must not access DOM directly. Use the Resource Request pattern.**
+
+```javascript
+// core/engine.js - Resource Request API
+engine.requestResource('VIDEO_ELEMENT');  // Request from UI layer
+
+// ui/media-adapter.js - UI provides resources
+engine.registerResourceHandler('VIDEO_ELEMENT', () => {
+  return document.getElementById('videoElement');
+});
+```
+
+This enables:
+- **Testability:** Core can be tested in Node.js (no DOM)
+- **Isolation:** Core doesn't know about DOM, only about resource types
+- **Flexibility:** Different UI adapters can provide different implementations
+
+See `ARCHITECTURE_RULES.md` Rule 14 for detailed examples.
+
 ## State Structure & Rules
 
 ### What CAN Be in State

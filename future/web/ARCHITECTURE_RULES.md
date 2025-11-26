@@ -1234,6 +1234,216 @@ const drawFrameRAF = (timestamp) => {
 
 ---
 
+## Rule 13: State Selectors for UI Decoupling (ADR-0011)
+
+**The Problem:**
+UI code directly accessing deep state structure creates tight coupling. When internal state organization changes, every UI component breaks. Law of Demeter violations make code fragile and testing difficult.
+
+**Real Bug Scenario:**
+```javascript
+// orchestration-inspector.js was accessing:
+const fps = engine.getState().orchestration?.metrics?.fps ?? 0;
+const provider = engine.getState().orchestration?.activeFrameProvider ?? 'unknown';
+
+// When state structure changed (orchestration.metrics moved to metrics.video):
+// - Every UI component broke
+// - Finding all usages required grep across entire codebase
+// - No compile-time safety for state access
+```
+
+**❌ WRONG:**
+```javascript
+// ui/orchestration-inspector.js
+function render(state) {
+  const fps = state.orchestration?.metrics?.fps ?? 0;  // Knows internal structure!
+  const workers = state.orchestration?.metrics?.activeWorkers ?? 0;
+  const mode = state.currentMode ?? 'flow';
+  // ...
+}
+```
+
+**✅ CORRECT:**
+```javascript
+// core/engine.js - Selectors encapsulate state structure
+function getMetrics() {
+  return {
+    fps: state.orchestration?.metrics?.fps ?? 0,
+    activeWorkers: state.orchestration?.metrics?.activeWorkers ?? 0,
+    memoryUsageMB: state.metrics?.memoryUsageMB ?? 0,
+    // Null-safe, stable API contract
+  };
+}
+
+// ui/orchestration-inspector.js - Uses selectors
+function render(engine) {
+  const { fps, activeWorkers } = engine.getMetrics();  // Doesn't know internal structure!
+  const { currentMode } = engine.getOrchestration();
+  // ...
+}
+```
+
+**Selector API Contract (engine.js):**
+| Selector | Purpose | Returns |
+|----------|---------|---------|
+| `getMetrics()` | FPS, memory, latency | `{ fps, memoryUsageMB, activeWorkers, frameLatencyMs, audioLatencyMs }` |
+| `getOrchestration()` | Extractors, capabilities | `{ activeExtractor, activeFrameProvider, capabilities, decisionLog, ... }` |
+| `getVideoState()` | Video capture status | `{ currentMode, usingCanvas, detectedAt, activeFrameProvider, ... }` |
+
+**Rule:** UI modules must use selectors (`engine.getMetrics()`) instead of direct state access (`engine.getState().orchestration.metrics`).
+
+---
+
+## Rule 14: Headless Core - Event-Driven DOM Access (ADR-0011)
+
+**The Problem:**
+Core layer modules that directly access DOM elements (video elements, canvas, etc.) cannot be tested in Node.js, cannot run in Web Workers, and violate hexagonal architecture principles.
+
+**Real Bug Scenario:**
+```javascript
+// core/commands/media-commands.js
+export function registerMediaCommands(engine) {
+  engine.registerCommandHandler('startCamera', async (payload) => {
+    // WRONG: Core accessing DOM directly
+    const videoEl = document.getElementById('videoElement');  // Breaks in tests!
+    await startCamera(videoEl);
+  });
+}
+```
+
+**❌ WRONG - Core Accessing DOM:**
+```javascript
+// core/commands/media-commands.js
+engine.registerCommandHandler('startCamera', async () => {
+  const videoEl = document.getElementById('videoElement');  // ❌ DOM access in Core
+  const canvas = document.createElement('canvas');          // ❌ DOM creation in Core
+  await startCamera(videoEl);
+});
+```
+
+**✅ CORRECT - Event-Driven Resource Request:**
+```javascript
+// core/engine.js - Resource request API
+async function requestResource(resourceType, config = {}) {
+  const handler = resourceHandlers.get(resourceType);
+  if (!handler) throw new Error(`Resource not available: ${resourceType}`);
+  return await handler(config);
+}
+
+// ui/media-adapter.js - UI provides resources
+engine.registerResourceHandler('VIDEO_ELEMENT', () => {
+  return document.getElementById('videoElement');
+});
+
+// core/commands/media-commands.js - Core requests resources
+engine.registerCommandHandler('startCamera', async () => {
+  const videoEl = await engine.requestResource('VIDEO_ELEMENT');  // ✅ No DOM knowledge
+  await startCamera(videoEl);
+});
+```
+
+**Pattern:**
+1. Core defines resource types: `VIDEO_ELEMENT`, `AUDIO_CONTEXT`, etc.
+2. UI adapter registers handlers: `engine.registerResourceHandler('VIDEO_ELEMENT', () => domElement)`
+3. Core requests resources: `engine.requestResource('VIDEO_ELEMENT')`
+4. Core never knows about DOM
+
+**Rule:** Core layer must request DOM resources via `engine.requestResource()`, never access DOM directly.
+
+---
+
+## Rule 15: Manifest Strategy Pattern (ADR-0011)
+
+**The Problem:**
+Fallback chains with try/catch create unpredictable behavior. If MediaStreamTrackProcessor fails after 50% of frames processed, silently switching to Canvas 2D causes jarring user experience and makes debugging impossible.
+
+**Philosophy:** "Fail loud, don't silently degrade."
+
+**❌ WRONG - Silent Fallback Chain:**
+```javascript
+// frame-processor.js - ANTI-PATTERN
+async function initializeVideo(config) {
+  try {
+    await initializeMediaStreamTrackProcessor(config);
+  } catch (e) {
+    console.warn('MediaStreamTrackProcessor failed, trying WebGL...');
+    try {
+      await initializeWebGLExtractor(config);
+    } catch (e2) {
+      console.warn('WebGL failed, falling back to Canvas...');
+      await initializeCanvasExtractor(config);  // Silent degradation!
+    }
+  }
+}
+```
+
+**✅ CORRECT - Manifest Strategy with Strict Gating:**
+```javascript
+// video/source/video-source-manifest.js
+export const VIDEO_SOURCE_MANIFEST = [
+  {
+    name: 'MediaStreamTrackProcessor',
+    strategy: MediaStreamTrackSource,
+    isSupported: () => typeof MediaStreamTrackProcessor !== 'undefined',
+    priority: 10
+  },
+  {
+    name: 'Canvas2D',
+    strategy: CanvasSource,
+    isSupported: () => typeof HTMLCanvasElement !== 'undefined',
+    priority: 1
+  }
+];
+
+// frame-processor.js - Manifest Selection
+function selectVideoStrategy(userOverride) {
+  // Level 1: User Override (from settings)
+  if (userOverride) {
+    const strategy = VIDEO_SOURCE_MANIFEST.find(s => s.name === userOverride);
+    if (strategy && strategy.isSupported()) return strategy;
+    throw new Error(`User-selected strategy "${userOverride}" not supported`);  // FAIL LOUD
+  }
+  
+  // Level 2: Auto-select highest priority supported strategy
+  const sorted = [...VIDEO_SOURCE_MANIFEST].sort((a, b) => b.priority - a.priority);
+  for (const strategy of sorted) {
+    if (strategy.isSupported()) {
+      structuredLog('INFO', `Auto-selected strategy: ${strategy.name}`);
+      return strategy;
+    }
+  }
+  
+  // Level 3: No supported strategy (critical failure)
+  throw new Error('CRITICAL: No supported video source available');  // FAIL LOUD
+}
+
+// Strict Gating - Once selected, LOCK IT IN
+async function initializeSource(strategy, videoElement, engine, onFrameCallback) {
+  try {
+    const provider = new strategy.strategy(videoElement, config);
+    await provider.initialize();
+    await provider.start();
+    activeVideoSource = provider;  // Lock in
+    return provider;
+  } catch (error) {
+    // DO NOT TRY ANOTHER STRATEGY - FAIL LOUD
+    structuredLog('ERROR', 'STRATEGY_FAILURE', { strategy: strategy.name, error: error.message });
+    trackFeatureUse('strategy-failure', { subsystem: 'video', strategy: strategy.name });
+    throw error;  // Let caller handle (show error to user)
+  }
+}
+```
+
+**Manifest Strategy Rules:**
+1. **Define strategies in priority order** in a Manifest array
+2. **User override wins** - if user explicitly selects "Canvas 2D", use ONLY that
+3. **Auto-select highest priority** that passes `isSupported()` check
+4. **LOCK IN once selected** - don't switch strategies mid-session
+5. **FAIL LOUD on error** - log to telemetry, alert user, don't silently degrade
+
+**Rule:** Capability selection must use Manifest Strategy pattern. Once a strategy is selected and initialized, do NOT silently swap to a fallback.
+
+---
+
 ## Common Bugs We've Fixed
 
 ### Bug 0: State Bypass Anti-Pattern (November 18, 2025)
