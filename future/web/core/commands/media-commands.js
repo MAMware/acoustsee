@@ -16,7 +16,7 @@ import {
 } from '../../utils/ingest.js';
 import { startCamera as mediaStartCamera, stopCamera as mediaStopCamera, isCameraActive, startMic, stopMic } from '../media-controller.js';
 // Do not import audio-processor directly in command modules; use engine.audioApi
-import { initializeVideo } from '../../video/frame-processor.js';
+import { initializeVideo, disposeVideo } from '../../video/frame-processor.js';
 
 // Core media command functionality
 
@@ -402,6 +402,14 @@ export function registerMediaCommands(engine) {
       }
     } catch (err) {
       structuredLog('ERROR', 'Failed to stop synth voices', { error: err.message });
+    }
+    
+    // Dispose video pipeline to terminate all workers
+    try {
+      disposeVideo();
+      structuredLog('DEBUG', 'Video pipeline disposed (all workers terminated)');
+    } catch (err) {
+      structuredLog('ERROR', 'Failed to dispose video pipeline', { error: err.message });
     }
     
     // Any necessary teardown for video/audio pipelines can be dispatched from here.

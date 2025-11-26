@@ -523,6 +523,14 @@ export async function initializeVideo(config) {
   // Get current mode from engine state
   const currentMode = config.engine?.getState?.()?.currentMode || 'flow';
   
+  // Dispose existing FrameConductor before re-initialization
+  // Prevents orphaned workers if initializeVideo is called multiple times without stopProcessing
+  if (frameConductor) {
+    structuredLog('DEBUG', 'Disposing existing FrameConductor before re-initialization');
+    frameConductor.dispose();
+    frameConductor = null;
+  }
+  
   // Initialize FrameConductor (Phase 3.1b - manifest-driven worker orchestration)
   // Single source of truth for video worker lifecycle management across all modes.
   // CRITICAL FIX: Pass engine so timeout config can detect canvas fallback
@@ -803,6 +811,10 @@ async function initializeSource(strategy, videoElement, engine, onFrameCallback)
     
     // Start frame capture
     await provider.start();
+    
+    // Store provider reference for later disposal
+    // This allows disposeVideo() to properly terminate the frame-provider worker
+    activeVideoSource = provider;
     
     // Track active strategy in engine state
     const orchestration = engine.getState().orchestration || {};
