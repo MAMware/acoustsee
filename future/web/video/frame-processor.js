@@ -10,6 +10,8 @@ import {
 import { WorkerContract } from './workers/worker-contract.js';
 import { FrameConductor } from './frame-conductor.js';
 import { AudioRouter } from '../audio/audio-router.js';
+import { VIDEO_SOURCE_MANIFEST } from './source/video-source-manifest.js';
+import { trackFeatureUse } from '../utils/ingest.js';
 
 // ============================================================================
 // FrameConductor is the exclusive orchestrator for motion-to-sound mapping.
@@ -20,7 +22,8 @@ import { AudioRouter } from '../audio/audio-router.js';
 
 // --- Module State ---
 let _config = {};
-let frameProviderWorker = null;
+let frameProviderWorker = null; // DEPRECATED: Legacy worker reference (use activeVideoSource instead)
+let activeVideoSource = null; // Active video source provider (Canvas or MediaStreamTrack)
 let previousDepthPath = null;  // Track depth path for change detection
 let lastLoggedMode = null; // Track last logged mode to avoid duplicate logs
 
@@ -566,88 +569,21 @@ export async function initializeVideo(config) {
       });
     }
     
-    // Check for required APIs with better fallback handling
-    const hasOffscreenCanvas = 'transferControlToOffscreen' in HTMLCanvasElement.prototype;
-    const hasMediaStreamTrackProcessor = typeof MediaStreamTrackProcessor !== 'undefined';
+    // ============================================================================
+    // MANIFEST STRATEGY: Capability-based video source selection (ADR-0011)
+    // Replaces exception-based fallback pattern with first-class strategies.
+    // ============================================================================
     
-    if (!hasOffscreenCanvas) {
-      structuredLog('WARN', 'OffscreenCanvas not supported, video processing may be limited');
-      // For now, we'll still throw since our current architecture requires it
-      throw new Error('OffscreenCanvas is required but not supported in this browser');
-    }
-    
-    if (!hasMediaStreamTrackProcessor) {
-      structuredLog('WARN', 'MediaStreamTrackProcessor not supported, using canvas-based fallback');
-      // Use canvas-based frame capture as fallback
-      return await initializeVideoCanvasFallback(videoElement, engine);
-    }
-    
-    structuredLog('DEBUG', 'initializeVideo: Starting frame provider worker...');
-    frameProviderWorker = new Worker(new URL('./workers/frame-provider-worker.js', import.meta.url), { type: 'module' });
-    if (_config.registerWorker) _config.registerWorker(frameProviderWorker, 'FrameProvider');
-    
-    // Expose worker globally for dev panel throttling controls
-    window.frameProviderWorker = frameProviderWorker;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = videoElement.videoWidth || 640;
-    canvas.height = videoElement.videoHeight || 480;
-    structuredLog('DEBUG', 'initializeVideo: Canvas created', { width: canvas.width, height: canvas.height });
-    
-    const offscreenCanvas = canvas.transferControlToOffscreen();
-    
-    const [track] = videoElement.srcObject.getVideoTracks();
-    if (!track) {
-      throw new Error('No video track found in MediaStream');
-    }
-    
-    const trackProcessor = new MediaStreamTrackProcessor({ track });
-    const streamReader = trackProcessor.readable;
-    
-    structuredLog('DEBUG', 'initializeVideo: Sending init message to frame provider worker...');
-
-    // Compute and apply initial throttling based on quality profile, if present R161125 arent we violating SRP? dont we handle this task at utils pipeline ?   
-
-    const stateAtInit = engine.getState ? engine.getState() : {};
-    const orchestration = stateAtInit.orchestration || {};
-    const settingsState = stateAtInit.settings || {};
-    const profileName = settingsState.qualityProfileOverride || orchestration?.qualityProfile?.name || 'auto';
-    const profile = orchestration?.qualityProfiles?.[profileName] || orchestration?.qualityProfile || null;
-
-    frameProviderWorker.postMessage(
-      { type: 'init', payload: { canvas: offscreenCanvas, streamReader } },
-      [offscreenCanvas, streamReader]
-    );
-
-    // Apply initial throttle if a recognized profile is configured (e.g., 'ultra-low') R161125 carefull with the silent "if" 
-    if (profile && profile.fpsTarget && profile.targetWidth) {
-      try {
-        const srcWidth = canvas.width || (videoElement && videoElement.videoWidth) || 320;
-        const srcFps = orchestration?.metrics?.fps || 30; // fallback when metrics not yet populated
-        const targetWidth = profile.targetWidth || 160;
-        const scale = Math.max(0.1, Math.min(1.0, (targetWidth / srcWidth)));
-        const skipRate = Math.max(1, Math.ceil(srcFps / (profile.fpsTarget || 3)));
-
-        // Apply to worker and persist in engine state
-        frameProviderWorker.postMessage({ type: 'setResolutionScale', payload: { scale } });
-        frameProviderWorker.postMessage({ type: 'setFrameSkipRate', payload: { skipRate } });
-        try { engine.setState({ frameProviderThrottle: { skipRate, scale } }); } catch (e) {}
-        try { engine.setState({ settings: { ...settingsState, updateInterval: Math.round(1000 / (profile.fpsTarget || 3)) } }); } catch (e) {}
-        structuredLog('INFO', 'initializeVideo: Applied quality profile throttle', { profileName, scale, skipRate });
-      } catch (e) {
-        structuredLog('WARN', 'initializeVideo: Failed to apply quality profile throttle', { profileName, error: e?.message || String(e) });
-      }
-    }
-
-    // This onmessage handler IS the Orchestrator.
-    frameProviderWorker.onmessage = async (event) => {
-      const { type, payload } = event.data;
+    // Define frame processing callback for source strategies
+    const onFrameCallback = async (frameEvent) => {
+      const { type, payload } = frameEvent;
       if (type !== 'frame') return;
 
       const state = engine.getState();
       const frameData = new Uint8ClampedArray(payload.imageDataBuffer);
       const grid = _config.getCurrentGrid();
       let dispatchPayload = null;
+      
       // Access stallStats (guaranteed to exist in state.js); mutate in place
       const stallStats = state.stallStats || { deltaSnapshot: { pan: [], intensity: [] } };
       state.stallStats = stallStats;
@@ -662,8 +598,8 @@ export async function initializeVideo(config) {
         });
       }
 
+      // Process frame based on current mode (same logic as before)
       if (state.currentMode === 'flow') {
-        // Use new Flow mode worker chain (Phase 2)
         const flowResult = await processFlowMode(frameData, payload.width, payload.height, state);
         
         // Always set dispatchPayload, even if cues are empty (important for audio state)
@@ -697,6 +633,141 @@ export async function initializeVideo(config) {
         // In Focus mode, use FrameConductor for all worker orchestration
         const motionResults = await frameConductor.processFrame(frameData, payload.width, payload.height, state);
         const objectResults = motionResults.result || {};
+
+        if (objectResults.detectedObjects && objectResults.detectedObjects.length > 0) {
+          const mainObject = objectResults.detectedObjects[0];
+          const useMocks = state.debugConfig && state.debugConfig.useMocks === true;
+          const shapeResults = await simulateShapeAnalysis(mainObject, useMocks);
+
+          const primaryCue = {
+            objectType: mainObject.label,
+            intensity: mainObject.confidence,
+            position: mainObject.position,
+            isPrimary: true
+          };
+
+          let secondaryCues = [];
+          if (grid && grid.mapFunction) {
+            const gridOutput = grid.mapFunction(null, payload.width, payload.height, null, shapeResults);
+            secondaryCues = (gridOutput && gridOutput.cues) || [];
+          }
+          structuredLog('DEBUG', 'Grid cues generated', { cueCount: secondaryCues.length, mode: state.currentMode, motionPresent: !!objectResults });
+
+          if (secondaryCues.length === 0) {
+            secondaryCues.push({ pitch: 440, intensity: 0.8, position: mainObject.position }); //R251125fp this hardcoding does not make sense to me, why and what is this for?
+          }
+
+          const combinedCues = [primaryCue, ...secondaryCues];
+          dispatchPayload = { cues: combinedCues };
+        } else {
+          if (grid && grid.mapFunction) {
+            const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
+            if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
+              dispatchPayload = { cues: gridOutput.cues };
+              structuredLog('DEBUG', 'Focus mode fallback: Using motion-based cues', { cueCount: gridOutput.cues.length });
+            }
+          }
+        }
+      }
+      
+      if (dispatchPayload) {
+        const panIntensity = dispatchPayload.panIntensity || { pan: 0, intensity: 0 };
+        const pan = panIntensity.pan ?? 0;
+        const intensity = panIntensity.intensity ?? 0;
+        updateDeltaHistogram(pan, intensity, stallStats);
+        
+        const PAN_DELTA_THRESHOLD = 0.01;
+        const INTENSITY_DELTA_THRESHOLD = 0.01;
+        const panChanged = Math.abs(pan - stallStats.lastPan) > PAN_DELTA_THRESHOLD;
+        const intensityChanged = Math.abs(intensity - stallStats.lastIntensity) > INTENSITY_DELTA_THRESHOLD;
+        if (panChanged || intensityChanged) {
+          stallStats.unchangedPanFrames = 0;
+          stallStats.lastPan = pan;
+          stallStats.lastIntensity = intensity;
+        } else {
+          stallStats.unchangedPanFrames++;
+        }
+        
+        const routeResult = audioRouter.route(dispatchPayload, state);
+        
+        stallStats.lastAudioCueTs = Date.now();
+        stallStats.lastCueCount = routeResult.cueCount;
+        if (stallStats.stallDetected && stallStats.lastCueCount > 0) {
+          stallStats.stallDetected = false;
+        }
+        
+        if (payload.frameId && payload.frameId % 60 === 0) {
+          structuredLog('DEBUG', 'STALL_STATS_SAMPLE', {
+            lastAudioCueTs: stallStats.lastAudioCueTs,
+            unchangedPanFrames: stallStats.unchangedPanFrames,
+            stallDetected: stallStats.stallDetected,
+            stallCount: stallStats.stallCount,
+            lastCueCount: stallStats.lastCueCount
+          });
+          
+          try {
+            const snap = stallStats.deltaSnapshot || createDeltaSnapshot({
+              pan: new Uint32Array(DELTA_HISTOGRAM_BINS),
+              intensity: new Uint32Array(DELTA_HISTOGRAM_BINS)
+            });
+            const payloadSnapshot = {
+              frameId: payload.frameId,
+              meanPanDelta: snap.meanPanDelta,
+              meanIntensityDelta: snap.meanIntensityDelta,
+              zeroPanStreak: snap.zeroPanStreak,
+              zeroIntensityStreak: snap.zeroIntensityStreak,
+              pan: Array.from(snap.pan || []),
+              intensity: Array.from(snap.intensity || [])
+            };
+            engine.dispatch && engine.dispatch('deltaHistogramSnapshot', payloadSnapshot);
+          } catch (e) {
+            structuredLog('ERROR', 'Failed to emit delta histogram snapshot', { error: e?.message || String(e) });
+          }
+        }
+      }
+    };
+    
+    // Level 1: Check user override
+    const userOverride = engine.getState().videoSourceOverride;
+    if (userOverride) {
+      const strategy = VIDEO_SOURCE_MANIFEST.find(s => s.name === userOverride);
+      if (strategy && strategy.isSupported()) {
+        structuredLog('INFO', `Using user-selected video source: ${userOverride}`);
+        return await initializeSource(strategy, videoElement, engine, onFrameCallback);
+      } else {
+        // STRICT GATING: User override not available
+        const error = new Error(`STRATEGY_FAILURE: User-selected video source "${userOverride}" not available`);
+        structuredLog('ERROR', error.message);
+        trackFeatureUse('strategy-failure', {
+          subsystem: 'video',
+          strategy: userOverride,
+          reason: 'user-override-not-supported'
+        });
+        throw error;
+      }
+    }
+    
+    // Level 2: Iterate manifest by priority
+    for (const strategy of VIDEO_SOURCE_MANIFEST) {
+      if (strategy.isSupported()) {
+        structuredLog('INFO', `Selected video source: ${strategy.name}`, {
+          description: strategy.description,
+          priority: strategy.priority,
+          capabilities: strategy.capabilities
+        });
+        return await initializeSource(strategy, videoElement, engine, onFrameCallback);
+      }
+    }
+    
+    // Level 3: No supported strategy found (critical failure)
+    const error = new Error('CRITICAL: No supported video source available in this browser');
+    structuredLog('ERROR', error.message);
+    trackFeatureUse('strategy-failure', {
+      subsystem: 'video',
+      reason: 'no-supported-source',
+      manifest: VIDEO_SOURCE_MANIFEST.map(s => ({ name: s.name, supported: s.isSupported() }))
+    });
+    throw error;
 
         if (objectResults.detectedObjects && objectResults.detectedObjects.length > 0) {
           const mainObject = objectResults.detectedObjects[0];
@@ -912,6 +983,89 @@ export async function initializeVideo(config) {
     videoElement: config?.videoElement, 
     hasCamera: !!config?.videoElement?.srcObject 
   });
+}
+
+/**
+ * Initialize video source provider with strict gating (ADR-0011).
+ * 
+ * Strict Gating Philosophy:
+ * - Once a strategy is selected, lock it in
+ * - If selected strategy crashes, log STRATEGY_FAILURE and stop
+ * - DO NOT silently swap to lower priority strategy
+ * - User must be alerted to take action (reload page, change settings)
+ * 
+ * @param {Object} strategy - Strategy from VIDEO_SOURCE_MANIFEST
+ * @param {HTMLVideoElement} videoElement - Video element with MediaStream
+ * @param {Object} engine - Engine instance for state management
+ * @param {Function} onFrameCallback - Frame processing callback
+ * @returns {Object} Source provider instance
+ */
+async function initializeSource(strategy, videoElement, engine, onFrameCallback) {
+  try {
+    // Instantiate strategy class
+    const provider = new strategy.strategy(videoElement, { 
+      engine,
+      onFrame: onFrameCallback,
+      registerWorker: _config.registerWorker,
+      getCurrentGrid: _config.getCurrentGrid
+    });
+    
+    // Initialize source (setup canvas, worker, etc.)
+    await provider.initialize();
+    
+    // Start frame capture
+    await provider.start();
+    
+    // Track active strategy in engine state
+    const orchestration = engine.getState().orchestration || {};
+    engine.setState({
+      orchestration: {
+        ...orchestration,
+        activeVideoSource: strategy.name,
+        videoSourceCapabilities: strategy.capabilities
+      }
+    });
+    
+    structuredLog('INFO', 'Video source initialized successfully', {
+      source: strategy.name,
+      capabilities: strategy.capabilities
+    });
+    
+    // Track strategy selection for analytics
+    trackFeatureUse('video-source-selected', {
+      subsystem: 'video',
+      strategy: strategy.name,
+      priority: strategy.priority,
+      capabilities: strategy.capabilities
+    });
+    
+    return provider;
+    
+  } catch (error) {
+    // STRICT GATING: Do not try another strategy
+    structuredLog('ERROR', `STRATEGY_FAILURE: ${strategy.name} crashed during initialization`, {
+      error: error.message,
+      stack: error.stack,
+      strategy: strategy.name
+    });
+    
+    // Log to telemetry for debugging
+    trackFeatureUse('strategy-failure', {
+      subsystem: 'video',
+      strategy: strategy.name,
+      error: error.message,
+      phase: 'initialization'
+    });
+    
+    // Alert user via critical error handler
+    showCriticalError(
+      'Video Processing Failed',
+      `The ${strategy.name} video source encountered an error during initialization. Please reload the page or try a different browser.`,
+      error
+    );
+    
+    throw error; // DO NOT SILENTLY SWAP TO ANOTHER STRATEGY
+  }
 }
 
 /**

@@ -2,7 +2,65 @@
 
 This document tracks active and future development tasks to provide a clear project roadmap. Each task has a unique ID for easy reference in commits, pull requests, and code comments.
 
-## Current Focus: v0.9.5 (Logging & Diagnostics Improvements - Nov 2025)
+## Current Focus: v0.9.5.5 (Architecture Purity & Hexagonal Remediation - Nov 2025)
+
+### Phase 3.4: ADR-0011 Hexagonal Architecture Purity (Nov 26, 2025)
+
+**Status:** 60% Complete (6 of 10 subtasks)  
+**Session:** `docs/sessions/2025-11/W4/20251126-adr0011-session-complete.md`
+
+-   **[x] `ARCH-5`:** Create ADR-0011 Documentation
+    - **File:** `docs/adr/0011-hexagonal-purity-remediation.md` (830 lines)
+    - **Solution:** Comprehensive ADR with 5 violations, before/after examples, migration paths
+    - **Impact:** Clear architectural vision for hexagonal purity _(Completed 2025-11-26)_
+
+-   **[x] `ARCH-6`:** Implement State Selectors in core/engine.js
+    - **Files:** `core/engine.js` (+54 lines)
+    - **Solution:** Added `getMetrics()`, `getOrchestration()`, `getVideoState()` selectors
+    - **Impact:** Law of Demeter compliance, UI decoupled from state structure _(Completed 2025-11-26)_
+
+-   **[x] `ARCH-7`:** Refactor UI to use Selectors
+    - **Files:** `ui/orchestration-inspector.js`
+    - **Solution:** Replaced direct state access with `engine.getMetrics()` calls
+    - **Impact:** UI immune to internal state structure changes _(Completed 2025-11-26)_
+
+-   **[x] `ARCH-8`:** Extract DOM logic to UI adapter
+    - **Files:** `ui/media-adapter.js` (NEW), `core/commands/media-commands.js`, `main.js`
+    - **Solution:** Event-driven resource provisioning via `engine.requestResource('VIDEO_ELEMENT')`
+    - **Impact:** Core layer truly headless, zero DOM dependencies _(Completed 2025-11-26)_
+
+-   **[x] `ARCH-9`:** Consolidate telemetry into utils/ingest.js
+    - **Files:** `utils/ingest.js` (+300 lines), `audio-manager.js`, `media-controller.js`
+    - **Solution:** Merged `core/ingest.js` into `utils/ingest.js`, single source of truth
+    - **Impact:** Clear import path, eliminated duplicate logic _(Completed 2025-11-26)_
+
+-   **[x] `ARCH-10`:** Fix circular dependencies via leaf node
+    - **Files:** `utils/common-formatting.js` (NEW), `utils/logging.js`
+    - **Solution:** Extracted 4 pure utility functions to leaf node module
+    - **Impact:** Circular dependency eliminated, clear module boundaries _(Completed 2025-11-26)_
+
+-   **[~] `ARCH-11`:** Promote Canvas to Manifest Strategy (**70% - BLOCKED**)
+    - **Files Created:** `video/source/video-source-manifest.js`, `canvas-source.js`, `mediastream-track-source.js`
+    - **Files Modified:** `video/frame-processor.js` ⚠️ **HAS SYNTAX ERRORS**
+    - **Solution:** Infrastructure complete, integration incomplete (see session document)
+    - **Status:** Requires rollback and fresh session with testing _(In Progress 2025-11-26)_
+
+-   **[ ] `ARCH-12`:** Add tests for Selector pattern
+    - **Files:** Create `test/unit/core/engine-selectors.test.js`
+    - **Coverage:** Empty state, partial state, null-safety, decoupling verification
+    - **Estimate:** 1 hour
+
+-   **[ ] `ARCH-13`:** Update ARCHITECTURE_RULES.md
+    - **File:** `future/web/ARCHITECTURE_RULES.md`
+    - **Rules:** Add 11-15 (Selectors, Headless Core, Telemetry, Boundaries, Manifest)
+    - **Estimate:** 45 minutes
+
+-   **[ ] `ARCH-14`:** Update subsystem READMEs
+    - **Files:** `core/README.md`, `ui/README.md`, `utils/README.md`, `video/README.md`
+    - **Documentation:** Selector pattern, event-driven DOM, telemetry, Canvas Manifest
+    - **Estimate:** 1 hour
+
+---
 
 ### Critical Bug Fixes Completed (Nov 24-25, 2025)
 
