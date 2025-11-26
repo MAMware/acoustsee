@@ -174,6 +174,12 @@ export async function init() {
     // Initialize analytics subscribers (replaces direct ingest tracking)
     initializeAnalytics(eventBus, state);
     
+    // STEP 0.7: Initialize media adapter (ADR-0011: Headless Core)
+    // Provides DOM elements (video, audio) to Core layer on request
+    const { initializeMediaAdapter } = await import('./ui/media-adapter.js');
+    const mediaAdapterDispose = initializeMediaAdapter(engine, DOM);
+    structuredLog('INFO', 'Media adapter initialized');
+    
     // Wire worker logs to EventBus
     // Workers send { type: 'workerLog', log: { timestamp, level, message, metadata } }
     // This is a document-level handler for any worker that uses worker-logger.js

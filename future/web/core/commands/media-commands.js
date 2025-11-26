@@ -76,17 +76,26 @@ export function registerMediaCommands(engine) {
         _activeMediaStream = stream;
         structuredLog('DEBUG', 'COMMAND: Camera stream acquired successfully.');
 
-        // Better DOM element resolution with fallback
+        // ADR-0011: Request video element from UI layer (headless core pattern)
+        // Core layer should never create DOM elements directly
         let videoEl = payload?.videoEl;
-        if (!videoEl && typeof window !== 'undefined' && window.DOM?.videoFeed) {
-          videoEl = window.DOM.videoFeed;
-          structuredLog('DEBUG', 'COMMAND: Using DOM.videoFeed element');
-        } else if (!videoEl) {
-          // Create a temporary video element if none provided
-          videoEl = document.createElement('video');
-          videoEl.setAttribute('playsinline', 'true');
-          videoEl.setAttribute('muted', 'true');
-          structuredLog('DEBUG', 'COMMAND: Created temporary video element');
+        if (!videoEl) {
+          try {
+            // Request from UI adapter
+            videoEl = await engine.requestResource('VIDEO_ELEMENT', {
+              reason: 'camera-preview',
+              stream
+            });
+            structuredLog('DEBUG', 'COMMAND: Video element provided by UI adapter');
+          } catch (resourceError) {
+            // Fallback: check window.DOM (backward compatibility)
+            if (typeof window !== 'undefined' && window.DOM?.videoFeed) {
+              videoEl = window.DOM.videoFeed;
+              structuredLog('DEBUG', 'COMMAND: Using DOM.videoFeed fallback');
+            } else {
+              throw new Error('No video element available. UI adapter not initialized?');
+            }
+          }
         }
 
         // Attach and play stream (play errors are non-fatal for autoplay policies)

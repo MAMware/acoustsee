@@ -55,18 +55,24 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
   let unsubscribeStateChange = null;
   
   /**
-   * Updates the UI based on orchestration state changes
+   * Updates the UI based on orchestration and metrics data from selectors
+   * ADR-0011: Use engine selectors to avoid Law of Demeter violations
    */
-  function updateUI(orchestrationState) {
-    if (!orchestrationState) {
+  function updateUI() {
+    // Use selectors instead of direct state access
+    const orchestration = engine.getOrchestration();
+    const metrics = engine.getMetrics();
+    
+    if (!orchestration) {
       container.innerHTML = '<div class="orch-error">Orchestration state not available</div>';
       return;
     }
     
-    currentOrchestrationState = orchestrationState;
+    // Store for export functionality
+    currentOrchestrationState = { ...orchestration, metrics };
     
     // Build the HTML structure
-    container.innerHTML = buildInspectorHTML(orchestrationState);
+    container.innerHTML = buildInspectorHTML(orchestration, metrics);
     
     // Wire event listeners after rendering
     wireEventListeners();
@@ -74,8 +80,9 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
   
   /**
    * Builds the complete inspector HTML
+   * ADR-0011: Accepts selector results, not raw state
    */
-  function buildInspectorHTML(state) {
+  function buildInspectorHTML(orchestration, metrics) {
     return `
       <a href="#orchestration-main-content" class="orch-skip-link">Skip to main content</a>
       <div class="orch-inspector" role="region" aria-label="Orchestration Inspector">
@@ -111,7 +118,7 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
           <section class="orch-section" aria-labelledby="extractor-heading">
             <h4 class="orch-section-title" id="extractor-heading">ACTIVE EXTRACTOR</h4>
             <div class="orch-extractor-display">
-              ${buildExtractorIndicator(state.activeExtractor, state.capabilities)}
+              ${buildExtractorIndicator(orchestration.activeExtractor, orchestration.capabilities)}
             </div>
           </section>
           
@@ -119,7 +126,7 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
           <section class="orch-section" aria-labelledby="capabilities-heading">
             <h4 class="orch-section-title" id="capabilities-heading">BROWSER CAPABILITIES</h4>
             <div class="orch-capabilities-grid" role="list">
-              ${buildCapabilitiesGrid(state.capabilities)}
+              ${buildCapabilitiesGrid(orchestration.capabilities)}
             </div>
           </section>
           
@@ -127,7 +134,7 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
           <section class="orch-section" aria-labelledby="metrics-heading">
             <h4 class="orch-section-title" id="metrics-heading">REAL-TIME METRICS</h4>
             <div class="orch-metrics-display">
-              ${buildMetricsDisplay(state.metrics)}
+              ${buildMetricsDisplay(metrics)}
             </div>
           </section>
           
@@ -135,7 +142,7 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
           <section class="orch-section orch-utilization" aria-labelledby="utilization-heading">
             <h4 class="orch-section-title" id="utilization-heading">UTILIZATION</h4>
             <div class="orch-util-bars">
-              ${buildUtilizationBars(state.metrics)}
+              ${buildUtilizationBars(metrics)}
             </div>
           </section>
           
@@ -143,22 +150,22 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
           <section class="orch-section orch-log-section" aria-labelledby="log-heading">
             <h4 class="orch-section-title" id="log-heading">DECISION LOG (Last 5 Events)</h4>
             <div class="orch-decision-log" role="log" aria-live="polite" aria-label="Decision log">
-              ${buildDecisionLog(state.decisionLog)}
+              ${buildDecisionLog(orchestration.decisionLog)}
             </div>
           </section>
           
           <!-- Video Worker Debug Config (Phase 2A Debug Feature) -->
-          ${buildVideoWorkerDebugConfig(state.videoWorkerDebugConfig)}
+          ${buildVideoWorkerDebugConfig(orchestration.videoWorkerDebugConfig)}
           
           <!-- Current Mode -->
           <footer class="orch-section orch-mode-footer" aria-label="Current system state">
             <div class="orch-mode-item">
               <span class="orch-label">Mode:</span>
-              <span class="orch-value" aria-label="Current mode">${state.currentMode || 'unknown'}</span>
+              <span class="orch-value" aria-label="Current mode">${orchestration.currentMode || 'unknown'}</span>
             </div>
             <div class="orch-mode-item">
               <span class="orch-label">Memory:</span>
-              <span class="orch-value" aria-label="Memory usage">${(state.metrics?.memoryUsageMB || 0).toFixed(1)} MB</span>
+              <span class="orch-value" aria-label="Memory usage">${metrics.memoryUsageMB.toFixed(1)} MB</span>
             </div>
           </footer>
         </div>
@@ -369,10 +376,8 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
     const refreshBtn = container.querySelector('.orch-btn-refresh');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => {
-        const state = engine.getState();
-        if (state && state.orchestration) {
-          updateUI(state.orchestration);
-        }
+        // ADR-0011: Use selectors instead of direct state access
+        updateUI();
         structuredLog('DEBUG', 'orchestration-inspector', { message: 'Metrics refreshed' });
       });
     }
@@ -459,13 +464,14 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
   
   /**
    * Initial setup and state subscription
+   * ADR-0011: Use selectors to access state
    */
   function initialize() {
     try {
-      // Get initial state
-      const state = engine.getState();
-      if (state && state.orchestration) {
-        updateUI(state.orchestration);
+      // Get initial state via selectors
+      const orchestration = engine.getOrchestration();
+      if (orchestration) {
+        updateUI();
       } else {
         // Show loading state if orchestration not yet available
         container.innerHTML = '<div class="orch-error" style="padding: 12px;">Orchestration state initializing...</div>';
@@ -473,10 +479,9 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
       
       // Subscribe to state changes
       if (engine.onStateChange) {
-        unsubscribeStateChange = engine.onStateChange((state) => {
-          if (state && state.orchestration) {
-            updateUI(state.orchestration);
-          }
+        unsubscribeStateChange = engine.onStateChange(() => {
+          // ADR-0011: updateUI() now uses selectors internally
+          updateUI();
         });
       }
       

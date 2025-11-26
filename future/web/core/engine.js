@@ -40,6 +40,9 @@ export function createEngine() {
   // Simple event bus for lifecycle and cross-module events
   const eventBus = new Map();
   
+  // Resource request handlers (ADR-0011: Event-driven DOM provisioning)
+  const resourceHandlers = new Map();
+  
   // Unified EventBus instance (injected after engine creation)
   let unifiedEventBus = null;
   
@@ -163,6 +166,105 @@ export function createEngine() {
     try { return { ...state }; } catch (e) { return state; }
   }
 
+  // --- STATE SELECTORS (ADR-0011: Hexagonal Architecture Purity) ---
+  // Encapsulate state structure to prevent Law of Demeter violations in UI
+  // UI should use selectors instead of accessing deep state properties
+  
+  /**
+   * Get metrics data (FPS, memory, performance stats)
+   * @returns {Object} Metrics object with null-safe access
+   */
+  function getMetrics() {
+    return {
+      fps: state.orchestration?.metrics?.fps ?? 0,
+      memoryUsageMB: state.metrics?.memoryUsageMB ?? 0,
+      activeWorkers: state.orchestration?.metrics?.activeWorkers ?? 0,
+      frameLatencyMs: state.orchestration?.metrics?.frameLatencyMs ?? 0,
+      audioLatencyMs: state.metrics?.audioLatencyMs ?? 0,
+      // Add other metrics as needed
+    };
+  }
+
+  /**
+   * Get orchestration state (active extractors, capabilities, decision log)
+   * @returns {Object} Orchestration data with null-safe access
+   */
+  function getOrchestration() {
+    return {
+      activeExtractor: state.orchestration?.activeExtractor ?? null,
+      activeFrameProvider: state.orchestration?.activeFrameProvider ?? null,
+      capabilities: state.orchestration?.capabilities ?? {},
+      decisionLog: state.orchestration?.decisionLog ?? [],
+      currentMode: state.currentMode ?? 'flow',
+      isProcessing: state.orchestration?.isProcessing ?? false,
+      metrics: state.orchestration?.metrics ?? {},
+      videoWorkerDebugConfig: state.videoWorkerDebugConfig ?? null,
+    };
+  }
+
+  /**
+   * Get video state (current mode, canvas usage, frame provider)
+   * @returns {Object} Video state with null-safe access
+   */
+  function getVideoState() {
+    return {
+      currentMode: state.currentMode ?? 'flow',
+      usingCanvas: state.videoCapture?.usingCanvas ?? false,
+      detectedAt: state.videoCapture?.detectedAt ?? null,
+      activeFrameProvider: state.orchestration?.activeFrameProvider ?? null,
+      frameProviderOverride: state.frameProviderOverride ?? null,
+    };
+  }
+
+  // --- RESOURCE REQUEST API (ADR-0011: Headless Core) ---
+  // Core layer requests resources (video elements, etc.) via events
+  // UI adapter provides them without Core knowing about DOM
+  
+  /**
+   * Request a resource from the UI layer
+   * @param {string} resourceType - 'VIDEO_ELEMENT', 'AUDIO_ELEMENT', etc.
+   * @param {Object} config - Request configuration
+   * @returns {Promise<any>} The requested resource
+   */
+  async function requestResource(resourceType, config = {}) {
+    const handler = resourceHandlers.get(resourceType);
+    if (!handler) {
+      structuredLog('ERROR', `No handler registered for resource: ${resourceType}`);
+      throw new Error(`Resource not available: ${resourceType}`);
+    }
+    
+    try {
+      const resource = await handler(config);
+      structuredLog('DEBUG', `Resource provided: ${resourceType}`);
+      return resource;
+    } catch (error) {
+      structuredLog('ERROR', `Resource request failed: ${resourceType}`, {
+        error: error.message
+      });
+      throw error;
+    }
+  }
+  
+  /**
+   * Register a handler for resource requests (called by UI adapters)
+   * @param {string} resourceType - 'VIDEO_ELEMENT', 'AUDIO_ELEMENT', etc.
+   * @param {Function} handler - Function that returns the resource
+   * @returns {Function} Unsubscribe function
+   */
+  function onResourceRequest(resourceType, handler) {
+    if (typeof handler !== 'function') {
+      throw new TypeError('Resource handler must be a function');
+    }
+    
+    resourceHandlers.set(resourceType, handler);
+    structuredLog('DEBUG', `Resource handler registered: ${resourceType}`);
+    
+    return () => {
+      resourceHandlers.delete(resourceType);
+      structuredLog('DEBUG', `Resource handler unregistered: ${resourceType}`);
+    };
+  }
+
   function registerCommandHandler(name, fn) {
     handlers[name] = fn;
   }
@@ -265,6 +367,13 @@ export function createEngine() {
     subscribe,
     getState,
     setState,
+    // State Selectors (ADR-0011) - prevent Law of Demeter violations
+    getMetrics,
+    getOrchestration,
+    getVideoState,
+    // Resource Request API (ADR-0011) - headless core pattern
+    requestResource,
+    onResourceRequest,
     onBenchmarkRequired,
     // Expose telemetry for testing/inspecting fallback counters
     getTelemetry: () => ({ ..._telemetry }),

@@ -317,7 +317,183 @@ This document tracks active and future development tasks to provide a clear proj
         -   [ ] Unit tests verify adaptive behavior (deferred)
         -   [ ] Integration tests verify no clipping on fast motion (magnitude > 2.0) (deferred)
         -   [ ] Documentation updated (MOTION_TO_SOUND_MAPPING.md, video/README.md) (deferred)
-        -   [ ] User testing confirms improved expressiveness (deferred)## Phase 3.3: Composable Audio Parameters
+        -   [ ] User testing confirms improved expressiveness (deferred)
+
+---
+
+## Phase 3.4: Hexagonal Architecture Purity (ADR-0011) - Nov 26, 2025
+
+**Context:** Remediation of 5 architectural violations identified by Gemini 3.0 Pro that compromise hexagonal architecture and Manifest Strategy philosophy.
+
+**Related ADRs:** ADR-0011 (Hexagonal Purity Remediation)
+
+### ARCH-5: State Selectors (Law of Demeter)
+
+-   **[ ] `ARCH-5.1`:** Implement State Selectors in core/engine.js
+    -   Add `getMetrics()` selector - returns fps, memoryUsageMB, etc.
+    -   Add `getOrchestration()` selector - returns activeExtractor, capabilities, decisionLog
+    -   Add `getVideoState()` selector - returns currentMode, usingCanvas, etc.
+    -   Export selectors in engine API
+    -   **Acceptance Criteria:**
+        -   [ ] `getMetrics()` implemented with null-safe access
+        -   [ ] `getOrchestration()` implemented with null-safe access
+        -   [ ] `getVideoState()` implemented with null-safe access
+        -   [ ] Selectors exported in engine API object
+        -   [ ] Unit tests verify selector behavior with empty/partial state
+
+-   **[ ] `ARCH-5.2`:** Refactor UI to use Selectors
+    -   Update `orchestration-inspector.js` to use `engine.getMetrics()`
+    -   Update `orchestration-inspector.js` to use `engine.getOrchestration()`
+    -   Remove all `state.orchestration.metrics.*` direct access
+    -   **Acceptance Criteria:**
+        -   [ ] No UI modules access `state.orchestration.*` directly
+        -   [ ] UI uses `engine.getMetrics()` instead
+        -   [ ] UI uses `engine.getOrchestration()` instead
+        -   [ ] Dev panel still displays correct data
+        -   [ ] State structure changes don't break UI
+
+### ARCH-6: Headless Core (No DOM in Core Layer)
+
+-   **[ ] `ARCH-6.1`:** Extract DOM logic from media-controller.js
+    -   Remove `document.createElement('video')` from `media-controller.js`
+    -   Add `engine.requestResource('VIDEO_ELEMENT', config)` API
+    -   Create `ui/media-adapter.js` to handle resource requests
+    -   Register media adapter during boot in `main.js`
+    -   **Acceptance Criteria:**
+        -   [ ] `media-controller.js` has no `document.*` calls
+        -   [ ] `engine.requestResource()` API implemented
+        -   [ ] `ui/media-adapter.js` provides video elements on request
+        -   [ ] Media adapter registered in `main.js` STEP 6
+        -   [ ] Core layer can run in Node.js test environment
+        -   [ ] Camera still works in browser
+
+### ARCH-7: Telemetry Consolidation
+
+-   **[ ] `ARCH-7.1`:** Consolidate telemetry into utils/ingest.js
+    -   Migrate functionality from `core/ingest.js` to `utils/ingest.js`
+    -   Merge user report handling from `core/ingest.js`
+    -   Merge batcher integration from `core/ingest.js`
+    -   Ensure battery optimization preserved
+    -   **Acceptance Criteria:**
+        -   [ ] `utils/ingest.js` has all functionality from both files
+        -   [ ] User report handling works (`event === 'user-report'`)
+        -   [ ] Analytics batcher integration works
+        -   [ ] Battery optimization still active
+        -   [ ] No duplicate code between files
+
+-   **[ ] `ARCH-7.2`:** Update all imports to use utils/ingest.js
+    -   Find all `import { trackFeatureUse } from '../core/ingest.js'`
+    -   Replace with `import { trackFeatureUse } from '../utils/ingest.js'`
+    -   Verify no broken imports
+    -   Delete `core/ingest.js` after migration
+    -   **Acceptance Criteria:**
+        -   [ ] All imports use `utils/ingest.js`
+        -   [ ] No imports from `core/ingest.js` remain
+        -   [ ] `core/ingest.js` deleted
+        -   [ ] All tests pass
+        -   [ ] Analytics still reach Cloudflare Worker
+
+### ARCH-8: Module Boundaries (Circular Dependencies)
+
+-   **[ ] `ARCH-8.1`:** Fix circular dependencies in utils/logging.js
+    -   Extract formatting functions to `utils/common-formatting.js`
+    -   Create leaf node module with zero dependencies
+    -   Functions: `formatTimestamp`, `formatMemory`, `truncateString`, `safeStringify`
+    -   Update `logging.js` to import from `common-formatting.js`
+    -   Update `utils.js` to import from `common-formatting.js`
+    -   Remove circular dependency warning comments
+    -   **Acceptance Criteria:**
+        -   [ ] `utils/common-formatting.js` created (leaf node)
+        -   [ ] `logging.js` imports formatting from `common-formatting.js`
+        -   [ ] `utils.js` imports formatting from `common-formatting.js`
+        -   [ ] No circular dependency warnings in comments
+        -   [ ] Build succeeds without TDZ errors
+        -   [ ] Dependency graph verified with madge tool
+
+### ARCH-9: Manifest Strategy (Canvas as First-Class Citizen)
+
+-   **[ ] `ARCH-9.1`:** Promote Canvas to Manifest Strategy
+    -   Create `video/frame-providers/` directory
+    -   Create `frame-provider-manifest.js` with strategy list
+    -   Extract Canvas logic to `canvas-frame-provider.js` (implements FrameProviderContract)
+    -   Extract MediaStreamTrack logic to `mediastream-track-provider.js`
+    -   Both providers implement: `isSupported()`, `initialize()`, `start()`, `stop()`, `dispose()`
+    -   **Acceptance Criteria:**
+        -   [ ] `video/frame-providers/` directory created
+        -   [ ] `FRAME_PROVIDER_MANIFEST` defined with 2 strategies
+        -   [ ] `CanvasFrameProvider` class implements contract
+        -   [ ] `MediaStreamTrackProvider` class implements contract
+        -   [ ] Both have `isSupported()` static method
+        -   [ ] Canvas no longer in try/catch fallback
+
+-   **[ ] `ARCH-9.2`:** Update frame-processor.js to use manifest
+    -   Remove try/catch fallback for Canvas
+    -   Add capability-based selection from `FRAME_PROVIDER_MANIFEST`
+    -   Implement user override check (settings)
+    -   Implement strict gating (no silent strategy swap on failure)
+    -   Log `STRATEGY_FAILURE` to telemetry if provider crashes
+    -   **Acceptance Criteria:**
+        -   [ ] No try/catch fallback to Canvas
+        -   [ ] Selection iterates through manifest by priority
+        -   [ ] User can override via `state.frameProviderOverride`
+        -   [ ] If selected strategy fails, throw error (no swap)
+        -   [ ] `STRATEGY_FAILURE` logged to telemetry
+        -   [ ] Active strategy tracked in `state.orchestration.activeFrameProvider`
+        -   [ ] Dev panel shows active frame provider
+
+### ARCH-10: Documentation
+
+-   **[ ] `ARCH-10.1`:** Update ARCHITECTURE_RULES.md
+    -   Add Rule 11: State Selectors (Law of Demeter)
+    -   Add Rule 12: Headless Core (No DOM in Core)
+    -   Add Rule 13: Telemetry Consolidation
+    -   Add Rule 14: Module Boundaries (No Circular Dependencies)
+    -   Add Rule 15: Manifest Strategy Enforcement
+    -   Include real bug examples for each rule
+    -   **Acceptance Criteria:**
+        -   [ ] 5 new rules added to ARCHITECTURE_RULES.md
+        -   [ ] Each rule has "Problem", "Solution", "Example" sections
+        -   [ ] Real code examples included
+        -   [ ] Pre-PR checklist updated
+
+-   **[ ] `ARCH-10.2`:** Update subsystem READMEs
+    -   `core/README.md`: Document selector pattern
+    -   `ui/README.md`: Document event-driven DOM provisioning
+    -   `utils/README.md`: Document telemetry consolidation, common-formatting.js
+    -   `video/README.md`: Document Canvas Manifest Strategy
+    -   **Acceptance Criteria:**
+        -   [ ] `core/README.md` has selector pattern section
+        -   [ ] `ui/README.md` has resource request pattern section
+        -   [ ] `utils/README.md` updated with ingest.js consolidation
+        -   [ ] `video/README.md` has Frame Provider Manifest section
+        -   [ ] Code examples included in all READMEs
+
+### ARCH-11: Testing
+
+-   **[ ] `ARCH-11.1`:** Add tests for Selector pattern
+    -   Test `getMetrics()` with empty state
+    -   Test `getMetrics()` with partial state
+    -   Test `getOrchestration()` with missing fields
+    -   Test `getVideoState()` null safety
+    -   **Acceptance Criteria:**
+        -   [ ] 4+ unit tests for each selector
+        -   [ ] Tests verify null-safe access
+        -   [ ] Tests verify default values
+        -   [ ] Tests pass in Node.js environment
+
+-   **[ ] `ARCH-11.2`:** Test headless Core in Node.js
+    -   Run engine tests without jsdom
+    -   Verify no DOM dependencies in Core layer
+    -   Test command handlers without browser
+    -   **Acceptance Criteria:**
+        -   [ ] Core tests pass in Node.js (no jsdom)
+        -   [ ] No `document.*` calls in Core layer
+        -   [ ] Command handlers testable without DOM
+        -   [ ] CI pipeline includes Node.js-only tests
+
+---
+
+## Phase 3.3: Composable Audio Parameters
 
 **Context:** Audio parameters (ADSR, filters) are synth-specific and not mappable to video data. This phase makes parameters composable and exposes video→audio mappings to the dev panel.
 
