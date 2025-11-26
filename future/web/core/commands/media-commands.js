@@ -5,8 +5,10 @@ import { structuredLog } from '../../utils/logging.js';
 import { 
   executeCriticalOperation, 
   AccessibilityError, 
-  showCriticalError 
+  showCriticalError,
+  showAudioFailureIndicator
 } from '../../utils/error-handling.js';
+import { hapticCount, announceMessage } from '../../utils/utils.js';
 import { 
   categorizeMediaError, 
   trackCameraPermissionDenial, 
@@ -18,13 +20,99 @@ import { initializeVideo } from '../../video/frame-processor.js';
 
 // Core media command functionality
 
-// These variables will be managed by the command handlers, keeping them out of the main engine. 
-let _videoElForScheduler = null;
-let _canvasElForScheduler = null;
-let _activeMediaStream = null; // Isolate the MediaStream here to prevent state cloning errors
+// ISSUE #3 FIX: Module-level singleton state breaks the Engine concept.
+// Previous: let _activeMediaStream = null; (persists across Engine destroy/recreate)
+// Solution: Use MediaAdapter class instance managed by Engine lifecycle.
+// This allows clean destroy/recreate for unit tests or app reset.
+
+/**
+ * MediaAdapter: Manages media resources (streams, elements) with Engine lifecycle.
+ * 
+ * Benefits over module-level singletons:
+ * 1. Engine can cleanly destroy and recreate without stale references
+ * 2. Unit tests can create fresh MediaAdapter per test
+ * 3. Resources are explicitly tied to Engine instance lifetime
+ * 4. Prevents memory leaks from orphaned MediaStream references
+ */
+class MediaAdapter {
+  constructor() {
+    this.activeMediaStream = null;
+    this.videoElement = null;
+    this.canvasElement = null;
+    this.isDisposed = false;
+  }
+  
+  setMediaStream(stream) {
+    if (this.isDisposed) {
+      structuredLog('WARN', 'MediaAdapter: attempted to set stream on disposed adapter');
+      return;
+    }
+    this.activeMediaStream = stream;
+  }
+  
+  getMediaStream() {
+    return this.activeMediaStream;
+  }
+  
+  stopMediaStream() {
+    if (this.activeMediaStream) {
+      try {
+        this.activeMediaStream.getTracks().forEach(track => {
+          try { track.stop(); } catch (_) {}
+        });
+      } catch (_) {}
+      this.activeMediaStream = null;
+    }
+  }
+  
+  setVideoElement(el) {
+    this.videoElement = el;
+  }
+  
+  setCanvasElement(el) {
+    this.canvasElement = el;
+  }
+  
+  /**
+   * Dispose all resources. Called when Engine is destroyed.
+   */
+  dispose() {
+    structuredLog('DEBUG', 'MediaAdapter: disposing all resources');
+    this.stopMediaStream();
+    this.videoElement = null;
+    this.canvasElement = null;
+    this.isDisposed = true;
+  }
+}
+
+// Symbol key to store MediaAdapter on engine instance
+const MEDIA_ADAPTER_KEY = Symbol.for('acoustsee.mediaAdapter');
+
+/**
+ * Get or create MediaAdapter for this engine instance
+ * @param {Object} engine - The engine instance
+ * @returns {MediaAdapter} The adapter instance
+ */
+function getMediaAdapter(engine) {
+  if (!engine[MEDIA_ADAPTER_KEY]) {
+    engine[MEDIA_ADAPTER_KEY] = new MediaAdapter();
+    
+    // Register cleanup on engine dispose if available
+    if (typeof engine.onDispose === 'function') {
+      engine.onDispose(() => {
+        engine[MEDIA_ADAPTER_KEY]?.dispose();
+        delete engine[MEDIA_ADAPTER_KEY];
+      });
+    }
+  }
+  return engine[MEDIA_ADAPTER_KEY];
+}
 
 export function registerMediaCommands(engine) {
   const { registerCommandHandler } = engine;
+  
+  // Get the MediaAdapter for this engine instance
+  const mediaAdapter = getMediaAdapter(engine);
   
   structuredLog('INFO', 'MEDIA-COMMANDS: Registering command handlers...');
 
@@ -63,9 +151,47 @@ export function registerMediaCommands(engine) {
       // CRITICAL: Audio system must be initialized before processing video
       // The entire application purpose is visual-to-audio conversion
       if (!engine.audioApi) {
-        const err = new Error('Audio system not initialized. Power-on gesture must complete audio initialization before starting video processing.');
+        const err = new AccessibilityError(
+          'Audio system not initialized. Power-on gesture must complete audio initialization before starting video processing.',
+          'AUDIO_SYSTEM_NOT_INITIALIZED',
+          { stage: 'startProcessing', hasAudioApi: false }
+        );
         structuredLog('ERROR', 'COMMAND: startProcessing BLOCKED - Audio system not ready', { error: err.message });
+        // Accessibility alert: haptic + announcement for blind users
+        hapticCount(3); // 3 pulses = critical error
+        announceMessage('Error: Audio system not ready. Please tap to activate audio first.');
+        showAudioFailureIndicator('Audio Not Ready - When app starts Tap PowerOn at center of the screen First');
         throw err;
+      }
+
+      // CRITICAL FIX (Issue #1): Validate AudioContext is not suspended
+      // For blind users, a silent app is indistinguishable from a broken app
+      const audioContext = engine.audioApi?.context || engine.audioApi?.audioManager?.context;
+      if (audioContext && audioContext.state === 'suspended') {
+        // Attempt to resume the AudioContext
+        try {
+          await audioContext.resume();
+          structuredLog('INFO', 'COMMAND: AudioContext resumed successfully from suspended state');
+        } catch (resumeError) {
+          const err = new AccessibilityError(
+            'Audio is suspended and cannot be resumed. Please tap the screen to enable audio.',
+            'AUDIO_CONTEXT_SUSPENDED',
+            { 
+              contextState: audioContext.state, 
+              resumeError: resumeError?.message,
+              stage: 'startProcessing'
+            }
+          );
+          structuredLog('ERROR', 'COMMAND: startProcessing BLOCKED - AudioContext suspended', { 
+            error: err.message,
+            contextState: audioContext.state
+          });
+          // ACCESSIBILITY ALERT: Critical for blind users
+          hapticCount(3); // 3 pulses = critical error pattern
+          announceMessage('Error: Audio is suspended. Please tap the screen to enable sound.');
+          showAudioFailureIndicator('Audio Suspended - Tap to Enable');
+          throw err;
+        }
       }
 
       if (s.isProcessing) {
@@ -78,7 +204,7 @@ export function registerMediaCommands(engine) {
 
         structuredLog('DEBUG', 'COMMAND: Requesting camera permissions...');
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        _activeMediaStream = stream;
+        mediaAdapter.setMediaStream(stream);
         structuredLog('DEBUG', 'COMMAND: Camera stream acquired successfully.');
 
         // ADR-0011: Request video element from UI layer (headless core pattern)
@@ -104,7 +230,7 @@ export function registerMediaCommands(engine) {
         }
 
         // Attach and play stream (play errors are non-fatal for autoplay policies)
-        try { videoEl.srcObject = _activeMediaStream; } catch (_) {}
+        try { videoEl.srcObject = mediaAdapter.getMediaStream(); } catch (_) {}
         try { await videoEl.play(); } catch (e) { /* ignore autoplay rejects */ }
 
         // Mark processing state (serializable via engine.setState when available)
@@ -148,9 +274,8 @@ export function registerMediaCommands(engine) {
           });
         }
 
-        if (_activeMediaStream) {
-          try { _activeMediaStream.getTracks().forEach(track => track.stop()); } catch (_) {}
-          _activeMediaStream = null;
+        if (mediaAdapter.getMediaStream()) {
+          mediaAdapter.stopMediaStream();
         }
         if (typeof engine.setState === 'function') engine.setState({ isProcessing: false });
         throw err; // Re-throw to help with debugging
@@ -183,8 +308,8 @@ export function registerMediaCommands(engine) {
         throw new Error('initializeVideoPipeline requires { videoEl, stream } payload');
       }
 
-      // Keep a module-scoped reference for teardown
-      _activeMediaStream = stream;
+      // Store stream reference in MediaAdapter for teardown (Issue #3 fix)
+      mediaAdapter.setMediaStream(stream);
 
       try {
         structuredLog('INFO', 'COMMAND: Initializing video pipeline...');
@@ -248,11 +373,8 @@ export function registerMediaCommands(engine) {
         return { ok: true };
       } catch (err) {
         structuredLog('ERROR', 'COMMAND: initializeVideoPipeline FAILED.', { error: err.message, stack: err.stack });
-        // Best-effort cleanup of stream on failure
-        if (_activeMediaStream) {
-          try { _activeMediaStream.getTracks().forEach(t => { try { t.stop(); } catch (_) {} }); } catch (_) {}
-          _activeMediaStream = null;
-        }
+        // Best-effort cleanup of stream on failure using MediaAdapter
+        mediaAdapter.stopMediaStream();
         throw err;
       }
     }));
@@ -269,10 +391,8 @@ export function registerMediaCommands(engine) {
       isProcessing: s.isProcessing 
     });
     
-    if (_activeMediaStream) {
-      _activeMediaStream.getTracks().forEach(track => track.stop());
-      _activeMediaStream = null;
-    }
+    // Issue #3 fix: Use MediaAdapter for stream cleanup
+    mediaAdapter.stopMediaStream();
     
     // CRITICAL FIX: Send empty cues to all synths to force voice cleanup
     try {

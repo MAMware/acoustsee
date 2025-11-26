@@ -312,6 +312,190 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
   return { coords, intens, uFlow, vFlow, count: returnedCount };
 }
 
+/**
+ * Direct channel port for receiving frames from WorkerChannelManager
+ * This enables zero-copy frame transfer bypassing main thread serialization
+ * @type {MessagePort | null}
+ */
+let _directChannelPort = null;
+
+/**
+ * Process frame message (shared between self.onmessage and direct channel)
+ * @param {object} msg - The message object with frame data
+ */
+function processFrameMessage(msg) {
+  try {
+    // Extract frame data based on message type
+    // FrameConductor sends: { type: 'processingRequest', data: frameData, width, height, state }
+    // Legacy sends: { type: 'frame', w, h, yBuffer, ... }
+    // Direct channel sends: { type: 'processFrame', payload: { frame, ... } }
+    let frameData = msg.payload?.frame || msg.data || msg.yBuffer;
+    const ts = msg.payload?.timestamp || msg.timestamp || 0;
+    const w = msg.payload?.width || msg.width || msg.w || 0;
+    const h = msg.payload?.height || msg.height || msg.h || 0;
+
+    // Handle ImageBitmap from direct channel (need to extract pixel data)
+    if (frameData instanceof ImageBitmap) {
+      // Create OffscreenCanvas to extract pixel data from ImageBitmap
+      const canvas = new OffscreenCanvas(w, h);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(frameData, 0, 0);
+      const imageData = ctx.getImageData(0, 0, w, h);
+      frameData = imageData.data;
+      // Close the ImageBitmap to free resources
+      frameData.close?.();
+    }
+
+    // Handle ImageData structure (common in FrameConductor)
+    if (frameData && frameData.data) {
+      frameData = frameData.data;
+    }
+    
+    // TEMPORARY DIAGNOSTIC: Log frame data details (sample 1% of frames)
+    if (Math.random() < 0.01) {
+      console.log('[FastMotion] Frame received:', {
+        type: msg.type,
+        hasData: !!frameData,
+        dataType: frameData ? frameData.constructor.name : 'null',
+        dataSize: frameData ? (frameData.length || frameData.byteLength) : 0,
+        dimensions: `${w}x${h}`,
+        expectedRGBA: w * h * 4,
+        expectedY: w * h,
+        viaDirect: msg.type === 'processFrame'
+      });
+    }
+    
+    // CORE-15: Extract motion detection params from state.motionDetection or payload
+    const motionConfig = msg.payload?.motionConfig || (msg.state && msg.state.motionDetection) || {};
+    const step = motionConfig.step || msg.step || 6;
+    const threshold = motionConfig.threshold || (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
+    const maxRegions = motionConfig.maxRegions || msg.maxRegions || 64;
+    const windowSize = motionConfig.windowSize || msg.windowSize || 5;
+    const gridConfig = msg.payload?.gridConfig || (msg.state && msg.state.gridConfig) || msg.gridConfig || { rows: 4, cols: 4, frameWidth: w, frameHeight: h, aggregation: 'mean', skipThreshold: 0.1 };
+    const mode = msg.payload?.mode || (msg.state && msg.state.mode) || msg.mode || 'flow';
+    
+    // CRITICAL FIX: Convert RGBA ImageData to Y-plane if needed
+    let yBuffer = frameData;
+    const expectedRGBASize = w * h * 4;
+    const expectedYSize = w * h;
+    
+    if (frameData) {
+      const bufferLength = frameData.length !== undefined ? frameData.length : frameData.byteLength;
+      
+      if (bufferLength === expectedRGBASize) {
+        const rgbaData = frameData instanceof ArrayBuffer 
+          ? new Uint8Array(frameData)
+          : frameData;
+        
+        yBuffer = rgbaToYPlane(rgbaData, w, h);
+      }
+    }
+    
+    if (!yBuffer) {
+      // No buffer available - return empty result
+      self.postMessage(
+        WorkerContract.createResult(
+          WORKER_TYPES.FAST_MOTION,
+          mode,
+          [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
+          {
+            coords: new Uint16Array(0),
+            intens: new Uint8Array(0),
+            uFlow: new Float32Array(0),
+            vFlow: new Float32Array(0),
+            count: 0,
+            timestamp: ts,
+            gridConfig,
+            mode,
+          }
+        )
+      );
+      return;
+    }
+    
+    const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
+    
+    // TEMPORARY DIAGNOSTIC: Sample intensity for validation (0.5% sample rate)
+    if (res.count > 0 && Math.random() < 0.005) {
+      const firstFew = [];
+      for (let i = 0; i < Math.min(5, res.count); i++) {
+        firstFew.push(res.intens[i]);
+      }
+      console.log('[FastMotion] INTENSITY SAMPLE:', {
+        regions: res.count,
+        firstFive: firstFew
+      });
+    }
+
+    // Ensure frame dimensions are present in gridConfig for downstream aggregation workers
+    const enrichedGridConfig = gridConfig ? {
+      ...gridConfig,
+      frameWidth: gridConfig.frameWidth || w,
+      frameHeight: gridConfig.frameHeight || h
+    } : {
+      rows: 4,
+      cols: 4,
+      frameWidth: w,
+      frameHeight: h,
+      aggregation: 'mean',
+      skipThreshold: 0.1
+    };
+
+    // Lightweight sampled diagnostic (2%): confirm region count & first intensity
+    if (Math.random() < 0.02) {
+      console.log('[FastMotion] POST SAMPLE', {
+        count: res.count,
+        firstIntensity: res.count > 0 ? res.intens[0] : null,
+        intensLength: res.intens.length
+      });
+    }
+
+    // CORE-15: Collect normalization telemetry for dev panel display
+    const telemetry = normalizer.getTelemetry();
+
+    const resultData = {
+      coords: res.coords,
+      intens: res.intens,
+      uFlow: res.uFlow,
+      vFlow: res.vFlow,
+      count: res.count,
+      timestamp: Date.now(),
+      gridConfig: enrichedGridConfig,
+      mode,
+      frameWidth: w,
+      frameHeight: h,
+      // CORE-15: Include normalization telemetry in worker result
+      normalizationTelemetry: {
+        recentMax: telemetry.recentMax,
+        effectiveMax: telemetry.effectiveMax,
+        clippingRate: telemetry.clippingRate,
+        frameCount: telemetry.frameCount
+      }
+    };
+    
+    const contractMessage = WorkerContract.createResult(
+      WORKER_TYPES.FAST_MOTION,
+      mode,
+      [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
+      resultData
+    );
+    
+    // Transfer buffer ownership to main thread for zero-copy performance
+    self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
+  } catch (e) {
+    // TEMPORARY DIAGNOSTIC: Log full error details
+    console.error('[FastMotion] EXCEPTION:', e.message, 'Stack:', e.stack);
+    // Send error via contract
+    self.postMessage(
+      WorkerContract.createError(
+        WORKER_TYPES.FAST_MOTION,
+        `Motion detection failed: ${e.message}`,
+        e
+      )
+    );
+  }
+}
+
 self.onmessage = (ev) => {
   const msg = ev.data || {};
 
@@ -323,176 +507,54 @@ self.onmessage = (ev) => {
     return;
   }
 
+  // Handle direct channel connection from WorkerChannelManager
+  if (msg.type === 'connectChannel') {
+    const { port, role, channelName } = msg.payload || {};
+    
+    if (role === 'frameReceiver' && port instanceof MessagePort) {
+      // Close existing port if any
+      if (_directChannelPort) {
+        _directChannelPort.close();
+      }
+      
+      _directChannelPort = port;
+      
+      // Set up message handler for direct channel frames
+      _directChannelPort.onmessage = (channelEvent) => {
+        const channelMsg = channelEvent.data || {};
+        if (channelMsg.type === 'processFrame') {
+          processFrameMessage(channelMsg);
+        }
+      };
+      
+      _directChannelPort.start();
+      
+      console.log('[FastMotion] Direct channel connected:', { channelName, role });
+      
+      // Acknowledge connection
+      self.postMessage({
+        type: 'channelConnected',
+        channelName,
+        role
+      });
+    } else {
+      console.warn('[FastMotion] Invalid channel connection:', { role, hasPort: !!port });
+    }
+    return;
+  }
+
   // Process frame with inline grid configuration (stateless)
   // gridConfig and mode are passed with every frame, not stored in worker state
   // FIX: Accept both 'frame' (legacy) and 'processingRequest' (FrameConductor) message types
   if (msg.type === 'frame' || msg.type === 'processingRequest') {
-    try {
-      // Extract frame data based on message type
-      // FrameConductor sends: { type: 'processingRequest', data: frameData, width, height, state }
-      // Legacy sends: { type: 'frame', w, h, yBuffer, ... }
-      let frameData = msg.data || msg.yBuffer;
-      const ts = msg.timestamp || 0;
-      const w = msg.width || msg.w || 0;
-      const h = msg.height || msg.h || 0;
-
-      // Handle ImageData structure (common in FrameConductor)
-      if (frameData && frameData.data) {
-        frameData = frameData.data;
-      }
-      
-      // TEMPORARY DIAGNOSTIC: Log frame data details (sample 1% of frames) R111125eb considered eventBus?
-      if (Math.random() < 0.01) {
-        console.log('[FastMotion] Frame received:', {
-          type: msg.type,
-          hasData: !!frameData,
-          dataType: frameData ? frameData.constructor.name : 'null',
-          dataSize: frameData ? (frameData.length || frameData.byteLength) : 0,
-          dimensions: `${w}x${h}`,
-          expectedRGBA: w * h * 4,
-          expectedY: w * h
-        });
-      }
-      
-      // CORE-15: Extract motion detection params from state.motionDetection or fallback to legacy R141125C15 what legacy? dont be vague, we need clear comunication and we dont like fallbacks speacilly silent in this project
-      const motionConfig = (msg.state && msg.state.motionDetection) || {};
-      const step = motionConfig.step || msg.step || 6;
-      const threshold = motionConfig.threshold || (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
-      const maxRegions = motionConfig.maxRegions || msg.maxRegions || 64;
-      const windowSize = motionConfig.windowSize || msg.windowSize || 5;
-      const gridConfig = (msg.state && msg.state.gridConfig) || msg.gridConfig || { rows: 4, cols: 4, frameWidth: w, frameHeight: h, aggregation: 'mean', skipThreshold: 0.1 }; // Added frame dimensions for downstream workers
-      const mode = (msg.state && msg.state.mode) || msg.mode || 'flow';
-      
-      // CRITICAL FIX: Convert RGBA ImageData to Y-plane if needed
-      // FrameConductor sends full RGBA data (ArrayBuffer or Uint8ClampedArray)
-      // Motion detection works on Y-plane only (1 byte per pixel)
-      // Check if frameData is RGBA (4 bytes per pixel) and convert to Y-plane
-      let yBuffer = frameData;
-      const expectedRGBASize = w * h * 4;
-      const expectedYSize = w * h;
-      
-      if (frameData) {
-        // Handle both ArrayBuffer and typed arrays
-        const bufferLength = frameData.length !== undefined ? frameData.length : frameData.byteLength;
-        
-        if (bufferLength === expectedRGBASize) {
-          // Convert RGBA to Y-plane
-          // If it's an ArrayBuffer, create a typed array view; otherwise use reference directly
-          const rgbaData = frameData instanceof ArrayBuffer 
-            ? new Uint8Array(frameData)  // Use Uint8Array instead of copy
-            : frameData;
-          
-          yBuffer = rgbaToYPlane(rgbaData, w, h);
-        }
-      }
-      
-      if (!yBuffer) {
-        // No buffer available - return empty result
-        self.postMessage(
-          WorkerContract.createResult(
-            WORKER_TYPES.FAST_MOTION,
-            mode,
-            [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
-            {
-              coords: new Uint16Array(0),
-              intens: new Uint8Array(0),
-              uFlow: new Float32Array(0),
-              vFlow: new Float32Array(0),
-              count: 0,
-              timestamp: ts,
-              gridConfig,
-              mode,
-            }
-          )
-        );
-        return;
-      }
-      
-      const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
-      
-      // TEMPORARY DIAGNOSTIC: Sample intensity for validation (0.5% sample rate)
-      // R111125eb consider eventBus if more performant than console.log
-      if (res.count > 0 && Math.random() < 0.005) {
-        const firstFew = [];
-        for (let i = 0; i < Math.min(5, res.count); i++) {
-          firstFew.push(res.intens[i]);
-        }
-        console.log('[FastMotion] INTENSITY SAMPLE:', {
-          regions: res.count,
-          firstFive: firstFew
-        });
-      }
-
-      // Ensure frame dimensions are present in gridConfig for downstream aggregation workers
-      // Create new object to avoid mutating potentially frozen state, handle null/undefined
-      const enrichedGridConfig = gridConfig ? {
-        ...gridConfig,
-        frameWidth: gridConfig.frameWidth || w,
-        frameHeight: gridConfig.frameHeight || h
-      } : {
-        rows: 4,
-        cols: 4,
-        frameWidth: w,
-        frameHeight: h,
-        aggregation: 'mean',
-        skipThreshold: 0.1
-      };
-
-      // Lightweight sampled diagnostic (2%): confirm region count & first intensity
-      if (Math.random() < 0.02) {
-        console.log('[FastMotion] POST SAMPLE', {
-          count: res.count,
-          firstIntensity: res.count > 0 ? res.intens[0] : null,
-          intensLength: res.intens.length
-        });
-      }
-
-      // CORE-15: Collect normalization telemetry for dev panel display R151125C15ingest dont we have already a ingest/telemetry system? why do we need a new computation?
-      const telemetry = normalizer.getTelemetry();
-
-      const resultData = {
-        coords: res.coords,
-        intens: res.intens,
-        uFlow: res.uFlow,
-        vFlow: res.vFlow,
-        count: res.count,
-        timestamp: Date.now(),
-        gridConfig: enrichedGridConfig,
-        mode,
-        frameWidth: w,
-        frameHeight: h,
-        // CORE-15: Include normalization telemetry in worker result
-        normalizationTelemetry: {
-          recentMax: telemetry.recentMax,
-          effectiveMax: telemetry.effectiveMax,
-          clippingRate: telemetry.clippingRate,
-          frameCount: telemetry.frameCount
-        }
-      };
-      
-      const contractMessage = WorkerContract.createResult(
-        WORKER_TYPES.FAST_MOTION,
-        mode,
-        [CAPABILITIES.YMOTION_ONLY, CAPABILITIES.MOTION_MAGNITUDE],
-        resultData
-      );
-      
-      // Transfer buffer ownership to main thread for zero-copy performance
-      self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
-    } catch (e) {
-      // TEMPORARY DIAGNOSTIC: Log full error details R111125 considered eventBus?
-      console.error('[FastMotion] EXCEPTION:', e.message, 'Stack:', e.stack);
-      // Send error via contract
-      self.postMessage(
-        WorkerContract.createError(
-          WORKER_TYPES.FAST_MOTION,
-          `Motion detection failed: ${e.message}`,
-          e
-        )
-      );
-    }
+    processFrameMessage(msg);
   } else if (msg.type === 'handshake') {
-    self.postMessage({ type: 'ready', features: ['motion', 'flow', 'gridConfig'], mode: 'flow' });
+    self.postMessage({ 
+      type: 'ready', 
+      features: ['motion', 'flow', 'gridConfig', 'directChannel'], 
+      mode: 'flow',
+      directChannelSupported: true
+    });
   } else if (msg.type === 'simulate') {
     self.postMessage({ type: 'ready', features: ['motion', 'flow'], simulated: true, mode: 'flow' });
   }
