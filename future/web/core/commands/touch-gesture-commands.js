@@ -7,7 +7,7 @@
 import { structuredLog } from '../../utils/logging.js';
 import { getText, speakText, setLanguage, translatePage } from '../../utils/utils.js';
 import { getAllIdbLogs } from '../../utils/idb-logger.js';
-import { trackFeatureUse } from '../ingest.js';
+import { trackFeatureUse } from '../../utils/ingest.js';
 // Do not import audio-processor directly; use engine.audioApi
 
 /**
