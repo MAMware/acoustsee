@@ -192,7 +192,7 @@ export class FrameConductor {
     this.#isTransitioning = true;
 
     // Cleanup old workers
-    if (this.#currentMode !== null) {
+    if (this.#workers.size > 0) {
       structuredLog('DEBUG', 'FrameConductor: cleaning up old mode workers (transition start)', {
         oldMode: this.#currentMode,
         oldWorkerCount: this.#workers.size,

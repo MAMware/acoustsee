@@ -67,8 +67,18 @@ export class CanvasSource {
     this.canvas.height = this.videoElement.videoHeight || 480;
     
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+    
+    // Retry logic if context is null (e.g. memory pressure) R271125-mp please explain the memory pressure case
     if (!this.ctx) {
-      throw new Error('Canvas 2D context not available');
+      for (let i = 0; i < 3; i++) {
+        structuredLog('WARN', `Canvas source: Context creation failed, retrying (${i+1}/3)`);
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+        if (this.ctx) break;
+      }
+    }
+
+    if (!this.ctx) {
+      throw new Error('Canvas 2D context not available after retries');
     }
     
     // Bind capture loop for consistent `this` reference
@@ -145,6 +155,12 @@ export class CanvasSource {
       }
       
       // Draw current video frame to canvas
+      if (!this.ctx) {
+        // Should not happen if initialize succeeded, but possible if context lost
+        structuredLog('ERROR', 'Canvas source: Context lost during capture');
+        this.stop();
+        return;
+      }
       this.ctx.drawImage(this.videoElement, 0, 0, this.canvas.width, this.canvas.height);
       
       // Extract RGBA image data

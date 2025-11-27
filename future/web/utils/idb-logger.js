@@ -11,6 +11,12 @@ const STORE_NAME = 'logs';
 const MAX_ENTRIES = 1000;
 let dbPromise = null;
 
+// Circuit breaker state for error loops
+let recentErrorCount = 0;
+let lastErrorResetTime = Date.now();
+const ERROR_THRESHOLD = 100;
+const ERROR_WINDOW_MS = 10000;
+
 // Check IndexedDB support (feature-detect safely so Node imports don't throw).
 const isIndexedDBSupported = (typeof window !== 'undefined') && ('indexedDB' in window);
 
@@ -85,6 +91,17 @@ async function getDB() {
 
 // Append a log entry (JSON object). Fallback to console if DB unavailable.
 export async function addIdbLog(logEntry) {
+  // Circuit breaker: Stop logging if too many errors occur rapidly
+  const now = Date.now();
+  if (now - lastErrorResetTime > ERROR_WINDOW_MS) {
+    recentErrorCount = 0;
+    lastErrorResetTime = now;
+  }
+  
+  if (recentErrorCount > ERROR_THRESHOLD) {
+    return; // Circuit breaker open - prevent DB thrashing
+  }
+
   const db = await getDB();
   if (!db) {
     // DB unavailable - normal logging path will handle console output
@@ -101,9 +118,15 @@ export async function addIdbLog(logEntry) {
       // Cap size: If over max, delete oldest (cursor for efficiency).
       capLogSize(store).then(resolve).catch(reject);
     };
-    addRequest.onerror = () => reject(addRequest.error);
+    addRequest.onerror = () => {
+      recentErrorCount++;
+      reject(addRequest.error);
+    };
 
-    transaction.onerror = () => reject(transaction.error);
+    transaction.onerror = () => {
+      recentErrorCount++;
+      reject(transaction.error);
+    };
   });
 }
 

@@ -483,6 +483,12 @@ function processFrameMessage(msg) {
     
     // Transfer buffer ownership to main thread for zero-copy performance
     self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
+
+    // Safety: Nullify references to transferred buffers to prevent use-after-transfer
+    res.coords = null;
+    res.intens = null;
+    res.uFlow = null;
+    res.vFlow = null;
   } catch (e) {
     // TEMPORARY DIAGNOSTIC: Log full error details
     console.error('[FastMotion] EXCEPTION:', e.message, 'Stack:', e.stack);
