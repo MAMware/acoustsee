@@ -775,8 +775,8 @@ export async function initializeVideo(config) {
           memoryUsageMB: (performance.memory?.usedJSHeapSize || 0) / 1048576
         });
         
-        // Dispatch metrics update periodically (e.g. every 30 frames) to keep UI fresh but not spam
-        if (payload.frameId && payload.frameId % 30 === 0) {
+        // Dispatch metrics update periodically (e.g. every 10 frames) to keep UI fresh but not spam
+        if (payload.frameId && payload.frameId % 10 === 0) {
            const agg = metricsCollector.getAggregatedMetrics();
            const util = estimateUtilization(agg);
            
@@ -893,13 +893,11 @@ async function initializeSource(strategy, videoElement, engine, onFrameCallback)
       activeExtractor: strategy.name
     };
 
-    engine.setState({
-      orchestration: {
-        ...orchestration,
-        activeExtractor: strategy.name,
-        videoSourceCapabilities: strategy.capabilities,
-        decisionLog: [newDecision, ...(orchestration.decisionLog || [])].slice(0, 10)
-      }
+    // Use dispatch to ensure proper merging with existing state (e.g. capabilities)
+    engine.dispatch('updateOrchestration', {
+      activeExtractor: strategy.name,
+      videoSourceCapabilities: strategy.capabilities,
+      decisionLog: [newDecision, ...(orchestration.decisionLog || [])].slice(0, 10)
     });
     
     structuredLog('INFO', 'Video source initialized successfully', {
