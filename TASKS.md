@@ -48,6 +48,36 @@ This document tracks active and future development tasks to provide a clear proj
 -   **[x] `ARCH-12`:** Add tests for Selector pattern ✅
     - **Files:** `test/unit/core/engine-selectors.test.js` (created)
     - **Coverage:** 13 test cases for getMetrics(), getOrchestration(), getVideoState()
+
+### Phase 3.5: Performance & Stability Hardening (Nov 27, 2025)
+
+**Status:** 100% Complete (12 of 12 subtasks) ✅
+**Session:** `docs/sessions/2025-11/W4/20251127-perf-opt-session.md`
+
+- **[x] `PERF-1`:** Fix Zombie Workers
+  - **Solution:** Added check for existing workers before initialization in `FrameConductor`.
+- **[x] `PERF-2`:** Fix Unbounded Error Log
+  - **Solution:** Implemented circuit breaker in `IDBLogger` (stop after 100 errors/10s).
+- **[x] `PERF-3`:** Fix Canvas Context Loss
+  - **Solution:** Added retry logic and null checks in `CanvasSource`.
+- **[x] `PERF-4`:** Fix Worker Message Transfer
+  - **Solution:** Nullified buffers after transfer in `fast-motion-worker.js`.
+- **[x] `PERF-5`:** Optimize Redundant Canvas Clears
+  - **Solution:** Removed redundant `clearRect` in `dev-panel-preview.js`.
+- **[x] `PERF-6`:** Optimize Layout Thrashing
+  - **Solution:** Batched DOM updates using `requestAnimationFrame` in `dev-panel.js`.
+- **[x] `PERF-7`:** Optimize JSON Serialization
+  - **Solution:** Implemented lazy evaluation for log data in `logging.js`.
+- **[x] `PERF-8`:** Optimize Audio Param Automation
+  - **Solution:** Added `cancelScheduledValues` before ramping in `sine-wave.js`.
+- **[x] `PERF-9`:** Optimize IDB Reads
+  - **Solution:** Added `limit` parameter to `getAllIdbLogs` in `idb-logger.js`.
+- **[x] `PERF-10`:** Optimize Grid Config Creation
+  - **Solution:** Cached `gridConfig` objects in `FrameConductor` to reduce GC.
+- **[x] `PERF-11`:** Optimize Math.random usage
+  - **Solution:** Replaced `Math.random()` with `crypto.getRandomValues()` where appropriate.
+- **[x] `PERF-12`:** Fix Regression in Fast Motion Worker
+  - **Solution:** Fixed `ReferenceError: y is not defined` in `fast-motion-worker.js`.
     - **Tests:** Null-safety, partial state, API contract, decoupling verification
     - **Impact:** Selector pattern testable and documented _(Completed 2025-11-26)_
 
