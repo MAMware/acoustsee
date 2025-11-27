@@ -1,4 +1,5 @@
 import { structuredLog, shouldSample } from '../utils/logging.js';
+import { EVENTS } from '../core/events.js';
 
 /**
  * AudioRouter - Decouples Video Pipeline from Audio Engine (ADR-0006)
@@ -108,7 +109,7 @@ export class AudioRouter {
   }
 
   _dispatch(payload, frameId, startTime, state) {
-    const eventName = 'audioCuesReady';
+    const eventName = EVENTS.AUDIO.CUES_READY;
     
     // Apply capping
     const cappedPayload = this._capHighFreqPayload(eventName, {

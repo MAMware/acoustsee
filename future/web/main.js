@@ -30,6 +30,7 @@ import { loadAvailableGrids } from './video/grids/available-grids.js';
 import { addSessionError, startHealthChecker } from './utils/performance.js';
 import { getComponent } from './ui/ui-registry.js';
 import { AVAILABLE_UIS, getUIEntry, loadUIById } from './ui/ui-manifest.js';
+import { activateUI, getActiveUI, disposeActiveUI } from './ui/ui-loader.js';
 import { createIngestInterceptor, setupIngestErrorTracking } from './utils/ingest.js';
 import { detectAllCapabilities, generateCapabilityReport } from './core/capability-detector.js';
 
@@ -340,63 +341,7 @@ export async function init() {
       importMetaUrl: import.meta.url
     });
 
-    let activeUIId = null;
-    let activeUIDispose = null;
 
-    async function activateUI(id) {
-      try {
-        // Prevent concurrent activations
-        if (activateUI._inProgress) {
-          structuredLog('WARN', 'activateUI: activation already in progress', { requested: id });
-          return;
-        }
-        activateUI._inProgress = true;
-
-        // Dispose currently active UI BEFORE loading the next one to avoid
-        // overlapping listeners or DOM collisions.
-        if (activeUIDispose) {
-          try {
-            activeUIDispose();
-          } catch (e) {
-            structuredLog('WARN', 'Previous UI dispose failed', { error: e?.message });
-          }
-          activeUIDispose = null;
-          activeUIId = null;
-        }
-
-        // Clear any leftover UI DOM so new UI starts with a clean root
-        try {
-          if (uiContext && uiContext.DOM && uiContext.DOM.uiPanelRoot) {
-            uiContext.DOM.uiPanelRoot.innerHTML = '';
-          }
-        } catch (e) { /* best-effort */ }
-
-        const entry = getUIEntry(id);
-        if (!entry) {
-          structuredLog('WARN', 'activateUI: Unknown UI id', { id });
-          activateUI._inProgress = false;
-          return;
-        }
-        await loadUIById(id); // dynamic import triggers registration
-        const initializer = getComponent(id);
-        if (typeof initializer === 'function') {
-          activeUIId = id;
-          const disposeFn = initializer(uiContext);
-          if (typeof disposeFn === 'function') activeUIDispose = disposeFn; else activeUIDispose = null;
-          structuredLog('INFO', 'UI activated', { id });
-          // Body mode class for styling isolation
-          document.body.classList.remove('dev-panel-mode', 'accessible-mode');
-          if (id === 'dev-panel') document.body.classList.add('dev-panel-mode');
-          if (id === 'touch-gestures') document.body.classList.add('accessible-mode');
-        } else {
-          structuredLog('ERROR', 'UI module did not register initializer', { id });
-        }
-        activateUI._inProgress = false;
-      } catch (e) {
-        structuredLog('ERROR', 'Failed to activate UI', { id, error: e?.message || String(e) });
-        activateUI._inProgress = false;
-      }
-    }
 
     // Populate selector now (UI activation deferred until Power On)
     const selector = document.getElementById('uiSelector');
@@ -555,7 +500,7 @@ export async function init() {
           const selectorEl = document.getElementById('uiSelector');
           const chosen = selectorEl && selectorEl.value ? selectorEl.value : 'touch-gestures';
           // 3) Import & initialize chosen UI BEFORE emitting poweredOn so listeners receive the event
-          await activateUI(chosen);
+          await activateUI(chosen, uiContext);
           // 4) Emit global lifecycle event so UI modules can react
           try { engine.emit && engine.emit('app:poweredOn', { traceId }); } catch (e) { structuredLog('WARN', 'engine.emit failed', { error: e?.message, traceId }); }
           // 5) Transition visuals
@@ -569,9 +514,9 @@ export async function init() {
     }
 
     // Expose for debugging / potential runtime UI switching
-    window.__activateUI = activateUI;
-    window.__getActiveUI = () => activeUIId;
-    window.__disposeActiveUI = () => { if (activeUIDispose) { try { activeUIDispose(); } catch(e){} activeUIDispose = null; activeUIId = null; } };
+    window.__activateUI = (id) => activateUI(id, uiContext);
+    window.__getActiveUI = getActiveUI;
+    window.__disposeActiveUI = disposeActiveUI;
 
     // Initialize Persistent Floating Export Button (Phase 2A Task 2.2 Enhancement)
     // Creates an always-on-top button that persists regardless of UI state

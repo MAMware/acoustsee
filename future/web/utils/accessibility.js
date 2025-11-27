@@ -46,12 +46,8 @@ export function announceMessage(message, settings = {}) {
       try {
         const toast = document.createElement('div');
         toast.textContent = message;
-        toast.style.cssText = `
-          position: fixed; bottom: 10px; left: 10px; 
-          background: #333; color: #fff; padding: 8px 12px; 
-          border-radius: 4px; font-size: 12px; z-index: 10000;
-          max-width: 250px; word-wrap: break-word;
-        `;
+        toast.className = 'accessibility-toast';
+
         document.body.appendChild(toast);
         setTimeout(() => { 
           try { toast.remove(); } catch (e) {} 

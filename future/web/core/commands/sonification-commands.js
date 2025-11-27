@@ -2,6 +2,7 @@
 // MODIFIED - Calculates duration and dispatches benchmark log. /R24925: Validate and clarify
 
 import { structuredLog, shouldSample } from '../../utils/logging.js';
+import { EVENTS } from '../events.js';
 
 /**
  * Registers the command handler that bridges the video and audio pipelines.
@@ -14,12 +15,12 @@ export function registerSonificationCommands(engine) {
     return;
   }
 
-  engine.registerCommandHandler('audioCuesReady', (payload) => {
+  engine.registerCommandHandler(EVENTS.AUDIO.CUES_READY, (payload) => {
     const endTime = performance.now();
 
     if (payload.startTime) {
       const totalDuration = endTime - payload.startTime;
-      engine.dispatch('logFrameBenchmark', {
+      engine.dispatch(EVENTS.PERFORMANCE.LOG_FRAME_BENCHMARK, {
         frameId: payload.frameId,
         duration: totalDuration
       });

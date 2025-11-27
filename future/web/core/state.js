@@ -11,6 +11,7 @@ import { availableEnginesData } from '../audio/synths/available-synths.js';
 import { availableLanguagesData } from '../languages/available-languages.js';
 import { computeDefaultUpdateInterval, computeDefaultMaxNotes, deviceSummary } from '../utils/performance.js';
 import { BUILD_VERSION, AUDIO_VERSION, VIDEO_VERSION, UI_VERSION, LANGUAGES_VERSION, UTILS_VERSION } from './constants.js';
+import { EVENTS } from './events.js';
 
 
 /**
@@ -95,7 +96,7 @@ export function createInitialState() {
   // Developer-friendly dynamic categorization for pipeline optimization events
   ingestCategories: {
     user_workflow: ['startProcessing', 'stopProcessing', 'toggleProcessing', 'setMode'],
-    performance_critical: ['audioCuesReady', 'setFrameProviderThrottle', 'logFrameBenchmark'],
+    performance_critical: [EVENTS.AUDIO.CUES_READY, 'setFrameProviderThrottle', EVENTS.PERFORMANCE.LOG_FRAME_BENCHMARK],
     auto_optimization: ['setFrameInterval', 'diagnosticTick'],
     performance_settings: ['setMaxNotes', 'setMotionThreshold', 'setAutoFPS']
   },
@@ -115,7 +116,7 @@ export function createInitialState() {
     // Specific commands
     'startProcessing': { sampleRate: 1.0, destinations: ['eventBus', 'analytics'] },
     'stopProcessing': { sampleRate: 1.0, destinations: ['eventBus', 'analytics'] },
-    'audioCuesReady': { sampleRate: 0.01, destinations: ['eventBus'] },
+    [EVENTS.AUDIO.CUES_READY]: { sampleRate: 0.01, destinations: ['eventBus'] },
     'setFrameInterval': { sampleRate: 0.1, destinations: ['eventBus'] }
     , 'deltaHistogramSnapshot': { sampleRate: 1.0, destinations: ['eventBus'] }
   },

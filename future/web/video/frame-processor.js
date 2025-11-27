@@ -14,6 +14,7 @@ import { VIDEO_SOURCE_MANIFEST } from './source/video-source-manifest.js';
 import { trackFeatureUse } from '../utils/ingest.js';
 import { BufferPool } from '../core/deamons/buffer-pool.js';
 import { createMetricsCollector, estimateUtilization } from '../core/metrics-collector.js';
+import { VideoSourceFactory } from './video-source-factory.js';
 
 // ============================================================================
 // FrameConductor description: R261125-fcd description missing, please describe in great detail FrameConductor
@@ -802,145 +803,15 @@ export async function initializeVideo(config) {
       }
     };
     
-    // Level 1: Check user override
-    const userOverride = engine.getState().videoSourceOverride;
-    if (userOverride) {
-      const strategy = VIDEO_SOURCE_MANIFEST.find(s => s.name === userOverride);
-      if (strategy && strategy.isSupported()) {
-        structuredLog('INFO', `Using user-selected video source: ${userOverride}`);
-        return await initializeSource(strategy, videoElement, engine, onFrameCallback);
-      } else {
-        // STRICT GATING: User override not available
-        const error = new Error(`STRATEGY_FAILURE: User-selected video source "${userOverride}" not available`);
-        structuredLog('ERROR', error.message);
-        trackFeatureUse('strategy-failure', {
-          subsystem: 'video',
-          strategy: userOverride,
-          reason: 'user-override-not-supported'
-        });
-        throw error;
-      }
-    }
-    
-    // Level 2: Iterate manifest by priority
-    for (const strategy of VIDEO_SOURCE_MANIFEST) {
-      if (strategy.isSupported()) {
-        structuredLog('INFO', `Selected video source: ${strategy.name}`, {
-          description: strategy.description,
-          priority: strategy.priority,
-          capabilities: strategy.capabilities
-        });
-        return await initializeSource(strategy, videoElement, engine, onFrameCallback);
-      }
-    }
-    
-    // Level 3: No supported strategy found (critical failure)
-    const error = new Error('CRITICAL: No supported video source available in this browser');
-    structuredLog('ERROR', error.message);
-    trackFeatureUse('strategy-failure', {
-      subsystem: 'video',
-      reason: 'no-supported-source',
-      manifest: VIDEO_SOURCE_MANIFEST.map(s => ({ name: s.name, supported: s.isSupported() }))
-    });
-    throw error;
+    activeVideoSource = await VideoSourceFactory.createSource(videoElement, engine, _config, onFrameCallback);
+    return activeVideoSource;
   }, { 
     videoElement: config?.videoElement, 
     hasCamera: !!config?.videoElement?.srcObject 
   });
 }
 
-/**
- * Initialize video source provider with strict gating (ADR-0011).
- * 
- * Strict Gating Philosophy:
- * - Once a strategy is selected, lock it in
- * - If selected strategy crashes, log STRATEGY_FAILURE and stop
- * - DO NOT silently swap to lower priority strategy
- * - User must be alerted to take action (reload page, change settings)
- * 
- * @param {Object} strategy - Strategy from VIDEO_SOURCE_MANIFEST
- * @param {HTMLVideoElement} videoElement - Video element with MediaStream
- * @param {Object} engine - Engine instance for state management
- * @param {Function} onFrameCallback - Frame processing callback
- * @returns {Object} Source provider instance
- */
-async function initializeSource(strategy, videoElement, engine, onFrameCallback) {
-  try {
-    // Instantiate strategy class
-    const provider = new strategy.strategy(videoElement, { 
-      engine,
-      onFrame: onFrameCallback,
-      registerWorker: _config.registerWorker,
-      getCurrentGrid: _config.getCurrentGrid
-    });
-    
-    // Initialize source (setup canvas, worker, etc.)
-    await provider.initialize();
-    
-    // Start frame capture
-    await provider.start();
-    
-    // Store provider reference for later disposal
-    // This allows disposeVideo() to properly terminate the frame-provider worker
-    activeVideoSource = provider;
-    
-    // Track active strategy in engine state
-    const orchestration = engine.getState().orchestration || {};
-    const newDecision = {
-      timestamp: Date.now(),
-      event: 'source_selected',
-      reason: 'initialization',
-      activeExtractor: strategy.name
-    };
 
-    // Use dispatch to ensure proper merging with existing state (e.g. capabilities)
-    engine.dispatch('updateOrchestration', {
-      activeExtractor: strategy.name,
-      videoSourceCapabilities: strategy.capabilities,
-      decisionLog: [newDecision, ...(orchestration.decisionLog || [])].slice(0, 10)
-    });
-    
-    structuredLog('INFO', 'Video source initialized successfully', {
-      source: strategy.name,
-      capabilities: strategy.capabilities
-    });
-    
-    // Track strategy selection for analytics
-    trackFeatureUse('video-source-selected', {
-      subsystem: 'video',
-      strategy: strategy.name,
-      priority: strategy.priority,
-      capabilities: strategy.capabilities
-    });
-    
-    return provider;
-    
-  } catch (error) {
-    // STRICT GATING: Do not try another strategy
-    structuredLog('ERROR', `STRATEGY_FAILURE: ${strategy.name} crashed during initialization`, {
-      error: error.message,
-      stack: error.stack,
-      strategy: strategy.name
-    });
-    
-    // Log to telemetry for debugging
-    trackFeatureUse('strategy-failure', {
-      subsystem: 'video',
-      strategy: strategy.name,
-      error: error.message,
-      phase: 'initialization'
-    });
-    
-    // Alert user via critical error handler
-    showCriticalError(
-      'Video Processing Failed',
-      `The ${strategy.name} video source encountered an error during initialization. Please reload the page or try a different browser.`,
-      error
-    );
-    
-    throw error; // DO NOT SILENTLY SWAP TO ANOTHER STRATEGY
-  }
-}
 
 /**
  * Dispose video processor and clean up all resources (Phase 3.1b).

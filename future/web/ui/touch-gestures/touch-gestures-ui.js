@@ -29,7 +29,7 @@ export function initializeAccessibleUI(arg1, arg2) {
   } else if (arg1 && typeof arg1.getState === 'function') {
     // Legacy signature: initializeAccessibleUI(engine, DOM)
     engine = arg1;
-    DOM = arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+    DOM = arg2;
     _uiConfig = Object.assign({}, _uiConfig, (typeof arg2 === 'object' ? arg2 : {}));
     
     // Import helpers manually for legacy mode
@@ -40,12 +40,15 @@ export function initializeAccessibleUI(arg1, arg2) {
     // Old DI signature (deprecated)
     const cfg = arg1 || {};
     engine = cfg.engine || (cfg.engineDispatch ? { dispatch: cfg.engineDispatch, getState: cfg.getEngineState || (()=>({})) } : null);
-    DOM = cfg.dom || arg2 || (typeof window !== 'undefined' ? window.DOM : undefined);
+    DOM = cfg.dom || arg2;
     _uiConfig = Object.assign({}, _uiConfig, cfg || {});
   }
   
   engine = engine || { dispatch: () => {}, getState: () => ({}) };
-  DOM = DOM || (typeof window !== 'undefined' ? window.DOM : undefined);
+  
+  if (!DOM) {
+    console.error('initializeAccessibleUI: DOM reference is required and was not provided.');
+  }
   console.log('Initializing Accessible UI...');
 
   // Opt-in: this UI requires the main application container to be visible.

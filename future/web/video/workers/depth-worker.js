@@ -182,13 +182,11 @@ self.onmessage = async (e) => {
     
     if (type === 'processingRequest') {
       // Send error response instead of throwing to prevent uncaught promise rejection
-      self.postMessage({
-        type: 'processingResponse',
-        error: {
-          message: error.message,
-          strategy: activeStrategy?.name || 'none'
-        }
-      });
+      self.postMessage(WorkerContract.createError(
+        WORKER_TYPES.DEPTH,
+        error.message,
+        error
+      ));
       return; // Don't throw - error already sent
     }
   }
