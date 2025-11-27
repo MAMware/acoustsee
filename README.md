@@ -2,8 +2,8 @@
 
 ### Project Vision
 
-The content at this repository builds a web app that aims to transform visual environments into intuitive soundscapes thus experiencing the visual world by synthetic audio cues in real time, generating dynamic soundscapes by mapping motion into distinct sound signatures.
- 
+The content at this repository builds a web app that aims to transform visual environments into intuitive soundscapes to experience the visual world by synthetic audio cues in real time. Generating dynamic soundscapes by mapping motion into distinct sound signatures.
+
 
 > We believe in software that improves quality of life. Enhancing accessibility with open-source tools is central to this mission. You're welcome to contribute.
 
@@ -33,15 +33,15 @@ The software is designed to run in most modern mobile and desktop web browsers. 
 
 ### Hypothetical Use Case
 
-Launch the app in a web browser to translate live camera input into a dynamic stereo soundscape. For example, a swinging object might map to a softer sound as it moves away and a louder, richer sound as it approaches. A distant car could render as a low hum, while objects to the left/right are localized with HRTF/panning. The goal is to enable perception of surroundings through an auditory interface, improving independence and situational awareness.
+Launch the app in a web browser to translate live camera input into a dynamic stereo soundscape. For example, a swinging object might map to a softer sound as it moves away and a louder, richer sound as it approaches. A distant car could render as a low hum. The goal is to enable perception of surroundings through an auditory interface, improving independence and situational awareness.
 
 ### [Current Status](#status) 
 
 - Milestone 0 to 4: reached by vibecoding with xAI Grok 3 
 - Milestone 5:  reached byv ibecoded with SuperGrok 4. some assistance from Gemini 2.5 Pro (Preview), ChatGPT 4.1 & o4-mini agents + small reviews from Claude 4.
-- Milestone 6:  restructered with Gemini 2.5 Pro  and ChatGPT 4.1 & 04-mini agents 
+- Milestone 6:  restructered with Gemini 2.5 Pro and ChatGPT 4.1 & 04-mini agents 
 - Milestone 6.5: (WIP) robust architectural improvements and integration work by GPT-5 mini (Preview)
-
+- Milestone 7 to 9: mayor redesign with a foundational Command pattern and Hexagonal architecture while still in plain vanilla JS, not merged to developing branch becouse this actually a complete rebase. 
 
 ### [v0.6 Project structure, (in construction)](#project_structure)
 
@@ -109,86 +109,19 @@ web/
 
 - See `docs/CONTRIBUTING.md` for detailed contributing guidelines, branching strategy, and examples.
 - Strict architecture: avoid hardcoding and implicit fallbacks, clean up leftovers.
-- UI separated from core logic to enable customizable skins (WIP)
+- UI separated from core logic to enable customizable skins 
 - Adding support for new video and audio techniques (WIP)
 - Ongoing tweaks and bugfixes
 
-## Plugin contract & audio lifecycle
-
-This project supports pluggable synth and grid modules. Guidelines for plugin authors:
-
-- PLUGIN-META: place a JSON metadata block at the top of the plugin file inside a comment so the indexer can extract it without executing the module. Example:
-
-```js
-/* PLUGIN-META
-{
-        "id": "sine-wave",
-        "name": "Sine Wave",
-        "author": "You",
-        "description": "Simple sine-wave engine",
-        "version": "0.1.0"
-}
-*/
-```
-
-- Synth engines: export a play function with the signature `export function play(notes, ctx = {})`.
-    - `notes` is an array of note objects (engine-specific).
-    - `ctx` is an audio runtime object provided by the app. Engines should read audio resources from `ctx` and must NOT create their own `AudioContext` or global oscillator pools.
-    - Minimum fields to expect on `ctx`: `audioContext`, `getOscillator`, `oscillatorPool`, and `modulators`.
-
-- Grids: export a mapping function that converts frame data into engine inputs. Use the same `ctx` pattern when audio resources are needed.
-
-- Lifecycle: the shared `AudioManager` owns the `AudioContext` and user-gesture unlock/resume. The app exposes it via `DOM.audioManager`. Bind to it using `bindAudioManager()` from `audio-processor` or reference `DOM.audioManager` directly in early initialization code.
-
-- Best practices: be defensive (check for missing `ctx.audioContext`), avoid long-running initialization in top-level module execution, and keep plugins dependency-free at runtime.
-
-
-### [To-Do List](docs/TO_DO.md)
-
-
-// web/core/handlers/audio-handlers.js
-// TODO: wire up note synthesis logic (e.g., playAudio)
-// TODO: apply HRTF using PannerNode or hrtf-processor
-
-// web/core/handlers/settings-handlers.js
-// TODO: read/write settings from state / localStorage
-
-// web/core/handlers/grid-handlers.js
-// TODO: set gridType in settings and trigger grid rendering
-
-// web/core/handlers/ui-handlers.js
-// TODO: wire up button UI updates
-// TODO: remove UI event listeners, cleanup DOM
-// cleanupAllListeners(context);
-
-// web/core/handlers/debug-handlers.js
-// TODO: add structured debug hooks
-
-Separation of concerns
-
-- Could improve: rather than calling `getLogs().then(console.log)`, return a promise or emit a structured debug event so UIs can consume logs programmatically.
-
-Consistency with logging
-
-- TODO: Avoid mixing raw `console.log` with `structuredLog('DEBUG', ...)`. Prefer a single pipeline (e.g., `core/ingest.js`) so debug output obeys project-wide filters and flags.
-
-Naming and API shape
-
-- `logEvent({ event })` may overlap with `structuredLog`; ensure each export has a clear purpose.
-- `inspectState({ context })` currently ignores `context`—either remove the parameter or support it meaningfully.
-
-Extensibility
-
-TODO: live debugging tools (hot toggles, wire up a REPL in the page, remote debug), you’ll want a richer API than just two methods. Think about returning structured objects or exposing hooks for subscribers rather than only side-effects.
-
-The next step is to align them more closely with the existing ingest/logging infrastructure, tighten up their API (parameters, return values), and ensure they’re genuinely adding value beyond what structuredLog already gives us.
-
-
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
-- Current work in progress at `//core/dispatcher.js`
+- Early stage diagrams covering the Trunk Based Development approach (v0.2) can be found at the link from above, reflecting:  
 
+  - Process Frame Flow
+  - Audio Generation Flow
+  - Motion Detection such as oscillator logic.
 ```mermaid
+
 graph TD
         A[dispatcher.js] -->|routes| B[core/handlers/]
         B --> C[video-handlers.js]
@@ -206,20 +139,12 @@ graph TD
         B -->|future| O[ml-handlers.js]
 ```
 
-- Early stage diagrams covering the Trunk Based Development approach (v0.2) can be found at the link from above, reflecting:  
-  - Process Frame Flow
-  - Audio Generation Flow
-  - Motion Detection such as oscillator logic.
-
 ### [Changelog](docs/CHANGELOG.md)
 
 - Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
 - Current "future" version in development starts from v0.6 
 
-
 ### [License](docs/LICENSE.md)
-
-## Licensing
 
 AcoustSee is available under two licenses. See `docs/LICENSE.md` for full text.
 
@@ -231,18 +156,12 @@ This project is licensed under the GNU General Public License v3.0. Derivative w
 
 Commercial licenses are available for proprietary use. Contact the project maintainer for details.
 
-### Usage analytics
-
-We collect a small amount of anonymous usage data to help prioritize features and fix bugs. The code that sends analytics is in `core/ingest.js` .
-
-**Data we collect:** a random session id, browser language, device type, and app version.
-
-**Data we do not collect:** IP address, precise location, browser history, or other PII.
-
 ### [FAQ](docs/FAQ.md)
 
 - See `docs/FAQ.md` for Frequently Asked Questions.
-
+- Usage analytics: We collect a small amount of anonymous usage data to help prioritize features and fix bugs. The code that sends analytics is in `core/ingest.js` .
+ - **Data we collect:** a random session id, browser language, device type, and app version.
+ - **Data we do not collect:** IP address, precise location, browser history, or other PII.
 
 *Peace.*
 **Love.**
