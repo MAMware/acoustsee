@@ -10,6 +10,28 @@ This directory contains cross-cutting utilities that are used by multiple subsys
 
 ---
 
+## Quick Reference: Two Logging Systems
+
+AcoustSee has **two separate logging systems** for different purposes:
+
+| System | Purpose | What It Stores | Export Button | File Name |
+|--------|---------|----------------|---------------|----------|
+| **Live Logs** | Console mirror | ALL logs in real-time | "Export" | `acoustsee-logs.json` |
+| **Performance Analytics** | Persistent storage | WARN/ERROR only | "Export Analytics" | `acoustsee-analytics-YYYY-MM-DD.json` |
+
+**When to use which:**
+- **Live Logs**: "What's happening right now?" - Quick debugging, see all log levels
+- **Performance Analytics**: "What errors happened over time?" - Bug reports, crash analysis
+
+**Mobile Testing Tips:**
+- ✅ Use Live Logs for quick checks (compact format)
+- ✅ Pause logs before exporting (cleaner output)
+- ✅ Use Performance Analytics for persistent errors across sessions
+- ❌ Don't try to copy from mobile console (unreliable)
+- ❌ Don't rely on Performance Analytics for INFO/DEBUG (not stored)
+
+---
+
 ## File Overview
 
 ### Core Infrastructure
@@ -1187,5 +1209,5 @@ When working in this directory:
 
 ---
 
-**Last Updated:** 24 November 2025 - Added ring buffer architecture documentation
+**Last Updated:** 27 November 2025 - Consolidated LOGGING_GUIDE.md content
 
