@@ -13,6 +13,7 @@ import { AudioRouter } from '../audio/audio-router.js';
 import { VIDEO_SOURCE_MANIFEST } from './source/video-source-manifest.js';
 import { trackFeatureUse } from '../utils/ingest.js';
 import { BufferPool } from '../core/deamons/buffer-pool.js';
+import { createMetricsCollector, estimateUtilization } from '../core/metrics-collector.js';
 
 // ============================================================================
 // FrameConductor description: R261125-fcd description missing, please describe in great detail FrameConductor
@@ -34,6 +35,7 @@ const bufferPool = new BufferPool({
 // FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes R261125-fcmdo arent we hardcoding values? is there a use case to have this exposed at Developer Panel?
 let frameConductor = null;
 let audioRouter = null;
+let metricsCollector = null;
 const DELTA_HISTOGRAM_BINS = 16;
 const DELTA_STATS_FLUSH_INTERVAL = 120;
 const PAN_MAX_DELTA = 2;
@@ -194,7 +196,16 @@ async function processFlowMode(frameData, width, height, state) {
     
     // Legacy fallback: If result has coords (motion worker only, no pan-mapper) R261125-fclf DO NOT SILENTLY FALLBACK 
     // This path should rarely execute with proper FrameConductor chain
-    const grid = _config.getCurrentGrid();
+    const grid = _config.getCurrentGrid ? _config.getCurrentGrid() : null;
+    
+    if (!_config.getCurrentGrid) {
+      // Defensive check to prevent crash if config is malformed
+      structuredLog('WARN', 'processFlowMode: _config.getCurrentGrid is missing', { 
+        configKeys: Object.keys(_config),
+        hasFrameConductor: !!frameConductor
+      }, false, shouldSample('configError'));
+    }
+
     if (cues.length === 0 && grid && grid.mapFunction && result.result?.coords?.length > 0) {
       // Convert result to movingRegions format that grids expect
       const movingRegions = [];
@@ -562,6 +573,12 @@ export async function initializeVideo(config) {
   // Initialize AudioRouter (ADR-0006)
   audioRouter = new AudioRouter(config.engine);
 
+  // Initialize MetricsCollector (Phase 2A: Orchestration Visibility)
+  metricsCollector = createMetricsCollector({
+    bufferSize: 100,
+    samplingRate: 100
+  });
+
   // Initialize conductor for default mode
   try {
     await frameConductor.initializeForMode(currentMode);
@@ -599,6 +616,9 @@ export async function initializeVideo(config) {
     const onFrameCallback = async (frameEvent) => {
       const { type, payload } = frameEvent;
       if (type !== 'frame') return;
+
+      // Start metrics collection for this frame
+      const endFrameMetrics = metricsCollector ? metricsCollector.startFrame() : () => {};
 
       const state = engine.getState();
       const frameData = new Uint8ClampedArray(payload.imageDataBuffer);
@@ -746,6 +766,40 @@ export async function initializeVideo(config) {
           }
         }
       }
+
+      // End metrics collection and update orchestration state
+      if (metricsCollector) {
+        metricsCollector.endFrame({
+          resolutionWidth: payload.width,
+          resolutionHeight: payload.height,
+          memoryUsageMB: (performance.memory?.usedJSHeapSize || 0) / 1048576
+        });
+        
+        // Dispatch metrics update periodically (e.g. every 30 frames) to keep UI fresh but not spam
+        if (payload.frameId && payload.frameId % 30 === 0) {
+           const agg = metricsCollector.getAggregatedMetrics();
+           const util = estimateUtilization(agg);
+           
+           const metrics = {
+             fps: agg.fps,
+             frameExtractionTimeMs: agg.avgExtractionTimeMs,
+             gridMappingTimeMs: agg.avgMappingTimeMs,
+             audioProcessingTimeMs: agg.avgProcessingTimeMs,
+             totalCycleTimeMs: agg.avgTotalTimeMs,
+             resolutionWidth: agg.avgResolutionWidth,
+             resolutionHeight: agg.avgResolutionHeight,
+             memoryUsageMB: agg.memoryUsageMB,
+             gpuUtilization: util.gpuUtilization,
+             underutilization: Math.max(0, 100 - util.cpuUtilization) // CPU Idle
+           };
+           
+           engine.dispatch('updateOrchestration', { 
+             metrics,
+             isProcessing: true,
+             activeExtractor: activeVideoSource?.name || 'unknown'
+           });
+        }
+      }
     };
     
     // Level 1: Check user override
@@ -832,11 +886,19 @@ async function initializeSource(strategy, videoElement, engine, onFrameCallback)
     
     // Track active strategy in engine state
     const orchestration = engine.getState().orchestration || {};
+    const newDecision = {
+      timestamp: Date.now(),
+      event: 'source_selected',
+      reason: 'initialization',
+      activeExtractor: strategy.name
+    };
+
     engine.setState({
       orchestration: {
         ...orchestration,
-        activeVideoSource: strategy.name,
-        videoSourceCapabilities: strategy.capabilities
+        activeExtractor: strategy.name,
+        videoSourceCapabilities: strategy.capabilities,
+        decisionLog: [newDecision, ...(orchestration.decisionLog || [])].slice(0, 10)
       }
     });
     
