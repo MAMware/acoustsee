@@ -173,8 +173,8 @@ function simpleDetectYMotion(yBuf, width, height, config = {}) {
   const maxRegions = config.maxRegions ?? MOTION_DETECTOR_CONFIG.MAX_REGIONS;
   const windowSize = config.windowSize ?? MOTION_DETECTOR_CONFIG.WINDOW_SIZE;
   let isFirstFrame = false;
-  if (!_prevY || _prevY.length !== y.length) {
-    _prevY = new Uint8Array(y.length);
+  if (!_prevY || _prevY.length !== yBuf.length) {
+    _prevY = new Uint8Array(yBuf.length);
     _width = width; _height = height;
     isFirstFrame = true;
   }
@@ -189,7 +189,7 @@ function simpleDetectYMotion(yBuf, width, height, config = {}) {
   // Optical flow requires frame-to-frame comparison; first frame always has zero delta
   // Just update _prevY and return empty results
   if (isFirstFrame) {
-    _prevY.set(y);
+    _prevY.set(yBuf);
     return { coords, intens, uFlow, vFlow, count: 0 };
   }
 
@@ -199,9 +199,9 @@ function simpleDetectYMotion(yBuf, width, height, config = {}) {
   const kernelT = [[1, 1], [1, 1]];
 
   // Compute derivatives on current frame (I1 = prev, I2 = current)
-  const fx = convolve2d(y, width, height, kernelX);
-  const fy = convolve2d(y, width, height, kernelY);
-  const ft = convolve2d(y, width, height, kernelT);
+  const fx = convolve2d(yBuf, width, height, kernelX);
+  const fy = convolve2d(yBuf, width, height, kernelY);
+  const ft = convolve2d(yBuf, width, height, kernelT);
   const ftPrev = convolve2d(_prevY, width, height, kernelT);
   for (let i = 0; i < ft.length; i++) {
     ft[i] -= ftPrev[i]; // ft = I2 - I1 approx
@@ -227,7 +227,7 @@ function simpleDetectYMotion(yBuf, width, height, config = {}) {
   for (let yy = w; yy < height - w; yy += step) {
     for (let xx = w; xx < width - w; xx += step) {
       const idx = yy * width + xx;
-      const d = Math.abs(y[idx] - _prevY[idx]);
+      const d = Math.abs(yBuf[idx] - _prevY[idx]);
       
       // Early-exit optimization: only process pixels with significant motion
       // This reduces optical flow computation by ~80% in static scenes
@@ -286,7 +286,7 @@ function simpleDetectYMotion(yBuf, width, height, config = {}) {
   }
 
   // Store current y for next frame
-  _prevY.set(y);
+  _prevY.set(yBuf);
 
   // Adaptive normalization telemetry is collected via normalizer.getTelemetry()
   // and sent back to the main thread in the result message.
