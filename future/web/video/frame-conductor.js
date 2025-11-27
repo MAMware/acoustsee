@@ -432,6 +432,8 @@ export class FrameConductor {
     };
 
     // Process frame through chain
+    let aggregatedFocusResult = {}; // Accumulator for Focus mode results
+
     for (const workerConfig of this.#currentChain) {
       const workerStartTime = performance.now();
       let workerResult;
@@ -444,10 +446,15 @@ export class FrameConductor {
       };
 
       try {
+        // Determine input for this worker
+        // Flow mode: Pipeline (output of previous -> input of next)
+        // Focus mode: Parallel/Independent (original frame -> input of all)
+        const inputToWorker = this.#currentMode === 'focus' ? frameData : currentInput;
+
         // Run worker with timeout
         workerResult = await this.#runWorker(
           workerConfig.name,
-          currentInput,
+          inputToWorker,
           width,
           height,
           state
@@ -500,7 +507,18 @@ export class FrameConductor {
         // Extract result and capabilities
         const capabilities = WorkerContract.getCapabilities(workerResult);
         aggregatedCapabilities = [...aggregatedCapabilities, ...capabilities];
-        currentInput = workerResult.result;
+        
+        // Update result based on mode
+        if (this.#currentMode === 'focus') {
+          // Aggregate results (merge objects)
+          if (workerResult.result && typeof workerResult.result === 'object') {
+            Object.assign(aggregatedFocusResult, workerResult.result);
+          }
+          currentInput = aggregatedFocusResult;
+        } else {
+          // Flow mode: Pipeline update
+          currentInput = workerResult.result;
+        }
 
         // Sampled shape check before pan-intensity-mapper to debug grid size mismatches
         if (workerConfig.name === 'fast-grid-aggregator') {
