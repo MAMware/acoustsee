@@ -246,7 +246,7 @@ export function initializeDevPanel(arg1, arg2) {
             const onPointerDown = (e) => {
               isPadActive = true;
               padStartTime = performance.now(); // Record start time
-              try { padArea.setPointerCapture && padArea.setPointerCapture(e.pointerId); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to set pointer capture', { error: e?.message || String(e) }); }
+              if (padArea.setPointerCapture) padArea.setPointerCapture(e.pointerId);
               generateCuesFromPad(e);
             };
 
@@ -261,7 +261,7 @@ export function initializeDevPanel(arg1, arg2) {
                 });
                 padStartTime = null;
               }
-              try { padArea.releasePointerCapture && padArea.releasePointerCapture(e.pointerId); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to release pointer capture', { error: e?.message || String(e) }); }
+              if (padArea.releasePointerCapture) padArea.releasePointerCapture(e.pointerId);
               engine.dispatch && engine.dispatch('audioPlayCues', { cues: [] });
             };
 
@@ -272,11 +272,11 @@ export function initializeDevPanel(arg1, arg2) {
 
             // Store a cleanup function on the panel for the main dispose function
             panel.__touchPadCleanup = () => {
-              try { padArea.removeEventListener('pointerdown', onPointerDown); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove pointerdown listener', { error: e?.message || String(e) }); }
-              try { padArea.removeEventListener('pointermove', generateCuesFromPad); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove pointermove listener', { error: e?.message || String(e) }); }
-              try { padArea.removeEventListener('pointerup', onPointerUp); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove pointerup listener', { error: e?.message || String(e) }); }
-              try { padArea.removeEventListener('pointerleave', onPointerUp); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove pointerleave listener', { error: e?.message || String(e) }); }
-              try { if (_padDurationHandler && durationSlider) durationSlider.removeEventListener('input', _padDurationHandler); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to remove duration slider listener', { error: e?.message || String(e) }); }
+              padArea.removeEventListener('pointerdown', onPointerDown);
+              padArea.removeEventListener('pointermove', generateCuesFromPad);
+              padArea.removeEventListener('pointerup', onPointerUp);
+              padArea.removeEventListener('pointerleave', onPointerUp);
+              if (_padDurationHandler && durationSlider) durationSlider.removeEventListener('input', _padDurationHandler);
             };
             structuredLog('INFO', 'Touch Pad UI wired successfully.');
           } else {
@@ -345,7 +345,7 @@ export function initializeDevPanel(arg1, arg2) {
           _devPanelCssHandled = true;
           try { console.debug && console.debug('Dev Panel CSS loaded or fallback:', link.href); } catch (e) { structuredLog('DEBUG', 'Dev Panel: CSS load debug logging failed', { href: link.href, error: e?.message || String(e) }); }
           // Clear safety timeout if still pending
-          try { if (_devPanelCssTimeoutId) clearTimeout(_devPanelCssTimeoutId); } catch (e) {}
+          if (_devPanelCssTimeoutId) clearTimeout(_devPanelCssTimeoutId);
           wireUpUI();
         }
 
@@ -358,7 +358,7 @@ export function initializeDevPanel(arg1, arg2) {
         };
 
         link.onerror = (e) => {
-          try { console.error && console.error('Dev Panel: stylesheet failed to load', { path: link.href, error: e }); } catch (err) {}
+          console.error && console.error('Dev Panel: stylesheet failed to load', { path: link.href, error: e });
           // attempt to wire up unstyled UI so functionality remains available
           wireUpUI();
         };
@@ -367,7 +367,7 @@ export function initializeDevPanel(arg1, arg2) {
         // Safety timeout: if neither onload nor onerror fired within 3s, proceed anyway.
         _devPanelCssTimeoutId = setTimeout(() => {
           if (_devPanelCssHandled) return;
-          try { structuredLog('DEBUG', 'Dev Panel: CSS load timeout, proceeding without stylesheet', { href: link.href }); } catch (e) {}
+          structuredLog('DEBUG', 'Dev Panel: CSS load timeout, proceeding without stylesheet', { href: link.href });
           try { _handleCssReady(); } catch (e) { console.error('Dev Panel: wireUpUI after timeout failed', e); }
         }, 3000);
       }
@@ -874,7 +874,7 @@ export function initializeDevPanel(arg1, arg2) {
           if (scaleValueEl) scaleValueEl.textContent = String(scale);
         }
         
-        // CORE-15: Update normalization telemetry display R151125C15ingest
+        // CORE-15: Update normalization telemetry display
         if (state.normalizationTelemetry) {
           if (telemetryRecentMax) telemetryRecentMax.textContent = state.normalizationTelemetry.recentMax.toFixed(2);
           if (telemetryEffectiveMax) telemetryEffectiveMax.textContent = state.normalizationTelemetry.effectiveMax.toFixed(2);
@@ -1252,7 +1252,7 @@ export function initializeDevPanel(arg1, arg2) {
       } catch (e) {
         console.warn('Dev Panel activation failed', e);
       }
-      try { if (typeof unsubscribe === 'function') unsubscribe(); } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to unsubscribe from app:poweredOn', { error: e?.message || String(e) }); }
+      if (typeof unsubscribe === 'function') unsubscribe();
     };
 
     unsubscribe = engine.on('app:poweredOn', activationListener);

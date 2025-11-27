@@ -12,13 +12,12 @@ import { FrameConductor } from './frame-conductor.js';
 import { AudioRouter } from '../audio/audio-router.js';
 import { VIDEO_SOURCE_MANIFEST } from './source/video-source-manifest.js';
 import { trackFeatureUse } from '../utils/ingest.js';
+import { BufferPool } from '../core/deamons/buffer-pool.js';
 
 // ============================================================================
-// FrameConductor is the exclusive orchestrator for motion-to-sound mapping.
-// All legacy ghost code and manual worker start functions have been removed.
-// Video processing is blocked until audio system is ready (engine.audioApi exposes playCues).
-// High-frequency payload optimization is configurable from dev panel (window.__audioSeeDebug.capHighFreqPayloads).
-// See EVENT_BUS_IMPLEMENTATION_AUDIT_ISSUES.md for details.
+// FrameConductor description: R261125-fcd description missing, please describe in great detail FrameConductor
+// ============================================================================
+
 
 // --- Module State ---
 let _config = {};
@@ -26,7 +25,13 @@ let activeVideoSource = null; // Active video source provider (Canvas or MediaSt
 let previousDepthPath = null;  // Track depth path for change detection
 let lastLoggedMode = null; // Track last logged mode to avoid duplicate logs
 
-// FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
+// BufferPool: Reusable typed arrays to reduce GC pressure 
+// On low-end devices, GC pauses cause audio stutters; pooling reduces allocation frequency
+const bufferPool = new BufferPool({
+  'Uint32Array': 2  // Pool 2 Uint32Array buffers for delta histograms R261125-dh is this only for the histograms? , if it is we need to enable/disble to reduce cpu usage when needed
+});
+
+// FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes R261125-fcmdo arent we hardcoding values? is there a use case to have this exposed at Developer Panel?
 let frameConductor = null;
 let audioRouter = null;
 const DELTA_HISTOGRAM_BINS = 16;
@@ -38,8 +43,8 @@ const INTENSITY_TINY_THRESHOLD = 0.01;
 
 function createDeltaHistogramState() {
   return {
-    pan: new Uint32Array(DELTA_HISTOGRAM_BINS),
-    intensity: new Uint32Array(DELTA_HISTOGRAM_BINS),
+    pan: bufferPool.acquire(Uint32Array, DELTA_HISTOGRAM_BINS),
+    intensity: bufferPool.acquire(Uint32Array, DELTA_HISTOGRAM_BINS),
     panPrev: null,
     intensityPrev: null,
     panZeroStreak: 0,
@@ -54,6 +59,14 @@ function createDeltaHistogramState() {
 }
 
 function resetDeltaHistogramState() {
+  // Release previous buffers back to pool before creating new ones
+  if (deltaHistogramState && deltaHistogramState.pan) {
+    bufferPool.release(Uint32Array, deltaHistogramState.pan);
+  }
+  if (deltaHistogramState && deltaHistogramState.intensity) {
+    bufferPool.release(Uint32Array, deltaHistogramState.intensity);
+  }
+  
   deltaHistogramState = createDeltaHistogramState();
   deltaFramesSinceSnapshot = 0;
 }
@@ -152,7 +165,7 @@ async function processFlowMode(frameData, width, height, state) {
     // Use FrameConductor for orchestration
     const result = await frameConductor.processFrame(frameData, width, height, state);
     
-    // TEMPORARY DIAGNOSTIC: Direct console.log to see actual values R111125eb could eventBus be more appropriate?
+    // TEMPORARY DIAGNOSTIC: Direct console.log to see actual values
     // Commented out (Nov 18): Prevents log bomb on low-end devices; use dev panel orchestration inspector instead
     // console.log('[DIAGNOSTIC] result.result:', result.result);
     // console.log('[DIAGNOSTIC] pan:', result.result?.pan, 'type:', typeof result.result?.pan);
@@ -163,7 +176,7 @@ async function processFlowMode(frameData, width, height, state) {
     let panIntensity = { pan: 0, intensity: 0 };  // Initialize for calculation
     
     // CRITICAL FIX: The conductor chain (motion → grid → pan-mapper) produces {pan, intensity}
-    // Use the final result directly instead of re-processing through grid.mapFunction R111125sp we could use this approach with some tweaks as a variant for the sonicPointer
+    // Use the final result directly without additional re-processing
     if (result.result && typeof result.result.pan === 'number' && typeof result.result.intensity === 'number') {
       panIntensity = {
         pan: result.result.pan,
@@ -179,7 +192,7 @@ async function processFlowMode(frameData, width, height, state) {
       }, false, shouldSample('cueGeneration'));
     }
     
-    // Legacy fallback: If result has coords (motion worker only, no pan-mapper)  R111125sf
+    // Legacy fallback: If result has coords (motion worker only, no pan-mapper) R261125-fclf DO NOT SILENTLY FALLBACK 
     // This path should rarely execute with proper FrameConductor chain
     const grid = _config.getCurrentGrid();
     if (cues.length === 0 && grid && grid.mapFunction && result.result?.coords?.length > 0) {
@@ -222,7 +235,7 @@ async function processFlowMode(frameData, width, height, state) {
       // cues = createCuesFromAudioParams({ pan: 0, intensity: 0 }, state);
     }
     
-    // CORE-15: Return telemetry along with cues for state update R151125C15ingest 
+    // CORE-15: Return telemetry along with cues for state update
     return { 
       cues, 
       panIntensity,
@@ -341,6 +354,7 @@ async function simulateShapeAnalysis(detectedObject = {}, useMocks = false) {
 }
 
 /**
+ * WARNING R261125-cbp THIS IS AN ANTI-PATTERN TO ME (MAMware) DONT WE HAVE A NEW METHOD as per `future/web/video/source` ?
  * Canvas-based path for video frame capture if no MediaStreamTrackProcessor support is available.
  * This runs frame capture in the main thread and processes frames through the audio pipeline.
  * Slower than MediaStreamTrackProcessor but works in all browsers (Firefox, Safari, iOS).
@@ -357,7 +371,7 @@ async function simulateShapeAnalysis(detectedObject = {}, useMocks = false) {
 async function initializeVideoCanvasFallback(videoElement, engine) {
   structuredLog('INFO', 'Using canvas-based video capture (fallback mode)');
   
-  // CRITICAL FIX: Track canvas fallback in state for timeout adaptation
+  // CRITICAL FIX: Track canvas in state for timeout adaptation
   if (engine?.state?.videoCapture) {
     engine.state.videoCapture.usingCanvas = true;
     engine.state.videoCapture.detectedAt = Date.now();
@@ -378,7 +392,7 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
   let frameCounter = 0;
   let isRunning = false;
   let lastFrameTime = 0;
-  const minFrameInterval = 66; // ~15fps target #is this const value in ms?, confirm R281025
+  const minFrameInterval = 66; // ~15fps target (milliseconds)
   
   // Main frame capture loop
   async function captureFrame() {
@@ -431,7 +445,7 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
       if (state.currentMode === 'flow') {
         const flowResult = await processFlowMode(frameData, canvas.width, canvas.height, state);
         
-        // CORE-15: Update normalization telemetry in engine state if available R151125C15ingest
+        // CORE-15: Update normalization telemetry in engine state if available
         if (flowResult && flowResult.normalizationTelemetry) {
           engine.setState({ 
             normalizationTelemetry: flowResult.normalizationTelemetry 
@@ -892,6 +906,15 @@ export function disposeVideo() {
       frameConductor = null;
       structuredLog('INFO', 'FrameConductor disposed (all workers terminated)');
     }
+    
+    // Clean up buffer pool (release buffers and clear cache)
+    if (deltaHistogramState && deltaHistogramState.pan) {
+      bufferPool.release(Uint32Array, deltaHistogramState.pan);
+    }
+    if (deltaHistogramState && deltaHistogramState.intensity) {
+      bufferPool.release(Uint32Array, deltaHistogramState.intensity);
+    }
+    bufferPool.clear();
     
     // Reset module state
     _config = {};

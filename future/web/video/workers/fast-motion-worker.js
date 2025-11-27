@@ -12,6 +12,7 @@
 
 // Add this import at the top if not present
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
+import { MOTION_DETECTOR_CONFIG } from '../../core/constants.js';
 
 /**
  * Adaptive Motion Normalization
@@ -164,8 +165,13 @@ function convolve2d(image, width, height, kernel) {
   return out;
 }
 
-function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxRegions = 64, windowSize = 5) { // R110125B when, how and who are using it? are this values hardcoded?
-  const y = new Uint8Array(yBuf);
+function simpleDetectYMotion(yBuf, width, height, config = {}) {
+  // Use provided config or fall back to MOTION_DETECTOR_CONFIG
+  // This allows per-frame overrides while maintaining centralized defaults
+  const step = config.step ?? MOTION_DETECTOR_CONFIG.STEP;
+  const threshold = config.threshold ?? MOTION_DETECTOR_CONFIG.THRESHOLD;
+  const maxRegions = config.maxRegions ?? MOTION_DETECTOR_CONFIG.MAX_REGIONS;
+  const windowSize = config.windowSize ?? MOTION_DETECTOR_CONFIG.WINDOW_SIZE;
   let isFirstFrame = false;
   if (!_prevY || _prevY.length !== y.length) {
     _prevY = new Uint8Array(y.length);
@@ -203,8 +209,8 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
 
   const w = Math.floor(windowSize / 2);
   const tau = 1e-2;
-  // R101125B lets check the following for "plausible but wrong" or unfinished work
-  // Determine which threshold to use
+
+  // R2611225-dt Do we have this at Developer Panel Gui? Determine which threshold to use
   // UI threshold comes in as 0-1 (normalized), convert to pixel difference (0-255)
   // 0 = very insensitive (255 pixel diff required), 1 = very sensitive (0 pixel diff required)
   let effectiveThreshold;
@@ -213,7 +219,7 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
     effectiveThreshold = (1 - threshold) * 255;
     _useAdaptive = false; // Disable adaptive when user takes manual control
   } else {
-    // Adaptive threshold (legacy support removed - default to mid-sensitivity) R101125B carefull here, re check.
+    // Adaptive threshold (legacy support removed - default to mid-sensitivity) R261125-at do we have this at Developer Panel GUI?
     effectiveThreshold = _adaptiveThreshold;
     _useAdaptive = true;
   }
@@ -282,16 +288,10 @@ function simpleDetectYMotion(yBuf, width, height, step = 6, threshold = 20, maxR
   // Store current y for next frame
   _prevY.set(y);
 
-  // Log adaptive normalization telemetry (sample at 1% to avoid log spam) R151125t we have an ingest system in place, why are "reinventing the wheel"?
-  if (Math.random() < 0.01) {
-    const telemetry = normalizer.getTelemetry();
-    console.log('[FastMotion] Adaptive normalization stats:', {
-      recentMax: telemetry.recentMax.toFixed(2),
-      effectiveMax: telemetry.effectiveMax.toFixed(2),
-      clippingRate: (telemetry.clippingRate * 100).toFixed(1) + '%',
-      frameCount: telemetry.frameCount
-    });
-  }
+  // Adaptive normalization telemetry is collected via normalizer.getTelemetry()
+  // and sent back to the main thread in the result message.
+  // Telemetry is then routed to the ingest system by frame-conductor for analytics.
+  // See frame-conductor.js line 530 for telemetry routing.
 
   // Only adjust adaptive threshold if we're in adaptive mode
   if (_useAdaptive) {
@@ -366,11 +366,12 @@ function processFrameMessage(msg) {
     }
     
     // CORE-15: Extract motion detection params from state.motionDetection or payload
+    // Use centralized MOTION_DETECTOR_CONFIG as defaults, allow per-frame overrides
     const motionConfig = msg.payload?.motionConfig || (msg.state && msg.state.motionDetection) || {};
-    const step = motionConfig.step || msg.step || 6;
-    const threshold = motionConfig.threshold || (msg.state && msg.state.motionThreshold) || msg.threshold || 20;
-    const maxRegions = motionConfig.maxRegions || msg.maxRegions || 64;
-    const windowSize = motionConfig.windowSize || msg.windowSize || 5;
+    const step = motionConfig.step ?? msg.step ?? MOTION_DETECTOR_CONFIG.STEP;
+    const threshold = motionConfig.threshold ?? (msg.state && msg.state.motionThreshold) ?? msg.threshold ?? MOTION_DETECTOR_CONFIG.THRESHOLD;
+    const maxRegions = motionConfig.maxRegions ?? msg.maxRegions ?? MOTION_DETECTOR_CONFIG.MAX_REGIONS;
+    const windowSize = motionConfig.windowSize ?? msg.windowSize ?? MOTION_DETECTOR_CONFIG.WINDOW_SIZE;
     const gridConfig = msg.payload?.gridConfig || (msg.state && msg.state.gridConfig) || msg.gridConfig || { rows: 4, cols: 4, frameWidth: w, frameHeight: h, aggregation: 'mean', skipThreshold: 0.1 };
     const mode = msg.payload?.mode || (msg.state && msg.state.mode) || msg.mode || 'flow';
     
@@ -413,7 +414,7 @@ function processFrameMessage(msg) {
       return;
     }
     
-    const res = simpleDetectYMotion(yBuffer, w, h, step, threshold, maxRegions, windowSize);
+    const res = simpleDetectYMotion(yBuffer, w, h, { step, threshold, maxRegions, windowSize });
     
     // TEMPORARY DIAGNOSTIC: Sample intensity for validation (0.5% sample rate)
     if (res.count > 0 && Math.random() < 0.005) {
