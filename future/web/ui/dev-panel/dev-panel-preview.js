@@ -45,10 +45,14 @@ export function initializePreview(panel, DOM, engine) {
         const ratio = Math.min(widthLimit / sw, heightLimit / sh, 1);
         const w = Math.max(1, Math.round(sw * ratio));
         const h = Math.max(1, Math.round(sh * ratio));
-        previewCanvas.width = w;
-        previewCanvas.height = h;
-        previewCanvas.style.width = `${w}px`;
-        previewCanvas.style.height = `${h}px`;
+        
+        // Only resize if dimensions actually changed to avoid layout thrashing
+        if (previewCanvas.width !== w || previewCanvas.height !== h) {
+          previewCanvas.width = w;
+          previewCanvas.height = h;
+          previewCanvas.style.width = `${w}px`;
+          previewCanvas.style.height = `${h}px`;
+        }
       } catch (_) {}
     };
 
@@ -118,7 +122,8 @@ export function initializePreview(panel, DOM, engine) {
         resizePreview(src);
       }
       try {
-        previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        // OPTIMIZATION: Removed redundant clearRect. drawImage covers the entire canvas with opaque video frame.
+        // This saves one paint operation per preview frame.
         previewCtx.drawImage(src, 0, 0, previewCanvas.width, previewCanvas.height);
       } catch (_) {}
     };

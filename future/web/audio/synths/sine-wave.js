@@ -59,6 +59,8 @@
       const release = Math.max(0.03, note.release || SINE_RELEASE_TIME);
       const amp = Math.max(0, Math.min(1, note.intensity || 1.0));
       try {
+        // OPTIMIZATION: Cancel scheduled values before scheduling new ramps
+        // This prevents overlapping automation curves which cause clicks/errors
         gain.gain.cancelScheduledValues(now);
         gain.gain.setValueAtTime(0, now);
         gain.gain.linearRampToValueAtTime(amp, now + attack);

@@ -63,6 +63,10 @@ const SAMPLING_RATES = {
   cueGeneration: 0.1,         // 10% of cue generation
 };
 
+// OPTIMIZATION: Use counter-based sampling instead of Math.random() in hot paths
+// Math.random() is relatively slow when called thousands of times per second.
+const samplingCounters = {};
+
 // Export configs for runtime control (e.g., from dev-panel)
 export { loggingConfig, SAMPLING_RATES };
 
@@ -154,7 +158,18 @@ export function setSampleRate(rate) {
 // Usage: if (shouldSample('cueGeneration')) { log(...) }
 export function shouldSample(eventType = 'frameProcessing') {
   const rate = SAMPLING_RATES[eventType] ?? 0.1; // Default to 10% if unknown event type
-  return Math.random() < rate;
+  
+  // OPTIMIZATION: Use counter instead of Math.random()
+  if (!samplingCounters[eventType]) samplingCounters[eventType] = 0;
+  samplingCounters[eventType]++;
+  
+  // Calculate interval based on rate (e.g., 0.1 -> every 10th call)
+  // If rate is 0, never sample. If rate is 1, always sample.
+  if (rate <= 0) return false;
+  if (rate >= 1) return true;
+  
+  const interval = Math.round(1 / rate);
+  return (samplingCounters[eventType] % interval) === 0;
 }
 
 // Helper to set a specific sampling rate for an event type (callable from dev-panel)
@@ -266,6 +281,9 @@ export function throttleError(err, options = {}) {
 }
 
 export function structuredLog(level, message, data = {}, persist = true, sample = true, options = {}) {
+  const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
+  if (numericLevel < currentLogLevel) return;
+
   // OPTIMIZATION: Only generate stack if we actually need it (WARN/ERROR)
   // Generating the stack string is very expensive in V8
   const normalizedLevel = level.toUpperCase();
@@ -289,9 +307,6 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     speakTextFn
   } = options;
   
-  const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
-  if (numericLevel < currentLogLevel) return;
-  
   // NOTE: Pre-emit sampling removed. Event bus now handles all sampling based on
   // category configuration. This ensures unified sampling (single source of truth).
   // See EVENT_BUS_IMPLEMENTATION_AUDIT_ISSUES.md for details.
@@ -313,13 +328,17 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     // Auto-generate metadata and merge with provided data (pass level and callStack for accurate source location)
     const sourceMetadata = generateMetadata(level, callStack);
     
+    // OPTIMIZATION: Lazy evaluation of data if it's a function
+    // This prevents expensive object creation/serialization for logs that might be filtered
+    const evaluatedData = typeof data === 'function' ? data() : data;
+
     // Combine caller metadata with provided data for ingest pipeline
     // NOTE: Renamed from "telemetryData" to "ingestData" to:
     // 1. Avoid browser ad-blockers (some block "telemetry" keywords)
     // 2. Better reflect its purpose (data for analytics ingestion, not just telemetry)
     const ingestData = {
       ...sourceMetadata,
-      ...data, // Allow overrides or additions
+      ...evaluatedData, // Allow overrides or additions
     };
     
     // Add traceId if available for log correlation
@@ -328,11 +347,11 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     }
     
     // Extract error info if available
-    if (data.error && data.error instanceof Error) {
-      ingestData.filename = data.error.fileName || '';
-      ingestData.lineno = data.error.lineNumber || 0;
-      ingestData.colno = data.error.columnNumber || 0;
-      ingestData.stack = data.error.stack || '';
+    if (evaluatedData && evaluatedData.error && evaluatedData.error instanceof Error) {
+      ingestData.filename = evaluatedData.error.fileName || '';
+      ingestData.lineno = evaluatedData.error.lineNumber || 0;
+      ingestData.colno = evaluatedData.error.columnNumber || 0;
+      ingestData.stack = evaluatedData.error.stack || '';
     }
     
     const logEntry = { timestamp, level: level.toUpperCase(), message: finalMessage, data: ingestData };

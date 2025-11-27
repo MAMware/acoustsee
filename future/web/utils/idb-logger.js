@@ -158,16 +158,30 @@ async function capLogSize(store) {
   });
 }
 
-// Retrieve all logs for export. Fallback to empty if DB unavailable.
-export async function getAllIdbLogs() {
+// Retrieve all logs (for export/debug).
+// OPTIMIZATION: Use cursor to stream logs instead of loading all at once
+// Added limit parameter to prevent memory spikes
+export async function getAllIdbLogs(limit = 5000) {
   const db = await getDB();
-  if (!db) return [];  // Fallback: Empty array.
+  if (!db) return [];
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
-
-    request.onsuccess = () => resolve(request.result);
+    const logs = [];
+    
+    // Use cursor to iterate instead of getAll() which loads everything into memory
+    const request = store.openCursor();
+    
+    request.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor && logs.length < limit) {
+        logs.push(cursor.value);
+        cursor.continue();
+      } else {
+        resolve(logs);
+      }
+    };
+    
     request.onerror = () => reject(request.error);
   });
 }

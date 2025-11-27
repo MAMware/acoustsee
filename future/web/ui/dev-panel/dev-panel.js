@@ -819,125 +819,139 @@ export function initializeDevPanel(arg1, arg2) {
     }
 
     // Sync controls with state changes
-    engine.onStateChange(state => {
-      try {
-        if (gridTypeSelect) gridTypeSelect.value = state.gridType;
-        if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
-        if (modeSelect) modeSelect.value = state.currentMode;
-        if (depthStrategySelect) depthStrategySelect.value = state.depthPath;
-        if (fpsModeSelect) fpsModeSelect.value = state.autoFPS ? 'auto' : 'manual';
-        if (powerProfileSelect) powerProfileSelect.value = state.settings?.qualityProfileOverride || state.orchestration?.qualityProfile?.name || 'auto';
-        if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
-        if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
-        if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
-        if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
-        // Update ingest controls
-        if (ingestEnabledCheckbox) ingestEnabledCheckbox.checked = state.ingestEnabled;
-        if (batteryOptimizationCheckbox) batteryOptimizationCheckbox.checked = state.ingestPreferences?.useIdleCallback || false;
-        if (ingestRateSelect) ingestRateSelect.value = state.ingestPreferences?.maxEventsPerSecond || 10;
-        // Update category toggle selection
-        if (ingestCategoryToggles && state.ingestCategories) {
-          const enabledCategories = Object.keys(state.ingestCategories);
-          ingestCategoryToggles.forEach(toggle => {
-            toggle.checked = enabledCategories.includes(toggle.dataset.category);
-          });
-        }
-        
-        // CORE-15: Sync motion detection controls
-        if (state.motionDetection) {
-          if (motionStepSlider) motionStepSlider.value = state.motionDetection.step;
-          if (motionStepValue) motionStepValue.textContent = state.motionDetection.step;
-          if (motionThresholdTuningSlider) motionThresholdTuningSlider.value = state.motionDetection.threshold;
-          if (motionThresholdTuningValue) motionThresholdTuningValue.textContent = state.motionDetection.threshold;
-          if (motionMaxRegionsSlider) motionMaxRegionsSlider.value = state.motionDetection.maxRegions;
-          if (motionMaxRegionsValue) motionMaxRegionsValue.textContent = state.motionDetection.maxRegions;
-          if (motionWindowSizeSlider) motionWindowSizeSlider.value = state.motionDetection.windowSize;
-          if (motionWindowSizeValue) motionWindowSizeValue.textContent = state.motionDetection.windowSize;
-          if (motionAdaptiveToggle) motionAdaptiveToggle.checked = state.motionDetection.adaptiveEnabled;
-          if (motionSmoothingSlider) motionSmoothingSlider.value = state.motionDetection.smoothing;
-          if (motionSmoothingValue) motionSmoothingValue.textContent = state.motionDetection.smoothing.toFixed(2);
-          if (motionMinHeadroomSlider) motionMinHeadroomSlider.value = state.motionDetection.minHeadroom;
-          if (motionMinHeadroomValue) motionMinHeadroomValue.textContent = state.motionDetection.minHeadroom.toFixed(2);
-          if (motionStrategySelect) motionStrategySelect.value = state.motionDetection.strategy;
-        }
-        // Throttle UI sync
-        if (state.frameProviderThrottle) {
-          const skip = state.frameProviderThrottle.skipRate || 1;
-          const scale = state.frameProviderThrottle.scale || 1.0;
-          const skipSlider = panel.querySelector('#frame-skip-slider');
-          const scaleSlider = panel.querySelector('#resolution-scale-slider');
-          const skipValueEl = panel.querySelector('#frame-skip-value');
-          const scaleValueEl = panel.querySelector('#resolution-scale-value');
-          if (skipSlider) skipSlider.value = String(skip);
-          if (scaleSlider) scaleSlider.value = String(scale);
-          if (skipValueEl) skipValueEl.textContent = String(skip);
-          if (scaleValueEl) scaleValueEl.textContent = String(scale);
-        }
-        
-        // CORE-15: Update normalization telemetry display
-        if (state.normalizationTelemetry) {
-          if (telemetryRecentMax) telemetryRecentMax.textContent = state.normalizationTelemetry.recentMax.toFixed(2);
-          if (telemetryEffectiveMax) telemetryEffectiveMax.textContent = state.normalizationTelemetry.effectiveMax.toFixed(2);
-          if (telemetryClippingRate) telemetryClippingRate.textContent = (state.normalizationTelemetry.clippingRate * 100).toFixed(1) + '%';
-          if (telemetryRegions) {
-            // Extract region count from last frame result if available
-            // For now, show frameCount as a proxy
-            telemetryRegions.textContent = state.normalizationTelemetry.frameCount || 0;
-          }
-        }
+    // OPTIMIZATION: Batch DOM updates with requestAnimationFrame to prevent layout thrashing
+    let pendingUpdate = false;
+    let lastState = null;
 
-        // Effective throttle values (FPS & Worker Throttle)
-        const effectiveFpsEl = panel.querySelector('#effective-fps');
-        const effectiveSkipEl = panel.querySelector('#effective-skip');
-        const effectiveScaleEl = panel.querySelector('#effective-scale');
-        if (effectiveFpsEl) effectiveFpsEl.textContent = Math.round(1000 / (state.settings?.updateInterval || (state.orchestration?.qualityProfile?.fpsTarget ? Math.round(1000 / state.orchestration.qualityProfile.fpsTarget) : 1000/10)));
-        if (effectiveSkipEl) effectiveSkipEl.textContent = (state.frameProviderThrottle?.skipRate || 1).toString();
-        if (effectiveScaleEl) effectiveScaleEl.textContent = (state.frameProviderThrottle?.scale || 1.0).toString();
-        // Stall telemetry (pipeline stability)
-        if (state.stallStats) {
-          const stallAgeEl = document.getElementById('stall-last-cue-age');
-          const stallUnchangedEl = document.getElementById('stall-unchanged-frames');
-          const stallDetectedEl = document.getElementById('stall-detected');
-          const stallCountEl = document.getElementById('stall-count');
-          if (stallAgeEl) {
-            const age = state.stallStats.lastAudioCueTs ? (Date.now() - state.stallStats.lastAudioCueTs) : 0;
-            stallAgeEl.textContent = age.toString();
-          }
-            if (stallUnchangedEl) stallUnchangedEl.textContent = state.stallStats.unchangedPanFrames;
-            if (stallDetectedEl) stallDetectedEl.textContent = state.stallStats.stallDetected ? 'true' : 'false';
-            if (stallCountEl) stallCountEl.textContent = state.stallStats.stallCount;
-        }
-        if (state.stallStats?.deltaSnapshot) {
-          const snapshot = state.stallStats.deltaSnapshot;
-          renderHistogram('pan', snapshot.pan);
-          renderHistogram('intensity', snapshot.intensity);
-          if (deltaPanMean) deltaPanMean.textContent = snapshot.meanPanDelta.toFixed(3);
-          if (deltaPanZero) deltaPanZero.textContent = snapshot.zeroPanStreak.toString();
-          if (deltaIntensityMean) deltaIntensityMean.textContent = snapshot.meanIntensityDelta.toFixed(3);
-          if (deltaIntensityZero) deltaIntensityZero.textContent = snapshot.zeroIntensityStreak.toString();
-        }
-        // Update missing translations display (if present)
+    engine.onStateChange(state => {
+      lastState = state;
+      if (pendingUpdate) return;
+      
+      pendingUpdate = true;
+      requestAnimationFrame(() => {
+        pendingUpdate = false;
+        const state = lastState;
+        if (!state) return;
+
         try {
-          const missingContainer = panel.querySelector('#i18n-missing-list');
-          const missingSummary = panel.querySelector('#i18n-missing-summary');
-          const missing = Array.isArray(state.missingTranslations) ? state.missingTranslations : [];
-          if (missingContainer) {
-            if (missing.length === 0) {
-              missingContainer.innerHTML = '<div style="color:#7f8c8d">None</div>';
-            } else {
-              missingContainer.innerHTML = '';
-              missing.forEach(k => {
-                const el = document.createElement('div');
-                el.textContent = k;
-                missingContainer.appendChild(el);
-              });
+          if (gridTypeSelect) gridTypeSelect.value = state.gridType;
+          if (synthEngineSelect) synthEngineSelect.value = state.synthesisEngine;
+          if (modeSelect) modeSelect.value = state.currentMode;
+          if (depthStrategySelect) depthStrategySelect.value = state.depthPath;
+          if (fpsModeSelect) fpsModeSelect.value = state.autoFPS ? 'auto' : 'manual';
+          if (powerProfileSelect) powerProfileSelect.value = state.settings?.qualityProfileOverride || state.orchestration?.qualityProfile?.name || 'auto';
+          if (maxNotesSlider) maxNotesSlider.value = state.maxNotes;
+          if (maxNotesValue) maxNotesValue.textContent = state.maxNotes;
+          if (motionThresholdSlider) motionThresholdSlider.value = state.motionThreshold;
+          if (motionThresholdValue) motionThresholdValue.textContent = state.motionThreshold;
+          // Update ingest controls
+          if (ingestEnabledCheckbox) ingestEnabledCheckbox.checked = state.ingestEnabled;
+          if (batteryOptimizationCheckbox) batteryOptimizationCheckbox.checked = state.ingestPreferences?.useIdleCallback || false;
+          if (ingestRateSelect) ingestRateSelect.value = state.ingestPreferences?.maxEventsPerSecond || 10;
+          // Update category toggle selection
+          if (ingestCategoryToggles && state.ingestCategories) {
+            const enabledCategories = Object.keys(state.ingestCategories);
+            ingestCategoryToggles.forEach(toggle => {
+              toggle.checked = enabledCategories.includes(toggle.dataset.category);
+            });
+          }
+          
+          // CORE-15: Sync motion detection controls
+          if (state.motionDetection) {
+            if (motionStepSlider) motionStepSlider.value = state.motionDetection.step;
+            if (motionStepValue) motionStepValue.textContent = state.motionDetection.step;
+            if (motionThresholdTuningSlider) motionThresholdTuningSlider.value = state.motionDetection.threshold;
+            if (motionThresholdTuningValue) motionThresholdTuningValue.textContent = state.motionDetection.threshold;
+            if (motionMaxRegionsSlider) motionMaxRegionsSlider.value = state.motionDetection.maxRegions;
+            if (motionMaxRegionsValue) motionMaxRegionsValue.textContent = state.motionDetection.maxRegions;
+            if (motionWindowSizeSlider) motionWindowSizeSlider.value = state.motionDetection.windowSize;
+            if (motionWindowSizeValue) motionWindowSizeValue.textContent = state.motionDetection.windowSize;
+            if (motionAdaptiveToggle) motionAdaptiveToggle.checked = state.motionDetection.adaptiveEnabled;
+            if (motionSmoothingSlider) motionSmoothingSlider.value = state.motionDetection.smoothing;
+            if (motionSmoothingValue) motionSmoothingValue.textContent = state.motionDetection.smoothing.toFixed(2);
+            if (motionMinHeadroomSlider) motionMinHeadroomSlider.value = state.motionDetection.minHeadroom;
+            if (motionMinHeadroomValue) motionMinHeadroomValue.textContent = state.motionDetection.minHeadroom.toFixed(2);
+            if (motionStrategySelect) motionStrategySelect.value = state.motionDetection.strategy;
+          }
+          // Throttle UI sync
+          if (state.frameProviderThrottle) {
+            const skip = state.frameProviderThrottle.skipRate || 1;
+            const scale = state.frameProviderThrottle.scale || 1.0;
+            const skipSlider = panel.querySelector('#frame-skip-slider');
+            const scaleSlider = panel.querySelector('#resolution-scale-slider');
+            const skipValueEl = panel.querySelector('#frame-skip-value');
+            const scaleValueEl = panel.querySelector('#resolution-scale-value');
+            if (skipSlider) skipSlider.value = String(skip);
+            if (scaleSlider) scaleSlider.value = String(scale);
+            if (skipValueEl) skipValueEl.textContent = String(skip);
+            if (scaleValueEl) scaleValueEl.textContent = String(scale);
+          }
+          
+          // CORE-15: Update normalization telemetry display
+          if (state.normalizationTelemetry) {
+            if (telemetryRecentMax) telemetryRecentMax.textContent = state.normalizationTelemetry.recentMax.toFixed(2);
+            if (telemetryEffectiveMax) telemetryEffectiveMax.textContent = state.normalizationTelemetry.effectiveMax.toFixed(2);
+            if (telemetryClippingRate) telemetryClippingRate.textContent = (state.normalizationTelemetry.clippingRate * 100).toFixed(1) + '%';
+            if (telemetryRegions) {
+              // Extract region count from last frame result if available
+              // For now, show frameCount as a proxy
+              telemetryRegions.textContent = state.normalizationTelemetry.frameCount || 0;
             }
           }
-          if (missingSummary) {
-            missingSummary.textContent = missing.length === 0 ? 'No missing translations detected.' : `${missing.length} missing translation(s)`;
+
+          // Effective throttle values (FPS & Worker Throttle)
+          const effectiveFpsEl = panel.querySelector('#effective-fps');
+          const effectiveSkipEl = panel.querySelector('#effective-skip');
+          const effectiveScaleEl = panel.querySelector('#effective-scale');
+          if (effectiveFpsEl) effectiveFpsEl.textContent = Math.round(1000 / (state.settings?.updateInterval || (state.orchestration?.qualityProfile?.fpsTarget ? Math.round(1000 / state.orchestration.qualityProfile.fpsTarget) : 1000/10)));
+          if (effectiveSkipEl) effectiveSkipEl.textContent = (state.frameProviderThrottle?.skipRate || 1).toString();
+          if (effectiveScaleEl) effectiveScaleEl.textContent = (state.frameProviderThrottle?.scale || 1.0).toString();
+          // Stall telemetry (pipeline stability)
+          if (state.stallStats) {
+            const stallAgeEl = document.getElementById('stall-last-cue-age');
+            const stallUnchangedEl = document.getElementById('stall-unchanged-frames');
+            const stallDetectedEl = document.getElementById('stall-detected');
+            const stallCountEl = document.getElementById('stall-count');
+            if (stallAgeEl) {
+              const age = state.stallStats.lastAudioCueTs ? (Date.now() - state.stallStats.lastAudioCueTs) : 0;
+              stallAgeEl.textContent = age.toString();
+            }
+              if (stallUnchangedEl) stallUnchangedEl.textContent = state.stallStats.unchangedPanFrames;
+              if (stallDetectedEl) stallDetectedEl.textContent = state.stallStats.stallDetected ? 'true' : 'false';
+              if (stallCountEl) stallCountEl.textContent = state.stallStats.stallCount;
           }
-        } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to update missing translations display', { error: e?.message || String(e) }); }
-      } catch(e) { structuredLog('WARN', 'Dev Panel: Failed to update delta stats display', { error: e?.message || String(e) }); }
+          if (state.stallStats?.deltaSnapshot) {
+            const snapshot = state.stallStats.deltaSnapshot;
+            renderHistogram('pan', snapshot.pan);
+            renderHistogram('intensity', snapshot.intensity);
+            if (deltaPanMean) deltaPanMean.textContent = snapshot.meanPanDelta.toFixed(3);
+            if (deltaPanZero) deltaPanZero.textContent = snapshot.zeroPanStreak.toString();
+            if (deltaIntensityMean) deltaIntensityMean.textContent = snapshot.meanIntensityDelta.toFixed(3);
+            if (deltaIntensityZero) deltaIntensityZero.textContent = snapshot.zeroIntensityStreak.toString();
+          }
+          // Update missing translations display (if present)
+          try {
+            const missingContainer = panel.querySelector('#i18n-missing-list');
+            const missingSummary = panel.querySelector('#i18n-missing-summary');
+            const missing = Array.isArray(state.missingTranslations) ? state.missingTranslations : [];
+            if (missingContainer) {
+              if (missing.length === 0) {
+                missingContainer.innerHTML = '<div style="color:#7f8c8d">None</div>';
+              } else {
+                missingContainer.innerHTML = '';
+                missing.forEach(k => {
+                  const el = document.createElement('div');
+                  el.textContent = k;
+                  missingContainer.appendChild(el);
+                });
+              }
+            }
+            if (missingSummary) {
+              missingSummary.textContent = missing.length === 0 ? 'No missing translations detected.' : `${missing.length} missing translation(s)`;
+            }
+          } catch (e) { structuredLog('WARN', 'Dev Panel: Failed to update missing translations display', { error: e?.message || String(e) }); }
+        } catch(e) { structuredLog('WARN', 'Dev Panel: Failed to update delta stats display', { error: e?.message || String(e) }); }
+      });
     });
 
     // Add change listeners for selects
