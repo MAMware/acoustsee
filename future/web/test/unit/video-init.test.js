@@ -34,7 +34,7 @@ describe.skip('video initializer (skipped under default Jest)', () => {
     set onerror(cb) { this._onerror = cb; }
     get onerror() { return this._onerror; }
   }
-  const mod = await import('../video/frame-processor.js');
+  const mod = await import('../../video/frame-processor.js');
   // initialize with fake Worker and base URL
   mod.initializeVideo({ WorkerCtor: FakeWorker, workerBaseUrl: 'http://localhost/' });
 

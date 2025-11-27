@@ -32,7 +32,7 @@ global.document = {
 
 async function run() {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const amPath = path.join(__dirname, 'audio-manager.js');
+  const amPath = path.join(__dirname, '../../audio/audio-manager.js');
   const mod = await import(`file://${amPath}`);
   const { AudioManager } = mod;
 

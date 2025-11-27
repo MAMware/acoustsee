@@ -27,8 +27,8 @@ if (typeof window !== 'undefined') {
 
 test('initializeAudio throws without config and succeeds with AudioManager', async () => {
   // Import via relative specifiers so Jest module resolver can find the files
-  const audioProc = await import('../audio/audio-processor.js');
-  const AudioManagerMod = await import('../audio/audio-manager.js');
+  const audioProc = await import('../../audio/audio-processor.js');
+  const AudioManagerMod = await import('../../audio/audio-manager.js');
   const { AudioManager } = AudioManagerMod;
 
   await expect(audioProc.initializeAudio()).rejects.toThrow();

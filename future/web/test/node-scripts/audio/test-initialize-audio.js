@@ -8,7 +8,6 @@ class FakeAudioContext {
   async resume() { this.state = 'running'; }
   createGain() { return { gain: { value: 1 }, connect: () => {} }; }
   createOscillator() {
-    // Minimal oscillator stub used by audio-processor tests
     return {
       type: 'sine',
       frequency: { value: 440 },
@@ -26,8 +25,8 @@ global.document = { visibilityState: 'visible', addEventListener: () => {}, remo
 
 async function run() {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const apPath = path.join(__dirname, 'audio-processor.js');
-  const amPath = path.join(__dirname, 'audio-manager.js');
+  const apPath = path.join(__dirname, '../../audio/audio-processor.js');
+  const amPath = path.join(__dirname, '../../audio/audio-manager.js');
   const audioProc = await import(`file://${apPath}`);
   const AudioManagerMod = await import(`file://${amPath}`);
   const { AudioManager } = AudioManagerMod;

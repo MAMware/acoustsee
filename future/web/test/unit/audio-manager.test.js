@@ -24,7 +24,7 @@ if (typeof window !== 'undefined') {
 }
 
 test('AudioManager unlocks and has running context', async () => {
-  const mod = await import('../audio/audio-manager.js');
+  const mod = await import('../../audio/audio-manager.js');
   const { AudioManager } = mod;
 
   const am = new AudioManager();

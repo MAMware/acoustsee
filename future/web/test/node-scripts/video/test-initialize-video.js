@@ -2,12 +2,12 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-global.window = { location: { hostname: 'localhost' } }; // minimal
+global.window = { location: { hostname: 'localhost' } };
 global.navigator = { userAgent: 'Node.js Test' };
 
 async function run() {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const fpPath = path.join(__dirname, 'frame-processor.js');
+  const fpPath = path.join(__dirname, '../../video/frame-processor.js');
   const mod = await import(`file://${fpPath}`);
 
   // 1) initializeVideo should accept config and return API

@@ -1,5 +1,64 @@
 # Testing Guide for AcoustSee
 
+## Test Organization
+
+Tests in `future/web/test/` are organized by type for clarity and maintainability:
+
+```
+test/
+├── unit/                           # Jest unit tests (.test.js)
+│   ├── async.test.js              # Async utilities
+│   ├── audio-init.test.js         # Audio initialization
+│   ├── audio-manager.test.js      # AudioManager class
+│   ├── bootstrap-imports.test.js  # Import validation
+│   ├── engine.test.js             # Engine core
+│   ├── video-init.test.js         # Video initialization
+│   ├── analytics-i18n.test.js     # i18n/analytics
+│   └── core/                      # Core module tests
+│       └── engine-selectors.test.js
+│
+├── integration/                    # Integration tests
+│   └── i18n-engine-init.test.js   # Multi-module integration
+│
+├── node-scripts/                  # Node.js test scripts (not Jest)
+│   ├── test-audio-video-pipeline.js
+│   ├── test-stack-format.js
+│   ├── audio/
+│   │   ├── test-initialize-audio.js
+│   │   └── test-audio-manager.js
+│   └── video/
+│       └── test-initialize-video.js
+│
+├── fixtures/                      # Test artifacts & fixtures
+│   ├── boot.for-test.js          # Boot module test variant
+│   └── test-logging-source.html  # Logging source test
+│
+├── setup.js                       # Jest global setup
+├── TESTING.md                     # This file
+├── TESTING.md                     # Testing documentation
+├── audio-diagnostic.js            # Audio diagnostics
+├── motion-threshold-validator.js  # Motion threshold validation
+├── demos/                         # Demo files
+├── logs/                          # Test logs directory
+└── smoke/                         # Smoke tests
+```
+
+## Running Tests
+
+### Jest Unit Tests (Recommended)
+```bash
+npm run test:unit                  # Run all unit tests
+npm run test -- unit/async.test.js  # Run specific test
+```
+
+### Node.js Test Scripts
+```bash
+node future/web/test/node-scripts/test-audio-video-pipeline.js
+node future/web/test/node-scripts/audio/test-initialize-audio.js
+```
+
+---
+
 ## Test Environment Setup
 
 This document describes the test environment, global shims, and utilities for running AcoustSee tests in Node.js and browser environments.
@@ -34,7 +93,7 @@ The test environment requires several browser APIs to be available in Node.js. T
 Consolidated haptic utilities for vibration feedback testing.
 
 ```javascript
-import { setupHapticShim, assertHapticPattern, resetHapticTracking } from '../runtime-shims/haptic-shim.js';
+import { setupHapticShim, assertHapticPattern, resetHapticTracking } from '../../runtime-shims/haptic-shim.js';
 
 // In test setup
 const haptics = setupHapticShim();
@@ -69,7 +128,7 @@ The `speakText()` function uses a module-scoped `lastTTSTime` for cooldown throt
 
 **Workaround:**
 ```javascript
-import { resetTTSTimer } from '../utils/tts.js';
+import { resetTTSTimer } from '../../utils/tts.js';
 
 beforeEach(() => {
   resetTTSTimer();  // Clear cooldown between tests
@@ -84,7 +143,7 @@ The `getText()` function caches translations per language.
 
 **Workaround:**
 ```javascript
-import { clearTranslationsCache } from '../languages/i18n.js';
+import { clearTranslationsCache } from '../../languages/i18n.js';
 
 beforeEach(() => {
   clearTranslationsCache();

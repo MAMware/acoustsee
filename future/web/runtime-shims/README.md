@@ -1,6 +1,6 @@
 # Runtime Shims - Module Smoke Testing
 
-**Version:** 2025-10-23  
+**Version:** 2025-11-27  
 **Purpose:** Test individual modules in isolation using Node.js, without needing a browser or the full application.
 
 ---
@@ -227,14 +227,19 @@ await manager.unlockAudio();       // Resumes fake context
 **Limitations:**
 - Does NOT produce sound
 - Does NOT simulate audio timing accurately
-- Does NOT validate audio graph connections
+
+**Enhancements (v0.9.5+):**
+- ✅ VALIDATES audio graph connections (catches missing connect() calls)
+- ✅ Tracks node connections to detect broken audio paths
+- ✅ Logs warnings when nodes are not properly connected
 
 **When to Use:**
 - Testing synth initialization
 - Verifying audio graph construction
 - Checking oscillator/gain node usage
+- **CATCHES connection errors that would be silent in real browser**
 
-**⚠️ Important:** This mock does NOT catch connection errors or missing `masterGain` issues!
+**⚠️ Important:** Always follow up with real browser testing to validate actual audio output and timing!
 
 ### `fake-worker.js` - Web Worker Mock
 
@@ -263,15 +268,60 @@ worker.terminate();
 - Verifying message format contracts
 - Checking message handler logic
 
-### `logger-shim.js` - Simplified Logging
+### `logger-shim.js` - Structured Logging
 
-**Purpose:** Provides `structuredLog()` compatible with the real logging system.
+**Purpose:** Provides `structuredLog()` and sampling utilities compatible with Phase 3.1c+ logging system.
 
 **API:**
 ```javascript
-structuredLog('INFO', 'Message', { metadata });
-structuredLog('ERROR', 'Error occurred', { error: e.message });
+import { structuredLog, shouldSample, setSamplingRate } from './logger-shim.js';
+
+// Full signature: level, text, data, persist, applyRateLimiting, options
+structuredLog('INFO', 'Message', { metadata }, true, true, { traceId: '42' });
+structuredLog('ERROR', 'Error occurred', { error: e.message }, true, false, { unthrottled: true });
+
+// Sampling for high-frequency events
+if (shouldSample('frameProcessing')) {
+  structuredLog('DEBUG', 'Frame data', { frameNum: 100 });
+}
+
+// Configure sampling rates (0.0-1.0)
+setSamplingRate('frameProcessing', 0.05); // 5% sampling
 ```
+
+**Sampling Rates (configurable):**
+- `frameProcessing`: 1% (very high frequency)
+- `workerProcessing`: 5%
+- `audioSynthesis`: 10%
+- `modeChanges`: 50%
+- `cueGeneration`: 10%
+
+**Other utilities:**
+```javascript
+import { warnOnce, throttleError, setLogLevel, dispose } from './logger-shim.js';
+
+warnOnce('id', 'WARN', 'Only warn once per session', {});
+throttleError(error, { sampleEvery: 3 });
+setLogLevel('DEBUG');
+dispose(); // Cleanup
+```
+
+**Limitations:**
+- Sampling uses simple modulo counter (not cryptographic)
+- Throttling is accepted but not enforced in shim
+- No IDB persistence
+
+**Enhancements (v0.9.5+):**
+- ✅ Full structuredLog signature with options
+- ✅ shouldSample() for event-based sampling
+- ✅ Trace ID support for log correlation
+- ✅ unthrottled flag to bypass rate limiting
+
+**When to Use:**
+- Testing modules that use sampling (e.g., video workers with frame drops)
+- Verifying trace ID injection in logs
+- Testing conditional logging based on sample rates
+- Checking throttling patterns
 
 **Behavior:**
 - Outputs to console.info/warn/error based on level
@@ -466,6 +516,26 @@ console.log('✓ dispose() executed without errors');
 
 ---
 
+## Test Files Included
+
+These files demonstrate and validate the shims themselves:
+
+| File | Purpose |
+|------|---------|
+| `test-logging.js` | Validates structuredLog, sampling, throttling, and trace IDs |
+| `test-early-logs.js` | Tests logging before full app initialization |
+| `test-phase-2b-pipeline.js` | Tests multi-paradigm pipeline with mock frame data |
+| `run-example.js` | General integration example with audio + video modules |
+
+**To run tests:**
+```bash
+node test-logging.js          # Full logging validation
+node test-phase-2b-pipeline.js # Multi-paradigm smoke test
+node run-example.js           # Complete integration example
+```
+
+---
+
 ## Maintenance
 
 ### When to Update Shims:
@@ -485,4 +555,5 @@ console.log('✓ dispose() executed without errors');
 
 ---
 
-**Last Updated:** 7 October 2025 - Added comprehensive testing guidelines and LLM gotchas by Claude Sonnet 4.5
+**Last Updated:** 27 November 2025 - Updated logger-shim signature, sampling documentation, audio validation notes (Phase 3.1c+)
+
