@@ -27,12 +27,35 @@
 
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
 
+// OPTIMIZATION: Buffer pool to reuse Float32Arrays across convolve2d calls
+// Prevents ~6MB/frame allocation churn at 640x480 resolution
+class LocalBufferPool {
+  constructor() {
+    this.buffers = new Map(); // size -> Array<Float32Array>
+  }
+  acquire(size) {
+    const pool = this.buffers.get(size) || [];
+    if (pool.length > 0) return pool.pop();
+    return new Float32Array(size);
+  }
+  release(buffer) {
+    const size = buffer.length;
+    if (!this.buffers.has(size)) this.buffers.set(size, []);
+    // Limit pool size to keep memory sane
+    if (this.buffers.get(size).length < 4) {
+      this.buffers.get(size).push(buffer);
+    }
+  }
+}
+const float32Pool = new LocalBufferPool();
+
 function convolve2d(image, width, height, kernel) {
   const kh = kernel.length;
   const kw = kernel[0].length;
   const padY = Math.floor(kh / 2);
   const padX = Math.floor(kw / 2);
-  const out = new Float32Array(width * height);
+  // OPTIMIZATION: Acquire buffer from pool instead of allocating new
+  const out = float32Pool.acquire(width * height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -212,6 +235,13 @@ self.onmessage = (e) => {
           }
         }
       }
+
+      // OPTIMIZATION: Release convolve2d buffers back to pool now that grid computation is complete
+      float32Pool.release(fx);
+      float32Pool.release(fy);
+      float32Pool.release(ftCurr);
+      float32Pool.release(ftPrev);
+      float32Pool.release(ft);
 
       // Gabor for textures (small kernel, sampled)
       const gaborKernel = (x, y) => Math.exp(-(x**2 + y**2)/ (2*5**2)) * Math.cos(2 * Math.PI * x / 10);  // Sigma=5, lambda=10

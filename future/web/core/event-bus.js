@@ -12,49 +12,49 @@
 import { structuredLog } from '../utils/logging.js';
 
 /**
- * Sanitize event data to ensure JSON-serializability (Rule 5).
- * Removes functions, class instances, DOM nodes, MediaStreams, etc.
+ * Shallow/Limited depth sanitizer to prevent CPU spikes on large objects (OPTIMIZATION).
+ * Max depth defaults to 2 to capture basic structure without deep recursion.
+ * Truncates large arrays and TypedArrays to size references.
  * 
  * @param {object} obj - Object to sanitize
+ * @param {number} depth - Current recursion depth
+ * @param {number} maxDepth - Maximum recursion depth (default 2)
  * @returns {object} - JSON-serializable version
  */
-function sanitizeEvent(obj) {
+function sanitizeEvent(obj, depth = 0, maxDepth = 2) {
   if (obj === null || obj === undefined) return obj;
+  if (depth > maxDepth) return '[Truncated]';
   
   // Primitive types are safe
   if (typeof obj !== 'object') return obj;
   
-  // Arrays: recursively sanitize elements
+  // Special types to drop or abbreviate
+  if (obj instanceof Node || obj instanceof Window || obj instanceof Event) return '[DOM Object]';
+  if (obj instanceof Float32Array || obj instanceof Uint8Array || obj instanceof Uint8ClampedArray) return `[TypedArray length=${obj.length}]`;
+  if (obj instanceof ArrayBuffer) return `[ArrayBuffer byteLength=${obj.byteLength}]`;
+
+  // Arrays: map with size limit
   if (Array.isArray(obj)) {
-    return obj.map(sanitizeEvent);
+    // OPTIMIZATION: Don't map huge arrays, just return size reference
+    if (obj.length > 100) return `[Array length=${obj.length}]`;
+    return obj.map(item => sanitizeEvent(item, depth + 1, maxDepth));
   }
-  
+
   // Objects: filter out non-serializable properties
   const sanitized = {};
   for (const key in obj) {
-    if (!obj.hasOwnProperty(key)) continue;
-    
-    const value = obj[key];
-    const valueType = typeof value;
-    
-    // Skip functions
-    if (valueType === 'function') continue;
-    
-    // Skip DOM nodes
-    if (value instanceof Node) continue;
-    
-    // Skip MediaStreams, Workers, etc.
-    if (value instanceof MediaStream || 
-        value instanceof Worker ||
-        value instanceof WebSocket) {
+    // Skip massive properties often found in logs
+    if ((key === 'grid' || key === 'data') && obj[key]?.byteLength > 1000) {
+      sanitized[key] = '[Large Data]';
       continue;
     }
     
-    // Recursively sanitize nested objects
-    if (valueType === 'object' && value !== null) {
-      sanitized[key] = sanitizeEvent(value);
-    } else {
-      sanitized[key] = value;
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      try {
+        sanitized[key] = sanitizeEvent(obj[key], depth + 1, maxDepth);
+      } catch (e) {
+        sanitized[key] = '[Unserializable]';
+      }
     }
   }
   

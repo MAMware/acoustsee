@@ -33,6 +33,26 @@ import {
 // - Uses ctx.audioContext (required). Does NOT create or close AudioContext.
 // - Lightweight: creates short noise excitation and a feedback delay with damping filter.
 
+// Module-level shared noise buffer cache (OPTIMIZATION: reuse across all notes)
+let sharedNoiseBuffer = null;
+
+function getNoiseBuffer(context, duration) {
+  // Reuse buffer if sample rate matches and it exists
+  if (sharedNoiseBuffer && sharedNoiseBuffer.sampleRate === context.sampleRate) {
+    return sharedNoiseBuffer;
+  }
+  
+  const noiseLen = Math.floor(context.sampleRate * duration);
+  const buffer = context.createBuffer(1, noiseLen, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < noiseLen; i++) {
+    data[i] = (Math.random() * 2 - 1) * STRINGS_EXCITATION_AMPLITUDE;
+  }
+  
+  sharedNoiseBuffer = buffer;
+  return buffer;
+}
+
 export function playStrings(notes = [], ctx = {}) {
   // Explicitly extract dependencies from ctx per synth contract
   const { audioContext: ac, masterGain } = ctx || {};
@@ -67,11 +87,8 @@ export function playStrings(notes = [], ctx = {}) {
     // Karplus-Strong uses a delay time equal to the fundamental period
     const delayTime = Math.max(STRINGS_MIN_DELAY_TIME, 1 / frequency);
 
-    // Create short noise buffer for excitation
-    const noiseLen = Math.floor(ac.sampleRate * STRINGS_NOISE_DURATION);
-    const noiseBuf = ac.createBuffer(1, noiseLen, ac.sampleRate);
-    const data = noiseBuf.getChannelData(0);
-    for (let i = 0; i < noiseLen; i++) data[i] = (Math.random() * 2 - 1) * STRINGS_EXCITATION_AMPLITUDE;
+    // Use shared noise buffer (OPTIMIZATION: reuse across notes)
+    const noiseBuf = getNoiseBuffer(ac, STRINGS_NOISE_DURATION);
 
     // Nodes
     const src = ac.createBufferSource();

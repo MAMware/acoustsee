@@ -67,11 +67,16 @@ const SAMPLING_RATES = {
 export { loggingConfig, SAMPLING_RATES };
 
 // Auto-generate metadata from stack trace (conditional based on log level)
+// OPTIMIZATION: Only capture expensive stack traces for WARN/ERROR
 function generateMetadata(level = 'INFO', callStack = '') {
   if (!loggingConfig.includeMetadata) return {};
   
   const normalizedLevel = level.toUpperCase();
   const isHighPriority = normalizedLevel === 'WARN' || normalizedLevel === 'ERROR';
+  // If not high priority, return empty metadata immediately
+  if (!isHighPriority) {
+    return {};
+  }
   const isError = normalizedLevel === 'ERROR';
   
   // Start with empty metadata object
@@ -261,9 +266,11 @@ export function throttleError(err, options = {}) {
 }
 
 export function structuredLog(level, message, data = {}, persist = true, sample = true, options = {}) {
-  // Capture call stack IMMEDIATELY at function entry (before any processing)
-  // This is critical for accurate source location extraction
-  const callStack = new Error().stack || '';
+  // OPTIMIZATION: Only generate stack if we actually need it (WARN/ERROR)
+  // Generating the stack string is very expensive in V8
+  const normalizedLevel = level.toUpperCase();
+  const needsStack = normalizedLevel === 'WARN' || normalizedLevel === 'ERROR';
+  const callStack = needsStack ? (new Error().stack || '') : '';
   
   // Handle legacy API: if persist is an object, it's the options parameter
   if (typeof persist === 'object' && persist !== null && !Array.isArray(persist)) {

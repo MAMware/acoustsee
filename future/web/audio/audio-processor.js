@@ -15,6 +15,9 @@ let _config = {};
 let _selectedSynthPlayFn = null;
 let _profileOverrides = new Map();
 
+// OPTIMIZATION: Module-level reusable Map for synth organization (avoids per-frame allocation)
+const notesBySynth = new Map();
+
 // Allow UI/commands to select a global synth engine to apply to notes
 export function setSelectedSynthEngine(engineId) {
   try {
@@ -492,7 +495,8 @@ export function playCues(cues) { // The argument is now just the cues array
     }
   }
 
-  const notesBySynth = new Map();
+  // CLEAR the map instead of creating new Map() - OPTIMIZATION: avoids per-frame allocation
+  notesBySynth.clear();
   const maxNotes = Number(_config.maxNotes) || 12;
 
   // Reuse synthContext across all synth calls to avoid per-frame allocation (~3600 allocations/min)

@@ -115,6 +115,10 @@ export class WebGPUDepthStrategy extends DepthStrategy {
     this.gpuDevice = null;
     this.gpuQueue = null;
     this.name = 'WebGPU';
+    // OPTIMIZATION: Persistent buffers reused across frames
+    this.buffers = {}; // { input, kernel, output }
+    this.bindGroups = {};
+    this.lastSize = { w: 0, h: 0 };
   }
 
   isSupported() {
@@ -130,8 +134,43 @@ export class WebGPUDepthStrategy extends DepthStrategy {
     structuredLog('INFO', 'WebGPUDepthStrategy initialized');
   }
 
+  async ensureBuffers(width, height) {
+    // OPTIMIZATION: Reuse buffers if resolution hasn't changed
+    if (this.buffers.input && this.lastSize.w === width && this.lastSize.h === height) {
+      return;
+    }
+    
+    // Destroy old buffers if resizing
+    if (this.buffers.input) {
+      try { this.buffers.input.destroy(); } catch (e) {}
+      try { this.buffers.output.destroy(); } catch (e) {}
+      try { this.buffers.kernel.destroy(); } catch (e) {}
+    }
+
+    // Create new buffers ONCE (or on resize)
+    const inputSize = width * height * 4; // float32
+    this.buffers.input = this.gpuDevice.createBuffer({
+      size: inputSize,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    
+    this.buffers.output = this.gpuDevice.createBuffer({
+      size: inputSize,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+    });
+    
+    // Kernel buffer (3x3 = 9 floats)
+    this.buffers.kernel = this.gpuDevice.createBuffer({
+      size: 9 * 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    
+    this.lastSize = { w: width, h: height };
+  }
+
   async process(data, width, height) {
     if (!this.gpuDevice) await this.init();
+    await this.ensureBuffers(width, height);
 
     // Convert to grayscale (0-1 float)
     const inputFlat = new Float32Array(width * height);
@@ -139,8 +178,12 @@ export class WebGPUDepthStrategy extends DepthStrategy {
       inputFlat[i] = data[i * 4] / 255; // Use Red channel as grayscale proxy
     }
 
+    // OPTIMIZATION: Write to persistent buffers via queue.writeBuffer instead of createBuffer
+    this.gpuQueue.writeBuffer(this.buffers.input, 0, inputFlat);
+
     // Placeholder kernels (3x3, values = 0.1)
     const k1Flat = new Float32Array(9).fill(0.1);
+    this.gpuQueue.writeBuffer(this.buffers.kernel, 0, k1Flat);
 
     // Encoder (3 GPU-accelerated conv layers)
     let enc1Flat = await this._runConvGpu(inputFlat, k1Flat, width, height, 3, 1);
