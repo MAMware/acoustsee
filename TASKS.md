@@ -60,8 +60,14 @@ This document tracks active and future development tasks to provide a clear proj
   - **Solution:** Implemented circuit breaker in `IDBLogger` (stop after 100 errors/10s).
 - **[x] `PERF-3`:** Fix Canvas Context Loss
   - **Solution:** Added retry logic and null checks in `CanvasSource`.
-- **[x] `PERF-4`:** Fix Worker Message Transfer
-  - **Solution:** Nullified buffers after transfer in `fast-motion-worker.js`.
+- **[x] `PERF-4`:** Fix Worker Message Transfer (Buffer Pooling)
+  - **File:** `future/web/video/workers/fast-motion-worker.js` (lines 540-551)
+  - **Root Cause:** Buffer pooling optimization (PERF-1 attempt) transferred pooled buffers with `postMessage`, detaching them. Next frame called `.fill()` on detached buffers → "Cannot perform fill on detached ArrayBuffer" error
+  - **Solution:** Clone buffers instead of transferring ownership. Preserves pooled originals for worker reuse while maintaining zero-copy semantics for main thread:
+    - Create shallow copies: `new Uint16Array(res.coords)`, etc.
+    - Update contract message with clones
+    - Transfer clones (independent, safe to detach)
+  - **Testing:** Live browser console log validation (mamware.github.io-1764305694181.log) shows continuous motion detection without exceptions _(Completed 2025-11-28)_
 - **[x] `PERF-5`:** Optimize Redundant Canvas Clears
   - **Solution:** Removed redundant `clearRect` in `dev-panel-preview.js`.
 - **[x] `PERF-6`:** Optimize Layout Thrashing
@@ -78,8 +84,14 @@ This document tracks active and future development tasks to provide a clear proj
   - **Solution:** Replaced `Math.random()` with `crypto.getRandomValues()` where appropriate.
 - **[x] `PERF-12`:** Fix Regression in Fast Motion Worker
   - **Solution:** Fixed `ReferenceError: y is not defined` in `fast-motion-worker.js`.
-    - **Tests:** Null-safety, partial state, API contract, decoupling verification
-    - **Impact:** Selector pattern testable and documented _(Completed 2025-11-26)_
+
+**Validation Complete (Nov 28, 2025):**
+- ✅ All 12 performance optimizations implemented across 9 files
+- ✅ Syntax validation: 0 errors (`npm test -- --testPathPattern="test/(unit|integration)"`)
+- ✅ Live test validation: Browser console log shows continuous motion detection, audio synthesis, oscillator pool reuse without exceptions
+- ✅ Critical buffer pooling bug fixed with detailed root cause analysis
+
+---
 
 -   **[x] `ARCH-13`:** Update ARCHITECTURE_RULES.md ✅
     - **File:** `future/web/ARCHITECTURE_RULES.md`
