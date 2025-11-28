@@ -1,6 +1,6 @@
 # Runtime Shims - Module Smoke Testing
 
-**Version:** 2025-11-27  
+**Version:** 2025-11-28  
 **Purpose:** Test individual modules in isolation using Node.js, without needing a browser or the full application.
 
 ---
@@ -8,6 +8,7 @@
 ## Quick Start
 
 ### Use Case
+
 When working with a coding agent or remote tester, include these shims alongside your module so they can:
 1. Run smoke tests immediately
 2. Verify the module doesn't have circular dependencies
@@ -16,169 +17,100 @@ When working with a coding agent or remote tester, include these shims alongside
 
 **NOT for:** Production use. These are test approximations only.
 
-1. **LLM-assisted development** - Include these with module code to enable smoke testing in remote environments
-
-2. **Unit testing** - Run module logic in Node.js without browser dependenciesFiles
-
-3. **Debugging** - Test individual modules without the complexity of the full app
-
-4. **Documentation** - Demonstrate module dependencies and initialization patterns- engine-stub.js — minimal engine: dispatch, getState, onStateChange, registerCommand
-
-- dom-shim.js — minimal DOM object used across UI modules (uiPanelRoot, mainContainer, videoFeed, frameCanvas)
-
-**⚠️ CRITICAL: These are TEST HELPERS, not production code.** They approximate browser APIs but cannot replace real browser testing.- fake-audio-context.js — a tiny FakeAudioContext and FakeAudioManager to simulate Web Audio in Node
-
-- fake-worker.js — a minimal FakeWorker constructor usable by modules expecting Worker
-
----- settings-facade.js — simple settings object (maxNotes, motionThreshold, flags)
-
-- logger-shim.js — a tiny structuredLog wrapper that prints readable output
-
-## File Inventory- run-example.js — small example that demonstrates initializing audio and video modules with these shims
-
-
-
-| File | Purpose | What It Provides |How to use
-
-|------|---------|------------------|
-
-| `engine-stub.js` | Minimal command bus | `dispatch()`, `getState()`, `onStateChange()`, `registerCommand()` |1. Copy this `runtime-shims/` directory into your upload bundle with the target module (audio, video or ui).
-
-| `dom-shim.js` | Minimal DOM references | Common UI elements (`uiPanelRoot`, `mainContainer`, `videoFeed`, etc.) |2. In the remote environment (LLM runner or local machine), run the example to smoke the module:
-
-| `fake-audio-context.js` | Web Audio API mock | `FakeAudioContext`, `FakeAudioManager` with basic nodes |
-
-| `fake-worker.js` | Web Worker mock | `FakeWorker` that simulates async message passing |```bash
-
-| `settings-facade.js` | Default settings | Common app settings (`maxNotes`, `motionThreshold`, etc.) |node run-example.js
-
-| `logger-shim.js` | Logging helper | Simplified `structuredLog()` for console output |```
-
-| `run-example.js` | Integration test | Example showing how to initialize audio + video modules |
-
-Notes and limitations
+**⚠️ CRITICAL: These are TEST HELPERS, not production code.** They approximate browser APIs but cannot replace real browser testing.
 
 ---
 
-- These shims are intentionally tiny and approximate browser APIs. They are not substitutes for full browser testing.
+## File Inventory
 
-## How to Use- Real browser behaviors (audio unlock quirks, precise Worker performance, camera devices) cannot be fully emulated.
+| File | Purpose | What It Provides |
+|------|---------|------------------|
+| `engine-stub.js` | Minimal command bus | `dispatch()`, `getState()`, `onStateChange()`, `registerCommand()` |
+| `dom-shim.js` | Minimal DOM references | Common UI elements (`uiPanelRoot`, `mainContainer`, `videoFeed`, etc.) |
+| `fake-audio-context.js` | Web Audio API mock | `FakeAudioContext`, `FakeAudioManager` with basic nodes |
+| `fake-worker.js` | Web Worker mock | `FakeWorker` that simulates async message passing |
+| `settings-facade.js` | Default settings | Common app settings (`maxNotes`, `motionThreshold`, etc.) |
+| `logger-shim.js` | Logging helper | Simplified `structuredLog()` for console output |
+| `run-example.js` | Integration test | Example showing how to initialize audio + video modules |
 
-- Keep shims versioned with the repository if you rely on them frequently; they should remain minimal to reduce maintenance.
+---
+
+## How to Use
 
 ### Option 1: Direct Node.js Testing
 
-
-
-```bashPackaging for LLM uploads
-
-cd future/web/runtime-shims-------------------------
-
+```bash
+cd future/web/runtime-shims
 node run-example.js
+```
 
-```You can bundle a single module folder (for example `future/web/audio`) together with this `runtime-shims/` directory into a single text file suitable for uploading to LLMs or remote testers. The repository includes a helper script at `scripts/package_for_llm.cjs` which does this for you.
-
-
-
-This will:Example (from repo root):
-
+This will:
 1. Initialize fake browser globals (`window`, `document`, `navigator`)
+2. Load the shims
+3. Import and initialize audio and video modules
+4. Run basic smoke tests (process frame, play cues)
 
-2. Load the shims```bash
+### Option 2: Include in LLM Upload Packages
 
-3. Import and initialize audio and video modulesnode scripts/package_for_llm.cjs future/web/audio artifacts/audio_with_shims.package.txt
-
-4. Run basic smoke tests (process frame, play cues)```
-
-
-
-### Option 2: Include in LLM Upload PackagesWhat the script does:
-
-- Recursively collects files under the target folder and `future/web/runtime-shims`.
-
-When sending module code to LLMs or remote testing environments:- Writes a single plain-text file containing a JSON metadata block and per-file separators.
-
-- Caps embedded file content at 1 MB and inserts a `__FILE_TOO_LARGE__` placeholder for very large files.
+When sending module code to LLMs or remote testing environments:
 
 ```bash
-
-# From repo root:Sanitization tips before uploading:
-
-node scripts/package_for_llm.cjs future/web/audio artifacts/audio_with_shims.package.txt- If you need to remove absolute paths, open the package text and remove lines starting with `# AbsolutePath:`.
-
-```- Remove large binary files (images/audio) from the package or replace them with a short description.
-
-- Optionally strip long test artifacts or node_modules to reduce size.
+# From repo root:
+node scripts/packaging/package_for_llm.cjs future/web/audio artifacts/audio_with_shims.package.txt
+```
 
 This bundles your module with runtime-shims into a single text file.
 
-If you'd like, I can also add an option to the packager to automatically sanitize absolute paths or exclude specific globs (for example `**/*.wav`), and then re-run the packaging for you.
+**What the script does:**
+- Recursively collects files under the target folder and `future/web/runtime-shims`
+- Writes a single plain-text file containing a JSON metadata block and per-file separators
+- Caps embedded file content at 1 MB and inserts a `__FILE_TOO_LARGE__` placeholder for very large files
+
+**Sanitization tips before uploading:**
+- If you need to remove absolute paths, open the package text and remove lines starting with `# AbsolutePath:`
+- Remove large binary files (images/audio) from the package or replace them with a short description
+- Optionally strip long test artifacts or node_modules to reduce size
 
 ### Option 3: Manual Integration in Tests
 
-````
-
-```javascriptRuntime shims for isolated module debugging
-
+```javascript
 import { FakeAudioManager } from './runtime-shims/fake-audio-context.js';
-
-import { engine } from './runtime-shims/engine-stub.js';Purpose
-
+import { engine } from './runtime-shims/engine-stub.js';
 import { initializeAudio } from '../audio/audio-processor.js';
 
-This folder contains tiny, well-documented stubs that let you run or test a single module (audio, video, or ui) without uploading the entire app. Include these files alongside the module you send to an LLM or tester so it can run smoke tests locally.
-
 const audioManager = new FakeAudioManager();
-
-await audioManager.unlockAudio();Files
-
+await audioManager.unlockAudio();
 await initializeAudio({ audioManager, maxNotes: 16, settings: {} });
-
-```- engine-stub.js — minimal engine: dispatch, getState, onStateChange, registerCommand
-
-- dom-shim.js — minimal DOM object used across UI modules (uiPanelRoot, mainContainer, videoFeed, frameCanvas)
-
----- fake-audio-context.js — a tiny FakeAudioContext and FakeAudioManager to simulate Web Audio in Node
-
-- fake-worker.js — a minimal FakeWorker constructor usable by modules expecting Worker
-
-## Shim Details- settings-facade.js — simple settings object (maxNotes, motionThreshold, flags)
-
-- logger-shim.js — a tiny structuredLog wrapper that prints readable output
-
-### `engine-stub.js` - The Command Bus Mock- run-example.js — small example that demonstrates initializing audio and video modules with these shims
-
-
-
-**Purpose:** Simulates the central engine's command dispatch and state management.How to use
-
-
-
-**API:**1. Copy this `runtime-shims/` directory into your upload bundle with the target module (audio, video or ui).
-
-```javascript2. In the remote environment (LLM runner or local machine), run the example to smoke the module:
-
-engine.dispatch('commandName', payload);  // Logs command, no-op by default
-
-engine.getState();                        // Returns minimal state object```bash
-
-engine.onStateChange(callback);           // No-op (doesn't trigger callbacks)node run-example.js
-
-engine.registerCommand(name, handler);    // Logs registration```
-
 ```
 
-Notes and limitations
+---
+
+## Notes and Limitations
+
+- These shims are intentionally tiny and approximate browser APIs. They are not substitutes for full browser testing.
+- Real browser behaviors (audio unlock quirks, precise Worker performance, camera devices) cannot be fully emulated.
+- Keep shims versioned with the repository if you rely on them frequently; they should remain minimal to reduce maintenance.
+
+---
+
+## Shim Details
+
+### `engine-stub.js` - The Command Bus Mock
+
+**Purpose:** Simulates the central engine's command dispatch and state management.
+
+**API:**
+```javascript
+engine.dispatch('commandName', payload);  // Logs command, no-op by default
+engine.getState();                        // Returns minimal state object
+engine.onStateChange(callback);           // No-op (doesn't trigger callbacks)
+engine.registerCommand(name, handler);    // Logs registration
+```
 
 **Limitations:**
-
-- Does NOT execute command handlers (just logs)- These shims are intentionally tiny and approximate browser APIs. They are not substitutes for full browser testing.
-
-- Does NOT trigger state change listeners- Real browser behaviors (audio unlock quirks, precise Worker performance, camera devices) cannot be fully emulated.
-
-- Does NOT maintain real application state- Keep shims versioned with the repository if you rely on them frequently; they should remain minimal to reduce maintenance.
-
-
+- Does NOT execute command handlers (just logs)
+- Does NOT trigger state change listeners
+- Does NOT maintain real application state
 
 **When to Use:**
 - Testing modules that dispatch commands
@@ -381,12 +313,12 @@ The repository includes a helper script for bundling modules with shims:
 
 ```bash
 # From repo root:
-node scripts/package_for_llm.cjs <source-dir> <output-file>
+node scripts/packaging/package_for_llm.cjs <source-dir> <output-file>
 
 # Examples:
-node scripts/package_for_llm.cjs future/web/audio artifacts/audio_with_shims.package.txt
-node scripts/package_for_llm.cjs future/web/video artifacts/video_with_shims.package.txt
-node scripts/package_for_llm.cjs future/web/ui/dev-panel artifacts/devpanel_with_shims.package.txt
+node scripts/packaging/package_for_llm.cjs future/web/audio artifacts/audio_with_shims.package.txt
+node scripts/packaging/package_for_llm.cjs future/web/video artifacts/video_with_shims.package.txt
+node scripts/packaging/package_for_llm.cjs future/web/ui/dev-panel artifacts/devpanel_with_shims.package.txt
 ```
 
 ### What the Packager Does:

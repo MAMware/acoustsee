@@ -43,6 +43,46 @@ test/
 └── smoke/                         # Smoke tests
 ```
 
+## Where to Place New Tests
+
+### Adding Unit Tests
+
+For new unit tests, create a `*.test.js` file in the appropriate `unit/` subfolder:
+
+**Audio module test:**
+```
+future/web/test/unit/audio/my-new-feature.test.js
+```
+
+**Video module test:**
+```
+future/web/test/unit/video/my-new-feature.test.js
+```
+
+**Guidelines:**
+- Follow naming pattern: `[module-name].test.js`
+- Import from `runtime-shims/` for browser APIs
+- Use Jest's standard testing patterns
+
+### Adding Node.js Test Scripts
+
+For Node.js-specific tests (non-Jest):
+
+```
+future/web/test/node-scripts/test-my-feature.js
+future/web/test/node-scripts/audio/test-my-feature.js
+```
+
+### Adding Integration Tests
+
+For tests spanning multiple modules:
+
+```
+future/web/test/integration/my-integration.test.js
+```
+
+---
+
 ## Running Tests
 
 ### Jest Unit Tests (Recommended)

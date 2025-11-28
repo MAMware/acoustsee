@@ -1,5 +1,3 @@
-//R17925: this file needs update since we have added TASKS.md, ADR under adr, PULL_REQUEST_TEMPLATE.md, ARCHITECTURE.md (Untracked by the repo).
-
 # Contributing to AcoustSee 
 
 Thank you for helping improve AcoustSee. This document contains a short, practical guide to contributing code, tests, and documentation.
@@ -26,14 +24,33 @@ npm test
 - PRs should include a short description, motivation, and any testing instructions.
 
 ## Tests
-- Add unit tests for new logic. Place tests in the appropriate `future/web/test` or `test` folders depending on scope.
-- Run unit tests:
+
+### Test Organization
+
+Tests are organized by scope and type:
+
+**Unit & Integration Tests** (`future/web/test/`):
+- **`future/web/test/unit/`** — Jest unit tests for specific modules
+  - Place new unit tests in appropriate subdirectory (e.g., `audio/`, `video/`, `core/`)
+  - Name tests as `*.test.js` (e.g., `audio-manager.test.js`)
+- **`future/web/test/integration/`** — Multi-module integration tests
+- **`future/web/test/node-scripts/`** — Node.js test scripts (not Jest)
+- **`future/web/test/fixtures/`** — Test helpers and artifacts
+
+**E2E Tests** (`test/`):
+- Playwright-based end-to-end tests
+
+For detailed test organization, see [`future/web/test/TESTING.md`](../../future/web/test/TESTING.md).
+
+### Running Tests
+
+Run all unit tests:
 
 ```bash
 npm test
 ```
 
-- End-to-end tests use Playwright. To run them locally:
+End-to-end tests use Playwright:
 
 ```bash
 npm ci
@@ -53,6 +70,32 @@ npx playwright test --config=playwright.config.cjs -g "test name" --project=chro
 - CI runs (GitHub Actions):
   - The workflow uploads the `test-results` directory as an artifact when a job fails. Download the artifact from the workflow run page to inspect traces, screenshots and logs.
   - The badge in the README links to the workflow and run history.
+
+## Build & Validation Tools
+
+All utility scripts are located in `scripts/` organized by purpose:
+
+**Validation:**
+```bash
+node scripts/validation/validate-bootstrap-imports.js      # Validate module imports
+```
+
+**Development:**
+```bash
+npm run start:static              # Start dev server (port 3000)
+```
+
+**Testing & Diagnostics:**
+```bash
+node scripts/diagnostics/inspect-debug-ui.mjs              # Inspect debug panel
+node scripts/diagnostics/inspect-click-logs.mjs            # Check debug logging
+```
+
+**Artifacts & Packaging:**
+```bash
+npm run collect:artifacts         # Archive test results
+node scripts/packaging/package_for_llm_multi.cjs all      # Generate LLM packages
+```
 
 - Common failure signals:
   - `ERR_CONNECTION_REFUSED` — server failed to start. Check Playwright `webServer` logs in the run output.
