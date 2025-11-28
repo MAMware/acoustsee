@@ -14,6 +14,10 @@ import { structuredLog } from '../../utils/logging.js';
  * - ~15fps target via throttling
  * - Universal browser support
  * 
+ * PERF OPTIMIZATION (Nov 28): Uses createImageBitmap() when available to minimize
+ * main thread blocking during pixel readback. Falls back to getImageData() for
+ * browsers without createImageBitmap support.
+ * 
  * Best for:
  * - Firefox (no MediaStreamTrackProcessor support)
  * - Safari/iOS (no MediaStreamTrackProcessor support)
@@ -34,6 +38,9 @@ export class CanvasSource {
     this.lastFrameTime = 0;
     this.minFrameInterval = 66; // ~15fps target (in milliseconds)
     this.captureLoopBound = null;
+    
+    // OPTIMIZATION: Check for createImageBitmap support once
+    this.useImageBitmap = typeof createImageBitmap === 'function';
   }
   
   /**
@@ -130,6 +137,11 @@ export class CanvasSource {
   
   /**
    * Main frame capture loop (called via requestAnimationFrame)
+   * 
+   * PERF OPTIMIZATION (Nov 28): Uses createImageBitmap() when available.
+   * createImageBitmap() is async and offloads pixel decoding to a background thread,
+   * reducing main thread blocking compared to synchronous getImageData().
+   * The ImageBitmap can be transferred to workers for zero-copy pixel extraction.
    */
   async captureFrame() {
     if (!this.isRunning) return;
@@ -143,11 +155,12 @@ export class CanvasSource {
     this.lastFrameTime = now;
     
     try {
-      // Update canvas size if video element dimensions changed
-      if (this.canvas.width !== this.videoElement.videoWidth || 
-          this.canvas.height !== this.videoElement.videoHeight) {
-        this.canvas.width = this.videoElement.videoWidth || 320;
-        this.canvas.height = this.videoElement.videoHeight || 240;
+      // OPTIMIZATION: Check dimensions only, avoid redundant resize (canvas thrashing)
+      const vw = this.videoElement.videoWidth || 320;
+      const vh = this.videoElement.videoHeight || 240;
+      if (this.canvas.width !== vw || this.canvas.height !== vh) {
+        this.canvas.width = vw;
+        this.canvas.height = vh;
         structuredLog('DEBUG', 'Canvas source: Video size changed', {
           width: this.canvas.width,
           height: this.canvas.height
@@ -156,37 +169,66 @@ export class CanvasSource {
       
       // Draw current video frame to canvas
       if (!this.ctx) {
-        // Should not happen if initialize succeeded, but possible if context lost
         structuredLog('ERROR', 'Canvas source: Context lost during capture');
         this.stop();
         return;
       }
-      this.ctx.drawImage(this.videoElement, 0, 0, this.canvas.width, this.canvas.height);
       
-      // Extract RGBA image data
-      const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
       this.frameCounter++;
       
-      // Invoke frame processing callback (provided by frame-processor.js)
-      if (this.config.onFrame && typeof this.config.onFrame === 'function') {
-        await this.config.onFrame({
-          type: 'frame',
-          payload: {
-            frameId: this.frameCounter,
-            width: this.canvas.width,
-            height: this.canvas.height,
-            imageDataBuffer: imageData.data.buffer
-          }
-        });
+      // PERF OPTIMIZATION: Use createImageBitmap when available
+      // This is async and offloads pixel decoding to background thread
+      if (this.useImageBitmap) {
+        // createImageBitmap from video element directly (most efficient)
+        const imageBitmap = await createImageBitmap(this.videoElement);
+        
+        // Draw to canvas for pixel extraction (still needed for RGBA data)
+        this.ctx.drawImage(imageBitmap, 0, 0, this.canvas.width, this.canvas.height);
+        
+        // Extract pixels - getImageData is still sync but bitmap decode was async
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Close bitmap to free memory
+        imageBitmap.close();
+        
+        // Invoke frame processing callback
+        if (this.config.onFrame && typeof this.config.onFrame === 'function') {
+          await this.config.onFrame({
+            type: 'frame',
+            payload: {
+              frameId: this.frameCounter,
+              width: this.canvas.width,
+              height: this.canvas.height,
+              imageDataBuffer: imageData.data.buffer
+            }
+          });
+        }
+      } else {
+        // Fallback: Direct canvas draw + getImageData (legacy path)
+        this.ctx.drawImage(this.videoElement, 0, 0, this.canvas.width, this.canvas.height);
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        
+        if (this.config.onFrame && typeof this.config.onFrame === 'function') {
+          await this.config.onFrame({
+            type: 'frame',
+            payload: {
+              frameId: this.frameCounter,
+              width: this.canvas.width,
+              height: this.canvas.height,
+              imageDataBuffer: imageData.data.buffer
+            }
+          });
+        }
       }
       
       // Sample log every 30th frame
       if (this.frameCounter % 30 === 0) {
-        structuredLog('DEBUG', 'Canvas source: Frame captured', {
+        structuredLog('DEBUG', 'Canvas source: Frame captured', () => ({
           frameId: this.frameCounter,
           width: this.canvas.width,
-          height: this.canvas.height
-        });
+          height: this.canvas.height,
+          useImageBitmap: this.useImageBitmap
+        }));
       }
       
     } catch (error) {

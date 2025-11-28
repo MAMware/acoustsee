@@ -480,9 +480,20 @@ export function playCues(cues) { // The argument is now just the cues array
     return;
   }
 
-  // cues should be an array. Find the primary cue (if any) via isPrimary flag
-  const cuesArray = Array.isArray(cues) ? cues : [];
-  const primaryCue = cuesArray.find(c => c && c.isPrimary);
+  // OPTIMIZATION: Avoid array creation - use cues directly if it's already an array
+  // Early exit if no valid cues
+  if (!Array.isArray(cues) || cues.length === 0) {
+    return;
+  }
+  
+  // Find primary cue (if any) via isPrimary flag
+  let primaryCue = null;
+  for (let i = 0; i < cues.length; i++) {
+    if (cues[i] && cues[i].isPrimary) {
+      primaryCue = cues[i];
+      break;
+    }
+  }
   
   // Resolve primary profile with overrides (Focus Mode)
   let resolvedPrimaryProfile = null;
@@ -509,7 +520,12 @@ export function playCues(cues) { // The argument is now just the cues array
     settings: _config.settings 
   };
 
-  for (const cue of cuesArray.slice(0, maxNotes)) {
+  // OPTIMIZATION: Use index-based loop with early exit instead of slice() which allocates new array
+  const limit = Math.min(cues.length, maxNotes);
+  for (let i = 0; i < limit; i++) {
+    const cue = cues[i];
+    if (!cue) continue;
+    
     // Resolve individual profile from manifest
     let profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
     

@@ -157,6 +157,10 @@ let stallWatchdogInterval = null;
 /**
  * Process frame using Flow mode worker chain via FrameConductor (Phase 3.1b)
  * Sequential processing: motion → grid → params → audio
+ * 
+ * PERF FIX (Nov 28): Removed legacy fallback code that duplicated FrameConductor logic.
+ * The conductor chain (motion → grid → pan-mapper) produces {pan, intensity} directly.
+ * If the conductor fails, we log ERROR and return empty - no silent fallback.
  */
 async function processFlowMode(frameData, width, height, state) {
   if (!frameConductor) {
@@ -165,86 +169,33 @@ async function processFlowMode(frameData, width, height, state) {
   }
 
   try {
-    // Use FrameConductor for orchestration
+    // Use FrameConductor for orchestration - single source of truth
     const result = await frameConductor.processFrame(frameData, width, height, state);
     
-    // TEMPORARY DIAGNOSTIC: Direct console.log to see actual values
-    // Commented out (Nov 18): Prevents log bomb on low-end devices; use dev panel orchestration inspector instead
-    // console.log('[DIAGNOSTIC] result.result:', result.result);
-    // console.log('[DIAGNOSTIC] pan:', result.result?.pan, 'type:', typeof result.result?.pan);
-    // console.log('[DIAGNOSTIC] intensity:', result.result?.intensity, 'type:', typeof result.result?.intensity);
-    
-    // Extract motion regions from conductor result
+    // Initialize return values
     let cues = [];
-    let panIntensity = { pan: 0, intensity: 0 };  // Initialize for calculation
+    let panIntensity = { pan: 0, intensity: 0 };
     
-    // CRITICAL FIX: The conductor chain (motion → grid → pan-mapper) produces {pan, intensity}
-    // Use the final result directly without additional re-processing
+    // Extract pan/intensity from conductor chain result
+    // The chain (motion → grid → pan-mapper) produces {pan, intensity} directly
     if (result.result && typeof result.result.pan === 'number' && typeof result.result.intensity === 'number') {
       panIntensity = {
         pan: result.result.pan,
         intensity: result.result.intensity
       };
       
-      // Convert to cues for audio system
-      // cues = createCuesFromAudioParams(panIntensity, state);
-      
-      structuredLog('DEBUG', 'Flow mode: Using conductor pan/intensity', { 
+      structuredLog('DEBUG', 'Flow mode: Using conductor pan/intensity', () => ({ 
         panIntensity,
         cuesCount: cues.length 
-      }, false, shouldSample('cueGeneration'));
-    }
-    
-    // Legacy fallback: If result has coords (motion worker only, no pan-mapper) R261125-fclf DO NOT SILENTLY FALLBACK 
-    // This path should rarely execute with proper FrameConductor chain
-    const grid = _config.getCurrentGrid ? _config.getCurrentGrid() : null;
-    
-    if (!_config.getCurrentGrid) {
-      // Defensive check to prevent crash if config is malformed
-      structuredLog('WARN', 'processFlowMode: _config.getCurrentGrid is missing', { 
-        configKeys: Object.keys(_config),
-        hasFrameConductor: !!frameConductor
-      }, false, shouldSample('configError'));
-    }
-
-    if (cues.length === 0 && grid && grid.mapFunction && result.result?.coords?.length > 0) {
-      // Convert result to movingRegions format that grids expect
-      const movingRegions = [];
-      const regions = result.result;
-      for (let i = 0; i < regions.count && i < regions.coords.length / 2; i++) {
-        movingRegions.push({
-          x: regions.coords[i * 2],
-          y: regions.coords[i * 2 + 1],
-          intensity: regions.intens[i] || 0
-        });
-      }
-      
-      // Map via grid
-      const gridOutput = grid.mapFunction(frameData, width, height, null, { movingRegions });
-      if (gridOutput?.cues?.length > 0) {
-        cues = gridOutput.cues;
-        
-        // Calculate panIntensity from the first cue (grid-normalized intensity)
-        // This fixes the motion threshold bug: panIntensity was hardcoded to 0
-        if (cues[0]) {
-          panIntensity = {
-            pan: cues[0].pan || 0,
-            intensity: cues[0].intensity || 0  // Already normalized by grid (0.02-0.08 typical)
-          };
-        }
-        
-        structuredLog('DEBUG', 'Flow mode: Grid mapped motion to cues', { 
-          gridId: grid.id, 
-          cuesCount: cues.length, 
-          motionRegionsCount: movingRegions.length,
-          panIntensity 
-        }, false, shouldSample('cueGeneration'));
-      }
-    }
-    
-    // Fallback
-    if (cues.length === 0) {
-      // cues = createCuesFromAudioParams({ pan: 0, intensity: 0 }, state);
+      }), false, shouldSample('cueGeneration'));
+    } else if (result.result && !result.result.empty) {
+      // FAIL FAST: Log error if conductor didn't produce expected output
+      // This surfaces bugs instead of silently falling back to broken legacy code
+      structuredLog('ERROR', 'processFlowMode: Conductor result missing pan/intensity', () => ({
+        hasResult: !!result.result,
+        resultKeys: result.result ? Object.keys(result.result) : [],
+        mode: state?.mode
+      }));
     }
     
     // CORE-15: Return telemetry along with cues for state update

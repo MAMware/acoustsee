@@ -185,9 +185,19 @@ export function setSamplingRate(eventType, rate) {
 /**
  * Logs a structured message with level, timestamp, and data payload.
  * Dispatches asynchronously to prevent blocking high-throughput paths (frame processing).
+ * 
+ * PERFORMANCE TIP: Use lazy evaluation for expensive data by passing a function:
+ * ```js
+ * // BAD: Object is created even if log is filtered
+ * structuredLog('DEBUG', 'Frame processed', { metrics: expensiveComputation() });
+ * 
+ * // GOOD: Function is only called if log passes level/throttle checks
+ * structuredLog('DEBUG', 'Frame processed', () => ({ metrics: expensiveComputation() }));
+ * ```
+ * 
  * @param {string} level - One of 'DEBUG', 'INFO', 'WARN', 'ERROR'.
  * @param {string} message - Descriptive message (e.g., 'setAudioInterval').
- * @param {Object} [data={}] - Additional context (e.g., { timerId: 42, ms: 50 }).
+ * @param {Object|Function} [data={}] - Additional context. Can be a function for lazy evaluation.
  * @param {boolean|Object} [persist=true] - If true, persist to IDB. If object, use as options.
  * @param {boolean} [applyRateLimitingAndSampling=true] - If false, bypass throttling and sampling.
  * @param {Object} [options] - Enhanced logging options
@@ -281,15 +291,14 @@ export function throttleError(err, options = {}) {
 }
 
 export function structuredLog(level, message, data = {}, persist = true, sample = true, options = {}) {
+  // OPTIMIZATION: Early exit checks BEFORE any expensive operations
+  // This prevents CPU waste from formatting logs that won't be printed
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
   if (numericLevel < currentLogLevel) return;
-
-  // OPTIMIZATION: Only generate stack if we actually need it (WARN/ERROR)
-  // Generating the stack string is very expensive in V8
-  const normalizedLevel = level.toUpperCase();
-  const needsStack = normalizedLevel === 'WARN' || normalizedLevel === 'ERROR';
-  const callStack = needsStack ? (new Error().stack || '') : '';
   
+  // Reentrance guard (early)
+  if (inStructuredLog) return;
+
   // Handle legacy API: if persist is an object, it's the options parameter
   if (typeof persist === 'object' && persist !== null && !Array.isArray(persist)) {
     options = persist;
@@ -306,18 +315,19 @@ export function structuredLog(level, message, data = {}, persist = true, sample 
     announceMessageFn,
     speakTextFn
   } = options;
-  
-  // NOTE: Pre-emit sampling removed. Event bus now handles all sampling based on
-  // category configuration. This ensures unified sampling (single source of truth).
-  // See EVENT_BUS_IMPLEMENTATION_AUDIT_ISSUES.md for details.
-  
+
   // Rate limiting check (unless unthrottled flag is set)
   // Throttling is KEPT - it prevents high-frequency repeats like "Failed to load: {file}"
+  // PERF FIX: Check throttle BEFORE evaluating data closure
   if (!unthrottled && shouldThrottle(level, message)) {
     return;
   }
 
-  if (inStructuredLog) return;
+  // OPTIMIZATION: Only generate stack if we actually need it (WARN/ERROR)
+  // Generating the stack string is very expensive in V8
+  const normalizedLevel = level.toUpperCase();
+  const needsStack = normalizedLevel === 'WARN' || normalizedLevel === 'ERROR';
+  const callStack = needsStack ? (new Error().stack || '') : '';
   inStructuredLog = true;
   try {
     const timestamp = new Date().toISOString();

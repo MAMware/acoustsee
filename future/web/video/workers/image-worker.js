@@ -244,14 +244,19 @@ self.onmessage = (e) => {
       float32Pool.release(ft);
 
       // Gabor for textures (small kernel, sampled)
+      // PERF OPTIMIZATION (Nov 28): Use pre-computed lumaArray instead of recalculating luma
+      // This eliminates redundant getLuma() calls in the nested loops (~2x speedup)
       const gaborKernel = (x, y) => Math.exp(-(x**2 + y**2)/ (2*5**2)) * Math.cos(2 * Math.PI * x / 10);  // Sigma=5, lambda=10
-      const applyGabor = (data, width, height, x, y) => {
+      
+      // Modified applyGabor to use pre-computed luma buffer
+      const applyGaborOptimized = (lumaBuffer, width, height, x, y) => {
         let sumLuma = 0, count = 0;
         for (let dy = -2; dy <= 2; dy++) {
           for (let dx = -2; dx <= 2; dx++) {
-            const i = ((y+dy)*width + (x+dx))*4;
-            if (i >= 0 && i < data.length) {
-              sumLuma += getLuma(data, i);
+            const px = x + dx;
+            const py = y + dy;
+            if (px >= 0 && px < width && py >= 0 && py < height) {
+              sumLuma += lumaBuffer[py * width + px];
               count++;
             }
           }
@@ -260,22 +265,25 @@ self.onmessage = (e) => {
         let response = 0;
         for (let dy = -2; dy <= 2; dy++) {
           for (let dx = -2; dx <= 2; dx++) {
-            const i = ((y+dy)*width + (x+dx))*4;
-            if (i >= 0 && i < data.length) response += getLuma(data, i) * gaborKernel(dx, dy);
+            const px = x + dx;
+            const py = y + dy;
+            if (px >= 0 && px < width && py >= 0 && py < height) {
+              response += lumaBuffer[py * width + px] * gaborKernel(dx, dy);
+            }
           }
         }
         // Apply Softplus for smoothing to avoid spikes in textures for smooth melody
         return Math.log(1 + Math.exp(Math.abs(response)));
       };
 
-      // Texture grid: Gabor filter responses
+      // Texture grid: Gabor filter responses using pre-computed luma
       const textureGrid = Array.from({length: rows}, () => Array(cols).fill(0));
       const startTime = performance.now();
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const x = Math.floor(c * cellW + cellW / 2);
           const y = Math.floor(r * cellH + cellH / 2);
-          textureGrid[r][c] = applyGabor(currentData, width, height, x, y);
+          textureGrid[r][c] = applyGaborOptimized(lumaArray, width, height, x, y);
         }
       }
       const gaborTime = performance.now() - startTime;

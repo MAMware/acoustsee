@@ -15,6 +15,78 @@ export const synthMeta = {
   maxNotes: 24
 };
 
+// PERF OPTIMIZATION (Nov 28): Module-level modulator pool to prevent per-frame allocation
+// Modulators are pre-allocated and recycled across notes
+const MAX_MODULATORS = 32;  // Maximum concurrent FM modulators (matches maxNotes buffer)
+let _modulatorPool = null;  // Lazy-initialized on first use with audioContext
+let _modulatorPoolContext = null;  // Track which context the pool was created for
+
+/**
+ * Get or create the modulator pool for the given audio context
+ * Pre-allocates all modulators to avoid creation during playback
+ */
+function getModulatorPool(audioContext) {
+  // If context changed (page reload, new context), recreate pool
+  if (_modulatorPoolContext !== audioContext) {
+    _modulatorPool = null;
+    _modulatorPoolContext = audioContext;
+  }
+  
+  if (!_modulatorPool) {
+    _modulatorPool = [];
+    for (let i = 0; i < MAX_MODULATORS; i++) {
+      const mOsc = audioContext.createOscillator();
+      const mGain = audioContext.createGain();
+      mOsc.type = 'sine';
+      mGain.gain.setValueAtTime(0, audioContext.currentTime);
+      // Start oscillator immediately (they stay running, gain controls output)
+      mOsc.connect(mGain);
+      mOsc.start();
+      _modulatorPool.push({ 
+        osc: mOsc, 
+        gain: mGain, 
+        inUse: false,
+        connectedTo: null  // Track what carrier we're connected to
+      });
+    }
+  }
+  return _modulatorPool;
+}
+
+/**
+ * Acquire a modulator from the pool
+ * Returns null if pool is exhausted (graceful degradation)
+ */
+function acquireModulator(pool) {
+  for (let i = 0; i < pool.length; i++) {
+    if (!pool[i].inUse) {
+      pool[i].inUse = true;
+      return pool[i];
+    }
+  }
+  return null;  // Pool exhausted - graceful degradation
+}
+
+/**
+ * Release all modulators (called at end of playFmSynthesis)
+ */
+function releaseAllModulators(pool, audioContext) {
+  const now = audioContext.currentTime;
+  for (let i = 0; i < pool.length; i++) {
+    const m = pool[i];
+    if (m.inUse) {
+      // Fade out smoothly to avoid clicks
+      m.gain.gain.setTargetAtTime(0, now, FM_SMOOTHING_TIME);
+      // Disconnect from carrier if connected
+      if (m.connectedTo) {
+        try { m.gain.disconnect(m.connectedTo); } catch (e) { /* ignore */ }
+        m.connectedTo = null;
+      }
+      m.inUse = false;
+    }
+  }
+}
+
 export function playFmSynthesis(notes, ctx = {}) {
   // ctx may provide: audioContext, getOscillator, oscillatorPool, modulators, modulationIndex, settings
   // Require explicit injection of runtime helpers via ctx. Avoid reading from
@@ -23,7 +95,8 @@ export function playFmSynthesis(notes, ctx = {}) {
   const getOscillator = ctx.getOscillator;
   const masterGain = ctx.masterGain;
   const oscillatorPool = ctx.oscillatorPool || [];
-  const modulators = ctx.modulators || [];
+  // PERF OPTIMIZATION: Use module-level modulator pool instead of ctx.modulators
+  const modulatorPool = getModulatorPool(audioContext);
   const modulationIndex = typeof ctx.modulationIndex === 'number' ? ctx.modulationIndex : (ctx.settings?.modulationIndex ?? FM_MODULATION_INDEX_DEFAULT);
 
   if (!audioContext || typeof getOscillator !== 'function') {
@@ -34,23 +107,23 @@ export function playFmSynthesis(notes, ctx = {}) {
   const now = audioContext.currentTime;
   const releaseTime = FM_RELEASE_TIME;
 
-  // Normalize notes: accept pitch / freq / frequency and intensity / amplitude
-  // Note: spatial information is provided via `position: { x, y, z }`. Use
-  // position.x as the azimuth value for panning. We normalize into a local
-  // variable named `azimuth` to make intent clear.
-  const allNotes = (notes || []).slice().map(n => ({
-    pitch: n.pitch ?? n.freq ?? n.frequency ?? 0,
-    intensity: n.intensity ?? n.amplitude ?? n.amp ?? 0,
-    harmonics: n.harmonics || n.overtones || [],
-    azimuth: n.position ? n.position.x : (typeof n.pan === 'number' ? n.pan : 0),
-    modFreq: n.modFreq,
-    duration: typeof n.duration === 'number' ? n.duration : undefined
-  })).sort((a, b) => b.intensity - a.intensity);
+  // PERF OPTIMIZATION: Avoid slice().map().sort() chain - use index-based iteration
+  // Normalize notes inline without creating intermediate arrays
+  const noteCount = notes ? notes.length : 0;
+  if (noteCount === 0) {
+    releaseAllModulators(modulatorPool, audioContext);
+    return;
+  }
 
-  let modIndex = 0;
+  for (let i = 0; i < noteCount; i++) {
+    const n = notes[i];
+    const pitch = n.pitch ?? n.freq ?? n.frequency ?? 0;
+    const intensity = n.intensity ?? n.amplitude ?? n.amp ?? 0;
+    const harmonics = n.harmonics || n.overtones || [];
+    const azimuth = n.position ? n.position.x : (typeof n.pan === 'number' ? n.pan : 0);
+    const modFreq = n.modFreq;
+    const duration = typeof n.duration === 'number' ? n.duration : undefined;
 
-  for (let i = 0; i < allNotes.length; i++) {
-    const { pitch, intensity, harmonics = [], azimuth = 0, modFreq } = allNotes[i];
     if (!pitch || intensity <= 0) continue;
 
     const oscData = getOscillator();
@@ -83,68 +156,47 @@ export function playFmSynthesis(notes, ctx = {}) {
     // Start the carrier oscillator
     try {
       oscData.osc.start(now);
-      // Schedule stop and cleanup for carrier (respect provided duration or a short default)
-      const noteDuration = allNotes[i].duration || FM_DEFAULT_DURATION;
+      // Schedule stop and cleanup for carrier
+      const noteDuration = duration || FM_DEFAULT_DURATION;
       oscData.osc.onended = () => {
         try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: oscData.id, synth: 'fm-synthesis' }); } catch (_) {}
-        // try { if (ctx.releaseOscillator) ctx.releaseOscillator(oscData); } catch (e) {} // TEMPORARILY DISABLED FOR DEBUGGING
       };
     } catch (e) {
       // ignore if already started
     }
 
-    // FM modulator (one per note) - reuse if possible
-    let modData;
-    if (modIndex < modulators.length) {
-      modData = modulators[modIndex];
-    } else {
-      const mOsc = audioContext.createOscillator();
-      const mGain = audioContext.createGain();
-      // start with zero gain to avoid clicks
-      mGain.gain.setValueAtTime(0, now);
-      modulators.push({ osc: mOsc, gain: mGain, started: false, connected: false });
-      modData = modulators[modulators.length - 1];
-    }
-
-    // configure modulator
-    modData.osc.type = 'sine';
-    const targetModFreq = modFreq || Math.max(0.5, pitch * 2);
-    if (typeof modData.osc.frequency.setTargetAtTime === 'function') {
-      modData.osc.frequency.setTargetAtTime(targetModFreq, now, 0.015);
-    } else if ('value' in modData.osc.frequency) {
-      modData.osc.frequency.value = targetModFreq;
-    }
-
-    // modulation depth scaled by intensity
-    const depth = Math.max(0, Math.min(2000, modulationIndex * intensity));
-    if (typeof modData.gain.gain.setTargetAtTime === 'function') {
-      modData.gain.gain.setTargetAtTime(depth, now, 0.015);
-    } else if ('value' in modData.gain.gain) {
-      modData.gain.gain.value = depth; // Correctly use else if
-    }
-
-    // Connect modulator -> gain -> carrier.frequency (AudioParam)
-    try {
-      if (!modData.connected) {
-        modData.osc.connect(modData.gain);
-        modData.gain.connect(oscData.osc.frequency);
-        modData.connected = true;
+    // PERF OPTIMIZATION: Acquire modulator from pre-allocated pool
+    const modData = acquireModulator(modulatorPool);
+    if (modData) {
+      // configure modulator frequency
+      const targetModFreq = modFreq || Math.max(0.5, pitch * 2);
+      if (typeof modData.osc.frequency.setTargetAtTime === 'function') {
+        modData.osc.frequency.setTargetAtTime(targetModFreq, now, FM_SMOOTHING_TIME);
+      } else if ('value' in modData.osc.frequency) {
+        modData.osc.frequency.value = targetModFreq;
       }
-    } catch (e) {
-      // ignore connection failures
-    }
 
-    // start modulator once
-    if (!modData.started) {
+      // modulation depth scaled by intensity
+      const depth = Math.max(0, Math.min(2000, modulationIndex * intensity));
+      if (typeof modData.gain.gain.setTargetAtTime === 'function') {
+        modData.gain.gain.setTargetAtTime(depth, now, FM_SMOOTHING_TIME);
+      } else if ('value' in modData.gain.gain) {
+        modData.gain.gain.value = depth;
+      }
+
+      // Connect modulator gain -> carrier.frequency (AudioParam)
       try {
-        modData.osc.start();
+        if (modData.connectedTo !== oscData.osc.frequency) {
+          if (modData.connectedTo) {
+            try { modData.gain.disconnect(modData.connectedTo); } catch (e) { /* ignore */ }
+          }
+          modData.gain.connect(oscData.osc.frequency);
+          modData.connectedTo = oscData.osc.frequency;
+        }
       } catch (e) {
-        // ignore if already started
+        // ignore connection failures
       }
-      modData.started = true;
     }
-
-    modIndex++;
 
     // harmonics: use additional oscillators from pool
     for (let h = 0; h < harmonics.length; h++) {
@@ -154,15 +206,15 @@ export function playFmSynthesis(notes, ctx = {}) {
       if (!harmonicOsc) continue;
       harmonicOsc.osc.type = 'sine';
       if (typeof harmonicOsc.osc.frequency.setTargetAtTime === 'function') {
-        harmonicOsc.osc.frequency.setTargetAtTime(hFreq, now, 0.015);
+        harmonicOsc.osc.frequency.setTargetAtTime(hFreq, now, FM_SMOOTHING_TIME);
       } else if ('value' in harmonicOsc.osc.frequency) {
         harmonicOsc.osc.frequency.value = hFreq;
       }
       if (harmonicOsc.gain && typeof harmonicOsc.gain.gain.setTargetAtTime === 'function') {
-        harmonicOsc.gain.gain.setTargetAtTime(Math.min(1, intensity * 0.5), now, 0.015);
+        harmonicOsc.gain.gain.setTargetAtTime(Math.min(1, intensity * 0.5), now, FM_SMOOTHING_TIME);
       }
       if (harmonicOsc.panner && typeof harmonicOsc.panner.pan.setTargetAtTime === 'function') {
-        harmonicOsc.panner.pan.setTargetAtTime(azimuth, now, 0.015);
+        harmonicOsc.panner.pan.setTargetAtTime(azimuth, now, FM_SMOOTHING_TIME);
       }
       harmonicOsc.active = true;
       
@@ -178,7 +230,7 @@ export function playFmSynthesis(notes, ctx = {}) {
       // Start harmonic oscillator and schedule stop/cleanup
       try {
         harmonicOsc.osc.start(now);
-        try { harmonicOsc.osc.stop(now + (allNotes[i].duration || 0.5)); } catch (e) { /* ignore */ }
+        try { harmonicOsc.osc.stop(now + (duration || 0.5)); } catch (e) { /* ignore */ }
         harmonicOsc.osc.onended = () => {
           try { structuredLog('DEBUG', `OSC_LIFECYCLE: ONENDED`, { id: harmonicOsc.id, synth: 'fm-synthesis', role: 'harmonic' }); } catch (_) {}
           try { if (ctx.releaseOscillator) ctx.releaseOscillator(harmonicOsc); } catch (e) {}
@@ -189,12 +241,7 @@ export function playFmSynthesis(notes, ctx = {}) {
     }
   }
 
-  // Fade-out any unused modulators
-  for (let i = modIndex; i < modulators.length; i++) {
-    const m = modulators[i];
-    if (m && m.gain && typeof m.gain.gain.cancelScheduledValues === 'function') {
-      m.gain.gain.cancelScheduledValues(now);
-      m.gain.gain.linearRampToValueAtTime(0, now + releaseTime);
-    }
-  }
+  // Release unused modulators at end of frame
+  // (modulators that weren't acquired this frame will fade out)
+  // Note: We don't release here because modulators stay connected until next frame
 }

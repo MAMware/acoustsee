@@ -110,6 +110,50 @@ let _height = 0;
 let _adaptiveThreshold = 20; // Internal adaptive threshold (5-50 pixel difference range)
 let _useAdaptive = true; // Whether to use adaptive thresholding
 
+// OPTIMIZATION: Module-level buffer pool to avoid per-frame allocation (reduces GC pressure at 30fps)
+// These buffers are reused across frames; only reallocated when frame dimensions change
+let _motionBuffers = {
+  maxRegions: 0,
+  coords: null,    // Uint16Array
+  intens: null,    // Uint8Array
+  uFlow: null,     // Float32Array
+  vFlow: null,     // Float32Array
+  // Convolution buffers
+  convWidth: 0,
+  convHeight: 0,
+  fx: null,        // Float32Array
+  fy: null,        // Float32Array
+  ft: null,        // Float32Array
+  ftPrev: null,    // Float32Array
+};
+
+/**
+ * Ensure motion buffers are allocated for the given dimensions
+ * Only reallocates if dimensions or maxRegions have changed
+ */
+function ensureMotionBuffers(width, height, maxRegions) {
+  const pixelCount = width * height;
+  const needsConvRealloc = _motionBuffers.convWidth !== width || _motionBuffers.convHeight !== height;
+  const needsRegionRealloc = _motionBuffers.maxRegions !== maxRegions;
+  
+  if (needsRegionRealloc) {
+    _motionBuffers.coords = new Uint16Array(maxRegions * 2);
+    _motionBuffers.intens = new Uint8Array(maxRegions);
+    _motionBuffers.uFlow = new Float32Array(maxRegions);
+    _motionBuffers.vFlow = new Float32Array(maxRegions);
+    _motionBuffers.maxRegions = maxRegions;
+  }
+  
+  if (needsConvRealloc) {
+    _motionBuffers.fx = new Float32Array(pixelCount);
+    _motionBuffers.fy = new Float32Array(pixelCount);
+    _motionBuffers.ft = new Float32Array(pixelCount);
+    _motionBuffers.ftPrev = new Float32Array(pixelCount);
+    _motionBuffers.convWidth = width;
+    _motionBuffers.convHeight = height;
+  }
+}
+
 // Grid configuration is now received with each frame (stateless pattern)
 // Workers no longer maintain configuration state
 
@@ -137,12 +181,22 @@ function rgbaToYPlane(rgbaData, width, height) {
   return yPlane;
 }
 
-function convolve2d(image, width, height, kernel) {
+/**
+ * 2D convolution with optional output buffer reuse
+ * @param {Float32Array|Uint8Array} image - Input image data
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @param {number[][]} kernel - Convolution kernel
+ * @param {Float32Array} [outBuffer] - Optional pre-allocated output buffer (avoids allocation)
+ * @returns {Float32Array} Convolution result
+ */
+function convolve2d(image, width, height, kernel, outBuffer = null) {
   const kh = kernel.length;
   const kw = kernel[0].length;
   const padY = Math.floor(kh / 2);
   const padX = Math.floor(kw / 2);
-  const out = new Float32Array(width * height);
+  // OPTIMIZATION: Reuse provided buffer if available, otherwise allocate new
+  const out = outBuffer || new Float32Array(width * height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -179,10 +233,21 @@ function simpleDetectYMotion(yBuf, width, height, config = {}) {
     isFirstFrame = true;
   }
 
-  const coords = new Uint16Array(maxRegions * 2);
-  const intens = new Uint8Array(maxRegions);
-  const uFlow = new Float32Array(maxRegions);
-  const vFlow = new Float32Array(maxRegions);
+  // OPTIMIZATION: Ensure module-level buffers are allocated (only reallocates on dimension change)
+  ensureMotionBuffers(width, height, maxRegions);
+  
+  // Use pre-allocated buffers instead of creating new arrays each frame
+  const coords = _motionBuffers.coords;
+  const intens = _motionBuffers.intens;
+  const uFlow = _motionBuffers.uFlow;
+  const vFlow = _motionBuffers.vFlow;
+  
+  // Zero out the buffers for reuse (faster than allocation)
+  coords.fill(0);
+  intens.fill(0);
+  uFlow.fill(0);
+  vFlow.fill(0);
+  
   let count = 0;
   
   // CRITICAL: Skip motion detection on first frame (no previous frame to compare)
@@ -198,11 +263,11 @@ function simpleDetectYMotion(yBuf, width, height, config = {}) {
   const kernelY = [[-1, -1], [1, 1]];
   const kernelT = [[1, 1], [1, 1]];
 
-  // Compute derivatives on current frame (I1 = prev, I2 = current)
-  const fx = convolve2d(yBuf, width, height, kernelX);
-  const fy = convolve2d(yBuf, width, height, kernelY);
-  const ft = convolve2d(yBuf, width, height, kernelT);
-  const ftPrev = convolve2d(_prevY, width, height, kernelT);
+  // OPTIMIZATION: Compute derivatives using pre-allocated buffers (avoids ~6MB allocation per frame)
+  const fx = convolve2d(yBuf, width, height, kernelX, _motionBuffers.fx);
+  const fy = convolve2d(yBuf, width, height, kernelY, _motionBuffers.fy);
+  const ft = convolve2d(yBuf, width, height, kernelT, _motionBuffers.ft);
+  const ftPrev = convolve2d(_prevY, width, height, kernelT, _motionBuffers.ftPrev);
   for (let i = 0; i < ft.length; i++) {
     ft[i] -= ftPrev[i]; // ft = I2 - I1 approx
   }

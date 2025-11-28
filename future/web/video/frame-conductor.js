@@ -328,6 +328,19 @@ export class FrameConductor {
   #cleanupWorkers() {
     for (const [name, worker] of this.#workers.entries()) {
       try {
+        // PERF OPTIMIZATION: Remove persistent message handlers
+        const handler = this.#workerMessageHandlers.get(name);
+        if (handler) {
+          worker.removeEventListener('message', handler);
+          this.#workerMessageHandlers.delete(name);
+        }
+        // Clear any pending resolvers
+        const resolver = this.#workerResolvers.get(name);
+        if (resolver) {
+          clearTimeout(resolver.timeoutHandle);
+          this.#workerResolvers.delete(name);
+        }
+        
         worker.terminate();
         structuredLog('DEBUG', 'FrameConductor: worker terminated', { workerName: name });
       } catch (error) {
@@ -717,6 +730,10 @@ export class FrameConductor {
    * Private method called during chain processing.
    * Handles timeout, error handling, and message protocol.
    * 
+   * PERF OPTIMIZATION (Nov 28): Uses persistent message handlers per worker
+   * instead of creating new Promise + handler per frame. This reduces
+   * microtask overhead and improves audio timing stability.
+   * 
    * Protocol:
    * - Sends: { type: 'processingRequest', data: frameData, width, height, state }
    * - Receives: WorkerContract.createResult(...) or WorkerContract.createError(...)
@@ -749,24 +766,37 @@ export class FrameConductor {
     const isInitializing = this.#timingMetrics.frameCount < this.#initializationFrameCount;
     const actualTimeout = isInitializing ? this.#initializationTimeoutMs : timeout;
 
+    // PERF OPTIMIZATION: Set up persistent message handler if not already attached
+    if (!this.#workerMessageHandlers.has(workerName)) {
+      const handler = (event) => {
+        const resolver = this.#workerResolvers.get(workerName);
+        if (resolver) {
+          clearTimeout(resolver.timeoutHandle);
+          this.#workerResolvers.delete(workerName);
+          resolver.resolve(event.data);
+        }
+      };
+      worker.addEventListener('message', handler);
+      this.#workerMessageHandlers.set(workerName, handler);
+    }
+
     return new Promise((resolve, reject) => {
+      // Clear any pending resolver (shouldn't happen, but defensive)
+      const existing = this.#workerResolvers.get(workerName);
+      if (existing) {
+        clearTimeout(existing.timeoutHandle);
+      }
+
       // Setup timeout
       const timeoutHandle = setTimeout(() => {
+        this.#workerResolvers.delete(workerName);
         reject(new Error(`Worker ${workerName} timed out after ${actualTimeout}ms${isInitializing ? ' (initialization)' : ''}`));
       }, actualTimeout);
 
-      // One-shot message handler
-      const onMessage = (event) => {
-        clearTimeout(timeoutHandle);
-        worker.removeEventListener('message', onMessage);
-        resolve(event.data);
-      };
-
-      // Attach listener
-      worker.addEventListener('message', onMessage);
+      // Store resolver for the message handler to use
+      this.#workerResolvers.set(workerName, { resolve, reject, timeoutHandle });
 
       // Send message to worker with SERIALIZABLE state only
-      // (functions like grid.mapFunction cannot be cloned via postMessage)
       try {
         const serializableState = this.#extractSerializableState(state);
         worker.postMessage({
@@ -779,7 +809,7 @@ export class FrameConductor {
         });
       } catch (error) {
         clearTimeout(timeoutHandle);
-        worker.removeEventListener('message', onMessage);
+        this.#workerResolvers.delete(workerName);
         reject(new Error(`Failed to send message to worker ${workerName}: ${error.message}`));
       }
     });
@@ -860,6 +890,12 @@ export class FrameConductor {
 
   #workers = new Map();
   #workerValidationState = {};  // Tracks which workers have been validated
+  
+  // PERF OPTIMIZATION (Nov 28): Reusable message handlers per worker
+  // Instead of creating new Promise + handler per frame, we attach persistent handlers
+  // and resolve/reject through stored references. This reduces microtask overhead.
+  #workerResolvers = new Map();  // Map<workerName, { resolve, reject, timeoutHandle }>
+  #workerMessageHandlers = new Map();  // Map<workerName, handler function>
 }
 
 export default FrameConductor;
