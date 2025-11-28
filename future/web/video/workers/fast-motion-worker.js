@@ -542,14 +542,23 @@ function processFrameMessage(msg) {
       resultData
     );
     
-    // Transfer buffer ownership to main thread for zero-copy performance
-    self.postMessage(contractMessage, [res.coords.buffer, res.intens.buffer, res.uFlow.buffer, res.vFlow.buffer]);
-
-    // Safety: Nullify references to transferred buffers to prevent use-after-transfer
-    res.coords = null;
-    res.intens = null;
-    res.uFlow = null;
-    res.vFlow = null;
+    // CRITICAL FIX: Don't transfer pooled buffers—clone instead.
+    // These buffers are reused in _motionBuffers and must remain accessible to worker.
+    // Transferring would detach the buffer and cause "Cannot perform fill on detached ArrayBuffer" errors on next frame.
+    // Shallow-clone into new buffers to preserve pooled originals:
+    const transferableCoords = new Uint16Array(res.coords);
+    const transferableIntens = new Uint8Array(res.intens);
+    const transferableUFlow = new Float32Array(res.uFlow);
+    const transferableVFlow = new Float32Array(res.vFlow);
+    
+    // Update contractMessage data with cloned buffers
+    contractMessage.data.coords = transferableCoords;
+    contractMessage.data.intens = transferableIntens;
+    contractMessage.data.uFlow = transferableUFlow;
+    contractMessage.data.vFlow = transferableVFlow;
+    
+    // Send cloned buffers with transfer list (safe to transfer because they're independent copies)
+    self.postMessage(contractMessage, [transferableCoords.buffer, transferableIntens.buffer, transferableUFlow.buffer, transferableVFlow.buffer]);
   } catch (e) {
     // TEMPORARY DIAGNOSTIC: Log full error details
     console.error('[FastMotion] EXCEPTION:', e.message, 'Stack:', e.stack);
