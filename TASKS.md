@@ -2,6 +2,70 @@
 
 This document tracks active and future development tasks to provide a clear project roadmap. Each task has a unique ID for easy reference in commits, pull requests, and code comments.
 
+## Current Focus: v0.9.6.5 (Audio-Video Pipeline Hotfix - Nov 28, 2025)
+
+### Hotfix: GC-PRESSURE (Video Pipeline ArrayBuffer + Audio Cue Routing - Nov 28, 2025)
+
+**Status:** 100% Complete ✅  
+**Session:** `docs/sessions/2025-11/W4/20251128-audio-video-pipeline-fix.md`
+
+#### Problem Analysis
+App produces no sound despite audio system initialization. Root cause analysis revealed:
+
+1. **Video Pipeline ArrayBuffer Detachment Issue**
+   - `fast-motion-worker.js` was transferring cloned motion buffers via `postMessage(msg, [buffer.buffer, ...])`
+   - When buffers are transferred, they are detached in sender's context
+   - On next frame: pooled buffers become detached → `coords.fill(0)` at line 246 fails
+   - Error: `"Cannot perform %TypedArray%.prototype.fill on a detached ArrayBuffer"`
+   - **Impact:** Motion detection silently fails → zero motion regions → zero cues to audio
+
+2. **Missing Cue Flow Trace Logging**
+   - Audio system properly initialized (AudioContext running, oscillator pool created)
+   - But logs showed "No cues to process" consistently
+   - No visibility into: are cues being generated? Being dispatched? Being received?
+   - **Impact:** Impossible to diagnose cue flow path without end-to-end trace
+
+#### Fixes Implemented
+
+- **[FIX-1]** `future/web/video/workers/fast-motion-worker.js` (line 559)
+  - **Before:** `self.postMessage(contractMessage, [transferableCoords.buffer, ...])`  
+  - **After:** `self.postMessage(contractMessage)` _(removed transfer list)_
+  - **Rationale:** Cloned buffers are independent copies; transferring detaches pooled originals
+  - **Result:** Pooled buffers remain accessible for next frame's `.fill()` operations
+
+- **[FIX-2]** `future/web/audio/audio-router.js` (lines 118-141)
+  - Added comprehensive dispatch logging with: cue count, array validation, mode, cue types
+  - Logs cue composition (first cue details, cue type distribution)
+  - Enables visibility into AudioRouter → Engine dispatch path
+
+- **[FIX-3]** `future/web/audio/audio-processor.js` (lines 465-620)
+  - Enhanced `playCues()` entry logging: received type, sample cues, context state
+  - Added profile resolution trace: count of profiles, failures, skipped cues
+  - Added synth execution trace: count of synth functions executed
+  - Enables full end-to-end trace: cues → profiles → notes → synths → oscillators
+
+#### Validation Strategy
+After applying fixes, validate with these log checks:
+
+```
+Frame → Motion Regions (fast-motion-worker):
+  ✓ Check: No more "Cannot perform fill on detached ArrayBuffer" errors
+  ✓ Count: Motion regions detected in debug output
+
+Cues Generated → AudioRouter:
+  ✓ Check: "AudioRouter: Dispatching audioCuesReady" logs
+  ✓ Count: cueCount > 0 in logs (not just pan/intensity)
+  ✓ Type: cueTypes should show objects with coordinates
+
+Cues → Audio Synthesis:
+  ✓ Check: "playCues entered" with receivedLength > 0
+  ✓ Check: "Processing cues" and "Profile resolution complete" logs
+  ✓ Check: "Calling synth function" with notesCount > 0
+  ✓ Hear: Audio output when moving camera in front of app
+```
+
+---
+
 ## Current Focus: v0.9.5.5 (Architecture Purity & Hexagonal Remediation - Nov 2025)
 
 ### Phase 3.4: ADR-0011 Hexagonal Architecture Purity (Nov 26, 2025)

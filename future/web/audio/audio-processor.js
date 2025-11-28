@@ -461,19 +461,18 @@ export function playCues(cues) { // The argument is now just the cues array
   const context = audioManager?.context;
 
   // Lightweight debug: report that playCues has been entered and the AudioContext state
-  try {
-    structuredLog('DEBUG', 'playCues entered', { contextState: context?.state || 'no-context', receivedType: Array.isArray(cues) ? 'array' : typeof cues });
-  } catch (e) { /* best-effort logging */ }
-
-  // Very aggressive sampling to reduce dev panel spam - only log ~1% of calls
-  if (shouldSample('audioSynthesis')) {
-    structuredLog('DEBUG', 'playCues called', { 
-      hasContext: !!context, 
-      contextState: context?.state,
-      payloadType: Array.isArray(cues) ? 'array' : 'invalid',
-      cuesSample: Array.isArray(cues) ? cues.slice(0,3) : null
-    });
-  }
+  const receivedType = Array.isArray(cues) ? 'array' : typeof cues;
+  const receivedLength = Array.isArray(cues) ? cues.length : 'N/A';
+  
+  structuredLog('DEBUG', 'playCues entered', { 
+    contextState: context?.state || 'no-context', 
+    receivedType,
+    receivedLength,
+    cueSample: Array.isArray(cues) && cues.length > 0 ? {
+      first: { objectType: cues[0].objectType, pitch: cues[0].pitch, intensity: cues[0].intensity },
+      count: cues.length
+    } : null
+  });
 
   if (!context || context.state !== 'running') {
     structuredLog('WARN', 'playCues: AudioContext not running. Skipping.', { state: context?.state });
@@ -483,8 +482,11 @@ export function playCues(cues) { // The argument is now just the cues array
   // OPTIMIZATION: Avoid array creation - use cues directly if it's already an array
   // Early exit if no valid cues
   if (!Array.isArray(cues) || cues.length === 0) {
+    structuredLog('DEBUG', 'playCues: Empty or invalid cues array', { isArray: Array.isArray(cues), length: cues?.length });
     return;
   }
+  
+  structuredLog('INFO', 'playCues: Processing cues', { count: cues.length });
   
   // Find primary cue (if any) via isPrimary flag
   let primaryCue = null;
@@ -522,12 +524,16 @@ export function playCues(cues) { // The argument is now just the cues array
 
   // OPTIMIZATION: Use index-based loop with early exit instead of slice() which allocates new array
   const limit = Math.min(cues.length, maxNotes);
+  let profileResolutionCount = 0;
+  let noteAddedCount = 0;
+  
   for (let i = 0; i < limit; i++) {
     const cue = cues[i];
     if (!cue) continue;
     
     // Resolve individual profile from manifest
     let profile = soundProfileManifest[cue.objectType] || soundProfileManifest['default_motion'];
+    profileResolutionCount++;
     
     // Apply granular override
     const overrideFn = _profileOverrides.get(cue.objectType);
@@ -540,7 +546,14 @@ export function playCues(cues) { // The argument is now just the cues array
       profile = resolvedPrimaryProfile;
     }
 
-    if (!profile || typeof profile.playFunction !== 'function') continue;
+    if (!profile || typeof profile.playFunction !== 'function') {
+      structuredLog('DEBUG', 'playCues: Skipping cue - invalid profile', { 
+        objectType: cue.objectType, 
+        hasProfile: !!profile, 
+        hasPlayFunction: profile ? typeof profile.playFunction : 'N/A'
+      });
+      continue;
+    }
 
     // Override with globally selected synth engine if provided (Debug/Master override)
     if (_selectedSynthPlayFn) {
@@ -558,6 +571,8 @@ export function playCues(cues) { // The argument is now just the cues array
       position: cue.position
     };
     notesBySynth.get(profile.playFunction).push(note);
+    noteAddedCount++;
+    
     // Log if this is the test-note so we can trace successful playback
     try {
       if (cue && cue.id === 'test-note') {
@@ -566,11 +581,20 @@ export function playCues(cues) { // The argument is now just the cues array
     } catch (e) { /* ignore logging errors */ }
   }
 
+  structuredLog('DEBUG', 'playCues: Profile resolution complete', { 
+    profileResolutionCount,
+    noteAddedCount,
+    synthFunctionsCount: notesBySynth.size
+  });
+
   // The rest of the function remains the same, executing the synths.
+  let synthExecutionCount = 0;
   for (const [playFunction, notes] of notesBySynth.entries()) { // TODO R291025 Clarify "notesBySynth" implementatio we might not have proper documentation, check audio pipeline README.md and confirm.
     try {
       structuredLog('DEBUG', 'playCues: Calling synth function', { notesCount: notes.length, synthName: playFunction.name || 'anonymous' }, false, shouldSample('audioSynthesis'));
       playFunction(notes, synthContext);
+      synthExecutionCount++;
+      
       // Log that notes were handed to the synth. If any of the notes were the test-note,
       // log an INFO message indicating the test tone was passed to the synth.
       try {
@@ -583,6 +607,11 @@ export function playCues(cues) { // The argument is now just the cues array
       structuredLog('ERROR', `Synth function '${playFunction.name}' failed`, { error: e?.message });
     }
   }
+
+  structuredLog('DEBUG', 'playCues: Synth execution complete', { 
+    synthsExecuted: synthExecutionCount,
+    totalSynthFunctions: notesBySynth.size
+  });
 
   // --- Garbage Collection and Pool Refill ---
   const freshCountBeforeGC = oscillatorPool.filter(item => item.state === 'fresh').length;

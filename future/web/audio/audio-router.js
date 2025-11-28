@@ -118,10 +118,31 @@ export class AudioRouter {
         startTime
     });
 
+    // CRITICAL DEBUG: Log cue dispatch with full context
+    const cueCount = payload.cues ? payload.cues.length : 0;
+    const isArray = Array.isArray(payload.cues);
     structuredLog('INFO', 'AudioRouter: Dispatching audioCuesReady', { 
-        cueCount: payload.cues ? payload.cues.length : 0, 
-        mode: state.currentMode 
+        cueCount,
+        isArray,
+        hasCues: !!payload.cues,
+        mode: state.currentMode,
+        hasPanIntensity: !!payload.panIntensity
     });
+
+    // Log cue details if any exist
+    if (cueCount > 0) {
+        const cueTypes = {};
+        payload.cues.forEach(c => {
+            const type = c.objectType || 'unknown';
+            cueTypes[type] = (cueTypes[type] || 0) + 1;
+        });
+        structuredLog('DEBUG', 'AudioRouter: Cue composition', { 
+            cueTypes,
+            firstCue: payload.cues[0],
+            frameId,
+            cappedCount: cappedPayload.cues?.length || 0
+        });
+    }
 
     this.engine.dispatch(eventName, cappedPayload);
 

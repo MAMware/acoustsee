@@ -557,8 +557,11 @@ function processFrameMessage(msg) {
     contractMessage.data.uFlow = transferableUFlow;
     contractMessage.data.vFlow = transferableVFlow;
     
-    // Send cloned buffers with transfer list (safe to transfer because they're independent copies)
-    self.postMessage(contractMessage, [transferableCoords.buffer, transferableIntens.buffer, transferableUFlow.buffer, transferableVFlow.buffer]);
+    // CRITICAL: Send cloned buffers WITHOUT transfer list.
+    // Even though these are new buffers, transferring them detaches them from the sender's context.
+    // Main thread will structurally clone them; we keep originals in _motionBuffers for next frame.
+    // This prevents "Cannot perform fill on detached ArrayBuffer" errors on subsequent frames.
+    self.postMessage(contractMessage);
   } catch (e) {
     // TEMPORARY DIAGNOSTIC: Log full error details
     console.error('[FastMotion] EXCEPTION:', e.message, 'Stack:', e.stack);
