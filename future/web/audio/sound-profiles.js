@@ -6,6 +6,7 @@
 import { playSineWave } from './synths/sine-wave.js';
 import { playStrings } from './synths/strings.js';
 import { playSawtoothPad } from './synths/sawtooth-pad.js';
+import { playFmSynthesis } from './synths/fm-synthesis.js';
 // As you create new synths, you will import their play functions here.
 
 /**
@@ -52,6 +53,48 @@ export const soundProfileManifest = {
       decay: 0.97,
       duration: 0.8
       // Pitch and intensity will be provided by the Grid's "sonic sculpture"
+    }
+  },
+
+  // --- TRIANGULAR MESH ZONE PROFILES (ADR-0013) ---
+  // Each zone bound to distinct synth + pitch range for spatial sonification
+  
+  'zone_top': {
+    playFunction: playSawtoothPad,
+    params: {
+      duration: 0.4,
+      attack: 0.1,
+      release: 0.3
+      // Pitch: 800-1600 Hz (high register for "sky/overhead")
+    }
+  },
+
+  'zone_left': {
+    playFunction: playSineWave,
+    params: {
+      duration: 0.2,
+      attack: 0.01,
+      release: 0.1
+      // Pitch: 400-800 Hz (mid-left melodic range, clean lead)
+    }
+  },
+
+  'zone_right': {
+    playFunction: playFmSynthesis,
+    params: {
+      duration: 0.25,
+      attack: 0.02,
+      release: 0.15
+      // Pitch: 400-800 Hz (mid-right melodic range, complex lead)
+    }
+  },
+
+  'zone_bottom': {
+    playFunction: playStrings,
+    params: {
+      decay: 0.92,
+      duration: 0.3
+      // Pitch: 100-300 Hz (low register for "ground", percussive pluck)
     }
   }
 };

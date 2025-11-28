@@ -12,7 +12,8 @@
 // new grid modules can be discovered without editing this file.
 
 const GRID_MODULES = [
-  'linear-pitch',    // NEW DEFAULT - Simple vertical position to pitch mapping
+  'linear-pitch',       // NEW DEFAULT - Simple vertical position to pitch mapping
+  'triangular-mesh',    // Zone-bound multi-synth: 4 diagonal regions with distinct timbres
   'circle-of-fifths',
   'hex-tonnetz'
   // add more module basenames here as they are implemented R4925: we should try to automate this somehow.

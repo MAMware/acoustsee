@@ -67,6 +67,15 @@ export const GRID_CONFIGS = {
     purpose: 'Balanced latency and spatial detail',
     description: '5×5 grid: 25 cells total. Default balanced configuration.',
   },
+  triangular: {
+    rows: 2,
+    cols: 2,
+    aggregation: 'max',       // Preserve motion peaks per zone
+    skipThreshold: 0.05,      // Catch subtle motion
+    boundaryMode: 'hard',     // 'hard' (binary) or 'soft' (barycentric blend)
+    purpose: 'Zone-bound multi-synth spatial sonification',
+    description: '4 diagonal zones: TOP(pad 800-1600Hz) LEFT(sine 400-800Hz) RIGHT(fm 400-800Hz) BOTTOM(strings 100-300Hz)',
+  },
 };
 
 /**
