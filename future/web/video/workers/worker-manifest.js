@@ -64,6 +64,16 @@ export const WORKER_MANIFEST = {
     description: 'Motion-to-pan/intensity mapper for Flow mode (2ms)',
   },
 
+  [WORKER_TYPES.TRIANGULAR_ZONE_MAPPER]: {
+    path: './workers/triangular-zone-mapper.js',
+    mode: 'flow',
+    latencyTargetMs: 5,
+    capabilities: [
+      CAPABILITIES.SPATIALIZATION,
+    ],
+    description: 'Triangular mesh zone mapper for zone-bound synth routing (5ms)',
+  },
+
   // ========================================================================
   // FOCUS MODE WORKERS (Detailed path, <200ms total latency)
   // ========================================================================

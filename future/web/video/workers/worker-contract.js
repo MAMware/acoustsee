@@ -65,6 +65,7 @@ const WORKER_TYPES = {
   FAST_MOTION: 'fast-motion-worker',
   GRID_AGGREGATOR: 'fast-grid-aggregator',
   PAN_INTENSITY_MAPPER: 'pan-intensity-mapper',
+  TRIANGULAR_ZONE_MAPPER: 'triangular-zone-mapper',
   
   IMAGE: 'image-worker',
   DEPTH: 'depth-worker',

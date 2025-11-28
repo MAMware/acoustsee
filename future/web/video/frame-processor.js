@@ -176,9 +176,19 @@ async function processFlowMode(frameData, width, height, state) {
     let cues = [];
     let panIntensity = { pan: 0, intensity: 0 };
     
-    // Extract pan/intensity from conductor chain result
+    // PHASE-TRIANGULAR: Check if conductor result contains zone-based cues (from triangular-zone-mapper)
+    // Triangular mesh grid produces array of {zone, profile, intensity, pitch, x, y, duration, pan} cues
+    if (result.result && Array.isArray(result.result.cues) && result.result.cues.length > 0) {
+      cues = result.result.cues;
+      
+      structuredLog('DEBUG', 'Flow mode: Using zone cues from triangular-zone-mapper', () => ({
+        cuesCount: cues.length,
+        zones: [...new Set(cues.map(c => c.zone))].join(',')
+      }), false, shouldSample('cueGeneration'));
+    }
+    // Fall back to pan/intensity if no zone cues present
     // The chain (motion → grid → pan-mapper) produces {pan, intensity} directly
-    if (result.result && typeof result.result.pan === 'number' && typeof result.result.intensity === 'number') {
+    else if (result.result && typeof result.result.pan === 'number' && typeof result.result.intensity === 'number') {
       panIntensity = {
         pan: result.result.pan,
         intensity: result.result.intensity
@@ -191,10 +201,11 @@ async function processFlowMode(frameData, width, height, state) {
     } else if (result.result && !result.result.empty) {
       // FAIL FAST: Log error if conductor didn't produce expected output
       // This surfaces bugs instead of silently falling back to broken legacy code
-      structuredLog('ERROR', 'processFlowMode: Conductor result missing pan/intensity', () => ({
+      structuredLog('ERROR', 'processFlowMode: Conductor result missing pan/intensity or zone cues', () => ({
         hasResult: !!result.result,
         resultKeys: result.result ? Object.keys(result.result) : [],
-        mode: state?.mode
+        mode: state?.mode,
+        hasCues: result.result && Array.isArray(result.result.cues)
       }));
     }
     
