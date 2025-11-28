@@ -31,8 +31,8 @@ export const MOTION_DETECTOR_CONFIG = {
   WINDOW_SIZE: 5
 };
 
-// Build information (auto-injected by scripts/inject-build-info.js)
-export const BUILD_COMMIT = 'ff3f5f9';
-export const BUILD_BRANCH = 'v0.9.6.1-metricsCollection';
-export const BUILD_TIMESTAMP = '2025-11-27T12:33:34.300Z';
+// Build information (auto-injected by scripts/codegen/inject-build-info.js)
+export const BUILD_COMMIT = 'd8aab8e';
+export const BUILD_BRANCH = 'v0.9.6.4-gcPressure';
+export const BUILD_TIMESTAMP = '2025-11-28T06:08:37.060Z';
 
