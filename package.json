@@ -5,17 +5,17 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "inject-build": "node future/web/scripts/inject-build-info.js",
+    "inject-build": "node ./scripts/codegen/inject-build-info.js",
     "serve": "npm run inject-build && python3 -m http.server 8000",
     "serve-debug": "npm run inject-build && python3 -m http.server 8000",
     "test": "jest --config jest.config.cjs",
     "test:unit": "jest --config jest.config.cjs --testPathPattern=future/web/test --runInBand",
     "test:e2e": "npx playwright test --config=playwright.config.cjs",
     "playwright:install": "npx playwright install",
-    "start:static": "node ./scripts/static-server.cjs",
+    "start:static": "node ./scripts/infrastructure/static-server.cjs",
     "test:e2e:http": "npx playwright test --config=playwright.config.cjs",
-    "collect:artifacts": "node ./scripts/collect-artifacts.cjs",
-    "validate:bootstrap": "node scripts/validate-bootstrap-imports.js"
+    "collect:artifacts": "node ./scripts/infrastructure/collect-artifacts.cjs",
+    "validate:bootstrap": "node scripts/validation/validate-bootstrap-imports.js"
   },
   "keywords": ["accessibility", "sonification", "audio", "video", "computer-vision"],
   "author": "MAMware",
