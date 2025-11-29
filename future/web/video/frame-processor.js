@@ -19,6 +19,7 @@ import { VideoSourceFactory } from './video-source-factory.js';
 // SRP Extracted Modules (Phase: frame-processor-refactor)
 import { DeltaHistogramCollector, DELTA_HISTOGRAM_BINS } from './telemetry/delta-histogram.js';
 import { executeFlowMode } from './strategies/flow-mode.js';
+import { executeFocusMode, executeHybridMode, simulateShapeAnalysis } from './strategies/focus-mode.js';
 
 // ============================================================================
 // FrameConductor description: R261125-fcd description missing, please describe in great detail FrameConductor
@@ -50,114 +51,17 @@ let stallWatchdogInterval = null;
 // Current mode and grid config are derived from engine state, not stored locally
 // This keeps frame-processor stateless for configuration
 
-// NOTE: Flow mode processing extracted to strategies/flow-mode.js (executeFlowMode)
-// Focus mode processing remains inline for now (Phase 3 deferred)
+// NOTE: Mode processing strategies extracted to strategies/*.js:
+// - Flow mode: strategies/flow-mode.js (executeFlowMode)
+// - Focus mode: strategies/focus-mode.js (executeFocusMode, executeHybridMode)
+// - Telemetry: telemetry/delta-histogram.js (DeltaHistogramCollector)
 
 // --- Video Frame Processing ---
 // Frame processing is orchestrated by FrameConductor (Phase 3.1b).
 // All worker management (motion, depth, objects) goes through the conductor manifest.
 // See frame-conductor.js for worker chain definition and orchestration logic.
 
-/**
- * Simulates object detection based on motion results.
- * In Focus mode, this converts motion data into detected semantic objects.
- * 
- * ⚠️  DEVELOPMENT-ONLY: This is a placeholder function for testing without ML model.
- * It returns simulated confidence/labels and should NOT be used in production.
- * Gate this behind debugConfig.useMocks or similar flag in production code.
- * 
- * @param {object} motionResults - Results from motion worker containing movingRegions, etc.
- * @param {boolean} useMocks - Whether to allow mock/simulated data (development-only)
- * @returns {object} Object detection results with detectedObjects array
- */
-async function simulateObjectDetection(motionResults = {}, useMocks = false) {
-  // STRICT GATING: Do not return simulated data unless explicitly enabled for development
-  if (!useMocks) {
-    structuredLog('DEBUG', 'simulateObjectDetection blocked: useMocks=false. Placeholder function for development only.');
-    return { detectedObjects: [] };
-  }
-
-  try {
-    // If no semantic detection is enabled or no motion, return empty
-    if (!motionResults.objects || motionResults.objects.length === 0) {
-      return { detectedObjects: [] };
-    }
-
-    // In a real implementation, this would run an ML model (TensorFlow, etc.)
-    // For now, we simulate by treating the first motion object as a detected object
-    const detectedObjects = motionResults.objects.slice(0, 1).map((obj, idx) => ({
-      id: `obj_${idx}`,
-      label: obj.label || 'unknown_object',
-      confidence: Math.min(1.0, obj.confidence || 0.7),
-      position: obj.position || { x: 0, y: 0, z: 0 },
-      boundingBox: obj.boundingBox || { x: 0, y: 0, width: 100, height: 100 }
-    }));
-
-    return { detectedObjects };
-  } catch (e) {
-    structuredLog('WARN', 'simulateObjectDetection failed', { error: e?.message || String(e) });
-    return { detectedObjects: [] };
-  }
-}
-
-/**
- * Simulates shape analysis for a detected object.
- * Provides additional shape metadata (texture, edges, corners) for grid mapping.
- * 
- * ⚠️  DEVELOPMENT-ONLY: This is a placeholder function for testing without ML model.
- * It returns simulated shape data and should NOT be used in production.
- * Gate this behind debugConfig.useMocks or similar flag in production code.
- * 
- * @param {object} detectedObject - A detected object from object detection
- * @param {boolean} useMocks - Whether to allow mock/simulated data (development-only)
- * @returns {object} Shape analysis results
- */
-async function simulateShapeAnalysis(detectedObject = {}, useMocks = false) {
-  // STRICT GATING: Do not return simulated data unless explicitly enabled for development
-  if (!useMocks) {
-    structuredLog('DEBUG', 'simulateShapeAnalysis blocked: useMocks=false. Placeholder function for development only.');
-    return {
-      shapeType: 'unknown',
-      edges: [],
-      texture: [],
-      movingRegions: []
-    };
-  }
-
-  try {
-    if (!detectedObject.id) {
-      return { 
-        shapeType: 'unknown',
-        edges: [],
-        texture: [],
-        movingRegions: [] 
-      };
-    }
-
-    // In a real implementation, this would analyze pixel-level features
-    // For now, we return a basic shape analysis structure
-    return {
-      shapeType: detectedObject.label || 'generic',
-      confidence: detectedObject.confidence || 0.5,
-      edges: [],
-      texture: [],
-      // Simulate some motion regions based on the object's bounding box
-      movingRegions: [{
-        x: detectedObject.position?.x || 0.5,
-        y: detectedObject.position?.y || 0.5,
-        intensity: (detectedObject.confidence || 0.7) * 100
-      }]
-    };
-  } catch (e) {
-    structuredLog('WARN', 'simulateShapeAnalysis failed', { error: e?.message || String(e) });
-    return {
-      shapeType: 'unknown',
-      edges: [],
-      texture: [],
-      movingRegions: []
-    };
-  }
-}
+// NOTE: simulateObjectDetection and simulateShapeAnalysis moved to strategies/focus-mode.js
 
 /**
  * WARNING R261125-cbp THIS IS AN ANTI-PATTERN TO ME (MAMware) DONT WE HAVE A NEW METHOD as per `future/web/video/source` ?
@@ -280,13 +184,13 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
           dispatchPayload = { cues: [], panIntensity: { pan: 0, intensity: 0 } };
         }
       } else if (state.currentMode === 'focus') {
-        const motionResults = await frameConductor.processFrame(frameData, canvas.width, canvas.height, state);
-        
-        dispatchPayload = {
-          cues: motionResults.objects || [],
-          motion: motionResults,
-          specialists
-        };
+        // Use extracted Focus mode strategy
+        const focusResult = await executeFocusMode(frameConductor, frameData, canvas.width, canvas.height, state, grid);
+        dispatchPayload = focusResult;
+      } else if (state.currentMode === 'hybrid') {
+        // Use extracted Hybrid mode strategy
+        const hybridResult = await executeHybridMode(frameConductor, frameData, canvas.width, canvas.height, state, grid);
+        dispatchPayload = hybridResult;
       }
       
       // Dispatch audio cues via AudioRouter (ADR-0006)
@@ -466,44 +370,13 @@ export async function initializeVideo(config) {
           dispatchPayload = { cues: [], panIntensity: { pan: 0, intensity: 0 } };
         }
       } else if (state.currentMode === 'focus') {
-        // In Focus mode, use FrameConductor for all worker orchestration
-        const motionResults = await frameConductor.processFrame(frameData, payload.width, payload.height, state);
-        const objectResults = motionResults.result || {};
-
-        if (objectResults.detectedObjects && objectResults.detectedObjects.length > 0) {
-          const mainObject = objectResults.detectedObjects[0];
-          const useMocks = state.debugConfig && state.debugConfig.useMocks === true;
-          const shapeResults = await simulateShapeAnalysis(mainObject, useMocks);
-
-          const primaryCue = {
-            objectType: mainObject.label,
-            intensity: mainObject.confidence,
-            position: mainObject.position,
-            isPrimary: true
-          };
-
-          let secondaryCues = [];
-          if (grid && grid.mapFunction) {
-            const gridOutput = grid.mapFunction(null, payload.width, payload.height, null, shapeResults);
-            secondaryCues = (gridOutput && gridOutput.cues) || [];
-          }
-          structuredLog('DEBUG', 'Grid cues generated', { cueCount: secondaryCues.length, mode: state.currentMode, motionPresent: !!objectResults });
-
-          if (secondaryCues.length === 0) {
-            secondaryCues.push({ pitch: 440, intensity: 0.8, position: mainObject.position }); //R251125fp this hardcoding does not make sense to me, why and what is this for?
-          }
-
-          const combinedCues = [primaryCue, ...secondaryCues];
-          dispatchPayload = { cues: combinedCues };
-        } else {
-          if (grid && grid.mapFunction) {
-            const gridOutput = grid.mapFunction(frameData, payload.width, payload.height, null, motionResults);
-            if (gridOutput && gridOutput.cues && gridOutput.cues.length > 0) {
-              dispatchPayload = { cues: gridOutput.cues };
-              structuredLog('DEBUG', 'Focus mode fallback: Using motion-based cues', { cueCount: gridOutput.cues.length });
-            }
-          }
-        }
+        // Use extracted Focus mode strategy
+        const focusResult = await executeFocusMode(frameConductor, frameData, payload.width, payload.height, state, grid);
+        dispatchPayload = focusResult;
+      } else if (state.currentMode === 'hybrid') {
+        // Use extracted Hybrid mode strategy
+        const hybridResult = await executeHybridMode(frameConductor, frameData, payload.width, payload.height, state, grid);
+        dispatchPayload = hybridResult;
       }
       
       if (dispatchPayload) {

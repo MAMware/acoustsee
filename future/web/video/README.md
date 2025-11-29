@@ -10,7 +10,41 @@ This directory contains all logic for video capture, processing, and analysis. T
 
 ---
 
-## Component Status Matrix (Alpha Phase) November 10, 2025. v0.9.4-bugMotion
+## Directory Structure (Updated Nov 29, 2025)
+
+```
+video/
+├── frame-processor.js      # Main orchestrator (thin coordinator)
+├── frame-conductor.js      # Manifest-driven worker lifecycle manager
+├── video-source-factory.js # Creates video source based on capabilities
+├── videoframe-helper.js    # Frame conversion utilities
+│
+├── grids/                  # Grid mapping strategies (motion → cues)
+│   └── grid-config.js
+│
+├── source/                 # Video capture strategies (ADR-0011)
+│   ├── video-source-manifest.js
+│   ├── canvas-source.js
+│   └── mediastream-track-source.js
+│
+├── strategies/             # Mode processing strategies (SRP extraction)
+│   ├── flow-mode.js        # executeFlowMode() - motion-based cues
+│   ├── focus-mode.js       # executeFocusMode(), executeHybridMode() - object detection
+│   └── depth-strategies.js # WebGPU/Pseudo depth estimation
+│
+├── telemetry/              # Stats and diagnostics (SRP extraction)
+│   └── delta-histogram.js  # DeltaHistogramCollector class
+│
+└── workers/                # Web Workers for off-thread processing
+    ├── worker-contract.js
+    ├── worker-manifest.js
+    ├── fast-motion-worker.js
+    └── ...
+```
+
+---
+
+## Component Status Matrix (Alpha Phase) November 29, 2025. v0.9.7.1-frameProcessorSRP
 
 **RESOLVED:** Motion consolidation complete - now using only `fast-motion-worker.js` via FrameConductor. No more ambiguity between motion-worker.js and fast-motion-worker.js. 
 
