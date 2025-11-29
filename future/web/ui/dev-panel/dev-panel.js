@@ -36,6 +36,7 @@ import { initEventBusViewer } from './eventbus-viewer.js'; // Phase 2: EventBus 
 import { initializePreview } from './dev-panel-preview.js'; // Extracted preview logic
 import { initializeChartController } from './dev-panel-chart-controller.js'; // Extracted chart logic
 import { initializeCustomization } from './dev-panel-customization.js'; // Phase 4: Customization System
+import { getWorkersForMode, getTotalLatencyBudget, WORKER_MANIFEST } from '../../video/workers/worker-manifest.js'; // Worker chain controls
 // Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
 
@@ -720,29 +721,225 @@ export function initializeDevPanel(arg1, arg2) {
     const batteryOptimizationCheckbox = panel.querySelector('#battery-optimization-checkbox');
     const ingestCategoryToggles = panel.querySelectorAll('.category-toggle input[type="checkbox"]');
 
-    // Video worker debug toggles (dev-only, do not affect manifest)
-    const toggleFastMotion = panel.querySelector('#worker-toggle-fast-motion');
-    const toggleFastGrid = panel.querySelector('#worker-toggle-fast-grid');
-    const togglePanMapper = panel.querySelector('#worker-toggle-pan-mapper');
+    // =======================================================================
+    // Video Source & Worker Chain Controls (Phase 1-3 of Worker Chain Revamp)
+    // =======================================================================
+    const videoSourceSelect = panel.querySelector('#video-source-select');
+    const videoSourceActive = panel.querySelector('#video-source-active');
+    const chainPresetSelect = panel.querySelector('#chain-preset-select');
+    const latencyBudgetValue = panel.querySelector('#latency-budget-value');
+    const latencyBudgetIndicator = panel.querySelector('#latency-budget-indicator');
+    const workerChainContainer = panel.querySelector('#worker-chain-container');
+    const workerChainMode = panel.querySelector('#worker-chain-mode');
 
-    const applyWorkerDebugConfig = () => {
+    // Chain preset definitions
+    const CHAIN_PRESETS = {
+      'full': null, // All workers for current mode
+      'minimal': ['fast-motion-worker', 'fast-grid-aggregator', 'pan-intensity-mapper'],
+      'zone-only': ['fast-motion-worker', 'fast-grid-aggregator', 'triangular-zone-mapper'],
+      'custom': null // User-defined
+    };
+
+    let currentWorkerToggles = {}; // { workerName: checkboxElement }
+    let isCustomPreset = false;
+
+    /**
+     * Render worker chain checkboxes dynamically from manifest
+     * @param {string} mode - 'flow' | 'focus' | 'hybrid'
+     */
+    function renderWorkerChainControls(mode) {
+      if (!workerChainContainer) return;
+      
+      workerChainContainer.innerHTML = '';
+      currentWorkerToggles = {};
+      
+      const workers = getWorkersForMode(mode);
+      if (!workers || workers.length === 0) {
+        workerChainContainer.innerHTML = '<p style="color: #7f8c8d; font-size: 11px;">No workers available for this mode.</p>';
+        return;
+      }
+
+      // Get current debug config from state
+      const debugConfig = engine.getState()?.orchestration?.videoWorkerDebugConfig || {};
+
+      workers.forEach((worker, index) => {
+        const item = document.createElement('div');
+        item.className = 'worker-chain-item';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `worker-chain-${worker.name}`;
+        // Default to checked unless explicitly disabled in debugConfig
+        checkbox.checked = debugConfig[worker.name] !== false;
+        
+        const label = document.createElement('label');
+        label.htmlFor = checkbox.id;
+        label.textContent = worker.name.replace(/-/g, ' ').replace('fast ', '');
+        
+        const latency = document.createElement('span');
+        latency.className = 'worker-latency';
+        latency.textContent = `${worker.latencyTargetMs}ms`;
+        
+        item.appendChild(checkbox);
+        item.appendChild(label);
+        item.appendChild(latency);
+        workerChainContainer.appendChild(item);
+        
+        currentWorkerToggles[worker.name] = checkbox;
+        
+        // Wire change event
+        checkbox.addEventListener('change', () => {
+          // Mark as custom preset when user manually toggles
+          if (!isCustomPreset && chainPresetSelect) {
+            chainPresetSelect.value = 'custom';
+            isCustomPreset = true;
+          }
+          applyWorkerChainConfig();
+          updateLatencyBudget(mode);
+        });
+      });
+      
+      updateLatencyBudget(mode);
+      if (workerChainMode) workerChainMode.textContent = mode;
+    }
+
+    /**
+     * Apply worker chain configuration to engine state
+     */
+    function applyWorkerChainConfig() {
       if (!engine || !engine.dispatch) return;
-      const enabled = {
-        'fast-motion-worker': !!(toggleFastMotion && toggleFastMotion.checked),
-        'fast-grid-aggregator': !!(toggleFastGrid && toggleFastGrid.checked),
-        'pan-intensity-mapper': !!(togglePanMapper && togglePanMapper.checked),
-      };
+      
+      const enabled = {};
+      Object.entries(currentWorkerToggles).forEach(([name, checkbox]) => {
+        enabled[name] = checkbox.checked;
+      });
+      
       try {
         engine.dispatch('updateVideoWorkerDebugConfig', { enabled });
-        structuredLog('DEBUG', 'DevPanel: updated video worker debug config', enabled);
+        structuredLog('DEBUG', 'DevPanel: updated worker chain config', enabled);
       } catch (e) {
         console.warn('DevPanel: failed to dispatch updateVideoWorkerDebugConfig', e);
       }
-    };
+    }
 
-    toggleFastMotion && toggleFastMotion.addEventListener('change', applyWorkerDebugConfig);
-    toggleFastGrid && toggleFastGrid.addEventListener('change', applyWorkerDebugConfig);
-    togglePanMapper && togglePanMapper.addEventListener('change', applyWorkerDebugConfig);
+    /**
+     * Update latency budget display
+     * @param {string} mode - Current mode
+     */
+    function updateLatencyBudget(mode) {
+      if (!latencyBudgetValue || !latencyBudgetIndicator) return;
+      
+      // Calculate budget for enabled workers only
+      let totalLatency = 0;
+      const workers = getWorkersForMode(mode);
+      workers.forEach(worker => {
+        const checkbox = currentWorkerToggles[worker.name];
+        if (checkbox && checkbox.checked) {
+          totalLatency += worker.latencyTargetMs;
+        }
+      });
+      
+      latencyBudgetValue.textContent = totalLatency.toFixed(0);
+      
+      // Color indicator based on 60fps budget (16.6ms)
+      const FPS_BUDGET = 16.6;
+      if (totalLatency <= FPS_BUDGET) {
+        latencyBudgetIndicator.className = 'latency-indicator-green';
+        latencyBudgetIndicator.title = 'Within 60fps budget';
+      } else if (totalLatency <= FPS_BUDGET * 2) {
+        latencyBudgetIndicator.className = 'latency-indicator-yellow';
+        latencyBudgetIndicator.title = 'May drop to 30fps';
+      } else {
+        latencyBudgetIndicator.className = 'latency-indicator-red';
+        latencyBudgetIndicator.title = 'Exceeds frame budget significantly';
+      }
+    }
+
+    /**
+     * Apply chain preset by enabling/disabling workers
+     * @param {string} presetName - Preset key from CHAIN_PRESETS
+     * @param {string} mode - Current mode
+     */
+    function applyChainPreset(presetName, mode) {
+      const preset = CHAIN_PRESETS[presetName];
+      const workers = getWorkersForMode(mode);
+      
+      if (presetName === 'custom') {
+        // Don't change anything for custom
+        isCustomPreset = true;
+        return;
+      }
+      
+      isCustomPreset = false;
+      
+      workers.forEach(worker => {
+        const checkbox = currentWorkerToggles[worker.name];
+        if (checkbox) {
+          if (preset === null) {
+            // 'full' preset: enable all
+            checkbox.checked = true;
+          } else {
+            // Specific preset: enable only listed workers
+            checkbox.checked = preset.includes(worker.name);
+          }
+        }
+      });
+      
+      applyWorkerChainConfig();
+      updateLatencyBudget(mode);
+    }
+
+    // Wire chain preset select
+    if (chainPresetSelect) {
+      chainPresetSelect.addEventListener('change', () => {
+        const mode = modeSelect?.value || 'flow';
+        applyChainPreset(chainPresetSelect.value, mode);
+      });
+    }
+
+    // Wire video source select
+    if (videoSourceSelect) {
+      videoSourceSelect.addEventListener('change', () => {
+        const selectedSource = videoSourceSelect.value;
+        try {
+          engine.dispatch('setPreferredVideoSource', { 
+            source: selectedSource === 'auto' ? null : selectedSource 
+          });
+          structuredLog('DEBUG', 'DevPanel: video source preference changed', { source: selectedSource });
+        } catch (e) {
+          console.warn('DevPanel: failed to dispatch setPreferredVideoSource', e);
+        }
+      });
+    }
+
+    // Update video source status from state
+    function updateVideoSourceStatus() {
+      if (!videoSourceActive) return;
+      const state = engine.getState();
+      const activeSource = state?.orchestration?.activeExtractor || state?.videoCapture?.activeSourceName || '--';
+      videoSourceActive.textContent = activeSource;
+    }
+
+    // Initial render of worker chain controls
+    const initialMode = engine.getState()?.currentMode || 'flow';
+    renderWorkerChainControls(initialMode);
+    updateVideoSourceStatus();
+
+    // Subscribe to mode changes to re-render worker controls
+    if (engine.subscribe) {
+      engine.subscribe((state, prevState) => {
+        if (state.currentMode !== prevState?.currentMode) {
+          renderWorkerChainControls(state.currentMode);
+          // Reset to full preset on mode change
+          if (chainPresetSelect) chainPresetSelect.value = 'full';
+          isCustomPreset = false;
+        }
+        // Update video source status
+        if (state.orchestration?.activeExtractor !== prevState?.orchestration?.activeExtractor) {
+          updateVideoSourceStatus();
+        }
+      });
+    }
     
     // CORE-15: Motion Detection Tuning controls
     const motionStepSlider = panel.querySelector('#motion-step-slider');

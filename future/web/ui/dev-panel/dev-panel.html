@@ -451,22 +451,38 @@
               <input id="max-notes-slider" type="range" min="1" max="64" value="16"><span id="max-notes-value">16</span>
             </div>
           </div>
+          <!-- Video Source & Worker Chain Controls -->
           <div class="control-column">
-            <label>Video Worker Filters (Debug)</label>
-            <div class="worker-toggle-row">
-              <input type="checkbox" id="worker-toggle-fast-motion" checked>
-              <label for="worker-toggle-fast-motion">Enable fast-motion-worker</label>
+            <label>Video Source</label>
+            <select id="video-source-select">
+              <option value="auto">Auto (Best Available)</option>
+              <option value="MediaStreamTrackProcessor">GPU (MediaStreamTrackProcessor)</option>
+              <option value="Canvas2D">CPU (Canvas2D)</option>
+            </select>
+            <div id="video-source-status" class="status-badge" style="font-size: 11px; margin-top: 4px; color: #7f8c8d;">
+              Active: <span id="video-source-active">--</span>
             </div>
-            <div class="worker-toggle-row">
-              <input type="checkbox" id="worker-toggle-fast-grid" checked>
-              <label for="worker-toggle-fast-grid">Enable fast-grid-aggregator</label>
+          </div>
+          <div class="control-column">
+            <label>Worker Chain Preset</label>
+            <select id="chain-preset-select">
+              <option value="full">Full Chain (All Workers)</option>
+              <option value="minimal">Minimal (Motion → Pan)</option>
+              <option value="zone-only">Zone-Only (Motion → Zone)</option>
+              <option value="custom">Custom</option>
+            </select>
+            <div id="latency-budget-display" style="font-size: 11px; margin-top: 4px;">
+              Latency Budget: <span id="latency-budget-value">--</span>ms / 16.6ms
+              <span id="latency-budget-indicator" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px;"></span>
             </div>
-            <div class="worker-toggle-row">
-              <input type="checkbox" id="worker-toggle-pan-mapper" checked>
-              <label for="worker-toggle-pan-mapper">Enable pan-intensity-mapper</label>
+          </div>
+          <div class="control-column" style="grid-column: span 2;">
+            <label>Worker Chain <span style="font-size: 10px; color: #7f8c8d;">(Current Mode: <span id="worker-chain-mode">flow</span>)</span></label>
+            <div id="worker-chain-container" class="worker-chain-grid">
+              <!-- Dynamically populated from manifest -->
             </div>
             <p style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">
-              Debug-only: disable workers to isolate stalls. Manifest remains source of truth.
+              Select workers to include in processing chain. Order follows manifest definition.
             </p>
           </div>
         </div>

@@ -301,6 +301,23 @@ export function registerMediaCommands(engine) {
     }
   });
 
+  // Set preferred video source (auto, MediaStreamTrackProcessor, Canvas2D)
+  registerCommandHandler('setPreferredVideoSource', ({ state: s, payload }) => {
+    const source = payload && payload.source !== undefined ? payload.source : null;
+    const current = s.videoCapture || {};
+
+    try {
+      engine.setState({
+        videoCapture: Object.assign({}, current, {
+          preferredSource: source, // null = auto, or explicit source name
+        }),
+      });
+      structuredLog('INFO', 'COMMAND: setPreferredVideoSource applied', { source });
+    } catch (e) {
+      structuredLog('WARN', 'COMMAND: setPreferredVideoSource failed', { error: e.message });
+    }
+  });
+
     // New: initializeVideoPipeline - dedicated video pipeline initialization
     registerCommandHandler('initializeVideoPipeline', wrapAsyncHandler('initializeVideoPipeline', async ({ state: s, payload }) => {
       const { videoEl, stream } = payload || {};

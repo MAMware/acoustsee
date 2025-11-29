@@ -133,8 +133,13 @@ self.onmessage = (e) => {
       frameHeight
     );
 
+    // Extract pan/intensity from upstream worker (pan-intensity-mapper) for fallback R291125-tzm NO FALLBACKS!! AND EVEN WORSE WHY SILENT!!!!!!!
+    // When triangular mesh produces zero cues (low motion), the fallback pan/intensity path still works
+    const upstreamPan = data && typeof data.pan === 'number' ? data.pan : undefined;
+    const upstreamIntensity = data && typeof data.intensity === 'number' ? data.intensity : undefined;
+
     // Send result via contract
-    // IMPORTANT: Pass grid forward so downstream workers (like pan-intensity-mapper) still work
+    // IMPORTANT: Pass grid AND pan/intensity forward for downstream processing
     const resultMessage = WorkerContract.createResult(
       WORKER_TYPES.TRIANGULAR_ZONE_MAPPER,
       'flow',
@@ -143,6 +148,9 @@ self.onmessage = (e) => {
         cues,
         grid: actualGrid,  // Pass grid forward for downstream workers
         gridConfig: actualGridConfig,
+        // Forward pan/intensity from pan-intensity-mapper for fallback when cues are empty
+        pan: upstreamPan,
+        intensity: upstreamIntensity,
         timestamp: Date.now(),
       },
       { cuesGenerated: cues.length }
