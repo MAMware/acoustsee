@@ -44,9 +44,11 @@ video/
 
 ---
 
-## Component Status Matrix (Alpha Phase) November 29, 2025. v0.9.7.1-frameProcessorSRP
+## Component Status Matrix (Alpha Phase) November 29, 2025. v0.9.7.2-sourceSelector
 
-**RESOLVED:** Motion consolidation complete - now using only `fast-motion-worker.js` via FrameConductor. No more ambiguity between motion-worker.js and fast-motion-worker.js. 
+**RESOLVED:** Motion consolidation complete - now using only `fast-motion-worker.js` via FrameConductor. No more ambiguity between motion-worker.js and fast-motion-worker.js.
+
+**NEW (v0.9.7.2):** Dev Panel now exposes video source selection and manifest-driven worker chain controls. See ADR-0014.
 
 **Legend:** ✅ STABLE (production-ready) | 🟡 WIP (in progress) | ❌ PLACEHOLDER (not started)
 
@@ -54,10 +56,10 @@ This matrix helps you understand which components are ready for testing vs. whic
 
 | Component | Status | Happy Path | Ready for Testing | Notes |
 |-----------|--------|-----------|-----|-------|
-| **Flow Mode (GPU)** |  UNSTABLE | Motion → Grid → Audio ✓ | Yes | Chrome/Brave/Edge, MediaStreamTrackProcessor, fast |
-| **Flow Mode (Canvas)** |  UNSTABLE | Motion → Grid → Audio ✓ | Yes | Firefox/Safari/iOS, CPU-based capture, works everywhere |
-| **Motion Worker** | UNSTABLE | Detects moving regions ✓ | Yes | Core component, robust motion detection |
-| **Frame Conductor** | WIP | Orchestrates workers ✓ | Yes | Manifest-driven, hot-swap support |
+| **Flow Mode (GPU)** |  UNSTABLE? | Motion → Grid → Audio ✓ | Yes | Chrome/Brave/Edge, MediaStreamTrackProcessor, fast |
+| **Flow Mode (Canvas)** |  UNSTABLE? | Motion → Grid → Audio ✓ | Yes | Firefox/Safari/iOS, CPU-based capture, works everywhere |
+| **Motion Worker** | UNSTABLE? | Detects moving regions ✓ | Yes | Core component, robust motion detection |
+| **Frame Conductor** | WIP? | Orchestrates workers ✓ | Yes | Manifest-driven, hot-swap support |
 | **Grid System** |  WIP | Maps motion → pitch ✓ | Yes | Linear-pitch + Circle-of-fifths, working |
 | **Focus Mode** | 🟡 WIP | Framework exists | No | Semantic detection incomplete, produces placeholder cues |
 | **Depth Worker** | ✅ STABLE | WebGPU/Pseudo Strategies | Yes | Implements ADR-0005 Manifest Strategy (WebGPU/Pseudo) |

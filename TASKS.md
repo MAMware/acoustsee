@@ -2,7 +2,89 @@
 
 This document tracks active and future development tasks to provide a clear project roadmap. Each task has a unique ID for easy reference in commits, pull requests, and code comments.
 
-## Current Focus: v0.9.6.5 (Audio-Video Pipeline Hotfix - Nov 28, 2025)
+## Current Focus: v0.9.7.2 (Dev Panel Worker Chain Controls - Nov 29, 2025)
+
+### Feature: UI-14 Dev Panel Worker Chain & Source Controls
+
+**Status:** 100% Complete ✅  
+**Branch:** `v0.9.7.2-sourceSelector`  
+**ADR:** `docs/adr/0014-dev-panel-worker-chain-controls.md`  
+**Planning:** `docs/planning/dev-panel-worker-chain-revamp.md`
+
+#### Problem Analysis
+Dev Panel Processing Controls had usability gaps:
+1. Hardcoded worker toggles (only 3 of 10+ workers exposed)
+2. No video source selection (couldn't test GPU vs CPU capture)
+3. No chain presets (couldn't easily test minimal vs full pipelines)
+4. No latency visibility (no indication of performance impact)
+5. Mode-agnostic controls (didn't update when switching Flow/Focus/Hybrid)
+
+#### Implementation Summary
+
+- **[FEAT-1]** Video Source Dropdown
+  - Options: Auto, GPU (MediaStreamTrackProcessor), CPU (Canvas2D)
+  - New command: `setPreferredVideoSource`
+  - State: `state.videoCapture.preferredSource`
+
+- **[FEAT-2]** Manifest-Driven Worker Toggles
+  - Dynamic generation from `worker-manifest.js`
+  - Shows latency per worker (e.g., "15ms")
+  - Full manifest visibility for current mode
+
+- **[FEAT-3]** Chain Presets
+  - Full: All workers for mode
+  - Minimal: motion → grid → pan-intensity
+  - Zone-Only: motion → grid → triangular-zone
+  - Custom: Auto-selected when user toggles individual workers
+
+- **[FEAT-4]** Latency Budget Display // CANDIDATE FOR DEPRECATION, FAKE CLAIMS
+  - Real-time cumulative latency calculation
+  - Color indicator: 🟢 ≤16.6ms, 🟡 16.6-33ms, 🔴 >33ms
+  - Updates on worker selection change
+
+- **[FEAT-5]** Mode-Aware Refresh
+  - Subscribes to `currentMode` state changes
+  - Re-renders worker toggles when mode changes
+  - Resets to 'full' preset on mode change
+
+#### Files Modified
+- `future/web/ui/dev-panel/dev-panel.html` - UI structure
+- `future/web/ui/dev-panel/dev-panel.css` - Worker chain styles
+- `future/web/ui/dev-panel/dev-panel.js` - Control wiring and logic
+- `future/web/core/commands/media-commands.js` - New command handler
+
+---
+
+## Previous Focus: v0.9.7.1 (Frame Processor SRP Refactoring - Nov 29, 2025)
+
+### Refactoring: ARCH-6 Frame Processor Single Responsibility
+
+**Status:** 100% Complete ✅  
+**Branch:** `v0.9.7.1-frameProcessorSRP`
+
+#### Implementation Summary
+Extracted 350+ lines from `frame-processor.js` to enforce SRP:
+
+- **[EXTRACT-1]** `video/telemetry/delta-histogram.js`
+  - `DeltaHistogramCollector` class (276 lines)
+  - Pan/intensity delta tracking for stall detection
+
+- **[EXTRACT-2]** `video/strategies/flow-mode.js`
+  - `executeFlowMode()` function (93 lines)
+  - Flow mode frame processing via FrameConductor
+
+- **[EXTRACT-3]** `video/strategies/focus-mode.js`
+  - `executeFocusMode()`, `executeHybridMode()` (~260 lines)
+  - Focus/Hybrid mode with simulated object detection
+
+#### Bug Fixes
+- Fixed `contractMessage.data` → `contractMessage.result` in fast-motion-worker
+- Fixed gridConfig propagation in fast-grid-aggregator
+- Fixed pan/intensity forwarding in triangular-zone-mapper
+
+---
+
+## Previous Focus: v0.9.6.5 (Audio-Video Pipeline Hotfix - Nov 28, 2025)
 
 ### Hotfix: GC-PRESSURE (Video Pipeline ArrayBuffer + Audio Cue Routing - Nov 28, 2025)
 
@@ -411,7 +493,7 @@ Cues → Audio Synthesis:
 
 -   **[x] `ORCH-2.1`:** OrchestrationInspector UI Component - `orchestration-inspector.js` (350+ lines) + `orchestration-inspector.css` (200+ lines). Visual display in dev panel with 7 sections: header, extractor, capabilities grid, metrics, utilization bars, decision log, mode footer. Event handlers (refresh/export/toggle). Integration into dev-panel.js complete. _(Completed 2025-10-21)_
 
--   **[ ] `ORCH-2.2`:** Integration Verification - Load app with `?debug=true`, verify component renders, test all buttons, validate state updates, smoke test in runtime-shims. _(Pending)_
+-   **[ ] `ORCH-2.2`:** Integration Verification - Load app, verify component renders, test all buttons, validate state updates, smoke test in runtime-shims. _(Pending)_
 
 -   **[ ] `ORCH-2.3`:** Styling & Accessibility Polish - WCAG AA compliance review, keyboard navigation testing, responsive design validation on mobile/tablet. _(Pending)_
 
@@ -448,7 +530,7 @@ Cues → Audio Synthesis:
 
 ### Capability-Based Adaptation
 
--   **[ ] `ARCH-8`:** Implement Capability Detection (Replace Mobile/Desktop Checks)
+-   **[ ] `ARCH-8`:** Implement Capability Detection (Replace Mobile/Desktop Checks) //UPDATE
 	-   Create `future/web/utils/capability-detector.js`
 	-   Detect: CPU cores, RAM, GPU (WebGPU/WebGL2/WebGL/none), battery status
 	-   Create `future/web/video/quality-strategy-manifest.js` with 4 strategies:

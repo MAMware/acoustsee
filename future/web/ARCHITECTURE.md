@@ -129,17 +129,34 @@ registerComponent('dev-panel', initializeDevPanel);
 The video subsystem captures and analyzes camera input using an intelligent, performance-aware architecture.
 
 ### Core Architecture
-*   **FrameProvider Worker:** A dedicated worker that isolates camera access.
-*   **Orchestrator (`frame-processor.js`):** Central brain, delegates frames to specialists.
-*   **Specialist Workers:** `motion-worker.js` (Flow), `depth-worker.js` (Focus).
-*   **Grids:** "Sonic Sculptors" that translate spatial data to music.
+*   **VideoSourceFactory:** Creates frame capture strategy based on device capabilities (ADR-0011)
+*   **FrameConductor:** Manifest-driven worker lifecycle manager and orchestrator
+*   **FrameProcessor (`frame-processor.js`):** Thin coordinator, delegates to mode strategies
+*   **Specialist Workers:** `fast-motion-worker.js` (Flow), `depth-worker.js` (Focus)
+*   **Grids:** "Sonic Sculptors" that translate spatial data to music
 
-### 8.1 Depth Worker
+### 8.1 Video Source Selection (Nov 2025)
+Users can select video frame capture source via Dev Panel:
+- **Auto:** System selects best available (GPU preferred)
+- **GPU (MediaStreamTrackProcessor):** Hardware-accelerated, Chrome/Edge/Brave
+- **CPU (Canvas2D):** Universal fallback, works on all browsers
+
+State field: `state.videoCapture.preferredSource`
+
+### 8.2 Worker Chain Configuration NEED IMPROVEMENT
+The Dev Panel exposes manifest-driven worker chain controls:
+- **Chain Presets:** Full (all workers), Minimal (motion→pan), Zone-Only (motion→zone)
+- **Custom:** Individual worker toggles for debugging
+- **Latency Budget:** Real-time display showing total worker latency vs 16.6ms budget
+
+State field: `state.orchestration.videoWorkerDebugConfig`
+
+### 8.3 Depth Worker
 Uses a hybrid architecture:
 1. **CNN Path (GPU-Accelerated):** WebGPU compute shaders for 2D convolution (primary).
 2. **Pseudo-Depth Path (CPU-Only):** Sobel edge detection (fallback).
 
-### 8.2 Paradigm-Aware Grid Configuration
+### 8.4 Paradigm-Aware Grid Configuration
 Grid sizing adapts to mode:
 - Flow: 3×3 (Low latency)
 - Focus: 8×8 (High detail)
