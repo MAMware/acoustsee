@@ -16,6 +16,10 @@ import { BufferPool } from '../core/deamons/buffer-pool.js';
 import { createMetricsCollector, estimateUtilization } from '../core/metrics-collector.js';
 import { VideoSourceFactory } from './video-source-factory.js';
 
+// SRP Extracted Modules (Phase: frame-processor-refactor)
+import { DeltaHistogramCollector, DELTA_HISTOGRAM_BINS } from './telemetry/delta-histogram.js';
+import { executeFlowMode } from './strategies/flow-mode.js';
+
 // ============================================================================
 // FrameConductor description: R261125-fcd description missing, please describe in great detail FrameConductor
 // ============================================================================
@@ -30,196 +34,24 @@ let lastLoggedMode = null; // Track last logged mode to avoid duplicate logs
 // BufferPool: Reusable typed arrays to reduce GC pressure 
 // On low-end devices, GC pauses cause audio stutters; pooling reduces allocation frequency
 const bufferPool = new BufferPool({
-  'Uint32Array': 2  // Pool 2 Uint32Array buffers for delta histograms R261125-dh is this only for the histograms? , if it is we need to enable/disble to reduce cpu usage when needed
+  'Uint32Array': 2  // Pool 2 Uint32Array buffers for delta histograms
 });
 
-// FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes R261125-fcmdo arent we hardcoding values? is there a use case to have this exposed at Developer Panel?
+// FrameConductor: Manifest-driven orchestrator for Flow/Focus/Hybrid modes
 let frameConductor = null;
 let audioRouter = null;
 let metricsCollector = null;
-const DELTA_HISTOGRAM_BINS = 16;
-const DELTA_STATS_FLUSH_INTERVAL = 120;
-const PAN_MAX_DELTA = 2;
-const INTENSITY_MAX_DELTA = 1;
-const PAN_TINY_THRESHOLD = 0.005;
-const INTENSITY_TINY_THRESHOLD = 0.01;
 
-function createDeltaHistogramState() {
-  return {
-    pan: bufferPool.acquire(Uint32Array, DELTA_HISTOGRAM_BINS),
-    intensity: bufferPool.acquire(Uint32Array, DELTA_HISTOGRAM_BINS),
-    panPrev: null,
-    intensityPrev: null,
-    panZeroStreak: 0,
-    intensityZeroStreak: 0,
-    samples: 0,
-    recentMeanPanDelta: 0,
-    recentMeanIntensityDelta: 0,
-    recentVarPanDelta: 0,
-    recentVarIntensityDelta: 0,
-    lastWindowResetTs: Date.now()
-  };
-}
-
-function resetDeltaHistogramState() {
-  // Release previous buffers back to pool before creating new ones
-  if (deltaHistogramState && deltaHistogramState.pan) {
-    bufferPool.release(Uint32Array, deltaHistogramState.pan);
-  }
-  if (deltaHistogramState && deltaHistogramState.intensity) {
-    bufferPool.release(Uint32Array, deltaHistogramState.intensity);
-  }
-  
-  deltaHistogramState = createDeltaHistogramState();
-  deltaFramesSinceSnapshot = 0;
-}
-
-function bucketHistogram(bins, delta, maxDelta) {
-  if (maxDelta <= 0) return;
-  const normalized = Math.min(1, delta / maxDelta);
-  const idx = Math.min(bins.length - 1, Math.floor(normalized * bins.length));
-  bins[idx] = (bins[idx] || 0) + 1;
-}
-
-function createDeltaSnapshot(hist) {
-  return {
-    pan: Array.from(hist.pan),
-    intensity: Array.from(hist.intensity),
-    meanPanDelta: hist.recentMeanPanDelta,
-    meanIntensityDelta: hist.recentMeanIntensityDelta,
-    zeroPanStreak: hist.panZeroStreak,
-    zeroIntensityStreak: hist.intensityZeroStreak,
-    samples: hist.samples,
-    lastWindowResetTs: hist.lastWindowResetTs
-  };
-}
-
-function decayHistogram(hist) {
-  for (let i = 0; i < hist.pan.length; i++) {
-    hist.pan[i] = hist.pan[i] >>> 1;
-    hist.intensity[i] = hist.intensity[i] >>> 1;
-  }
-  hist.samples = hist.samples >>> 1;
-  hist.recentVarPanDelta *= 0.5;
-  hist.recentVarIntensityDelta *= 0.5;
-  hist.lastWindowResetTs = Date.now();
-}
-
-function updateDeltaHistogram(pan, intensity, stallStats) {
-  if (!stallStats) return;
-  const hist = deltaHistogramState;
-  if (hist.panPrev === null) {
-    hist.panPrev = pan;
-    hist.intensityPrev = intensity;
-    return;
-  }
-
-  const panDelta = Math.abs(pan - hist.panPrev);
-  const intensityDelta = Math.abs(intensity - hist.intensityPrev);
-  hist.panPrev = pan;
-  hist.intensityPrev = intensity;
-
-  bucketHistogram(hist.pan, panDelta, PAN_MAX_DELTA);
-  bucketHistogram(hist.intensity, intensityDelta, INTENSITY_MAX_DELTA);
-
-  hist.panZeroStreak = panDelta < PAN_TINY_THRESHOLD ? hist.panZeroStreak + 1 : 0;
-  hist.intensityZeroStreak = intensityDelta < INTENSITY_TINY_THRESHOLD ? hist.intensityZeroStreak + 1 : 0;
-
-  hist.samples++;
-  if (hist.samples > 0) {
-    const panDiff = panDelta - hist.recentMeanPanDelta;
-    hist.recentMeanPanDelta += panDiff / hist.samples;
-    hist.recentVarPanDelta += panDiff * (panDelta - hist.recentMeanPanDelta);
-
-    const intensityDiff = intensityDelta - hist.recentMeanIntensityDelta;
-    hist.recentMeanIntensityDelta += intensityDiff / hist.samples;
-    hist.recentVarIntensityDelta += intensityDiff * (intensityDelta - hist.recentMeanIntensityDelta);
-  }
-
-  deltaFramesSinceSnapshot++;
-  if (deltaFramesSinceSnapshot >= DELTA_STATS_FLUSH_INTERVAL) {
-    deltaFramesSinceSnapshot = 0;
-    stallStats.deltaSnapshot = createDeltaSnapshot(hist);
-    if (hist.samples > 10000) {
-      decayHistogram(hist);
-    }
-  }
-}
-
-let deltaHistogramState = createDeltaHistogramState();
-let deltaFramesSinceSnapshot = 0;
+// Delta Histogram Collector (SRP extraction - see telemetry/delta-histogram.js)
+let deltaHistogramCollector = new DeltaHistogramCollector(bufferPool);
 // Stall watchdog interval reference
 let stallWatchdogInterval = null;
 
 // Current mode and grid config are derived from engine state, not stored locally
 // This keeps frame-processor stateless for configuration
 
-/**
- * Process frame using Flow mode worker chain via FrameConductor (Phase 3.1b)
- * Sequential processing: motion → grid → params → audio
- * 
- * PERF FIX (Nov 28): Removed legacy fallback code that duplicated FrameConductor logic.
- * The conductor chain (motion → grid → pan-mapper) produces {pan, intensity} directly.
- * If the conductor fails, we log ERROR and return empty - no silent fallback.
- */
-async function processFlowMode(frameData, width, height, state) {
-  if (!frameConductor) {
-    structuredLog('ERROR', 'FrameConductor not initialized', {});
-    return { cues: [], panIntensity: { pan: 0, intensity: 0 } };
-  }
-
-  try {
-    // Use FrameConductor for orchestration - single source of truth
-    const result = await frameConductor.processFrame(frameData, width, height, state);
-    
-    // Initialize return values
-    let cues = [];
-    let panIntensity = { pan: 0, intensity: 0 };
-    
-    // PHASE-TRIANGULAR: Check if conductor result contains zone-based cues (from triangular-zone-mapper)
-    // Triangular mesh grid produces array of {zone, profile, intensity, pitch, x, y, duration, pan} cues
-    if (result.result && Array.isArray(result.result.cues) && result.result.cues.length > 0) {
-      cues = result.result.cues;
-      
-      structuredLog('DEBUG', 'Flow mode: Using zone cues from triangular-zone-mapper', () => ({
-        cuesCount: cues.length,
-        zones: [...new Set(cues.map(c => c.zone))].join(',')
-      }), false, shouldSample('cueGeneration'));
-    }
-    // Fall back to pan/intensity if no zone cues present
-    // The chain (motion → grid → pan-mapper) produces {pan, intensity} directly
-    else if (result.result && typeof result.result.pan === 'number' && typeof result.result.intensity === 'number') {
-      panIntensity = {
-        pan: result.result.pan,
-        intensity: result.result.intensity
-      };
-      
-      structuredLog('DEBUG', 'Flow mode: Using conductor pan/intensity', () => ({ 
-        panIntensity,
-        cuesCount: cues.length 
-      }), false, shouldSample('cueGeneration'));
-    } else if (result.result && !result.result.empty) {
-      // FAIL FAST: Log error if conductor didn't produce expected output
-      // This surfaces bugs instead of silently falling back to broken legacy code
-      structuredLog('ERROR', 'processFlowMode: Conductor result missing pan/intensity or zone cues', () => ({
-        hasResult: !!result.result,
-        resultKeys: result.result ? Object.keys(result.result) : [],
-        mode: state?.mode,
-        hasCues: result.result && Array.isArray(result.result.cues)
-      }));
-    }
-    
-    // CORE-15: Return telemetry along with cues for state update
-    return { 
-      cues, 
-      panIntensity,
-      normalizationTelemetry: result.normalizationTelemetry 
-    };
-  } catch (error) {
-    structuredLog('ERROR', 'processFlowMode error', { error: error.message });
-    return { cues: [], panIntensity: { pan: 0, intensity: 0 } };
-  }
-}
+// NOTE: Flow mode processing extracted to strategies/flow-mode.js (executeFlowMode)
+// Focus mode processing remains inline for now (Phase 3 deferred)
 
 // --- Video Frame Processing ---
 // Frame processing is orchestrated by FrameConductor (Phase 3.1b).
@@ -335,7 +167,7 @@ async function simulateShapeAnalysis(detectedObject = {}, useMocks = false) {
  * 
  * NOTE: Frame processing logic for Flow/Focus modes uses FrameConductor for
  * manifest-driven worker orchestration (Phase 3.1b). Canvas is available
- * for browsers without OffscreenCanvas, using processFlowMode for motion detection.
+ * for browsers without OffscreenCanvas, using executeFlowMode for motion detection.
  * Both paths produce identical audio cues.
  * 
  * @param {HTMLVideoElement} videoElement - The video element to capture from
@@ -417,7 +249,7 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
       }
       
       if (state.currentMode === 'flow') {
-        const flowResult = await processFlowMode(frameData, canvas.width, canvas.height, state);
+        const flowResult = await executeFlowMode(frameConductor, frameData, canvas.width, canvas.height, state);
         
         // CORE-15: Update normalization telemetry in engine state if available
         if (flowResult && flowResult.normalizationTelemetry) {
@@ -604,7 +436,7 @@ export async function initializeVideo(config) {
 
       // Process frame based on current mode (same logic as before)
       if (state.currentMode === 'flow') {
-        const flowResult = await processFlowMode(frameData, payload.width, payload.height, state);
+        const flowResult = await executeFlowMode(frameConductor, frameData, payload.width, payload.height, state);
         
         // Always set dispatchPayload, even if cues are empty (important for audio state)
         if (flowResult && flowResult.cues) {
@@ -678,7 +510,12 @@ export async function initializeVideo(config) {
         const panIntensity = dispatchPayload.panIntensity || { pan: 0, intensity: 0 };
         const pan = panIntensity.pan ?? 0;
         const intensity = panIntensity.intensity ?? 0;
-        updateDeltaHistogram(pan, intensity, stallStats);
+        
+        // Update delta histogram via collector (SRP extraction)
+        const histogramSnapshot = deltaHistogramCollector.update(pan, intensity);
+        if (histogramSnapshot) {
+          stallStats.deltaSnapshot = histogramSnapshot;
+        }
         
         const PAN_DELTA_THRESHOLD = 0.01;
         const INTENSITY_DELTA_THRESHOLD = 0.01;
@@ -710,10 +547,16 @@ export async function initializeVideo(config) {
           });
           
           try {
-            const snap = stallStats.deltaSnapshot || createDeltaSnapshot({
-              pan: new Uint32Array(DELTA_HISTOGRAM_BINS),
-              intensity: new Uint32Array(DELTA_HISTOGRAM_BINS)
-            });
+            // Use snapshot from collector if available, otherwise create minimal fallback R281125-sc NO FALLBACKS!!!
+            const snap = stallStats.deltaSnapshot || {
+              pan: new Array(DELTA_HISTOGRAM_BINS).fill(0),
+              intensity: new Array(DELTA_HISTOGRAM_BINS).fill(0),
+              meanPanDelta: 0,
+              meanIntensityDelta: 0,
+              zeroPanStreak: 0,
+              zeroIntensityStreak: 0,
+              samples: 0
+            };
             const payloadSnapshot = {
               frameId: payload.frameId,
               meanPanDelta: snap.meanPanDelta,
@@ -800,13 +643,14 @@ export function disposeVideo() {
       structuredLog('INFO', 'FrameConductor disposed (all workers terminated)');
     }
     
-    // Clean up buffer pool (release buffers and clear cache)
-    if (deltaHistogramState && deltaHistogramState.pan) {
-      bufferPool.release(Uint32Array, deltaHistogramState.pan);
+    // Clean up delta histogram collector (releases pooled buffers)
+    if (deltaHistogramCollector) {
+      deltaHistogramCollector.dispose();
+      deltaHistogramCollector = new DeltaHistogramCollector(bufferPool); // Re-create for potential re-init
+      structuredLog('DEBUG', 'DeltaHistogramCollector disposed and reset');
     }
-    if (deltaHistogramState && deltaHistogramState.intensity) {
-      bufferPool.release(Uint32Array, deltaHistogramState.intensity);
-    }
+    
+    // Clear buffer pool cache
     bufferPool.clear();
     
     // Reset module state
