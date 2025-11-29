@@ -551,11 +551,11 @@ function processFrameMessage(msg) {
     const transferableUFlow = new Float32Array(res.uFlow);
     const transferableVFlow = new Float32Array(res.vFlow);
     
-    // Update contractMessage data with cloned buffers
-    contractMessage.data.coords = transferableCoords;
-    contractMessage.data.intens = transferableIntens;
-    contractMessage.data.uFlow = transferableUFlow;
-    contractMessage.data.vFlow = transferableVFlow;
+    // Update contractMessage.result with cloned buffers (not .data - contract uses .result)
+    contractMessage.result.coords = transferableCoords;
+    contractMessage.result.intens = transferableIntens;
+    contractMessage.result.uFlow = transferableUFlow;
+    contractMessage.result.vFlow = transferableVFlow;
     
     // CRITICAL: Send cloned buffers WITHOUT transfer list.
     // Even though these are new buffers, transferring them detaches them from the sender's context.

@@ -60,9 +60,11 @@ self.onmessage = (e) => {
     const actualMotionRegions = motionRegions || data;
     
     // Build gridConfig from message fields
-    // - 'processingRequest': construct from width, height, state
-    // - 'processFrame': use provided gridConfig
-    let actualGridConfig = gridConfig;
+    // Priority order:
+    // 1. Top-level gridConfig (direct 'processFrame' messages)
+    // 2. Nested data.gridConfig (from motion worker result via 'processingRequest')
+    // 3. Construct from width, height, state (fallback)
+    let actualGridConfig = gridConfig || (data && data.gridConfig);
     if (!actualGridConfig && width && height && state) {
       // Default to 4x4 grid for motion detection
       actualGridConfig = {
