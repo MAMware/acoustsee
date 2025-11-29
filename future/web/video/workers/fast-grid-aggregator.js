@@ -16,7 +16,44 @@
  * 3. Optionally normalize if multiple regions per cell
  * 4. Return grid as Float32Array
  * 
+ * ============================================================================
+ * SIGNAL PROCESSING CAPABILITIES (verified in aggregateMotionToGrid function):
+ * ============================================================================
+ * 
+ * ✅ DATA COMPRESSION (line 236):
+ *    - Output is fixed rows×cols Float32Array regardless of input count
+ *    - Reduces N motion regions to typically 16 values (4×4 grid)
+ * 
+ * ✅ FEATURE EXTRACTION (lines 255-260):
+ *    - Maps pixel (x,y) to grid cell (row, col) via floor division
+ *    - Transforms point-based motion into spatial distribution pattern
+ * 
+ * ✅ STANDARDIZATION (lines 236, 266):
+ *    - Variable input count → fixed grid size output
+ *    - Enables consistent downstream processing
+ * 
+ * ❌ NOISE REDUCTION - NOT IMPLEMENTED:
+ *    - Current code does simple accumulation (+=), not averaging
+ *    - No smoothing or noise filtering applied
+ *    - TODO: Consider adding cell averaging or Gaussian blur
+ * 
+ * ⚠️ SNR IMPROVEMENT - PARTIAL (side effect only):
+ *    - Accumulation combines weak signals in same cell
+ *    - No explicit SNR calculation or enhancement
+ * 
+ * ============================================================================
+ * ARCHITECTURAL NOTE:
+ * ============================================================================
+ * This worker performs SPATIAL BINNING only - no audio/pitch/frequency decisions.
+ * Audio mapping is delegated to downstream workers:
+ * - pan-intensity-mapper.js: Grid → pan/intensity (spatialization)
+ * - triangular-zone-mapper.js: Grid → zone cues (NOTE: contains pitch ranges - see violation comment)
+ * 
+ * The grids/ folder contains MUSICAL MAPPING strategies (linear-pitch, circle-of-fifths)
+ * which are used in Focus mode, NOT by this worker. This is a different "grid" concept.
+ * 
  * v1.0 Created: October 19, 2025
+ * v1.1 Updated: November 29, 2025 - Added verified signal processing documentation
  */
 
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';
@@ -191,7 +228,8 @@ self.onmessage = (e) => {
  * @returns {Float32Array} Grid of aggregated intensities (linearized row-major)
  */
 function aggregateMotionToGrid(coords, intens, count, rows, cols, frameWidth, frameHeight) {
-  // Initialize grid
+  // DATA COMPRESSION + STANDARDIZATION:
+  // Fixed-size output regardless of input count (N regions → rows×cols values)
   const grid = new Float32Array(rows * cols);
 
   if (count === 0 || !coords || !intens) {
@@ -210,13 +248,19 @@ function aggregateMotionToGrid(coords, intens, count, rows, cols, frameWidth, fr
     const y = coords[i * 2 + 1];
     const regionIntensity = intens[i];
 
-    // Map pixel position to grid cell
+    // FEATURE EXTRACTION:
+    // Map pixel position to grid cell via floor division
+    // Transforms (x,y) point → (row, col) spatial bin
     const col = Math.floor(x / cellWidth);
     const row = Math.floor(y / cellHeight);
 
     // Boundary check (safety)
     if (row >= 0 && row < rows && col >= 0 && col < cols) {
       const cellIndex = row * cols + col;
+      // ACCUMULATION:
+      // Multiple regions in same cell SUM their intensities
+      // This provides partial SNR improvement but no noise reduction
+      // TODO: Consider dividing by region count per cell for true averaging
       grid[cellIndex] += regionIntensity;
     }
   }

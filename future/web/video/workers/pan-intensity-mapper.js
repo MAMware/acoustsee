@@ -19,7 +19,18 @@
  *    - Sum all grid values
  *    - Normalize to 0-1 range (clamp)
  * 
+ * ============================================================================
+ * ARCHITECTURAL NOTE - HEXAGONAL COMPLIANCE ✅
+ * ============================================================================
+ * This worker is architecturally CLEAN per ADR-0011:
+ * - Outputs GENERIC spatial parameters (pan, intensity) not audio-specific values
+ * - Pan (-1 to +1) is a spatial concept (left/right position)
+ * - Intensity (0 to 1) is a magnitude concept (motion strength)
+ * - No Hz/frequency/pitch/synth knowledge - audio layer interprets these values
+ * ============================================================================
+ * 
  * v1.0 Created: October 19, 2025
+ * v1.1 Updated: November 29, 2025 - Added architectural compliance note
  */
 
 import { WorkerContract, WORKER_TYPES, CAPABILITIES } from './worker-contract.js';

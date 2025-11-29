@@ -10,6 +10,28 @@
  * Latency Target: 5ms
  * Mode: Flow (responsive, real-time)
  * 
+ * ============================================================================
+ * ⚠️ ARCHITECTURAL VIOLATION - HEXAGONAL PURITY (ADR-0011)
+ * ============================================================================
+ * This file contains AUDIO/SYNTHESIS concerns that should live in future/web/audio/:
+ * 
+ * VIOLATIONS:
+ * - Lines 241-244: Hardcoded pitch ranges (pitchMin/pitchMax in Hz)
+ * - Lines 241-244: Synth profile names ('zone_top', 'zone_left', etc.)
+ * - Line 272-282: mapPitchForZone() calculates frequencies
+ * 
+ * Per ARCHITECTURE.md Section 8: "The video system does NOT know about the audio system.
+ * It produces generic cues that are dispatched via events."
+ * 
+ * RECOMMENDED REFACTOR:
+ * 1. Move pitch mapping to future/web/audio/zone-pitch-mapper.js
+ * 2. This worker should output: { zone, intensity, normalizedPosition }
+ * 3. Audio layer applies pitch ranges from its own config
+ * 
+ * This violation exists for pragmatic reasons (working MVP) but should be
+ * addressed in a future hexagonal purity cleanup phase.
+ * ============================================================================
+ * 
  * Architecture:
  * - Assumes 2x2 grid (4 cells total)
  * - Cells map to zones using diagonal boundary logic:
