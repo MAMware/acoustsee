@@ -4,35 +4,47 @@
 
 ---
 
-## Rule 0: Import Dependencies Explicitly
+## Rule 1: Import Dependencies Explicitly
+
+
+**❌ INCORRECT (DON'T):** Missing import causes ReferenceError
 
 ```javascript
-// ❌ Missing import causes ReferenceError
 import { structuredLog } from './logging.js';
 if (shouldSample('x')) { }  // ReferenceError!
+```
 
-// ✅ Import everything you use
+**✅ CORRECT (DO):** Import everything you use
+
+```javascript
 import { structuredLog, shouldSample } from './logging.js';
 ```
 
-Variables used in `catch` blocks must be declared before `try`.
+Avoid the overuse or misuse of `try` `catch` blocks since it:
+Obscures Program Control Flow
+Can Mask Bugs ("Swallowing" Errors)
+Encourages Poor Error Handling Design
+Performance Overhead 
+If you must, the variables used in `catch` blocks must be declared before `try`
 
 ---
 
-## Rule 1: State Mutations Preserve Object Identity
+## Rule 2: State Mutations Preserve Object Identity
 
+**❌ INCORRECT (DON'T):** Breaks references — other code sees stale object
 ```javascript
-// ❌ Breaks references — other code sees stale object
 return { ...existingState, newField: value };
+```
 
-// ✅ Mutate in-place
+**✅ CORRECT (DO):** Mutate in-place
+```javascript
 existingState.newField = value;
 return existingState;
 ```
 
 ---
 
-## Rule 2: Dependency Flow
+## Rule 3: Dependency Flow
 
 ```
 ui/ ──imports──▶ utils/ (injected)
@@ -49,7 +61,7 @@ audio/, video/ ──imports──▶ utils/, core/state.js
 
 ---
 
-## Rule 3: Register Handlers Before Dispatch
+## Rule 4: Register Handlers Before Dispatch
 
 ```javascript
 registerAllCommands(engine);  // First
@@ -58,26 +70,28 @@ engine.dispatch('myCommand'); // After — handler exists
 
 ---
 
-## Rule 4: State Must Be JSON-Serializable
+## Rule 5: State Must Be JSON-Serializable
 
 **Allowed:** primitives, plain objects, arrays  
 **Forbidden:** functions, class instances, DOM elements, circular refs
 
 ---
 
-## Rule 5: UI Disposal Contract
+## Rule 6: UI Disposal Contract
 
 Every UI init returns `{ dispose() }` that cleans up DOM, listeners, timers.
 
 ---
 
-## Rule 6: Sample High-Frequency Logs
+## Rule 7: Sample High-Frequency Logs
 
+**❌ INCORRECT (DON'T):** 60fps = 3600 logs/min
 ```javascript
-// ❌ 60fps = 3600 logs/min
 structuredLog('DEBUG', 'frame', data);
+```
 
-// ✅ Sampled
+**✅ CORRECT (DO):** Sampled
+```javascript
 if (shouldSample('frameProcessing')) {
   structuredLog('DEBUG', 'frame', data);
 }
@@ -110,11 +124,6 @@ Audio/Language are required. If not ready, commands log ERROR and fail. No silen
 
 ---
 
-## Rule 10: No Console Hijacking
-
-Never override `console.*` methods. Use `structuredLog()` directly.
-
----
 
 ## Quick Checklist
 
