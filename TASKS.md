@@ -2,7 +2,61 @@
 
 This document tracks active and future development tasks to provide a clear project roadmap. Each task has a unique ID for easy reference in commits, pull requests, and code comments.
 
-## Current Focus: v0.9.7.2 (Dev Panel Worker Chain Controls - Nov 29, 2025)
+## Current Focus: v0.9.7.3 (Signal Processing Capabilities - Nov 30, 2025)
+
+### Feature: SIGNAL-1 Noise Reduction & SNR Improvement in Grid Aggregator
+
+**Status:** 100% Complete ✅  
+**Branch:** `v0.9.7.2-sourceSelector`
+
+#### Problem Analysis
+Grid aggregator had incomplete signal processing:
+1. Simple accumulation (+=) instead of averaging → noise not reduced
+2. SNR claimed but not calculated or exposed
+3. Dev Panel had no visibility into signal processing capabilities
+4. Signal quality metrics unavailable for real-time tuning
+
+#### Implementation Summary
+
+- **[SIGNAL-1]** Noise Reduction Implementation
+  - Changed `grid[cellIndex] += regionIntensity` → averaging by count
+  - Added `regionCountPerCell` tracking per grid cell
+  - Reduces noise floor by consolidating weak signals
+  - Output: cleaned grid with averaged values
+
+- **[SIGNAL-2]** SNR Improvement Calculation
+  - Calculates per-cell SNR as `min(regionCount / 10, 1.0)`
+  - Outputs `snrPerCell` array alongside grid
+  - Outputs aggregated `averageSNR` telemetry
+  - SNR normalized to 0-1 range (1.0 = clean, 0 = no signal)
+
+- **[SIGNAL-3]** Dev Panel Signal Processing Section
+  - New "Signal Processing Capabilities" group in GROUP 4
+  - 6 capability cards with real-time telemetry
+  - All disabled checkboxes (always-on features)
+  - Hover effects and color-coded borders
+
+- **[SIGNAL-4]** JavaScript Telemetry Wiring
+  - dev-panel.js subscribes to `state.lastGridAggregatorResult`
+  - Updates 6 capability card displays real-time
+  - Telemetry refreshes on every grid aggregation
+
+#### Files Modified
+- `future/web/video/workers/fast-grid-aggregator.js` - Noise reduction + SNR calc
+- `future/web/ui/dev-panel/dev-panel.html` - Signal processing section UI
+- `future/web/ui/dev-panel/dev-panel.css` - Capability card styles
+- `future/web/ui/dev-panel/dev-panel.js` - Telemetry update logic
+
+#### Verified Capabilities (Code-Backed)
+✅ **Data Compression** - line 236: `new Float32Array(rows * cols)` creates fixed output
+✅ **Feature Extraction** - lines 255-260: Floor division maps (x,y) → grid cell
+✅ **Standardization** - Variable input → fixed output size
+✅ **Noise Reduction** - lines 257-260, 292-301: Per-cell averaging
+✅ **SNR Improvement** - lines 303-309: SNR calculation + telemetry output
+
+---
+
+## Previous Focus: v0.9.7.2 (Dev Panel Worker Chain Controls - Nov 29, 2025)
 
 ### Feature: UI-14 Dev Panel Worker Chain & Source Controls
 

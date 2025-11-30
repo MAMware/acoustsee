@@ -1095,6 +1095,46 @@ export function initializeDevPanel(arg1, arg2) {
               telemetryRegions.textContent = state.normalizationTelemetry.frameCount || 0;
             }
           }
+          
+          // SIGNAL PROCESSING TELEMETRY: Update capability displays with grid aggregator data
+          // This data comes from fast-grid-aggregator.js signalProcessing field
+          if (state.lastGridAggregatorResult) {
+            const sp = state.lastGridAggregatorResult.signalProcessing;
+            if (sp) {
+              // Data Compression
+              const compressionRatio = panel.querySelector('#cap-compression-ratio');
+              if (compressionRatio) {
+                const ratio = sp.dataCompressionRatio ? (sp.dataCompressionRatio * 100).toFixed(1) : '--';
+                compressionRatio.textContent = ratio + '%';
+              }
+              
+              // Feature Extraction - Cells with Motion
+              const cellsWithMotion = panel.querySelector('#cap-cells-with-motion');
+              if (cellsWithMotion) cellsWithMotion.textContent = sp.cellsWithMotion || 0;
+              
+              // Standardization - Grid Size
+              const gridSize = panel.querySelector('#cap-grid-size');
+              if (gridSize && state.gridConfig) {
+                gridSize.textContent = `${state.gridConfig.rows}×${state.gridConfig.cols}`;
+              }
+              
+              // Noise Reduction Factor
+              const noiseFactor = panel.querySelector('#cap-noise-factor');
+              if (noiseFactor) noiseFactor.textContent = sp.noiseReductionFactor || 0;
+              
+              // Average SNR
+              const avgSNR = panel.querySelector('#cap-avg-snr');
+              if (avgSNR) avgSNR.textContent = (sp.averageSNR || 0).toFixed(3);
+              
+              // Regions Processed
+              const regionsProcessed = panel.querySelector('#cap-regions-processed');
+              if (regionsProcessed) regionsProcessed.textContent = sp.regionsProcessed || 0;
+              
+              // Last Update timestamp
+              const lastUpdate = panel.querySelector('#cap-last-update');
+              if (lastUpdate) lastUpdate.textContent = new Date().toLocaleTimeString();
+            }
+          }
 
           // Effective throttle values (FPS & Worker Throttle)
           const effectiveFpsEl = panel.querySelector('#effective-fps');

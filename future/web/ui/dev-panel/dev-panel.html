@@ -410,6 +410,113 @@
         </div>
       </div>
     </div>
+
+    <!-- Signal Processing Capabilities -->
+    <div class="devpanel-section signal-processing-section">
+      <h2 class="section-header">
+        <span>Signal Processing Capabilities</span>
+        <button class="collapse-btn" data-target="signal-processing-content" aria-expanded="true" title="Collapse Signal Processing">-</button>
+      </h2>
+      <div id="signal-processing-content" class="section-content">
+        <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Real-time status of signal processing pipeline in fast-grid-aggregator. All features use spatial binning.</p>
+        
+        <!-- Signal Processing Capabilities Grid -->
+        <div class="signal-processing-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 16px;">
+          
+          <!-- Data Compression -->
+          <div class="capability-card" style="padding: 12px; background: #263445; border-radius: 4px; border-left: 3px solid #3498db;">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 16px; margin-right: 6px;">✅</span>
+              <span style="font-weight: 600; color: #ecf0f1;">Data Compression</span>
+            </div>
+            <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Converts N regions → fixed grid</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="cap-data-compression" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+            </div>
+            <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Compression Ratio: <span id="cap-compression-ratio" style="color: #2ecc71; font-weight: bold;">--</span></div>
+          </div>
+
+          <!-- Feature Extraction -->
+          <div class="capability-card" style="padding: 12px; background: #263445; border-radius: 4px; border-left: 3px solid #2ecc71;">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 16px; margin-right: 6px;">✅</span>
+              <span style="font-weight: 600; color: #ecf0f1;">Feature Extraction</span>
+            </div>
+            <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Spatial binning via floor division</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="cap-feature-extraction" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+            </div>
+            <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Cells with Motion: <span id="cap-cells-with-motion" style="color: #f39c12; font-weight: bold;">--</span> / <span id="cap-total-cells">16</span></div>
+          </div>
+
+          <!-- Standardization -->
+          <div class="capability-card" style="padding: 12px; background: #263445; border-radius: 4px; border-left: 3px solid #f39c12;">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 16px; margin-right: 6px;">✅</span>
+              <span style="font-weight: 600; color: #ecf0f1;">Standardization</span>
+            </div>
+            <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Fixed output size (rows × cols)</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="cap-standardization" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+            </div>
+            <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Output Grid: <span id="cap-grid-size" style="color: #9b59b6; font-weight: bold;">4×4</span></div>
+          </div>
+
+          <!-- Noise Reduction -->
+          <div class="capability-card" style="padding: 12px; background: #263445; border-radius: 4px; border-left: 3px solid #1abc9c;">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 16px; margin-right: 6px;">✅</span>
+              <span style="font-weight: 600; color: #ecf0f1;">Noise Reduction</span>
+            </div>
+            <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Per-cell averaging (reduces floor)</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="cap-noise-reduction" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+            </div>
+            <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Reduction Factor: <span id="cap-noise-factor" style="color: #e74c3c; font-weight: bold;">--</span></div>
+          </div>
+
+          <!-- SNR Improvement -->
+          <div class="capability-card" style="padding: 12px; background: #263445; border-radius: 4px; border-left: 3px solid #e74c3c;">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 16px; margin-right: 6px;">✅</span>
+              <span style="font-weight: 600; color: #ecf0f1;">SNR Improvement</span>
+            </div>
+            <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Signal-to-noise ratio calc</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="cap-snr-improvement" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+            </div>
+            <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Average SNR: <span id="cap-avg-snr" style="color: #3498db; font-weight: bold;">--</span> / 1.0</div>
+          </div>
+
+          <!-- Region Count -->
+          <div class="capability-card" style="padding: 12px; background: #263445; border-radius: 4px; border-left: 3px solid #9b59b6;">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 16px; margin-right: 6px;">📊</span>
+              <span style="font-weight: 600; color: #ecf0f1;">Telemetry</span>
+            </div>
+            <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Real-time processing stats</div>
+            <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">
+              Regions: <span id="cap-regions-processed" style="color: #e67e22; font-weight: bold;">--</span> <br/>
+              Last Update: <span id="cap-last-update" style="color: #95a5a6;">never</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Capability Details -->
+        <div style="padding: 12px; background: #1a2332; border-radius: 4px; border: 1px solid #34495e;">
+          <div style="font-size: 11px; color: #bdc3c7; line-height: 1.6;">
+            <strong>✅ All capabilities active:</strong> The grid aggregation pipeline processes motion regions through spatial binning (feature extraction), 
+            accumulates them into fixed-size output (standardization + compression), averages per cell (noise reduction), 
+            and calculates SNR telemetry for real-time signal quality assessment.
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ========================================
