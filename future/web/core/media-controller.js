@@ -5,9 +5,20 @@ import { structuredLog } from '../utils/logging.js';
 import { getText, announceMessage, speakText } from '../utils/utils.js';
 
 let _cameraStream = null;
+let _engine = null;  // Engine reference for telemetry emission
+
+/**
+ * Set engine reference for telemetry emission
+ */
+export function setMediaControllerEngine(engine) {
+  _engine = engine;
+}
 
 export async function startCamera(videoEl, constraints = { facingMode: 'environment' }, state = null) {
   try {
+    // === TELEMETRY: Camera capture start ===
+    const captureStartTime = performance.now();
+    
     // Enforce native low-resolution, low-framerate profile for low-end devices
     // The browser applies these optimizations in native code before JS runs,
     // reducing compute load and battery drain significantly
@@ -28,6 +39,19 @@ export async function startCamera(videoEl, constraints = { facingMode: 'environm
     _cameraStream = stream;
     if (videoEl) videoEl.srcObject = stream;
     try { await videoEl.play(); } catch (e) { /* ignore play rejections */ }
+    
+    // Emit telemetry event
+    if (_engine && _engine.emit) {
+      const duration = performance.now() - captureStartTime;
+      _engine.emit('video_capture_started', {
+        sourceType: 'camera',  // From getUserMedia
+        duration,
+        timestamp: performance.now(),
+        session_id: _engine.getState?.()?.session?.id || 'unknown',
+        mode: _engine.getState?.()?.currentMode || 'Flow',
+        preset: _engine.getState?.()?.preset || 'Full'
+      });
+    }
     
     // Rich logging with i18n + accessibility
     structuredLog('INFO', 'cameraStartSuccess', { device: 'camera' }, {
@@ -67,6 +91,9 @@ export async function startCamera(videoEl, constraints = { facingMode: 'environm
 
 export function stopCamera(videoEl) {
   try {
+    // === TELEMETRY: Camera capture stop ===
+    const totalFrames = _cameraStream?.getVideoTracks?.()[0]?.getStats?.() || {};
+    
     if (_cameraStream) {
       _cameraStream.getTracks().forEach(t => t.stop());
       _cameraStream = null;
@@ -74,6 +101,19 @@ export function stopCamera(videoEl) {
     if (videoEl) {
       try { videoEl.pause(); } catch (e) {}
       try { videoEl.srcObject = null; } catch (e) {}
+    }
+    
+    // Emit telemetry event
+    if (_engine && _engine.emit) {
+      _engine.emit('video_capture_stopped', {
+        sourceType: 'camera',
+        totalFrames: 0,  // Would need more elaborate tracking to calculate
+        duration: 0,  // Would need to track from start
+        timestamp: performance.now(),
+        session_id: _engine.getState?.()?.session?.id || 'unknown',
+        mode: _engine.getState?.()?.currentMode || 'Flow',
+        preset: _engine.getState?.()?.preset || 'Full'
+      });
     }
     
     structuredLog('INFO', 'Camera stopped', { device: 'camera' }, { toast: true });

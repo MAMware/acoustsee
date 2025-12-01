@@ -71,6 +71,7 @@ export class FrameConductor {
   #isTransitioning;
   #initializationFrameCount;
   #initializationTimeoutMs;
+  #engine;  // Engine reference for telemetry
 
   /**
    * @param {Object} config - Configuration
@@ -98,7 +99,10 @@ export class FrameConductor {
       config  // Allow explicit override if needed
     );
 
-    // Worker storage: Map<workerName, Worker>
+    // Store engine reference for telemetry
+    this.#engine = config.engine || null;
+
+    // Performance tracking
     this.#workers = new Map();
 
     // Current mode: 'flow' | 'focus' | 'hybrid' | null

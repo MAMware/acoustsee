@@ -49,6 +49,10 @@ export class VideoSourceFactory {
 
   static async _initializeSource(strategy, videoElement, engine, config, onFrameCallback) {
     try {
+      // === TELEMETRY: Video Source Selection Instrumentation ===
+      // Reference: docs/design/DEV_PANEL_TELEMETRY-INSTRUMENTATION-SPEC.md (Section 1.1)
+      const sourceStartTime = performance.now();
+      
       // Instantiate strategy class
       const provider = new strategy.strategy(videoElement, { 
         engine,
@@ -59,6 +63,29 @@ export class VideoSourceFactory {
       
       // Initialize source (setup canvas, worker, etc.)
       await provider.initialize();
+      
+      const negotiationTime = performance.now() - sourceStartTime;
+      
+      // Emit appropriate telemetry event based on strategy
+      if (strategy.name === 'MediaStreamTrackProcessor') {
+        engine.emit('video_source_gpu_selected', {
+          strategy: 'MediaStreamTrackProcessor',
+          negotiationTime,
+          timestamp: performance.now(),
+          session_id: engine.getState?.()?.session?.id || 'unknown',
+          mode: engine.getState?.()?.currentMode || 'Flow',
+          preset: engine.getState?.()?.preset || 'Full'
+        });
+      } else if (strategy.name === 'Canvas2D') {
+        engine.emit('video_source_cpu_fallback', {
+          reason: 'GPU_unavailable',
+          fallbackTime: negotiationTime,
+          timestamp: performance.now(),
+          session_id: engine.getState?.()?.session?.id || 'unknown',
+          mode: engine.getState?.()?.currentMode || 'Flow',
+          preset: engine.getState?.()?.preset || 'Full'
+        });
+      }
       
       // Start frame capture
       await provider.start();
