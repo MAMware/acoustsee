@@ -36,6 +36,8 @@ import { initEventBusViewer } from './eventbus-viewer.js'; // Phase 2: EventBus 
 import { initializePreview } from './dev-panel-preview.js'; // Extracted preview logic
 import { initializeChartController } from './dev-panel-chart-controller.js'; // Extracted chart logic
 import { initializeCustomization } from './dev-panel-customization.js'; // Phase 4: Customization System
+import { initializeCameraControls } from './camera-controls.js'; // Task 5: Camera Controls UI (Workflow 1)
+import { initializeTelemetryDashboard } from './telemetry-dashboard.js'; // Task 6: Telemetry Dashboard (Workflow 3)
 import { getWorkersForMode, getTotalLatencyBudget, WORKER_MANIFEST } from '../../video/workers/worker-manifest.js'; // Worker chain controls
 // Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
@@ -393,6 +395,28 @@ export function initializeDevPanel(arg1, arg2) {
       }
     } catch (e) {
       console.error('Failed to initialize chart controller', e);
+    }
+
+    // --- Initialize Camera Controls (Task 5: Workflow 1) ---
+    let cameraControls = null;
+    try {
+      cameraControls = initializeCameraControls(engine);
+      if (cameraControls && typeof cameraControls.dispose === 'function') {
+        panel.__cameraControlsDispose = cameraControls.dispose;
+      }
+    } catch (e) {
+      console.error('Failed to initialize camera controls', e);
+    }
+
+    // --- Initialize Telemetry Dashboard (Task 6: Workflow 3) ---
+    let telemetryDashboard = null;
+    try {
+      telemetryDashboard = initializeTelemetryDashboard(engine);
+      if (telemetryDashboard && typeof telemetryDashboard.dispose === 'function') {
+        panel.__telemetryDashboardDispose = telemetryDashboard.dispose;
+      }
+    } catch (e) {
+      console.error('Failed to initialize telemetry dashboard', e);
     }
 
     // --- Wire All Collapsible Sections ---
@@ -1599,7 +1623,21 @@ export function initializeDevPanel(arg1, arg2) {
         }
       } catch (e) { /* swallow */ }
 
-      // 9. Remove panel node from DOM
+      // 9. Camera controls cleanup (Task 5: Workflow 1)
+      try {
+        if (typeof panel.__cameraControlsDispose === 'function') {
+          panel.__cameraControlsDispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 10. Telemetry dashboard cleanup (Task 6: Workflow 3)
+      try {
+        if (typeof panel.__telemetryDashboardDispose === 'function') {
+          panel.__telemetryDashboardDispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 11. Remove panel node from DOM
       try {
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
       } catch (e) { /* swallow */ }

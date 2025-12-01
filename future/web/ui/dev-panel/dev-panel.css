@@ -1519,3 +1519,444 @@
   color: #3498db;
   margin-top: 4px;
 }
+
+/* ========================================
+   CAMERA CONTROLS SECTION (WORKFLOW 1)
+   ======================================== */
+
+.camera-status-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #34495e;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 12px;
+  transition: all var(--transition-base);
+}
+
+.status-indicator.ready {
+  color: #2ecc71;
+}
+
+.status-indicator.starting {
+  color: #f39c12;
+  animation: pulse 1s infinite;
+}
+
+.status-indicator.active {
+  color: #3498db;
+  animation: pulse 0.5s infinite;
+}
+
+.status-indicator.stopping {
+  color: #e74c3c;
+  animation: pulse 0.5s infinite;
+}
+
+.status-indicator.error {
+  color: #e74c3c;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-text {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: #ecf0f1;
+}
+
+.controls-row {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 200px;
+}
+
+.control-group label {
+  font-size: var(--text-xs);
+  color: #95a5a6;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.camera-select {
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #34495e;
+  border-radius: var(--radius-sm);
+  color: #ecf0f1;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.camera-select:hover {
+  border-color: #3498db;
+  background: rgba(52, 152, 219, 0.1);
+}
+
+.camera-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.timing-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: rgba(52, 152, 219, 0.1);
+  border: 1px solid #3498db;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: #3498db;
+  font-family: monospace;
+  align-self: flex-end;
+  white-space: nowrap;
+}
+
+.camera-button-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+  flex: 1;
+  min-width: 80px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-tertiary {
+  background: rgba(155, 89, 182, 0.3);
+  color: #b19cd9;
+  border: 1px solid #9b59b6;
+}
+
+.btn-tertiary:hover:not(:disabled) {
+  background: rgba(155, 89, 182, 0.5);
+  border-color: #b19cd9;
+}
+
+.stream-info {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: #95a5a6;
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.stream-info span {
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+  border: 1px solid #34495e;
+  font-family: monospace;
+}
+
+.error-container {
+  margin-top: var(--space-2);
+}
+
+.error-message {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid #e74c3c;
+  border-radius: var(--radius-sm);
+  color: #ecf0f1;
+  font-size: var(--text-xs);
+  margin-bottom: var(--space-2);
+  animation: slideIn 0.3s ease-out;
+}
+
+.error-message.warning {
+  background: rgba(243, 156, 18, 0.1);
+  border-color: #f39c12;
+}
+
+.error-message.info {
+  background: rgba(52, 152, 219, 0.1);
+  border-color: #3498db;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.error-message .close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  transition: opacity var(--transition-base);
+}
+
+.error-message .close:hover {
+  opacity: 0.7;
+}
+
+/* ========================================
+   TELEMETRY DASHBOARD SECTION (TASK 6)
+   ======================================== */
+
+.telemetry-dashboard-section {
+  grid-column: 1 / -1; /* Span full width */
+}
+
+.telemetry-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid #34495e;
+  padding-bottom: var(--space-2);
+}
+
+.telemetry-tab-btn {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  color: #95a5a6;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-base);
+}
+
+.telemetry-tab-btn:hover {
+  color: #ecf0f1;
+}
+
+.telemetry-tab-btn.active {
+  color: #3498db;
+  border-bottom-color: #3498db;
+}
+
+.telemetry-tab-content {
+  display: none;
+}
+
+.telemetry-tab-content.active {
+  display: block;
+}
+
+.metrics-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.metric-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #34495e;
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.metric-name {
+  font-weight: 600;
+  color: #ecf0f1;
+  font-size: var(--text-sm);
+}
+
+.metric-value {
+  font-weight: 600;
+  color: #3498db;
+  font-family: monospace;
+  font-size: var(--text-sm);
+}
+
+.metric-status {
+  font-size: 14px;
+}
+
+.metric-chart {
+  width: 100%;
+  height: 100px;
+  background: #111;
+  border-radius: var(--radius-sm);
+  border: 1px solid #1a1a1a;
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.metric-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: #95a5a6;
+}
+
+.metric-stats span {
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  font-family: monospace;
+}
+
+/* Counter-style metric cards */
+.metric-card.metric-counter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 150px;
+}
+
+.counter-text {
+  color: #95a5a6;
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+
+/* Gauge-style metric cards */
+.gauge-bar {
+  width: 100%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+  border: 1px solid #34495e;
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+
+.gauge-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2ecc71, #3498db);
+  transition: width var(--transition-base);
+}
+
+/* Per-worker breakdown */
+.metric-card.metric-worker-breakdown {
+  min-height: 150px;
+}
+
+.worker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.worker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  border-left: 3px solid #3498db;
+}
+
+.worker-name {
+  color: #ecf0f1;
+  font-family: monospace;
+  flex: 1;
+}
+
+.worker-duration {
+  color: #3498db;
+  font-weight: 600;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+/* Status display card */
+.metric-card.metric-status-display {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 150px;
+}
+
+.status-display {
+  font-size: var(--text-sm);
+  color: #3498db;
+  font-weight: 600;
+  margin-top: var(--space-2);
+}
+
+/* Telemetry controls */
+.telemetry-controls {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  border-top: 1px solid #34495e;
+  padding-top: var(--space-3);
+}
+
+.telemetry-controls button {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+

@@ -27,6 +27,64 @@
   </div>
 
   <!-- ========================================
+       GROUP 0: CAMERA & VIDEO CONTROLS
+       ======================================== -->
+  <div id="camera-video" class="devpanel-group" data-group="camera-video">
+    <div class="group-header">
+      <h2 class="group-title">Camera & Video</h2>
+      <button class="group-collapse-btn" data-group="camera-video" aria-expanded="true" title="Collapse group">−</button>
+    </div>
+
+    <!-- Camera Controls Section -->
+    <div class="devpanel-section camera-controls-section">
+      <h2 class="section-header">
+        <span>Camera Controls</span>
+        <span class="section-header-spacer"></span>
+        <button class="collapse-btn" data-target="camera-controls-content" aria-expanded="true" title="Collapse Camera Controls">-</button>
+      </h2>
+      <div id="camera-controls-content" class="section-content">
+        
+        <!-- Camera Status Card -->
+        <div class="camera-status-card">
+          <div class="status-header">
+            <span class="status-indicator ready" id="camera-status-indicator">●</span>
+            <span class="status-text" id="camera-status-text">Ready</span>
+          </div>
+
+          <!-- Source Selector -->
+          <div class="controls-row">
+            <div class="control-group">
+              <label for="source-selector">Source:</label>
+              <select id="source-selector" class="camera-select">
+                <option value="gpu">GPU (Fast)</option>
+                <option value="cpu">CPU Fallback</option>
+              </select>
+              <span class="timing-badge" id="timing-badge">—</span>
+            </div>
+          </div>
+
+          <!-- Control Buttons -->
+          <div class="button-row camera-button-row">
+            <button id="start-camera-btn" class="btn btn-primary">START</button>
+            <button id="stop-camera-btn" class="btn btn-secondary" disabled>STOP</button>
+            <button id="test-fallback-btn" class="btn btn-tertiary">TEST FALLBACK</button>
+          </div>
+
+          <!-- Stream Info -->
+          <div class="stream-info" id="stream-info">
+            <span id="stream-resolution">Resolution: —</span>
+            <span id="stream-fps">@ —fps</span>
+          </div>
+
+          <!-- Error Messages Container -->
+          <div id="error-messages" class="error-container"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
        GROUP 1: UI SETTINGS
        ======================================== -->
   <div id="ui-settings" class="devpanel-group" data-group="ui-settings">
