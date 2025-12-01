@@ -2,7 +2,144 @@
 
 This document tracks active and future development tasks to provide a clear project roadmap. Each task has a unique ID for easy reference in commits, pull requests, and code comments.
 
-## Current Focus: v0.9.7.3 (Signal Processing Capabilities - Nov 30, 2025)
+## Current Focus: DEV_PANEL_OVERHAUL (Planning & Architecture Alignment - Jan 12, 2025)
+
+### Planning: DEV_PANEL_ARCHITECTURE_ALIGNMENT (R011225 Revision)
+
+**Status:** 100% Complete ✅ (Planning Phase)  
+**Type:** Planning & Documentation  
+**Documents:** 
+- `docs/design/DEV_PANEL_FLOWS.md` (3 workflows revised)
+- `docs/design/R011225-REVISION-SUMMARY.md` (comprehensive revision guide)
+- `docs/design/R011225-ARCHITECTURE-ALIGNMENT.md` (architectural analysis)
+
+#### Problem Analysis
+Initial dev panel planning (9 documents, ~150KB) was GUI-hierarchy-based but lacked:
+1. Alignment with actual AcoustSee hexagonal architecture
+2. Mapping to real video→audio pipeline (not abstract synth sandbox)
+3. Integration of telemetry research (`dev-panel-telemetry.txt`)
+4. Worker manifest architecture understanding
+5. ADR-0006 audio-router decoupling awareness
+
+#### Revision Summary (R011225)
+
+- **[REVISION-1] Workflow 1: Start/Stop Camera**
+  - ✅ Replaced "Test Signal Generation" synth sandbox
+  - ✅ Aligned with video→audio synesthesia pipeline
+  - ✅ Added GPU/CPU source fallback strategy
+  - ✅ Added audio-router verification
+  - ✅ 4 comprehensive error paths
+
+- **[REVISION-2] Workflow 2: Test Pipeline Workers**
+  - ✅ Replaced "Debug Worker Chain" generic toggles
+  - ✅ Aligned with manifest-driven worker architecture (frame-conductor.js)
+  - ✅ Added worker parameter adjustment (motion threshold, grid resolution)
+  - ✅ Added per-worker latency breakdown
+  - ✅ Added worker dependency tracking
+  - ✅ 4 comprehensive error paths
+
+- **[REVISION-3] Workflow 3: Monitor Real-Time Telemetry**
+  - ✅ Replaced "Monitor Performance & Detect Stalls" basic latency
+  - ✅ Integrated dev-panel-telemetry.txt completely
+  - ✅ Designed 5 comprehensive dashboards (Video, Audio, Sync, Resources, Features)
+  - ✅ 15+ metrics with specific targets (latency, jitter, clipping, drift, CPU, memory)
+  - ✅ Automated baseline establishment
+  - ✅ Session export for post-analysis
+  - ✅ 3 comprehensive error paths
+
+#### Architectural Integration
+
+- ✅ Hexagonal architecture (engine.dispatch, engine.on, state selectors per ADR-0011)
+- ✅ Video→Audio pipeline (camera → workers → audio-router → synthesis)
+- ✅ ADR-0006 audio-router decoupling (video produces generic cues, audio consumes independently)
+- ✅ Worker manifest architecture (manifest-driven orchestration, not hardcoded)
+- ✅ Headless core principle (no DOM access from video/audio subsystems)
+
+#### Telemetry Integration
+
+- ✅ End-to-end latency monitoring (< 45ms ideal, < 100ms acceptable)
+- ✅ Jitter tracking (< 5ms σ target)
+- ✅ Dropped frames detection (0 target)
+- ✅ Audio signal quality (clipping %, buffer underruns/overruns)
+- ✅ Audio-video synchronization (±2ms target for consistent offset)
+- ✅ CPU/GPU/Memory resource monitoring (< 50% headroom target)
+- ✅ Feature extraction stability (variance under static input)
+- ✅ Mapping determinism (Input→Output consistency)
+- ✅ Frequency spectrum analysis (FFT visualization)
+
+#### Event Types Identified
+
+- **Video:** video_capture_started, _stopped, _frame_processed, _frame_dropped, _source_negotiated, _source_fallback
+- **Audio:** audio_cues_received, _cue_processed, _signal_clipping, _buffer_underrun, _buffer_overrun
+- **Workers:** worker_isolation_enabled, _disabled, _parameter_updated, _unresponsive, _reloaded
+- **Sync:** sync_drift_detected, _calibrated, audio_video_latency_delta
+- **Telemetry:** telemetry_baseline_established, _anomaly_detected, _export_started, _export_complete
+
+#### Files Created/Updated
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `docs/design/DEV_PANEL_FLOWS.md` | 3 revised workflows with telemetry | ✅ Updated (~500 lines added) |
+| `docs/design/R011225-REVISION-SUMMARY.md` | Comprehensive revision guide | ✅ Created (~350 lines) |
+| `docs/design/R011225-ARCHITECTURE-ALIGNMENT.md` | Architectural alignment analysis | ✅ Created (~200 lines) |
+
+#### Success Criteria Met
+
+- ✅ All workflows align with hexagonal architecture
+- ✅ All workflows reference actual video→audio pipeline
+- ✅ All workflows integrate ADR-0006 audio-router decoupling
+- ✅ All workflows use manifest-driven worker architecture
+- ✅ All telemetry metrics match dev-panel-telemetry.txt research
+- ✅ All error paths have recovery steps
+- ✅ All triggers have feedback contracts (timing expectations)
+- ✅ All dashboards have specific thresholds (green/yellow/red zones)
+- ✅ All performance targets are realistic and measurable
+- ✅ Planning linked to architecture docs (ARCHITECTURE.md, README files)
+
+#### Next Steps (For Implementation Team)
+
+1. ✅ **Update DEV_PANEL_FEATURE_GROUP_MAP.md** — COMPLETED (camera focus in Group 1)
+2. ✅ **Update DEV_PANEL_RESTRUCTURE_PHASES.md** — COMPLETED (Phase 3+ telemetry details)
+3. ✅ **Update DEV_PANEL_ANALYTICS.md** with 30+ new event types — COMPLETED (39 events, 6 categories)
+4. ✅ **Create telemetry instrumentation specification** — COMPLETED (architecture-aligned, 8 sections)
+5. **Implementation Phase 1:** Workflow 1 (camera start/stop + source fallback)
+6. **Implementation Phase 2:** Basic telemetry (latency, jitter, dropped frames)
+7. **Implementation Phase 3:** Workflow 2 (worker isolation + parameter tuning)
+8. **Implementation Phase 4:** Advanced telemetry (audio synthesis, sync, resources)
+9. **Implementation Phase 5+:** Complete Workflow 3 (full telemetry dashboard)
+
+#### Planning Phase Completion Summary (R011225)
+
+**All Planning Steps Complete:**
+- ✅ Step 1: DEV_PANEL_FEATURE_GROUP_MAP.md updated (Group 1 camera-centric)
+- ✅ Step 2: DEV_PANEL_RESTRUCTURE_PHASES.md updated (Phase 3–5 telemetry details)
+- ✅ Step 3: DEV_PANEL_FLOWS.md revised (3 workflows architecture-aligned)
+- ✅ Step 4: DEV_PANEL_ANALYTICS.md expanded (39 events across 6 categories)
+- ✅ Step 5: DEV_PANEL_TELEMETRY-INSTRUMENTATION-SPEC.md created (concrete measurement points)
+
+**New Documents Created:**
+- `docs/design/DEV_PANEL_TELEMETRY-INSTRUMENTATION-SPEC.md` (~1200 lines, 8 sections)
+  - Section 1: Video Pipeline Instrumentation (6 events, 3 measurement points)
+  - Section 2: Audio Pipeline Instrumentation (8 events, 5 measurement points)
+  - Section 3: Synchronization Instrumentation (5 events, 2 measurement points)
+  - Section 4: Worker Lifecycle Instrumentation (8 events, 5 measurement points)
+  - Section 5: System Resource Instrumentation (6 events, 3 measurement points)
+  - Section 6: Telemetry Collection Architecture (batching, transmission, fallback)
+  - Section 7: Acceptance Criteria (8 measurable criteria)
+  - Section 8: Implementation Roadmap (Phase 3–5 timeline)
+
+**Key Features:**
+- All measurement points have concrete file/function references
+- Aligned to ARCHITECTURE.md and pipeline READMEs (video/audio/core)
+- Timestamp strategy documented (performance.now() vs audioContext.currentTime)
+- Collection overhead <2% CPU (non-blocking, batched)
+- Privacy considerations (no audio/video data, session ID only)
+
+**Status:** 🎉 Planning Phase COMPLETE — Ready for Implementation Phase 1
+
+---
+
+## Previous Focus: v0.9.7.3 (Signal Processing Capabilities - Nov 30, 2025)
 
 ### Feature: SIGNAL-1 Noise Reduction & SNR Improvement in Grid Aggregator
 
