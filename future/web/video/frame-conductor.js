@@ -592,6 +592,28 @@ export class FrameConductor {
       } catch (error) {
         this.#timingMetrics.totalErrorsEncountered += 1;
         
+        // Detect if this is a timeout error (extract timeout duration from error message)
+        const isTimeout = error.message && error.message.includes('timed out');
+        const timeoutMatch = error.message?.match(/timed out after (\d+)ms/);
+        const timeoutMs = timeoutMatch ? parseInt(timeoutMatch[1], 10) : null;
+        
+        // Emit telemetry event for dropped frame (on timeout)
+        if (isTimeout && this.#engine?.emit) {
+          const frameIndex = this.#timingMetrics.totalFramesProcessed;
+          
+          this.#engine.emit('video_frame_dropped', {
+            frameIndex,
+            reason: 'worker_timeout',
+            workerName: workerConfig.name,
+            timeoutMs,
+            currentProcessingTimeMs: performance.now() - frameStartTime,
+            timestamp: performance.now(),
+            session_id: this.#engine.getState?.()?.session?.id || 'unknown',
+            mode_param: this.#engine.getState?.()?.session?.mode || 'unknown',
+            preset: this.#engine.getState?.()?.session?.preset || 'default'
+          });
+        }
+        
         // Throttle worker errors to prevent log spam (first occurrence + every 10th)
         const throttle = throttleError(error, { 
           key: `worker:${workerConfig.name}:${error.message}`,
@@ -618,6 +640,31 @@ export class FrameConductor {
     this.#timingMetrics.lastFrameTimeMs = totalFrameTimeMs;
     this.#timingMetrics.totalFramesProcessed += 1;
     this.#timingMetrics.frameCount += 1; // Track for initialization phase
+
+    // Emit telemetry event for frame processing (includes per-worker breakdown)
+    if (this.#engine?.emit) {
+      const frameIndex = this.#timingMetrics.totalFramesProcessed - 1; // 0-indexed
+      const workersUsed = this.#currentChain?.map(w => w.name) || [];
+      
+      // Per-worker breakdown: { workerName: durationMs }
+      const workerBreakdown = timings;
+      
+      this.#engine.emit('video_frame_processed', {
+        frameIndex,
+        latencyMs: totalFrameTimeMs,
+        width,
+        height,
+        workersUsed,
+        workerBreakdown,
+        capabilitiesCount: aggregatedCapabilities.length,
+        mode: this.#currentMode,
+        timestamp: performance.now(),
+        // Session metadata (should be populated by TelemetryCollector)
+        session_id: this.#engine.getState?.()?.session?.id || 'unknown',
+        mode_param: this.#engine.getState?.()?.session?.mode || 'unknown',
+        preset: this.#engine.getState?.()?.session?.preset || 'default'
+      });
+    }
 
     // Log metrics (sampled to avoid overhead)
     if (this.config.logMetrics && Math.random() < 0.05) {

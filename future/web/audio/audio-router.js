@@ -8,11 +8,23 @@ import { EVENTS } from '../core/events.js';
  * 1. Receive raw analysis data from FrameConductor
  * 2. Apply sonification mapping (Data -> Cues)
  * 3. Dispatch standardized events to the Engine
+ * 
+ * Telemetry:
+ * - Measures cue reception timing (video->audio latency)
+ * - Calculates audio/video latency delta for sync monitoring
+ * - Emits audio_cues_received and audio_video_latency_delta_measured events
  */
 export class AudioRouter {
+  // Private fields for telemetry tracking
+  #lastFrameVideoTimestamp = null;
+  #lastFrameAudioTimestamp = null;
+
   constructor(engine) {
     this.engine = engine;
     this.payloadLimits = this._getPayloadLimits();
+    // Store previous frame timing for latency delta calculation
+    this.#lastFrameVideoTimestamp = null;
+    this.#lastFrameAudioTimestamp = null;
   }
 
   /**
@@ -23,6 +35,12 @@ export class AudioRouter {
    */
   route(result, state) {
     if (!this.engine) return { cueCount: 0 };
+
+    // TELEMETRY: Measure cue reception timing
+    const routeStartTime = performance.now();
+    const videoFrameTimestamp = result.videoFrameTimestamp || performance.now();
+    const audioContext = this.engine.audioApi?.context || this.engine.audioApi?.audioManager?.context;
+    const currentAudioTimestamp = audioContext?.currentTime || 0;
 
     let cues = [];
     let dispatchPayload = null;
@@ -57,6 +75,45 @@ export class AudioRouter {
     // 2. Dispatch to Engine
     if (dispatchPayload) {
         this._dispatch(dispatchPayload, result.frameId, result.startTime, state);
+    }
+
+    // TELEMETRY: Emit audio_cues_received event
+    if (this.engine?.emit) {
+      const routeDurationMs = performance.now() - routeStartTime;
+      
+      this.engine.emit('audio_cues_received', {
+        cueCount: cues.length,
+        routingDurationMs: routeDurationMs,
+        mode: state.currentMode,
+        frameId: result.frameId || 'unknown',
+        timestamp: performance.now(),
+        session_id: this.engine.getState?.()?.session?.id || 'unknown',
+        mode_param: this.engine.getState?.()?.session?.mode || 'unknown',
+        preset: this.engine.getState?.()?.session?.preset || 'default'
+      });
+      
+      // TELEMETRY: Calculate and emit audio/video latency delta
+      // This measures the sync offset between video frame reception and audio time
+      if (this.#lastFrameVideoTimestamp !== null && this.#lastFrameAudioTimestamp !== null) {
+        const videoToAudioLatencyDeltaMs = (currentAudioTimestamp - this.#lastFrameAudioTimestamp) * 1000;
+        const timeBetweenFramesMs = routeStartTime - this.#lastFrameVideoTimestamp;
+        
+        this.engine.emit('audio_video_latency_delta_measured', {
+          audioVideoLatencyDeltaMs: videoToAudioLatencyDeltaMs,
+          timeSinceLastFrameMs: timeBetweenFramesMs,
+          audioContextTime: currentAudioTimestamp,
+          videoProcessTime: videoFrameTimestamp,
+          frameId: result.frameId || 'unknown',
+          timestamp: performance.now(),
+          session_id: this.engine.getState?.()?.session?.id || 'unknown',
+          mode_param: this.engine.getState?.()?.session?.mode || 'unknown',
+          preset: this.engine.getState?.()?.session?.preset || 'default'
+        });
+      }
+      
+      // Store current timing for next frame
+      this.#lastFrameVideoTimestamp = routeStartTime;
+      this.#lastFrameAudioTimestamp = currentAudioTimestamp;
     }
 
     return { cueCount: cues.length };
