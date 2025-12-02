@@ -158,8 +158,38 @@ export function initializeDevPanelV2(arg1, arg2) {
       });
     }
 
-    // Initialize Phase 1 components
+    // Initialize Phase 1 components with proper container elements
     try {
+      // Camera controls expects #camera-controls-content to exist in its container
+      const cameraContainer = panel.querySelector('.devpanel-v2-controls');
+      if (cameraContainer) {
+        // Create the expected internal structure that CameraControls looks for
+        cameraContainer.innerHTML = `
+          <div id="camera-controls-content">
+            <div class="control-group">
+              <h3>Camera Controls</h3>
+              <div class="control-status">
+                <div id="camera-status-indicator" class="status-light"></div>
+                <span id="camera-status-text">Idle</span>
+              </div>
+              <div id="source-selector" class="source-selector">
+                <label>Source: <span id="source-label">GPU</span></label>
+              </div>
+              <div class="control-buttons">
+                <button id="start-camera-btn" class="btn-primary">Start Camera</button>
+                <button id="stop-camera-btn" class="btn-secondary">Stop Camera</button>
+                <button id="test-fallback-btn" class="btn-tertiary">Test Fallback</button>
+              </div>
+              <div id="timing-badge" class="timing">Timing: --ms</div>
+              <div class="stream-info">
+                <span>Resolution: <span id="stream-resolution">--</span></span>
+                <span>FPS: <span id="stream-fps">--</span></span>
+              </div>
+              <div id="error-messages" class="error-container"></div>
+            </div>
+          </div>
+        `;
+      }
       moduleRefs.cameraControls = initializeCameraControls(engine);
       structuredLog('INFO', 'Camera controls initialized');
     } catch (e) {
@@ -167,6 +197,17 @@ export function initializeDevPanelV2(arg1, arg2) {
     }
 
     try {
+      // Telemetry dashboard expects #telemetry-dashboard-container to exist
+      const telemetryContainer = panel.querySelector('.devpanel-v2-charts');
+      if (telemetryContainer) {
+        telemetryContainer.innerHTML = `
+          <div id="telemetry-dashboard-container" class="telemetry-container">
+            <div class="dashboard-placeholder">
+              <p>Telemetry data will appear here...</p>
+            </div>
+          </div>
+        `;
+      }
       moduleRefs.telemetryDashboard = initializeTelemetryDashboard(engine);
       structuredLog('INFO', 'Telemetry dashboard initialized');
     } catch (e) {
@@ -174,7 +215,8 @@ export function initializeDevPanelV2(arg1, arg2) {
     }
 
     try {
-      moduleRefs.chartController = initializeChartController(engine);
+      const chartContainer = panel.querySelector('.devpanel-v2-charts');
+      moduleRefs.chartController = initializeChartController(chartContainer, engine);
       structuredLog('INFO', 'Chart controller initialized');
     } catch (e) {
       console.error('Failed to initialize chart controller:', e);

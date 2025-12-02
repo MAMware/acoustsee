@@ -1,0 +1,65 @@
+boot.js?v=__CACHE_BUSTER__:185 AcoustSee COMMIT: (35308e3)
+/favicon.ico:1  Failed to load resource: the server responded with a status of 404 ()
+main.js?v=35308e3:93 Application base path established: https://mamware.github.io/acoustsee/future/web/
+main.js?v=35308e3:737 Ingest ping function is available. Type `pingIngest()` in the console to test.
+core-logger.js:204 [2025-12-02T15:08:28.448Z] INFO: ENGINE: Attempting to register Sonification commands...
+core-logger.js:204 [2025-12-02T15:08:28.449Z] INFO: SONIFICATION-COMMANDS: registerSonificationCommands function has been entered.
+core-logger.js:204 [2025-12-02T15:08:28.449Z] INFO: ENGINE: Sonification commands registration call completed.
+core-logger.js:204 [2025-12-02T15:08:28.451Z] INFO: MEDIA-COMMANDS: Registering command handlers...
+core-logger.js:204 [2025-12-02T15:08:28.451Z] INFO: MEDIA-COMMANDS: All command handlers registered successfully.
+core-logger.js:196 [2025-12-02T15:08:28.453Z] DEBUG: Mode commands registered { commands=["SWITCH_TO_FLOW_MODE","SWITCH_TO_GRID_MODE","SWITCH_TO_REALTIME_MODE"] }
+core-logger.js:200 [2025-12-02T15:08:28.454Z] INFO: Ingest preferences auto-adjusted based on device capabilities Object
+core-logger.js:200 [2025-12-02T15:08:28.455Z] INFO: buildInfo Object
+core-logger.js:204 [2025-12-02T15:08:28.455Z] DEBUG: Engine: unified EventBus injected
+core-logger.js:204 [2025-12-02T15:08:28.646Z] INFO: Media adapter initializing
+core-logger.js:204 [2025-12-02T15:08:28.647Z] DEBUG: Resource handler registered: VIDEO_ELEMENT
+core-logger.js:204 [2025-12-02T15:08:28.648Z] DEBUG: Resource handler registered: AUDIO_ELEMENT
+core-logger.js:196 [2025-12-02T15:08:28.648Z] INFO: Media adapter initialized { videoHandler=true, audioHandler=true }
+core-logger.js:204 [2025-12-02T15:08:28.648Z] INFO: Media adapter initialized
+core-logger.js:196 [2025-12-02T15:08:28.840Z] INFO: init: Video grids loaded successfully { count=4, default="linear-pitch" }
+core-logger.js:196 [2025-12-02T15:08:28.877Z] DEBUG: updateOrchestration: State updated { hasCapabilities=true, timestamp=3653.5 }
+core-logger.js:200 [2025-12-02T15:08:28.877Z] INFO: init: Browser capabilities detected Object
+core-logger.js:196 [2025-12-02T15:08:28.877Z] INFO: init: Configurations loaded { gridType="linear-pitch", synthesisEngine=null, language=null }
+core-logger.js:196 [2025-12-02T15:08:28.880Z] INFO: Using persisted language from localStorage { language="en-US", source="localStorage" }
+core-logger.js:196 [2025-12-02T15:08:28.881Z] DEBUG: initializeLanguage: using bundled en-US { language="en-US" }
+core-logger.js:196 [2025-12-02T15:08:29.059Z] DEBUG: i18n initialization sync { copyReady=true, engineReady=true, engineLanguage="en-US" }
+core-logger.js:196 [2025-12-02T15:08:29.062Z] WARN: I18N_KEY_MISSING (utils.js:258) { key="initMissingConfigs", languageId="en-US", context="Translation key not found in bundle" }
+output @ core-logger.js:196
+core-logger.js:196 [2025-12-02T15:08:29.064Z] WARN: Partial configs; proceeding with limitations (main.js?v=35308e3:312) { missing=["engines"] }
+output @ core-logger.js:196
+core-logger.js:196 [2025-12-02T15:08:29.067Z] INFO: init: Log level set to default { logLevel="INFO" }
+core-logger.js:196 [2025-12-02T15:08:29.215Z] DEBUG: announceMessage: delivered { message="[missing:initMissingConfigs]", queueRemaining=0 }
+core-logger.js:196 [2025-12-02T15:08:29.416Z] INFO: AudioManager: AudioContext created { state="suspended", sampleRate=48000 }
+core-logger.js:196 [2025-12-02T15:08:29.418Z] INFO: AudioManager stored on engine; audioApi deferred until initialization { audioContextState="suspended" }
+core-logger.js:204 [2025-12-02T15:08:29.418Z] INFO: Audio processor bound to manager
+core-logger.js:196 [2025-12-02T15:08:29.794Z] DEBUG: Floating export button created { id="floating-export-container", zIndex=999999, position="bottom-right" }
+core-logger.js:196 [2025-12-02T15:08:29.795Z] INFO: Floating export button initialized { type="persistent-overlay", always_on_top=true, works_offline=true }
+core-logger.js:196 [2025-12-02T15:08:29.795Z] DEBUG: init { message="Floating export button initialized", type="persistent-overlay", always_on_top=true }
+core-logger.js:204 [2025-12-02T15:08:29.795Z] INFO: init: UI setup complete
+core-logger.js:196 [2025-12-02T15:08:34.587Z] INFO: Power-on button clicked { traceId="1764688114587-9c7c-001" }
+core-logger.js:196 [2025-12-02T15:08:34.588Z] INFO: AudioManager: unlockAudio called { hasEvent=true, currentState="suspended" }
+core-logger.js:204 [2025-12-02T15:08:34.652Z] INFO: AudioManager: AudioContext running after unlock
+core-logger.js:196 [2025-12-02T15:08:34.652Z] INFO: handleAudioUnlock: AudioContext resumed successfully { state="running" }
+core-logger.js:196 [2025-12-02T15:08:34.653Z] DEBUG: initializeAudio: starting { state="running" }
+core-logger.js:196 [2025-12-02T15:08:34.658Z] INFO: AudioContext state changed { newState="running", timestamp=1764688114658 }
+core-logger.js:196 [2025-12-02T15:08:34.739Z] DEBUG: announceMessage: delivered { message="Initializing...", queueRemaining=0 }
+core-logger.js:196 [2025-12-02T15:08:34.876Z] DEBUG: initializeAudio: enumerateDevices result { devices=[{"kind":"audioinput","label":"(hidden)","deviceId":""},{"kind":"videoinput","label":"(hidden)","deviceId":""},{"kind":"audiooutput","label":"(hidden)","deviceId":""}] }
+core-logger.js:200 [2025-12-02T15:08:34.877Z] DEBUG: Resizing oscillator pool Object
+core-logger.js:196 [2025-12-02T15:08:34.886Z] DEBUG: Resized oscillator pool { added=36, newFreshCount=36, totalSize=36 }
+core-logger.js:204 [2025-12-02T15:08:34.886Z] INFO: Audio system initialized successfully
+core-logger.js:196 [2025-12-02T15:08:34.886Z] INFO: handleAudioUnlock: Audio synthesis system initialized & audioApi assigned { maxNotes=24, hasPlayCues=true }
+core-logger.js:196 [2025-12-02T15:08:34.887Z] INFO: handleAudioUnlock: COMPLETE - Audio system ready { contextState="running", sampleRate=48000 }
+core-logger.js:204 [2025-12-02T15:08:35.316Z] INFO: Activating Dev Panel v2
+camera-controls.js:22 CameraControls: container element not found
+CameraControls @ camera-controls.js:22
+core-logger.js:204 [2025-12-02T15:08:35.318Z] INFO: Camera controls initialized
+telemetry-dashboard.js:37 TelemetryDashboard: container element not found
+TelemetryDashboard @ telemetry-dashboard.js:37
+core-logger.js:204 [2025-12-02T15:08:35.318Z] INFO: Telemetry dashboard initialized
+core-logger.js:196 [2025-12-02T15:08:35.322Z] ERROR: Chart Controller: Initialization failed (dev-panel-chart-controller.js:187) { error="panel.querySelector is not a function" }
+output @ core-logger.js:196
+core-logger.js:204 [2025-12-02T15:08:35.330Z] INFO: Chart controller initialized
+core-logger.js:196 [2025-12-02T15:08:35.330Z] INFO: UI activated { id="dev-panel-v2" }
+core-logger.js:196 [2025-12-02T15:08:35.331Z] INFO: Transitioned to main UI { traceId="1764688114587-9c7c-001" }
+acoustsee-analytics.mamware.workers.dev/:1  Failed to load resource: the server responded with a status of 400 ()
+acoustsee-analytics.mamware.workers.dev/:1  Failed to load resource: the server responded with a status of 400 ()
