@@ -1,0 +1,122 @@
+AcoustSee COMMIT: (ef6f2f4) boot.js:185:13
+GET
+https://mamware.github.io/favicon.ico
+[HTTP/2 404  0ms]
+
+Application base path established: https://mamware.github.io/acoustsee/future/web/ main.js:93:11
+Ingest ping function is available. Type `pingIngest()` in the console to test. main.js:730:9
+[2025-12-02T10:41:54.834Z] INFO: ENGINE: Attempting to register Sonification commands... core-logger.js:204:11
+[2025-12-02T10:41:54.835Z] INFO: SONIFICATION-COMMANDS: registerSonificationCommands function has been entered. core-logger.js:204:11
+[2025-12-02T10:41:54.835Z] INFO: ENGINE: Sonification commands registration call completed. core-logger.js:204:11
+[2025-12-02T10:41:54.839Z] INFO: MEDIA-COMMANDS: Registering command handlers... core-logger.js:204:11
+[2025-12-02T10:41:54.839Z] INFO: MEDIA-COMMANDS: All command handlers registered successfully. core-logger.js:204:11
+[2025-12-02T10:41:54.839Z] DEBUG: Mode commands registered { commands=["SWITCH_TO_FLOW_MODE","SWITCH_TO_GRID_MODE","SWITCH_TO_REALTIME_MODE"] } core-logger.js:196:13
+[2025-12-02T10:41:54.840Z] INFO: Ingest preferences auto-adjusted based on device capabilities 
+Object { optimization: "device-aware-throttling", cores: 2, memory: 0, isMobile: false, connectionType: "unknown", optimizationReasons: (1) […], oldMaxEvents: 10, newMaxEvents: 5 }
+core-logger.js:200:13
+[2025-12-02T10:41:54.841Z] INFO: buildInfo 
+Object { commit: "ef6f2f4", branch: "v0.9.7.3-noiseReduction-Monitoring", timestamp: "2025-11-30T01:36:20.877Z", version: "0.9.5", audio_version: "0.8.4-improvedUnlock", video_version: "0.8.4-flowOrchestration", ui_version: "0.8.4-missingTranslationsGUI", utils_version: "0.9.8-eventBus" }
+core-logger.js:200:13
+[2025-12-02T10:41:54.842Z] DEBUG: Engine: unified EventBus injected core-logger.js:204:11
+[2025-12-02T10:41:55.275Z] INFO: Media adapter initializing core-logger.js:204:11
+[2025-12-02T10:41:55.276Z] DEBUG: Resource handler registered: VIDEO_ELEMENT core-logger.js:204:11
+[2025-12-02T10:41:55.276Z] DEBUG: Resource handler registered: AUDIO_ELEMENT core-logger.js:204:11
+[2025-12-02T10:41:55.276Z] INFO: Media adapter initialized { videoHandler=true, audioHandler=true } core-logger.js:196:13
+[2025-12-02T10:41:55.277Z] INFO: Media adapter initialized core-logger.js:204:11
+[2025-12-02T10:41:55.277Z] DEBUG: EventBus created and exposed as window.eventBus core-logger.js:204:11
+[2025-12-02T10:41:55.756Z] INFO: init: Video grids loaded successfully { count=4, default="linear-pitch" } core-logger.js:196:13
+[2025-12-02T10:41:55.774Z] DEBUG: updateOrchestration: State updated { hasCapabilities=true, timestamp=3421 } core-logger.js:196:13
+[2025-12-02T10:41:55.776Z] INFO: init: Browser capabilities detected 
+Object { mediaStreamTrackProcessor: false, canvas2D: true, webGL: true, webGPU: false, offscreenCanvas: true, wasm: true }
+core-logger.js:200:13
+[2025-12-02T10:41:55.776Z] DEBUG: Capability Report:
+=== Browser Capability Report ===
+MediaStreamTrackProcessor: ✗
+Canvas 2D:                 ✓
+WebGL:                     ✓
+WebGPU:                    ✗
+OffscreenCanvas:           ✓
+WebAssembly:               ✓ core-logger.js:204:11
+[2025-12-02T10:41:55.777Z] INFO: init: Configurations loaded { gridType="linear-pitch", synthesisEngine=null, language=null } core-logger.js:196:13
+[2025-12-02T10:41:55.784Z] INFO: Using persisted language from localStorage { language="en-US", source="localStorage" } core-logger.js:196:13
+[2025-12-02T10:41:55.785Z] DEBUG: initializeLanguage: using bundled en-US { language="en-US" } core-logger.js:196:13
+[2025-12-02T10:41:55.958Z] DEBUG: i18n initialization sync { copyReady=true, engineReady=true, engineLanguage="en-US" } core-logger.js:196:13
+[2025-12-02T10:41:55.958Z] WARN: I18N_KEY_MISSING { key="initMissingConfigs", languageId="en-US", context="Translation key not found in bundle" } core-logger.js:196:13
+[2025-12-02T10:41:55.959Z] WARN: Partial configs; proceeding with limitations { missing=["engines"] } core-logger.js:196:13
+[2025-12-02T10:41:55.969Z] INFO: init: Log level set to default { logLevel="INFO" } core-logger.js:196:13
+[2025-12-02T10:41:56.033Z] INFO: AudioManager: AudioContext created { state="suspended", sampleRate=48000 } core-logger.js:196:13
+[2025-12-02T10:41:56.033Z] INFO: AudioManager stored on engine; audioApi deferred until initialization { audioContextState="suspended" } core-logger.js:196:13
+[2025-12-02T10:41:56.034Z] INFO: Audio processor bound to manager core-logger.js:204:11
+[2025-12-02T10:41:56.110Z] DEBUG: announceMessage: delivered { message="[missing:initMissingConfigs]", queueRemaining=0 } core-logger.js:196:13
+[2025-12-02T10:41:56.550Z] DEBUG: Floating export button created { id="floating-export-container", zIndex=999999, position="bottom-right" } core-logger.js:196:13
+[2025-12-02T10:41:56.551Z] INFO: Floating export button initialized { type="persistent-overlay", always_on_top=true, works_offline=true } core-logger.js:196:13
+[2025-12-02T10:41:56.551Z] DEBUG: init { message="Floating export button initialized", type="persistent-overlay", always_on_top=true } core-logger.js:196:13
+[2025-12-02T10:41:56.552Z] INFO: init: UI setup complete core-logger.js:204:11
+[2025-12-02T10:42:03.432Z] INFO: Power-on button clicked { traceId="1764672123431-5607-001" } core-logger.js:196:13
+[2025-12-02T10:42:03.439Z] INFO: AudioManager: unlockAudio called { hasEvent=true, currentState="running" } core-logger.js:196:13
+[2025-12-02T10:42:03.439Z] INFO: AudioManager: AudioContext running after unlock core-logger.js:204:11
+[2025-12-02T10:42:03.440Z] INFO: handleAudioUnlock: AudioContext resumed successfully { state="running" } core-logger.js:196:13
+[2025-12-02T10:42:03.440Z] DEBUG: initializeAudio: starting { state="running" } core-logger.js:196:13
+[2025-12-02T10:42:03.444Z] DEBUG: initializeAudio: enumerateDevices result { devices=[{"kind":"audioinput","label":"(hidden)","deviceId":""},{"kind":"videoinput","label":"(hidden)","deviceId":""}] } core-logger.js:196:13
+[2025-12-02T10:42:03.445Z] DEBUG: Resizing oscillator pool 
+Object { requestedSize: 24, bufferedSize: 36, beforeGC: 0, afterGC: 0, freshCount: 0, activeCount: 0 }
+core-logger.js:200:13
+[2025-12-02T10:42:03.455Z] DEBUG: Resized oscillator pool { added=36, newFreshCount=36, totalSize=36 } core-logger.js:196:13
+[2025-12-02T10:42:03.455Z] INFO: Audio system initialized successfully core-logger.js:204:11
+[2025-12-02T10:42:03.455Z] INFO: handleAudioUnlock: Audio synthesis system initialized & audioApi assigned { maxNotes=24, hasPlayCues=true } core-logger.js:196:13
+[2025-12-02T10:42:03.455Z] INFO: handleAudioUnlock: COMPLETE - Audio system ready { contextState="running", sampleRate=48000 } core-logger.js:196:13
+[2025-12-02T10:42:03.589Z] DEBUG: announceMessage: delivered { message="Initializing...", queueRemaining=0 } core-logger.js:196:13
+dev-panel module loaded. Version info will be read from engine state at runtime. dev-panel.js:46:9
+initializeDevPanel called (visible) dev-panel.js:131:11
+Dev Panel: EventBus available, can add unified event viewer dev-panel.js:135:13
+[2025-12-02T10:42:03.843Z] INFO: UI activated { id="dev-panel" } core-logger.js:196:13
+Activating Dev Panel in response to app:poweredOn event. dev-panel.js:154:13
+[2025-12-02T10:42:03.844Z] INFO: Dev Panel: Log level set to DEBUG core-logger.js:204:11
+[2025-12-02T10:42:03.846Z] INFO: Transitioned to main UI { traceId="1764672123431-5607-001" } core-logger.js:196:13
+Dev Panel: attempting to load CSS from https://mamware.github.io/acoustsee/future/web/ui/dev-panel/dev-panel.css dev-panel.js:342:40
+Dev Panel CSS loaded or fallback: https://mamware.github.io/acoustsee/future/web/ui/dev-panel/dev-panel.css dev-panel.js:349:42
+[2025-12-02T10:42:03.916Z] INFO: Touch Pad UI wired successfully. core-logger.js:204:11
+[2025-12-02T10:42:03.920Z] INFO: dev-panel-customization { message="Customization system initialized" } core-logger.js:196:13
+TelemetryDashboard: container element not found telemetry-dashboard.js:37:15
+[2025-12-02T10:42:03.926Z] DEBUG: dev-panel { message="Log viewer initialized from ring buffer", count=51 } core-logger.js:196:13
+[2025-12-02T10:42:03.926Z] DEBUG: early-logs { message="Dev panel init marker set", timestamp=1764672123926 } core-logger.js:196:13
+[2025-12-02T10:42:03.930Z] DEBUG: early-logs { message="Early logs captured", earlyCount=51, totalCount=53 } core-logger.js:196:13
+[2025-12-02T10:42:03.934Z] INFO: early-logs { message="Early logs injected into dev panel", count=51 } core-logger.js:196:13
+[2025-12-02T10:42:03.935Z] INFO: dev-panel { message="Early logs injected to dev panel", count=51 } core-logger.js:196:13
+[2025-12-02T10:42:03.935Z] INFO: Dev Panel: Loaded density preference { density="0.8" } core-logger.js:196:13
+[2025-12-02T10:42:03.935Z] INFO: Dev Panel: Density controls initialized core-logger.js:204:11
+[2025-12-02T10:42:03.944Z] INFO: dev-panel { message="Visual state inspector initialized" } core-logger.js:196:13
+[2025-12-02T10:42:03.948Z] DEBUG: orchestration-inspector { message="Container attached to DOM", rootId="orchestration-content", containerHasContent=true } core-logger.js:196:13
+[2025-12-02T10:42:03.948Z] INFO: orchestration-inspector { message="Initialized successfully" } core-logger.js:196:13
+[2025-12-02T10:42:03.948Z] INFO: dev-panel { message="OrchestrationInspector initialized" } core-logger.js:196:13
+[2025-12-02T10:42:03.949Z] DEBUG: EventBusViewer: Subscribed to state changes for FPS adaptation core-logger.js:204:11
+[2025-12-02T10:42:03.949Z] DEBUG: EventBusViewer: Subscribed to EventBus events core-logger.js:204:11
+[2025-12-02T10:42:03.953Z] INFO: EventBusViewer initialized core-logger.js:204:11
+[2025-12-02T10:42:03.954Z] INFO: dev-panel { message="EventBus Viewer initialized" } core-logger.js:196:13
+[2025-12-02T10:42:03.955Z] WARN: subscribe: selector and callback must be functions { selectorType="function", callbackType="undefined" } core-logger.js:196:13
+[2025-12-02T10:42:04.054Z] DEBUG: orchestration-inspector { message="CSS loaded" } core-logger.js:196:13
+[2025-12-02T10:43:37.819Z] DEBUG: playCues entered 
+Object { contextState: "running", receivedType: "array", receivedLength: 1, cueSample: {…} }
+core-logger.js:200:13
+[2025-12-02T10:43:37.830Z] INFO: playCues: Processing cues { count=1 } core-logger.js:196:13
+[2025-12-02T10:43:37.832Z] INFO: playCues: detected test-note cue { pitch=440, intensity=1 } core-logger.js:196:13
+[2025-12-02T10:43:37.832Z] DEBUG: playCues: Profile resolution complete { profileResolutionCount=1, noteAddedCount=1, synthFunctionsCount=1 } core-logger.js:196:13
+[2025-12-02T10:43:37.833Z] DEBUG: playCues: Calling synth function { notesCount=1, synthName="playSineWave" } core-logger.js:196:13
+[2025-12-02T10:43:37.833Z] DEBUG: OSC_LIFECYCLE: GET { id="osc_ilyw57d", state="fresh", synth="unknown" } core-logger.js:196:13
+[2025-12-02T10:43:37.833Z] DEBUG: playCues: Synth execution complete { synthsExecuted=1, totalSynthFunctions=1 } core-logger.js:196:13
+[2025-12-02T10:43:37.835Z] INFO: playTestNote: dispatched audioPlayCues { cueIds=["test-note"] } core-logger.js:196:13
+[2025-12-02T10:43:41.229Z] DEBUG: Synth dropdown changed 
+Object { selectedValue: "sine-wave", selectedIndex: 2, optionsCount: 4, optionValue: "sine-wave", optionText: "Sine Wave", traceId: "1764672221229-cfa9-005" }
+core-logger.js:200:13
+[2025-12-02T10:43:41.233Z] DEBUG: About to dispatch setSynthEngine { payload={"synthesisEngine":"sine-wave"}, traceId="1764672221229-cfa9-005" } core-logger.js:196:13
+[2025-12-02T10:43:41.233Z] DEBUG: setSynthEngine handler ENTRY { payloadType="object", payloadKeys=["synthesisEngine"], payloadRaw={"synthesisEngine":"sine-wave"} } core-logger.js:196:13
+[2025-12-02T10:43:41.233Z] DEBUG: setSynthEngine command received { synthesisEngine="sine-wave" } core-logger.js:196:13
+[2025-12-02T10:43:41.236Z] INFO: audio: selected synth engine { engineId="sine-wave", hasPlayFn=true } core-logger.js:196:13
+[2025-12-02T10:43:41.237Z] INFO: DebugUI: Synth engine set { synthesisEngine="sine-wave" } core-logger.js:196:13
+   const devPanelV2 = getComponent('dev-panel-v2');
+   const ui = devPanelV2(engine, DOM);
+   ui.activate();
+   ui.show();
+Uncaught ReferenceError: getComponent is not defined
+    <anonymous> debugger eval code:1
+debugger eval code:1:23

@@ -11,6 +11,12 @@ export const AVAILABLE_UIS = [
     description: 'Advanced diagnostics and development tooling'
   },
   {
+    id: 'dev-panel-v2',
+    label: 'Developer Panel v2',
+    module: './dev-panel-v2/dev-panel-v2.js',
+    description: 'Phase 1 Telemetry Dashboard (modular UI architecture)'
+  },
+  {
     id: 'touch-gestures',
     label: 'Touch / Gestures UI',
     module: './touch-gestures/touch-gestures-ui.js', // corrected path (was ./ui/touch-gestures/...)

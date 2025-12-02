@@ -353,8 +353,15 @@ export async function init() {
         opt.textContent = u.label;
         selector.appendChild(opt);
       });
-      // Default selection
-      selector.value = 'touch-gestures';
+      // Default selection, or override by URL parameter
+      let defaultUI = 'touch-gestures';
+      const devpanelParam = urlParams.get('devpanel');
+      if (devpanelParam === 'v2') {
+        defaultUI = 'dev-panel-v2';
+      } else if (devpanelParam === 'v1' || urlParams.has('debug')) {
+        defaultUI = 'dev-panel';
+      }
+      selector.value = defaultUI;
     }
     
     // ⚠️ ANTI-PATTERN REMOVED: Console Hijack
