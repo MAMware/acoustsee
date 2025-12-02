@@ -114,156 +114,129 @@ export function initializeDevPanelV2(arg1, arg2) {
     chartController: null,
   };
 
-  return {
-    /**
-     * Show the dev panel
-     */
-    show() {
-      panel.style.display = 'block';
-      if (panel.classList) panel.classList.remove('hidden');
-    },
+  /**
+   * Activate the dev panel (build HTML, load CSS, initialize components)
+   */
+  function activate() {
+    structuredLog('INFO', 'Activating Dev Panel v2');
 
-    /**
-     * Hide the dev panel
-     */
-    hide() {
-      panel.style.display = 'none';
-      if (panel.classList) panel.classList.add('hidden');
-    },
+    // Load CSS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = new URL('./dev-panel-v2.css', import.meta.url).href;
+    document.head.appendChild(link);
 
-    /**
-     * Toggle visibility
-     */
-    toggle() {
-      if (panel.style.display === 'none') {
-        this.show();
-      } else {
-        this.hide();
-      }
-    },
-
-    /**
-     * Clean up all resources
-     * MANDATORY: Called when dev panel is being disposed or app is shutting down
-     */
-    dispose() {
-      structuredLog('INFO', 'Disposing Dev Panel v2');
-
-      // Remove all tracked listeners
-      try {
-        if (panel.__listenerRegistry && typeof panel.__listenerRegistry.removeAll === 'function') {
-          panel.__listenerRegistry.removeAll();
-        }
-      } catch {
-        // Silently ignore cleanup errors
-      }
-
-      // Dispose camera controls
-      try {
-        if (moduleRefs.cameraControls && typeof moduleRefs.cameraControls.dispose === 'function') {
-          moduleRefs.cameraControls.dispose();
-        }
-      } catch (e) {
-        console.error('Failed to dispose camera controls:', e);
-      }
-
-      // Dispose telemetry dashboard
-      try {
-        if (moduleRefs.telemetryDashboard && typeof moduleRefs.telemetryDashboard.dispose === 'function') {
-          moduleRefs.telemetryDashboard.dispose();
-        }
-      } catch (e) {
-        console.error('Failed to dispose telemetry dashboard:', e);
-      }
-
-      // Dispose chart controller
-      try {
-        if (moduleRefs.chartController && typeof moduleRefs.chartController.dispose === 'function') {
-          moduleRefs.chartController.dispose();
-        }
-      } catch (e) {
-        console.error('Failed to dispose chart controller:', e);
-      }
-
-      // Remove panel from DOM
-      try {
-        if (panel && panel.parentNode) {
-          panel.parentNode.removeChild(panel);
-        }
-      } catch {
-        // Silently ignore cleanup errors
-      }
-
-      structuredLog('INFO', 'Dev Panel v2 disposed');
-    },
-
-    /**
-     * Initialize all Phase 1 components
-     * Called automatically during activation
-     */
-    activate() {
-      structuredLog('INFO', 'Activating Dev Panel v2');
-
-      // Load CSS
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = new URL('./dev-panel-v2.css', import.meta.url).href;
-      document.head.appendChild(link);
-
-      // Build HTML structure
-      panel.innerHTML = `
-        <div class="devpanel-v2-container">
-          <div class="devpanel-v2-header">
-            <h1>Dev Panel v2 - Phase 1 Telemetry</h1>
-            <button class="devpanel-v2-close" data-action="close">×</button>
+    // Build HTML structure
+    panel.innerHTML = `
+      <div class="devpanel-v2-container">
+        <div class="devpanel-v2-header">
+          <h1>Dev Panel v2 - Phase 1 Telemetry</h1>
+          <button class="devpanel-v2-close" data-action="close">×</button>
+        </div>
+        <div class="devpanel-v2-content">
+          <div id="devpanel-v2-camera-section" class="devpanel-v2-section">
+            <h2>Camera Controls (Workflow 1)</h2>
+            <div class="devpanel-v2-controls"></div>
           </div>
-          <div class="devpanel-v2-content">
-            <div id="devpanel-v2-camera-section" class="devpanel-v2-section">
-              <h2>Camera Controls (Workflow 1)</h2>
-              <div class="devpanel-v2-controls"></div>
-            </div>
-            <div id="devpanel-v2-telemetry-section" class="devpanel-v2-section">
-              <h2>Telemetry Dashboard (Workflow 3)</h2>
-              <div id="telemetry-dashboard-container"></div>
-            </div>
-            <div id="devpanel-v2-charts-section" class="devpanel-v2-section">
-              <h2>Performance Charts</h2>
-              <div class="devpanel-v2-charts"></div>
-            </div>
+          <div id="devpanel-v2-telemetry-section" class="devpanel-v2-section">
+            <h2>Telemetry Dashboard (Workflow 3)</h2>
+            <div id="telemetry-dashboard-container"></div>
+          </div>
+          <div id="devpanel-v2-charts-section" class="devpanel-v2-section">
+            <h2>Performance Charts</h2>
+            <div class="devpanel-v2-charts"></div>
           </div>
         </div>
-      `;
+      </div>
+    `;
 
-      // Wire close button
-      const closeBtn = panel.querySelector('[data-action="close"]');
-      if (closeBtn) {
-        listenerRegistry.on(closeBtn, 'click', () => this.hide());
+    // Wire close button
+    const closeBtn = panel.querySelector('[data-action="close"]');
+    if (closeBtn) {
+      listenerRegistry.on(closeBtn, 'click', () => {
+        panel.style.display = 'none';
+      });
+    }
+
+    // Initialize Phase 1 components
+    try {
+      moduleRefs.cameraControls = initializeCameraControls(engine);
+      structuredLog('INFO', 'Camera controls initialized');
+    } catch (e) {
+      console.error('Failed to initialize camera controls:', e);
+    }
+
+    try {
+      moduleRefs.telemetryDashboard = initializeTelemetryDashboard(engine);
+      structuredLog('INFO', 'Telemetry dashboard initialized');
+    } catch (e) {
+      console.error('Failed to initialize telemetry dashboard:', e);
+    }
+
+    try {
+      moduleRefs.chartController = initializeChartController(engine);
+      structuredLog('INFO', 'Chart controller initialized');
+    } catch (e) {
+      console.error('Failed to initialize chart controller:', e);
+    }
+
+    // Show panel
+    panel.style.display = 'block';
+  }
+
+  // Activate immediately on initialization
+  activate();
+
+  // Return ONLY the dispose function (required by UI loader contract)
+  return function dispose() {
+    structuredLog('INFO', 'Disposing Dev Panel v2');
+
+    // Remove all tracked listeners
+    try {
+      if (panel.__listenerRegistry && typeof panel.__listenerRegistry.removeAll === 'function') {
+        panel.__listenerRegistry.removeAll();
       }
+    } catch {
+      // Silently ignore cleanup errors
+    }
 
-      // Initialize Phase 1 components
-      try {
-        moduleRefs.cameraControls = initializeCameraControls(engine);
-        structuredLog('INFO', 'Camera controls initialized');
-      } catch (e) {
-        console.error('Failed to initialize camera controls:', e);
+    // Dispose camera controls
+    try {
+      if (moduleRefs.cameraControls && typeof moduleRefs.cameraControls.dispose === 'function') {
+        moduleRefs.cameraControls.dispose();
       }
+    } catch (e) {
+      console.error('Failed to dispose camera controls:', e);
+    }
 
-      try {
-        moduleRefs.telemetryDashboard = initializeTelemetryDashboard(engine);
-        structuredLog('INFO', 'Telemetry dashboard initialized');
-      } catch (e) {
-        console.error('Failed to initialize telemetry dashboard:', e);
+    // Dispose telemetry dashboard
+    try {
+      if (moduleRefs.telemetryDashboard && typeof moduleRefs.telemetryDashboard.dispose === 'function') {
+        moduleRefs.telemetryDashboard.dispose();
       }
+    } catch (e) {
+      console.error('Failed to dispose telemetry dashboard:', e);
+    }
 
-      try {
-        moduleRefs.chartController = initializeChartController(engine);
-        structuredLog('INFO', 'Chart controller initialized');
-      } catch (e) {
-        console.error('Failed to initialize chart controller:', e);
+    // Dispose chart controller
+    try {
+      if (moduleRefs.chartController && typeof moduleRefs.chartController.dispose === 'function') {
+        moduleRefs.chartController.dispose();
       }
+    } catch (e) {
+      console.error('Failed to dispose chart controller:', e);
+    }
 
-      this.show();
-    },
+    // Remove panel from DOM
+    try {
+      if (panel && panel.parentNode) {
+        panel.parentNode.removeChild(panel);
+      }
+    } catch {
+      // Silently ignore cleanup errors
+    }
+
+    structuredLog('INFO', 'Dev Panel v2 disposed');
   };
 }
 
