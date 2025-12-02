@@ -197,11 +197,11 @@ export function initializeDevPanelV2(arg1, arg2) {
     }
 
     try {
-      // Telemetry dashboard expects #telemetry-dashboard-container to exist
+      // Telemetry dashboard expects #dev-panel-main-content to exist
       const telemetryContainer = panel.querySelector('.devpanel-v2-charts');
       if (telemetryContainer) {
         telemetryContainer.innerHTML = `
-          <div id="telemetry-dashboard-container" class="telemetry-container">
+          <div id="dev-panel-main-content" class="telemetry-container">
             <div class="dashboard-placeholder">
               <p>Telemetry data will appear here...</p>
             </div>

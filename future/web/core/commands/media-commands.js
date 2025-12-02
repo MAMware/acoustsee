@@ -466,6 +466,31 @@ export function registerMediaCommands(engine) {
     });
   });
 
+  // Start camera: Lightweight command to get camera stream (no pipeline init)
+  registerCommandHandler('startCamera', async ({ state: s, payload }) => {
+    try {
+      const stream = await mediaStartCamera();
+      mediaAdapter.setMediaStream(stream);
+      engine.emit('video_capture_started', { timestamp: Date.now() });
+      return { ok: true };
+    } catch (error) {
+      structuredLog('ERROR', 'startCamera failed', { error: error.message });
+      return { ok: false, error: error.message };
+    }
+  });
+
+  // Stop camera: Lightweight command to stop stream
+  registerCommandHandler('stopCamera', ({ state: s, payload }) => {
+    try {
+      mediaAdapter.stopMediaStream();
+      engine.emit('video_capture_stopped', { timestamp: Date.now() });
+      return { ok: true };
+    } catch (error) {
+      structuredLog('ERROR', 'stopCamera failed', { error: error.message });
+      return { ok: false, error: error.message };
+    }
+  });
+
   // Toggle microphone: start or stop mic and update state //R250905: this logic seems entangled between have start and stopMic, the toggle and stream, seems overcomplicated 
   registerCommandHandler('toggleMicrophone', async ({ state: s, payload }) => {
     try {

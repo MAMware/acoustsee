@@ -18,7 +18,158 @@ This guide shows how to create new UI modules that automatically integrate with 
 
 ---
 
-## Minimal UI Template
+## Command Dispatch Patterns: Full Pipeline vs. Lightweight Controls
+
+When working with media/camera controls, you'll encounter two different command patterns. Understanding when to use each is critical for proper system behavior.
+
+### Pattern Comparison
+
+| Aspect | `startProcessing` | `startCamera` |
+|--------|-------------------|---------------|
+| **Purpose** | Full video→audio pipeline | Lightweight camera stream only |
+| **What it does** | Gets camera + initializes workers + sets up synesthesia | Gets camera stream for preview/testing |
+| **Use case** | Normal app operation (user experience) | Dev panel testing (isolated debugging) |
+| **Blocks** | Requires audio to be ready | Runs independently |
+| **Emits** | `video_processing_started` | `video_capture_started` |
+| **State changes** | `isProcessing = true` | (no state change) |
+| **Side effects** | Spawns worker threads, initializes audio routing | None - just acquires stream |
+
+### Example: Camera Controls UI
+
+The camera controls component in `dev-panel/camera-controls.js` uses the **lightweight `startCamera` command**:
+
+```javascript
+// In camera-controls.js (dev-panel only)
+startCamera() {
+  this.engine?.dispatch?.('startCamera', {
+    sourcePreference: source,
+    timeout: 5000
+  });
+}
+
+stopCamera() {
+  this.engine?.dispatch?.('stopCamera');
+}
+```
+
+**Why `startCamera` instead of `startProcessing`?**
+
+✅ **Reasons to use `startCamera`:**
+1. **Isolated testing** - Dev panel can start camera WITHOUT running workers
+2. **No audio dependency** - Works even if audio isn't ready
+3. **Quick feedback** - User sees video immediately without pipeline overhead
+4. **Independent control** - Can test camera separately from audio processing
+5. **Non-destructive** - Doesn't affect app state or worker threads
+
+❌ **Why NOT `startProcessing`:**
+1. Requires audio context to be running (would fail in suspended state)
+2. Spawns worker threads unnecessarily for simple camera testing
+3. Changes `isProcessing` state, affecting app behavior
+4. Initializes entire synesthesia pipeline when we just want camera stream
+
+### Implementation in Engine
+
+The two commands are registered separately in `media-commands.js`:
+
+```javascript
+// Lightweight: Just get the camera stream
+registerCommandHandler('startCamera', async ({ state: s, payload }) => {
+  try {
+    const stream = await mediaStartCamera();
+    mediaAdapter.setMediaStream(stream);
+    engine.emit('video_capture_started', { timestamp: Date.now() });
+    return { ok: true };
+  } catch (error) {
+    structuredLog('ERROR', 'startCamera failed', { error: error.message });
+    return { ok: false, error: error.message };
+  }
+});
+
+// Heavy lifting: Get camera + initialize full pipeline
+registerCommandHandler('startProcessing', wrapAsyncHandler('startProcessing', async ({ state: s, payload }) => {
+  // ... checks audio is ready ...
+  // ... initializes workers ...
+  // ... sets up audio routing ...
+  // ... changes state.isProcessing ...
+  return result;
+}));
+```
+
+### When to Use Each
+
+**Use `startCamera`:**
+- ✅ In dev-panel camera controls (dev-only UI)
+- ✅ When you need camera stream for testing/preview
+- ✅ When audio system might not be ready yet
+- ✅ For isolated component testing
+
+**Use `startProcessing`:**
+- ✅ In normal app flow (touch-gestures UI)
+- ✅ When user initiates visual-to-audio conversion
+- ✅ When audio system is guaranteed to be ready (after power-on)
+- ✅ For full production experience
+
+### Anti-Pattern: Duplicating Logic
+
+❌ **What NOT to do:**
+
+```javascript
+// DON'T create startCamera that does everything startProcessing does
+registerCommandHandler('startCamera', async ({ state: s, payload }) => {
+  // ... duplicate all the audio checks ...
+  // ... duplicate worker initialization ...
+  // ... duplicate state management ...
+  // → This is code duplication and defeats the purpose
+});
+```
+
+✅ **What TO do:**
+
+```javascript
+// DO keep startCamera lightweight
+registerCommandHandler('startCamera', async ({ state: s, payload }) => {
+  const stream = await mediaStartCamera();  // Just get the stream
+  mediaAdapter.setMediaStream(stream);
+  engine.emit('video_capture_started', { timestamp: Date.now() });
+  return { ok: true };
+});
+
+// Keep startProcessing as the "full orchestration" command
+registerCommandHandler('startProcessing', wrapAsyncHandler('startProcessing', async ({ state: s, payload }) => {
+  // ... all the complex logic ...
+}));
+```
+
+### Telemetry Events
+
+Each command emits different events for monitoring:
+
+```javascript
+// startCamera emits lightweight event
+engine.emit('video_capture_started', { timestamp: Date.now() });
+// Telemetry dashboard sees: "Camera acquired"
+
+// startProcessing emits orchestration event  
+engine.emit('video_processing_started', { ... });
+// Telemetry dashboard sees: "Processing pipeline initialized"
+```
+
+### Testing Implications
+
+When testing the dev-panel:
+
+```javascript
+// ✅ Test camera controls work independently
+// ?debug=true → Click "Start Camera" → Should see video
+// Should NOT require audio to be initialized
+
+// ✅ Test full app flow works separately
+// Normal app → Click "Power" → Audio initializes → Click "Start"
+// Should trigger startProcessing, not startCamera
+```
+
+---
+
 
 Copy this template to create a new UI module:
 
