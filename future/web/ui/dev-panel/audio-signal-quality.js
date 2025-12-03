@@ -93,22 +93,40 @@ export class AudioSignalQualityAnalyzer {
   #spectrum = null;
   
   /**
-   * @param {import('../core/engine.js').Engine} engine - Application engine
+   * @param {import('../core/engine.js').Engine} [engine] - Application engine
    * @param {Object} [options] - Configuration options
    */
-  constructor(engine, options = {}) {
-    this.#engine = engine;
+  constructor(engine = null, options = {}) {
+    // PRIORITY 2 FIX: Accept engine but use dependency injection method
+    // This prevents circular reference when stored on engine._devPanelComponents
     
     // Apply custom configuration
     const config = { ...AUDIO_QUALITY_CONFIG, ...options };
     
-    // Subscribe to engine events
+    // Subscribe to engine events only if engine provided
+    if (engine) {
+      this.#engine = engine;
+      this.#subscribeToEvents();
+      
+      // Start analysis loop
+      this.#startAnalysisLoop(config.analysisIntervalMs);
+      
+      // Start emit loop
+      this.#startEmitLoop(config.emitIntervalMs);
+    }
+  }
+
+  /**
+   * Register engine reference and subscribe to events (Dependency Injection)
+   * PRIORITY 2: Call this after construction to inject engine
+   * @param {import('../core/engine.js').Engine} engine - Application engine
+   */
+  registerEngine(engine) {
+    if (!engine || this.#engine === engine) return;
+    this.#engine = engine;
     this.#subscribeToEvents();
-    
-    // Start analysis loop
+    const config = { ...AUDIO_QUALITY_CONFIG };
     this.#startAnalysisLoop(config.analysisIntervalMs);
-    
-    // Start emit loop
     this.#startEmitLoop(config.emitIntervalMs);
   }
   

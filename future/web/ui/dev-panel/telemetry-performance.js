@@ -48,10 +48,12 @@ const PERFORMANCE_DEFAULTS = {
  */
 export class TelemetryPerformanceOptimizer {
     /**
-     * @param {Object} engine - Application engine with event bus
+     * @param {Object} [engine] - Application engine with event bus
      * @param {Object} options - Configuration options
      */
-    constructor(engine, options = {}) {
+    constructor(engine = null, options = {}) {
+        // PRIORITY 2 FIX: Accept engine but use dependency injection method
+        // This prevents circular reference when stored on engine._devPanelComponents
         this.engine = engine;
         this.config = { ...PERFORMANCE_DEFAULTS, ...options };
         
@@ -97,7 +99,18 @@ export class TelemetryPerformanceOptimizer {
             hasIntersectionObserver: typeof IntersectionObserver === 'function'
         });
     }
+
+    /**
+     * Register engine reference (Dependency Injection)
+     * PRIORITY 2: Call this after construction to inject engine
+     * @param {Object} engine - Application engine with event bus
+     */
+    registerEngine(engine) {
+        if (!engine || this.engine === engine) return;
+        this.engine = engine;
+    }
     
+
     // === PUBLIC API ===
     
     /**

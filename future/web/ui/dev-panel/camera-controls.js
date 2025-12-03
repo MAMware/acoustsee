@@ -11,8 +11,11 @@
  */
 
 export class CameraControls {
-  constructor(engine, containerElement = null) {
-    this.engine = engine;
+  constructor(containerElement = null) {
+    // PRIORITY 2 FIX: Do NOT store engine reference (causes circular refs when stored on engine._devPanelComponents)
+    // Instead, accept engine as parameter to methods that need it
+    this.engine = null;  // Will be injected via registerEventListeners/subscribeToTelemetry
+    
     this.container = containerElement || document.getElementById('camera-controls-content');
     this.isRunning = false;
     this.currentSource = 'gpu';
@@ -24,8 +27,6 @@ export class CameraControls {
     }
     
     this.initializeElements();
-    this.registerEventListeners();
-    this.subscribeToTelemetry();
   }
 
   initializeElements() {
@@ -59,7 +60,14 @@ export class CameraControls {
     }
   }
 
-  registerEventListeners() {
+  /**
+   * Register event listeners and bind engine reference via dependency injection
+   * PRIORITY 2: Accept engine as parameter, not constructor argument
+   * @param {Object} engine - Engine instance for command dispatch
+   */
+  registerEventListeners(engine = null) {
+    this.engine = engine;  // Inject engine reference here instead of in constructor
+    
     if (this.startBtn) {
       this.startBtn.addEventListener('click', () => this.startCamera());
     }
@@ -76,24 +84,31 @@ export class CameraControls {
     }
   }
 
-  subscribeToTelemetry() {
-    if (!this.engine) return;
+  /**
+   * Subscribe to telemetry events via dependency injection
+   * PRIORITY 2: Accept engine as parameter
+   * @param {Object} engine - Engine instance for event subscription
+   */
+  subscribeToTelemetry(engine = null) {
+    if (!engine) return;
+    
+    this.engine = engine;  // Also update stored reference
 
     // Listen to camera lifecycle events (Task 2 telemetry)
-    this.engine.on?.('video_capture_started', (payload) => {
+    engine.on?.('video_capture_started', (payload) => {
       this.onCameraStarted(payload);
     });
 
-    this.engine.on?.('video_capture_stopped', (payload) => {
+    engine.on?.('video_capture_stopped', (payload) => {
       this.onCameraStopped(payload);
     });
 
     // Listen to source selection events (Task 2 telemetry)
-    this.engine.on?.('video_source_gpu_selected', (payload) => {
+    engine.on?.('video_source_gpu_selected', (payload) => {
       this.onSourceSelected('gpu', payload);
     });
 
-    this.engine.on?.('video_source_cpu_fallback', (payload) => {
+    engine.on?.('video_source_cpu_fallback', (payload) => {
       this.onSourceFallback(payload);
     });
   }
@@ -191,7 +206,7 @@ export class CameraControls {
     this.enableControls(false); // Disable START, enable STOP
   }
 
-  onCameraStopped(payload) {
+  onCameraStopped(_payload) { // eslint-disable-line no-unused-vars
     this.isRunning = false;
     this.setStatus('ready');
     this.showStatus('✅ Ready');
@@ -313,7 +328,12 @@ export function initializeCameraControls(engine) {
     return null;
   }
 
-  const cameraControls = new CameraControls(engine);
+  // PRIORITY 2 FIX: Create without engine in constructor
+  const cameraControls = new CameraControls();
+  
+  // Inject engine via dependency injection methods instead
+  cameraControls.registerEventListeners(engine);
+  cameraControls.subscribeToTelemetry(engine);
   
   // Store reference on engine for external access
   if (engine._devPanelComponents) {

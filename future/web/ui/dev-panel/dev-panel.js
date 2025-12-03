@@ -800,27 +800,34 @@ export function initializeDevPanel(arg1, arg2) {
     let performanceOptimizer = null;
 
     try {
-      // Initialize real latency measurement (replaces any hardcoded values)
-      latencyMeasurement = new LatencyMeasurement(engine, {
+      // PRIORITY 2 FIX: Initialize real latency measurement without storing engine in constructor
+      // Use dependency injection instead
+      latencyMeasurement = new LatencyMeasurement(null, {
         bufferSize: 1000,              // Store last 1000 measurements per worker
         thresholds: {
           acceptable: 100,             // Warn above 100ms
           ideal: 45                    // Target is under 45ms
         }
       });
+      // Inject engine after construction to avoid circular refs
+      latencyMeasurement.registerEngine(engine);
       panel.__latencyMeasurementDispose = () => latencyMeasurement.dispose();
 
-      // Initialize audio signal quality monitoring
-      audioSignalQuality = new AudioSignalQuality(engine, {
+      // PRIORITY 2 FIX: Initialize audio signal quality without storing engine in constructor
+      audioSignalQuality = new AudioSignalQuality(null, {
         fftSize: 2048,
         clippingThreshold: 0.99,
         noiseFloorThreshold: -60,      // dBFS
         updateInterval: 100            // ms between quality checks
       });
+      // Inject engine after construction to avoid circular refs
+      audioSignalQuality.registerEngine(engine);
       panel.__audioSignalQualityDispose = () => audioSignalQuality.dispose();
 
-      // Initialize performance optimizer (uses requestIdleCallback, batching)
-      performanceOptimizer = createOptimizer(engine, 'balanced');
+      // PRIORITY 2 FIX: Initialize performance optimizer without storing engine in constructor
+      performanceOptimizer = createOptimizer(null, 'balanced');
+      // Inject engine after construction to avoid circular refs
+      performanceOptimizer.registerEngine(engine);
       panel.__performanceOptimizerDispose = () => performanceOptimizer.dispose();
 
       // Store on engine for dashboard and other components

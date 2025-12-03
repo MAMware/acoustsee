@@ -242,7 +242,18 @@ async function initializeVideoCanvasFallback(videoElement, engine) {
 export async function initializeVideo(config) {
   _config = { ..._config, ...config };
   
-  structuredLog('DEBUG', 'initializeVideo: Starting video pipeline initialization', config);
+  // PRIORITY 1 FIX: Avoid circular reference error when logging config object
+  // (config.engine contains engine._devPanelComponents which contains components that reference engine)
+  const safeConfig = {
+    videoElement: config.videoElement ? '✓ VideoElement' : '✗ missing',
+    engine: config.engine ? '✓ engine' : '✗ missing',
+    getEngineState: typeof config.getEngineState === 'function' ? '✓ function' : '✗ missing',
+    getCurrentGrid: typeof config.getCurrentGrid === 'function' ? '✓ function' : '✗ missing',
+    debugWorkerEnabled: config.debugWorkerEnabled || null,
+    registerWorker: config.registerWorker ? '✓ function' : '✗ missing',
+    motionThreshold: config.motionThreshold || null
+  };
+  structuredLog('DEBUG', 'initializeVideo: Starting video pipeline initialization', safeConfig);
 
   // Get current mode from engine state
   const currentMode = config.engine?.getState?.()?.currentMode || 'flow';

@@ -204,26 +204,40 @@ export class LatencyMeasurementSystem {
   #lastStats = null;
   
   /**
-   * @param {import('../core/engine.js').Engine} engine - Application engine
+   * @param {import('../core/engine.js').Engine} [engine] - Application engine
    * @param {Object} [options] - Configuration options
    */
-  constructor(engine, options = {}) {
-    this.#engine = engine;
+  constructor(engine = null, options = {}) {
+    // PRIORITY 2 FIX: Accept engine but use dependency injection method to register
+    // This prevents circular reference when stored on engine._devPanelComponents
     
-    // Apply custom configuration
+    // Initialize buffers first (don't need engine)
     const config = { ...LATENCY_CONFIG, ...options };
-    
-    // Initialize buffers
     this.#endToEndBuffer = new LatencyBuffer(config.bufferSize);
     
-    // Subscribe to frame events
+    // Subscribe to events only if engine provided
+    if (engine) {
+      this.#engine = engine;
+      this.#subscribeToEvents();
+      
+      // Start stats calculation interval
+      const config = { ...LATENCY_CONFIG, ...options };
+      this.#startStatsLoop(config.statsUpdateMs);
+      
+      // Start event emission interval
+      this.#startEmitLoop(config.emitIntervalMs);
+    }
+  }
+
+  /**
+   * Register engine reference and subscribe to events (Dependency Injection)
+   * PRIORITY 2: Call this after construction to inject engine
+   * @param {import('../core/engine.js').Engine} engine - Application engine
+   */
+  registerEngine(engine) {
+    if (!engine || this.#engine === engine) return;
+    this.#engine = engine;
     this.#subscribeToEvents();
-    
-    // Start stats calculation interval
-    this.#startStatsLoop(config.statsUpdateMs);
-    
-    // Start event emission interval
-    this.#startEmitLoop(config.emitIntervalMs);
   }
   
   /**
