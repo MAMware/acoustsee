@@ -27,16 +27,12 @@
   </div>
 
   <!-- ========================================
-       GROUP 1: TESTING & EXECUTION ⭐ (PRIMARY)
-       Purpose: Camera control + Audio pipeline status
-       Position: TOP (above fold, highest visual weight)
-       Ref: DEV_PANEL_FEATURE_GROUP_MAP.md
+       GROUP 0: CAMERA & VIDEO CONTROLS
        ======================================== -->
-  <div id="testing-execution" class="devpanel-group devpanel-group-primary" data-group="testing-execution">
+  <div id="camera-video" class="devpanel-group" data-group="camera-video">
     <div class="group-header">
-      <h2 class="group-title">Testing & Execution</h2>
-      <span class="group-badge group-badge-primary">PRIMARY</span>
-      <button class="group-collapse-btn" data-group="testing-execution" aria-expanded="true" title="Collapse group">−</button>
+      <h2 class="group-title">Camera & Video</h2>
+      <button class="group-collapse-btn" data-group="camera-video" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- Camera Controls Section -->
@@ -67,8 +63,9 @@
             </div>
           </div>
 
+          <!-- Control Buttons -->
           <div class="button-row camera-button-row">
-            <button id="start-camera-btn" class="btn btn-primary btn-large">START CAMERA</button>
+            <button id="start-camera-btn" class="btn btn-primary">START</button>
             <button id="stop-camera-btn" class="btn btn-secondary" disabled>STOP</button>
             <button id="test-fallback-btn" class="btn btn-tertiary">TEST FALLBACK</button>
           </div>
@@ -83,34 +80,6 @@
           <div id="error-messages" class="error-container"></div>
         </div>
 
-      </div>
-    </div>
-
-    <!-- Audio Pipeline Status Section (Phase 1 - Workflow 1) -->
-    <div class="devpanel-section audio-pipeline-section" id="audio-pipeline-status-section">
-      <h2 class="section-header">
-        <span>Audio Pipeline Status</span>
-        <span class="section-header-spacer"></span>
-        <button class="collapse-btn" data-target="audio-pipeline-content" aria-expanded="true" title="Collapse Audio Status">-</button>
-      </h2>
-      <div id="audio-pipeline-content" class="section-content">
-        <div class="audio-pipeline-status-card">
-          <div class="status-row" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span class="status-indicator" id="audio-pipeline-indicator" style="font-size: 12px;">●</span>
-            <span class="status-label" style="color: #95a5a6;">Audio Pipeline:</span>
-            <span class="status-value" id="audio-pipeline-status-text" style="color: #ecf0f1; font-weight: bold;">Idle</span>
-          </div>
-          <div class="status-row" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span class="status-label" style="color: #95a5a6;">Cue Density:</span>
-            <span class="status-value" id="cue-density-value" style="color: #3498db;">— cues/sec</span>
-          </div>
-          <div class="status-row" style="display: flex; align-items: center; gap: 8px;">
-            <span class="status-label" style="color: #95a5a6;">Latency:</span>
-            <span class="status-value" id="audio-latency-value" style="color: #2ecc71;">— ms</span>
-            <span class="status-badge" id="audio-latency-badge"></span>
-          </div>
-        </div>
-        <p class="perf-note" style="font-size: 11px; color: #7f8c8d; margin-top: 8px;">Verifies video → audio-router event flow (ADR-0006)</p>
       </div>
     </div>
 
@@ -131,15 +100,12 @@
   </div>
 
   <!-- ========================================
-       GROUP 6: ADVANCED CONFIGURATION (TERTIARY)
-       Purpose: UI density, appearance settings
-       Position: SIXTH (fine-tuning, collapsed by default)
-       Moved from: Former GROUP 1 (UI Settings)
+       GROUP 1: UI SETTINGS
        ======================================== -->
-  <div id="advanced-config-ui" class="devpanel-group devpanel-group-tertiary" data-group="advanced-config-ui">
+  <div id="ui-settings" class="devpanel-group" data-group="ui-settings">
     <div class="group-header">
-      <h2 class="group-title">Advanced Configuration</h2>
-      <button class="group-collapse-btn" data-group="advanced-config-ui" aria-expanded="false" title="Expand group">+</button>
+      <h2 class="group-title">UI Settings</h2>
+      <button class="group-collapse-btn" data-group="ui-settings" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- UI Settings Section -->
@@ -173,15 +139,12 @@
   </div>
 
   <!-- ========================================
-       GROUP 4: DIAGNOSTICS & INVESTIGATION (SECONDARY)
-       Purpose: State inspector, logging config
-       Position: FOURTH (debugging support area)
-       Moved from: Former GROUP 2 (UI & System)
+       GROUP 2: UI & SYSTEM
        ======================================== -->
-  <div id="diagnostics" class="devpanel-group devpanel-group-secondary" data-group="diagnostics">
+  <div id="ui-system" class="devpanel-group" data-group="ui-system">
     <div class="group-header">
-      <h2 class="group-title">Diagnostics & Investigation</h2>
-      <button class="group-collapse-btn" data-group="diagnostics" aria-expanded="false" title="Expand group">+</button>
+      <h2 class="group-title">UI & System</h2>
+      <button class="group-collapse-btn" data-group="ui-system" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- State Inspector -->
@@ -247,15 +210,12 @@
   </div>
 
   <!-- ========================================
-       GROUP 6B: AUDIO TESTING (TERTIARY - Part of Advanced Config)
-       Purpose: Synth sandbox, manual cue generation
-       Position: SIXTH (advanced testing tools)
-       Moved from: Former GROUP 3 (Audio & Synthesis)
+       GROUP 3: AUDIO & SYNTHESIS
        ======================================== -->
-  <div id="audio-testing" class="devpanel-group devpanel-group-tertiary" data-group="audio-testing">
+  <div id="audio-synthesis" class="devpanel-group" data-group="audio-synthesis">
     <div class="group-header">
-      <h2 class="group-title">Audio Testing</h2>
-      <button class="group-collapse-btn" data-group="audio-testing" aria-expanded="false" title="Expand group">+</button>
+      <h2 class="group-title">Audio & Synthesis</h2>
+      <button class="group-collapse-btn" data-group="audio-synthesis" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- Synth Sandbox -->
@@ -333,16 +293,12 @@
   </div>
 
   <!-- ========================================
-       GROUP 3: REAL-TIME MONITORING ⭐⭐⭐ (CRITICAL)
-       Purpose: Performance charts, worker stats, telemetry
-       Position: THIRD (real-time feedback area)
-       Moved from: Former GROUP 4 (Video & Motion)
+       GROUP 4: VIDEO & MOTION
        ======================================== -->
-  <div id="realtime-monitoring" class="devpanel-group devpanel-group-critical" data-group="realtime-monitoring">
+  <div id="video-motion" class="devpanel-group" data-group="video-motion">
     <div class="group-header">
-      <h2 class="group-title">Real-Time Monitoring</h2>
-      <span class="group-badge group-badge-critical">CRITICAL</span>
-      <button class="group-collapse-btn" data-group="realtime-monitoring" aria-expanded="true" title="Collapse group">−</button>
+      <h2 class="group-title">Video & Motion</h2>
+      <button class="group-collapse-btn" data-group="video-motion" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- Worker Performance & Live Video Preview (side-by-side) -->
@@ -637,16 +593,12 @@
   </div>
 
   <!-- ========================================
-       GROUP 2: SIGNAL CHAIN CONTROL ⭐⭐ (CRITICAL)
-       Purpose: Worker chain config, video source, processing controls
-       Position: SECOND (primary workflow area)
-       Moved from: Former GROUP 5 (Processing & Controls)
+       GROUP 5: PROCESSING & CONTROLS
        ======================================== -->
-  <div id="signal-chain" class="devpanel-group devpanel-group-critical" data-group="signal-chain">
+  <div id="processing-controls" class="devpanel-group" data-group="processing-controls">
     <div class="group-header">
-      <h2 class="group-title">Signal Chain Control</h2>
-      <span class="group-badge group-badge-critical">CRITICAL</span>
-      <button class="group-collapse-btn" data-group="signal-chain" aria-expanded="true" title="Collapse group">−</button>
+      <h2 class="group-title">Processing & Controls</h2>
+      <button class="group-collapse-btn" data-group="processing-controls" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- Main Controls -->
@@ -857,15 +809,12 @@
   </div>
 
   <!-- ========================================
-       GROUP 5: LOGGING & OUTPUT (SECONDARY)
-       Purpose: EventBus viewer, orchestration inspector
-       Position: FIFTH (output area)
-       Moved from: Former GROUP 6 (Pipeline Monitoring)
+       GROUP 6: PIPELINE MONITORING
        ======================================== -->
-  <div id="logging-output" class="devpanel-group devpanel-group-secondary" data-group="logging-output">
+  <div id="pipeline-monitoring" class="devpanel-group" data-group="pipeline-monitoring">
     <div class="group-header">
-      <h2 class="group-title">Logging & Output</h2>
-      <button class="group-collapse-btn" data-group="logging-output" aria-expanded="false" title="Expand group">+</button>
+      <h2 class="group-title">Pipeline Monitoring</h2>
+      <button class="group-collapse-btn" data-group="pipeline-monitoring" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- EventBus Viewer -->
@@ -929,15 +878,12 @@
   </div>
 
   <!-- ========================================
-       GROUP 7: SYSTEM & METADATA (TERTIARY)
-       Purpose: Build info, live logs, session info
-       Position: SEVENTH / BOTTOM (informational only)
-       Moved from: Former GROUP 7 (Diagnostics & Logs)
+       GROUP 7: DIAGNOSTICS & LOGS
        ======================================== -->
-  <div id="system-metadata" class="devpanel-group devpanel-group-tertiary" data-group="system-metadata">
+  <div id="diagnostics-logs" class="devpanel-group" data-group="diagnostics-logs">
     <div class="group-header">
-      <h2 class="group-title">System & Metadata</h2>
-      <button class="group-collapse-btn" data-group="system-metadata" aria-expanded="false" title="Expand group">+</button>
+      <h2 class="group-title">Diagnostics & Logs</h2>
+      <button class="group-collapse-btn" data-group="diagnostics-logs" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- Live Logs -->

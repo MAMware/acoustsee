@@ -286,6 +286,90 @@ Initial dev panel planning (9 documents, ~150KB) was GUI-hierarchy-based but lac
 
 ---
 
+### Feature: DEV_PANEL_OVERHAUL Phases 1-2 (UI Restructure & Conditional Logic)
+
+**Status:** ✅ Phase 1 COMPLETE, ✅ Phase 2 COMPLETE  
+**Date:** January 2025  
+**Type:** Dev Panel UI Overhaul  
+**Documents:**
+- `docs/design/00-START-HERE.md` (entry point)
+- `docs/design/DEV_PANEL_RESTRUCTURE_PHASES.md` (5-phase roadmap)
+- `docs/design/DEV_PANEL_FEATURE_GROUP_MAP.md` (7 action-weighted groups)
+- `docs/design/DEV_PANEL_CONDITIONS.md` (30+ visibility rules)
+
+#### Phase 1: Foundation & Reorganization ✅ COMPLETE
+
+**Objective:** Restructure dev-panel.html groups from category-based to action-weighted hierarchy
+
+**Changes Made to `future/web/ui/dev-panel/dev-panel.html`:**
+
+| Old Group | New Group | Description | Priority |
+|-----------|-----------|-------------|----------|
+| GROUP 0: Camera & Video | GROUP 1: Testing & Execution ⭐ | Core camera/video controls | PRIMARY |
+| GROUP 1: UI Settings | GROUP 6: Advanced Configuration | Theme, density, etc. | TERTIARY |
+| GROUP 2: UI & System | GROUP 4: Diagnostics & Investigation | State, EventBus, debug | SECONDARY |
+| GROUP 3: Audio & Synthesis | GROUP 6B: Audio Testing | Touch pad, sound gen | TERTIARY |
+| GROUP 4: Video & Motion | GROUP 3: Real-Time Monitoring ⭐⭐⭐ | Pipeline metrics | CRITICAL |
+| GROUP 5: Processing & Controls | GROUP 2: Signal Chain Control ⭐⭐ | Grid, synth, workers | CRITICAL |
+| GROUP 6: Pipeline Monitoring | GROUP 5: Logging & Output | Logs, export | SECONDARY |
+| GROUP 7: Diagnostics & Logs | GROUP 7: System & Metadata | Version, build info | TERTIARY |
+
+**Features Added:**
+- ✅ Workflow badges (⭐ = PRIMARY, ⭐⭐ = CRITICAL, ⭐⭐⭐ = CRITICAL)
+- ✅ Audio Pipeline Status section with status indicators
+- ✅ Updated data-group attributes for CSS targeting
+
+#### Phase 2: Conditional Logic Engine ✅ COMPLETE
+
+**Objective:** Implement dynamic visibility/enablement rules based on state
+
+**File Created:** `future/web/ui/dev-panel/dev-panel-conditions.js` (~850 lines)
+
+**Key Components:**
+
+1. **ConditionEvaluator Class:**
+   - Parses and evaluates rule expressions
+   - Operators: AND, OR, NOT, ==, !=, >, <, >=, <=, in()
+   - Nested property access (e.g., `orchestration.videoRunning`)
+   - Safe null/undefined handling
+
+2. **DevPanelConditionEngine Class:**
+   - 26+ visibility rules covering all 7 groups
+   - Action handlers: show, hide, enable, disable, highlight
+   - State subscription with 50ms throttled updates
+   - Dispose pattern for cleanup
+
+**Rules Implemented:**
+
+| Rule ID | Target | Condition | Action |
+|---------|--------|-----------|--------|
+| group-1-show | Testing & Execution | Always visible | show |
+| group-2-visibility | Signal Chain Control | mode != 'Minimal' | show |
+| group-3-visibility | Real-Time Monitoring | orchestration.videoRunning | show |
+| group-4-visibility | Diagnostics | mode == 'Debug' | show |
+| group-5-visibility | Logging & Output | mode in ('Debug', 'Development') | show |
+| group-6-visibility | Advanced Configuration | mode == 'Debug' | show |
+| worker-toggles-visibility | Worker toggles | mode == 'Debug' AND chainPreset == 'custom' | show |
+| worker-toggles-enabled | Worker toggles | chainPreset == 'custom' | enable |
+| generate-cue-enabled | Generate Cue button | audioContext.state == 'running' | enable |
+| telemetry-enabled | Telemetry controls | orchestration.videoRunning | enable |
+| ... | ... | ... | ... |
+
+**Integration Added to `future/web/ui/dev-panel/dev-panel.js`:**
+- ✅ Import DevPanelConditionEngine
+- ✅ Initialize in setupUI() after EventBus Viewer
+- ✅ applyAllRules() on panel open
+- ✅ Dispose in cleanup function (step 11)
+
+**Acceptance Criteria Met:**
+- ✅ Worker toggles hidden when `mode !== 'Debug'`
+- ✅ Worker toggles disabled when `chainPreset !== 'custom'`
+- ✅ Diagnostics group hidden when `mode !== 'Debug'`
+- ✅ All conditions evaluated within 50ms of state change (throttled)
+- ✅ Cleanup on dispose prevents memory leaks
+
+---
+
 ### Feature: REFACTOR-01 Dev Panel v2 Modularization (Pluggable UI Architecture)
 
 **Status:** ✅ 100% Complete  

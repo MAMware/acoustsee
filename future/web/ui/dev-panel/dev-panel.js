@@ -39,6 +39,7 @@ import { initializeCustomization } from './dev-panel-customization.js'; // Phase
 import { initializeCameraControls } from './camera-controls.js'; // Task 5: Camera Controls UI (Workflow 1)
 import { initializeTelemetryDashboard } from './telemetry-dashboard.js'; // Task 6: Telemetry Dashboard (Workflow 3)
 import { getWorkersForMode, getTotalLatencyBudget, WORKER_MANIFEST } from '../../video/workers/worker-manifest.js'; // Worker chain controls
+import { DevPanelConditionEngine } from './dev-panel-conditions.js'; // Phase 2: Conditional Logic Engine
 // Do not import core constants here; version info is read from engine state (buildInfo)
 import { registerComponent } from '../ui-registry.js';
 
@@ -728,6 +729,19 @@ export function initializeDevPanel(arg1, arg2) {
       if (eventBusContainer) {
         eventBusContainer.innerHTML = '<div style="color: #e74c3c; padding: 8px;">EventBus viewer failed to load. Check console for details.</div>';
       }
+    }
+
+    // --- Initialize Conditional Logic Engine (Phase 2: Dev Panel Overhaul) ---
+    try {
+      const conditionEngine = new DevPanelConditionEngine(engine, panel);
+      // Apply initial rules
+      conditionEngine.applyAllRules();
+      // Store reference for cleanup
+      panel.__conditionEngineDispose = () => conditionEngine.dispose();
+      structuredLog('INFO', 'dev-panel', { message: 'Conditional Logic Engine initialized' });
+    } catch (e) {
+      structuredLog('ERROR', 'dev-panel', { message: 'Failed to initialize Conditional Logic Engine', error: e?.message || String(e) });
+      // Non-critical: panel still functions, just without dynamic visibility rules
     }
 
     // --- Control Synchronization ---
@@ -1637,7 +1651,14 @@ export function initializeDevPanel(arg1, arg2) {
         }
       } catch (e) { /* swallow */ }
 
-      // 11. Remove panel node from DOM
+      // 11. Conditional Logic Engine cleanup (Phase 2: Dev Panel Overhaul)
+      try {
+        if (typeof panel.__conditionEngineDispose === 'function') {
+          panel.__conditionEngineDispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 12. Remove panel node from DOM
       try {
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
       } catch (e) { /* swallow */ }
