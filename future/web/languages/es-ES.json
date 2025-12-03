@@ -154,8 +154,8 @@
   },
   "init": {
     "failed": "Inicialización fallida: {specificMessage}. Consulte la consola para más detalles."
-  }
-  ,
+  },
+  "initMissingConfigs": "Inicialización incompleta: {missing}",
   "settings": {
     "saved": "Configuración guardada correctamente.",
     "loaded": "Configuración cargada correctamente.",

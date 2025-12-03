@@ -15,7 +15,7 @@
 // ============================================================================
 
 const ANALYTICS_CONFIG = {
-  endpoint: '/api/analytics/events',
+  endpoint: 'https://acoustsee-analytics.mamware.workers.dev/',
   batchSize: 20,
   flushInterval: 10000, // 10 seconds
   maxLocalStorageEvents: 50,

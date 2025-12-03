@@ -18,7 +18,7 @@ export class TelemetryCollector {
     // Configuration with sensible defaults
     this.batchSize = options.batchSize || 50;
     this.batchInterval = options.batchInterval || 5000;  // 5 seconds
-    this.endpoint = options.endpoint || '/api/telemetry/events';
+    this.endpoint = options.endpoint || 'https://acoustsee-analytics.mamware.workers.dev/';
     this.maxLocalStorageEvents = options.maxLocalStorageEvents || 100;
     this.enabled = options.enabled !== false;  // Default enabled
     

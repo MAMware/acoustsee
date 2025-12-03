@@ -173,5 +173,6 @@
   },
   "init": {
     "failed": "Initialization failed: {specificMessage}. Check console for details."
-  }
+  },
+  "initMissingConfigs": "Initialization incomplete: {missing}"
 }
