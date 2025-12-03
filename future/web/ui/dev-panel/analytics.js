@@ -537,6 +537,99 @@ export function getAnalyticsMetrics() {
 // EXPORTS
 // ============================================================================
 
+/**
+ * DevPanelAnalytics class wrapper for analytics module
+ * Provides OOP interface for dev-panel.js initialization
+ */
+export class DevPanelAnalytics {
+  constructor(engine, options = {}) {
+    this.engine = engine;
+    this.options = options;
+    initializeAnalytics(options, engine);
+    setEngineRef(engine);
+  }
+
+  emit(eventName, payload = {}, options = {}) {
+    return emit(eventName, payload, options);
+  }
+
+  emitInteraction(action, target, data = {}) {
+    return emitInteraction(action, target, data);
+  }
+
+  emitWorkflowStep(workflow, step, data = {}) {
+    return emitWorkflowStep(workflow, step, data);
+  }
+
+  trackCameraStart(data = {}) {
+    return trackCameraStart(data);
+  }
+
+  trackCameraStop(data = {}) {
+    return trackCameraStop(data);
+  }
+
+  trackWorkerIsolation(data = {}) {
+    return trackWorkerIsolation(data);
+  }
+
+  trackWorkerParameterChange(data = {}) {
+    return trackWorkerParameterChange(data);
+  }
+
+  trackTelemetryExport(data = {}) {
+    return trackTelemetryExport(data);
+  }
+
+  trackDevPanelToggle(isOpen) {
+    return trackDevPanelToggle(isOpen);
+  }
+
+  trackTabSwitch(tabName) {
+    return trackTabSwitch(tabName);
+  }
+
+  trackPresetChange(presetName) {
+    return trackPresetChange(presetName);
+  }
+
+  trackModeChange(modeName) {
+    return trackModeChange(modeName);
+  }
+
+  trackBaselineEstablished(data = {}) {
+    return trackBaselineEstablished(data);
+  }
+
+  trackAnomalyDetected(data = {}) {
+    return trackAnomalyDetected(data);
+  }
+
+  trackExportComplete(data = {}) {
+    return trackExportComplete(data);
+  }
+
+  async flush() {
+    return flush();
+  }
+
+  setEnabled(enabled) {
+    return setAnalyticsEnabled(enabled);
+  }
+
+  async dispose() {
+    return disposeAnalytics();
+  }
+
+  getMetrics() {
+    return getAnalyticsMetrics();
+  }
+
+  getSessionId() {
+    return getSessionId();
+  }
+}
+
 export default {
   emit,
   emitInteraction,
@@ -559,5 +652,6 @@ export default {
   disposeAnalytics,
   getAnalyticsMetrics,
   getSessionId,
-  setEngineRef
+  setEngineRef,
+  DevPanelAnalytics
 };

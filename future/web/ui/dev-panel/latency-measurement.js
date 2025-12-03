@@ -567,3 +567,8 @@ export { LatencyBuffer };
  * Export configuration for reference
  */
 export { LATENCY_CONFIG };
+
+/**
+ * Export the main class as both the system name and the generic name for compatibility
+ */
+export { LatencyMeasurementSystem as LatencyMeasurement };

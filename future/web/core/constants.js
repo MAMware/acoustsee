@@ -32,7 +32,7 @@ export const MOTION_DETECTOR_CONFIG = {
 };
 
 // Build information (auto-injected by scripts/codegen/inject-build-info.js)
-export const BUILD_COMMIT = 'e71b8f2';
-export const BUILD_BRANCH = 'v0.9.7.4-devPanelOverhaul';
-export const BUILD_TIMESTAMP = '2025-12-03T05:44:51.787Z';
+export const BUILD_COMMIT = 'eb9530b';
+export const BUILD_BRANCH = 'v0.8.7.5-devPanelRefactor';
+export const BUILD_TIMESTAMP = '2025-12-03T12:13:15.110Z';
 
