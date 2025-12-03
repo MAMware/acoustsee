@@ -483,3 +483,9 @@ export function createAudioSignalQualityAnalyzer(engine, options = {}) {
  * Export configuration for reference
  */
 export { AUDIO_QUALITY_CONFIG };
+
+/**
+ * Export the main class as both the analyzer name and the generic name
+ */
+export { AudioSignalQualityAnalyzer as AudioSignalQuality };
+
