@@ -41,6 +41,12 @@ export class CameraControls {
     this.streamFps = document.getElementById('stream-fps');
     this.errorContainer = document.getElementById('error-messages');
 
+    console.log('CameraControls: Elements initialized', {
+      hasStartBtn: !!this.startBtn,
+      hasStopBtn: !!this.stopBtn,
+      hasContainer: !!this.container
+    });
+
     // Validate all elements exist
     const elements = [
       this.statusIndicator, this.statusText, this.sourceSelector,
@@ -95,6 +101,7 @@ export class CameraControls {
   startCamera() {
     if (this.isRunning) return;
 
+    console.log('CameraControls: startCamera() called');
     this.setStatus('starting');
     this.showStatus('🔄 Initializing camera...');
     this.disableControls();
@@ -103,6 +110,7 @@ export class CameraControls {
 
     // Dispatch startCamera command to engine
     try {
+      console.log('CameraControls: dispatching startCamera command', { source });
       this.engine?.dispatch?.('startCamera', {
         sourcePreference: source,
         timeout: 5000
