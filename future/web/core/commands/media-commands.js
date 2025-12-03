@@ -119,7 +119,11 @@ export function registerMediaCommands(engine) {
   // Wrap async handlers to catch and log errors properly
   const wrapAsyncHandler = (handlerName, handler) => {
     return async (args) => {
-      structuredLog('DEBUG', `ASYNC-HANDLER: ${handlerName} starting`, args);
+      // Don't log full args - may contain circular references (engine, state, etc.)
+      structuredLog('DEBUG', `ASYNC-HANDLER: ${handlerName} starting`, { 
+        hasPayload: !!args?.payload,
+        payloadKeys: args?.payload ? Object.keys(args.payload) : []
+      });
       try {
         const result = await handler(args);
         structuredLog('DEBUG', `ASYNC-HANDLER: ${handlerName} completed`, { result });
@@ -133,6 +137,7 @@ export function registerMediaCommands(engine) {
       }
     };
   };
+
 
   // The "Dumb" Toggle Handler - Its ONLY job is to delegate.
   registerCommandHandler('toggleProcessing', ({ state: s, payload }) => {
@@ -389,7 +394,12 @@ export function registerMediaCommands(engine) {
         structuredLog('INFO', 'COMMAND: initializeVideoPipeline COMPLETED successfully.');
         return { ok: true };
       } catch (err) {
-        structuredLog('ERROR', 'COMMAND: initializeVideoPipeline FAILED.', { error: err.message, stack: err.stack });
+        structuredLog('ERROR', 'COMMAND: initializeVideoPipeline FAILED.', { 
+          error: err.message, 
+          stack: err.stack,
+          name: err.name,
+          code: err.code
+        });
         // Best-effort cleanup of stream on failure using MediaAdapter
         mediaAdapter.stopMediaStream();
         throw err;
