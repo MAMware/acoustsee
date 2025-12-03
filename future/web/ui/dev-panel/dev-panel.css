@@ -11,6 +11,61 @@
 /* Import EventBus Viewer styles */
 @import url('./eventbus-viewer.css');
 
+/* ==================== GLOBAL ACCESSIBILITY STYLES (Phase 4) ==================== */
+/* Focus indicators, reduced motion, and keyboard navigation support */
+
+/* Focus indicator - 3px solid outline for all interactive elements */
+#acoustsee-dev-panel button:focus-visible,
+#acoustsee-dev-panel input:focus-visible,
+#acoustsee-dev-panel select:focus-visible,
+#acoustsee-dev-panel textarea:focus-visible,
+#acoustsee-dev-panel [tabindex]:focus-visible,
+#acoustsee-dev-panel a:focus-visible {
+  outline: var(--focus-ring-width, 3px) solid var(--focus-ring-color, var(--accent-primary));
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+/* Remove default focus outline for mouse users */
+#acoustsee-dev-panel button:focus:not(:focus-visible),
+#acoustsee-dev-panel input:focus:not(:focus-visible),
+#acoustsee-dev-panel select:focus:not(:focus-visible),
+#acoustsee-dev-panel textarea:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Disabled state styling */
+#acoustsee-dev-panel button:disabled,
+#acoustsee-dev-panel input:disabled,
+#acoustsee-dev-panel select:disabled,
+#acoustsee-dev-panel [aria-disabled="true"] {
+  opacity: var(--state-disabled-opacity, 0.5);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  #acoustsee-dev-panel *,
+  #acoustsee-dev-panel *::before,
+  #acoustsee-dev-panel *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  #acoustsee-dev-panel {
+    --border-default: rgba(255, 255, 255, 0.5);
+    --text-secondary: #e0e0e0;
+    --text-muted: #c0c0c0;
+  }
+}
+
+/* ==================== END ACCESSIBILITY STYLES ==================== */;
+
 #acoustsee-dev-panel {
   /* Positioning/dimensions set by dev-panel-layout.js based on viewport width */
   background-color: rgba(30, 40, 50, 0.98);

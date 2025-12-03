@@ -442,6 +442,66 @@ Initial dev panel planning (9 documents, ~150KB) was GUI-hierarchy-based but lac
 - ✅ Privacy: doNotTrack compliance
 - ✅ <2% CPU overhead (sendBeacon non-blocking)
 
+#### Phase 4: Design System & CSS Refactor ✅ COMPLETE
+
+**Objective:** Consolidate design tokens, refactor CSS to use tokens, and audit accessibility
+
+**Files Created/Modified:**
+
+| File | Status | Lines | Purpose |
+|------|--------|-------|---------|
+| `docs/design/DEV_PANEL_DESIGN_SYSTEM.md` | EXISTS | 571 | Design system documentation (already existed) |
+| `dashboard-tokens.css` | MODIFIED | +25 | Added interactive state tokens |
+| `dev-panel.css` | MODIFIED | +50 | Added global accessibility styles |
+| `eventbus-viewer.css` | MODIFIED | ~200 | Refactored to use design tokens |
+
+**Key Changes:**
+
+1. **Extended Design Tokens (dashboard-tokens.css):**
+   - `--state-disabled-opacity: 0.5` - Disabled element opacity
+   - `--focus-ring-width: 3px` - WCAG 2.1 compliant focus indicator
+   - `--focus-ring-offset: 2px` - Space between element and ring
+   - `--focus-ring-color` - Focus ring color (accent-primary)
+   - `--state-error-bg`, `--state-warning-bg`, `--state-success-bg` - State backgrounds
+   - `--touch-target-min: 44px` - Mobile touch target (WCAG)
+   - `--click-target-min: 24px` - Desktop click target
+
+2. **Global Accessibility Styles (dev-panel.css):**
+   - `:focus-visible` outlines for all interactive elements
+   - Removed `:focus` outline for mouse users (`:focus:not(:focus-visible)`)
+   - Disabled state styling with `opacity` and `cursor: not-allowed`
+   - `@media (prefers-reduced-motion: reduce)` - Respects motion preference
+   - `@media (prefers-contrast: more)` - High contrast mode support
+
+3. **CSS Token Refactoring (eventbus-viewer.css):**
+   - Replaced ~60 hardcoded values with design tokens
+   - Used `var(--space-*)` for all spacing
+   - Used `var(--text-*)` for all font sizes
+   - Used `var(--accent-*)` and `var(--text-*)` for colors
+   - Added `:focus-visible` styles to buttons
+   - Added `var(--click-target-min)` for button heights
+
+**Accessibility Improvements:**
+- ✅ Focus indicators: 3px solid, high contrast
+- ✅ Keyboard navigation: Tab through all controls
+- ✅ Reduced motion: Respected via `prefers-reduced-motion`
+- ✅ High contrast: Enhanced borders/text via `prefers-contrast: more`
+- ✅ Disabled states: Consistent opacity (0.5) and cursor
+
+**Token Coverage:**
+- ✅ All eventbus-viewer.css spacing uses `--space-*` tokens
+- ✅ All eventbus-viewer.css font sizes use `--text-*` tokens
+- ✅ All interactive elements have focus styles
+- ✅ Density modes preserved (0.8, 1.0, 1.25 multipliers)
+
+**Acceptance Criteria Met:**
+- ✅ Focus indicators visible on all interactive elements
+- ✅ Keyboard navigation works (Tab through all controls)
+- ✅ No hardcoded values in eventbus-viewer.css (all use tokens)
+- ✅ Density modes work without visual glitches
+- ✅ Reduced motion preference respected
+- ✅ High contrast mode supported
+
 ---
 
 ### Feature: REFACTOR-01 Dev Panel v2 Modularization (Pluggable UI Architecture)

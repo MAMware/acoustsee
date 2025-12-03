@@ -86,6 +86,28 @@
   --accent-danger: #e74c3c;                        /* Errors/stop (red) */
   --accent-info: #9b59b6;                          /* Info/secondary (purple) */
   
+  /* ==================== INTERACTIVE STATES (Phase 4) ==================== */
+  /* Tokens for hover, focus, disabled, error, and active states */
+  
+  /* Opacity modifiers */
+  --state-disabled-opacity: 0.5;                   /* Disabled elements */
+  --state-hover-opacity: 0.9;                      /* Hover transparency */
+  
+  /* Focus indicators (WCAG 2.1 compliant - 3px minimum) */
+  --focus-ring-width: 3px;                         /* Focus outline width */
+  --focus-ring-offset: 2px;                        /* Space between element and focus ring */
+  --focus-ring-color: var(--accent-primary);       /* Focus ring color */
+  
+  /* State-specific backgrounds */
+  --state-disabled-bg: rgba(100, 100, 100, 0.3);   /* Disabled background */
+  --state-error-bg: rgba(231, 76, 60, 0.15);       /* Error state background */
+  --state-warning-bg: rgba(243, 156, 18, 0.15);    /* Warning state background */
+  --state-success-bg: rgba(46, 204, 113, 0.15);    /* Success state background */
+  
+  /* Touch target sizes (WCAG 2.1 - 44px minimum for mobile) */
+  --touch-target-min: 44px;                        /* Mobile touch target */
+  --click-target-min: 24px;                        /* Desktop click target */
+  
   /* ==================== DIMENSIONS ==================== */
   /* Common size constraints for UI components */
   
