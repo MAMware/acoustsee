@@ -479,9 +479,11 @@ export function registerMediaCommands(engine) {
   // Start camera: Lightweight command to get camera stream (no pipeline init)
   registerCommandHandler('startCamera', async ({ state: s, payload }) => {
     try {
+      structuredLog('INFO', 'COMMAND: startCamera executing', { payload });
       const stream = await mediaStartCamera();
       mediaAdapter.setMediaStream(stream);
       engine.emit('video_capture_started', { timestamp: Date.now() });
+      structuredLog('INFO', 'COMMAND: startCamera completed', { streamId: stream?.id });
       return { ok: true };
     } catch (error) {
       structuredLog('ERROR', 'startCamera failed', { error: error.message });
@@ -492,8 +494,10 @@ export function registerMediaCommands(engine) {
   // Stop camera: Lightweight command to stop stream
   registerCommandHandler('stopCamera', ({ state: s, payload }) => {
     try {
+      structuredLog('INFO', 'COMMAND: stopCamera executing');
       mediaAdapter.stopMediaStream();
       engine.emit('video_capture_stopped', { timestamp: Date.now() });
+      structuredLog('INFO', 'COMMAND: stopCamera completed');
       return { ok: true };
     } catch (error) {
       structuredLog('ERROR', 'stopCamera failed', { error: error.message });
