@@ -41,6 +41,10 @@ import { initializeTelemetryDashboard } from './telemetry-dashboard.js'; // Task
 import { createTelemetryCollector } from './telemetry-collector.js'; // Phase 3: Telemetry Collection
 import { DevPanelAnalytics } from './analytics.js'; // Phase 3: Analytics Event Emitter
 import { TelemetryExporter } from './telemetry-exporter.js'; // Phase 3: Session Export
+// Phase 5: Real Latency Instrumentation & Performance Optimization
+import { LatencyMeasurement } from './latency-measurement.js';
+import { AudioSignalQuality } from './audio-signal-quality.js';
+import { TelemetryPerformanceOptimizer, createOptimizer } from './telemetry-performance.js';
 import { getWorkersForMode, getTotalLatencyBudget, WORKER_MANIFEST } from '../../video/workers/worker-manifest.js'; // Worker chain controls
 import { DevPanelConditionEngine } from './dev-panel-conditions.js'; // Phase 2: Conditional Logic Engine
 // Do not import core constants here; version info is read from engine state (buildInfo)
@@ -788,6 +792,46 @@ export function initializeDevPanel(arg1, arg2) {
     } catch (e) {
       structuredLog('ERROR', 'dev-panel', { message: 'Failed to initialize Analytics/Telemetry', error: e?.message || String(e) });
       // Non-critical: panel still functions without analytics
+    }
+
+    // --- Phase 5: Real Latency Instrumentation & Performance Optimization ---
+    let latencyMeasurement = null;
+    let audioSignalQuality = null;
+    let performanceOptimizer = null;
+
+    try {
+      // Initialize real latency measurement (replaces any hardcoded values)
+      latencyMeasurement = new LatencyMeasurement(engine, {
+        bufferSize: 1000,              // Store last 1000 measurements per worker
+        thresholds: {
+          acceptable: 100,             // Warn above 100ms
+          ideal: 45                    // Target is under 45ms
+        }
+      });
+      panel.__latencyMeasurementDispose = () => latencyMeasurement.dispose();
+
+      // Initialize audio signal quality monitoring
+      audioSignalQuality = new AudioSignalQuality(engine, {
+        fftSize: 2048,
+        clippingThreshold: 0.99,
+        noiseFloorThreshold: -60,      // dBFS
+        updateInterval: 100            // ms between quality checks
+      });
+      panel.__audioSignalQualityDispose = () => audioSignalQuality.dispose();
+
+      // Initialize performance optimizer (uses requestIdleCallback, batching)
+      performanceOptimizer = createOptimizer(engine, 'balanced');
+      panel.__performanceOptimizerDispose = () => performanceOptimizer.dispose();
+
+      // Store on engine for dashboard and other components
+      engine._devPanelComponents.latencyMeasurement = latencyMeasurement;
+      engine._devPanelComponents.audioSignalQuality = audioSignalQuality;
+      engine._devPanelComponents.performanceOptimizer = performanceOptimizer;
+
+      structuredLog('INFO', 'dev-panel', { message: 'Real Latency Instrumentation initialized (Phase 5)' });
+    } catch (e) {
+      structuredLog('ERROR', 'dev-panel', { message: 'Failed to initialize Phase 5 instrumentation', error: e?.message || String(e) });
+      // Non-critical: panel still functions without real latency tracking
     }
 
     // --- Control Synchronization ---
@@ -1717,7 +1761,20 @@ export function initializeDevPanel(arg1, arg2) {
         }
       } catch (e) { /* swallow */ }
 
-      // 13. Remove panel node from DOM
+      // 13. Phase 5: Real Latency Instrumentation cleanup
+      try {
+        if (typeof panel.__latencyMeasurementDispose === 'function') {
+          panel.__latencyMeasurementDispose();
+        }
+        if (typeof panel.__audioSignalQualityDispose === 'function') {
+          panel.__audioSignalQualityDispose();
+        }
+        if (typeof panel.__performanceOptimizerDispose === 'function') {
+          panel.__performanceOptimizerDispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 14. Remove panel node from DOM
       try {
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
       } catch (e) { /* swallow */ }
