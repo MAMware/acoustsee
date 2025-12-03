@@ -136,41 +136,7 @@
        Position: SIXTH (fine-tuning, collapsed by default)
        Moved from: Former GROUP 1 (UI Settings)
        ======================================== -->
-  <div id="advanced-config-ui" class="devpanel-group devpanel-group-tertiary" data-group="advanced-config-ui">
-    <div class="group-header">
-      <h2 class="group-title">Advanced Configuration</h2>
-      <button class="group-collapse-btn" data-group="advanced-config-ui" aria-expanded="false" title="Expand group">+</button>
-    </div>
-
-    <!-- UI Settings Section -->
-    <div class="devpanel-section ui-settings-section">
-      <h2 class="section-header">
-        <span>Density (Spacing)</span>
-        <span class="section-header-spacer"></span>
-        <button class="collapse-btn" data-target="ui-settings-content" aria-expanded="true" title="Collapse UI Settings">-</button>
-      </h2>
-      <div id="ui-settings-content" class="section-content">
-        <div class="control-column">
-          <label>Density (Spacing)</label>
-          <div class="density-controls">
-            <label class="density-option">
-              <input type="radio" name="density" value="0.8" id="density-compact">
-              <span>Compact</span>
-            </label>
-            <label class="density-option">
-              <input type="radio" name="density" value="1" id="density-comfortable" checked>
-              <span>Comfortable</span>
-            </label>
-            <label class="density-option">
-              <input type="radio" name="density" value="1.25" id="density-spacious">
-              <span>Spacious</span>
-            </label>
-          </div>
-          <p class="perf-note">Changes spacing across the entire panel. Preference saved to localStorage.</p>
-        </div>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- ========================================
        GROUP 4: DIAGNOSTICS & INVESTIGATION (SECONDARY)
@@ -548,8 +514,8 @@
             </div>
             <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Converts N regions → fixed grid</div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="checkbox" id="cap-data-compression" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
-              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+              <input type="checkbox" id="cap-data-compression" checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Enabled</span>
             </div>
             <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Compression Ratio: <span id="cap-compression-ratio" style="color: #2ecc71; font-weight: bold;">--</span></div>
           </div>
@@ -562,8 +528,8 @@
             </div>
             <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Spatial binning via floor division</div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="checkbox" id="cap-feature-extraction" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
-              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+              <input type="checkbox" id="cap-feature-extraction" checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Enabled</span>
             </div>
             <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Cells with Motion: <span id="cap-cells-with-motion" style="color: #f39c12; font-weight: bold;">--</span> / <span id="cap-total-cells">16</span></div>
           </div>
@@ -576,8 +542,8 @@
             </div>
             <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Fixed output size (rows × cols)</div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="checkbox" id="cap-standardization" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
-              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+              <input type="checkbox" id="cap-standardization" checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Enabled</span>
             </div>
             <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Output Grid: <span id="cap-grid-size" style="color: #9b59b6; font-weight: bold;">4×4</span></div>
           </div>
@@ -590,8 +556,8 @@
             </div>
             <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Per-cell averaging (reduces floor)</div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="checkbox" id="cap-noise-reduction" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
-              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+              <input type="checkbox" id="cap-noise-reduction" checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Enabled</span>
             </div>
             <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Reduction Factor: <span id="cap-noise-factor" style="color: #e74c3c; font-weight: bold;">--</span></div>
           </div>
@@ -604,8 +570,8 @@
             </div>
             <div style="font-size: 11px; color: #bdc3c7; margin-bottom: 6px;">Signal-to-noise ratio calc</div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="checkbox" id="cap-snr-improvement" disabled checked style="width: 16px; height: 16px; cursor: pointer;">
-              <span style="font-size: 10px; color: #7f8c8d;">Always ON</span>
+              <input type="checkbox" id="cap-snr-improvement" checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span style="font-size: 10px; color: #7f8c8d;">Enabled</span>
             </div>
             <div style="font-size: 10px; color: #95a5a6; margin-top: 8px;">Average SNR: <span id="cap-avg-snr" style="color: #3498db; font-weight: bold;">--</span> / 1.0</div>
           </div>

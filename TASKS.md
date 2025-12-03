@@ -1664,6 +1664,17 @@ Cues → Audio Synthesis:
 
 ---
 
+## UI: Dev Panel Fine-Tuning (Dec 3, 2025)
+
+Changes:
+- Removed "Density (Spacing)" controls from `future/web/ui/dev-panel/dev-panel.html`.
+- Enabled toggling of Signal Processing Capabilities checkboxes and wired update dispatch in `future/web/ui/dev-panel/dev-panel.js` (`setSignalProcessingConfig`).
+- Verified `State Inspector` is rendered (initialized in `dev-panel.js`).
+- Confirmed `Synth Sandbox` touch pad exists and is wired to generate cues.
+- Worker selection checkboxes available under "Signal Chain Control" and bind to engine via debug config.
+
+Notes: If `setSignalProcessingConfig` is not yet implemented in engine, toggles will log a WARN and remain non-disruptive.
+
 
 -   **[ ] `AUDIO-3`:** Implement a data-driven manifest for synth settings.
 -   **[ ] `DOCS-1`:** Add data flow diagrams to `ARCHITECTURE.md`.

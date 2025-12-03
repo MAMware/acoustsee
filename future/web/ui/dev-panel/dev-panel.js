@@ -563,35 +563,40 @@ export function initializeDevPanel(arg1, arg2) {
         URL.revokeObjectURL(url);
     });
 
-    // --- Wire Density Controls ---
+    // --- Wire Signal Processing Capability Toggles ---
     try {
-      const DENSITY_STORAGE_KEY = 'acoustsee-dev-panel-density';
-      const densityRadios = panel.querySelectorAll('input[name="density"]');
-      
-      // Load saved density preference
-      const savedDensity = localStorage.getItem(DENSITY_STORAGE_KEY);
-      if (savedDensity) {
-        const radio = panel.querySelector(`input[name="density"][value="${savedDensity}"]`);
-        if (radio) {
-          radio.checked = true;
-          document.documentElement.style.setProperty('--density', savedDensity);
-          structuredLog('INFO', 'Dev Panel: Loaded density preference', { density: savedDensity });
+      const capToggles = {
+        dataCompression: panel.querySelector('#cap-data-compression'),
+        featureExtraction: panel.querySelector('#cap-feature-extraction'),
+        standardization: panel.querySelector('#cap-standardization'),
+        noiseReduction: panel.querySelector('#cap-noise-reduction'),
+        snrImprovement: panel.querySelector('#cap-snr-improvement')
+      };
+
+      const applyCapConfig = () => {
+        const enabled = {
+          dataCompression: !!capToggles.dataCompression?.checked,
+          featureExtraction: !!capToggles.featureExtraction?.checked,
+          standardization: !!capToggles.standardization?.checked,
+          noiseReduction: !!capToggles.noiseReduction?.checked,
+          snrImprovement: !!capToggles.snrImprovement?.checked
+        };
+        try {
+          engine.dispatch('setSignalProcessingConfig', { enabled });
+          structuredLog('INFO', 'Dev Panel: Signal Processing capabilities updated', enabled);
+        } catch (e) {
+          structuredLog('WARN', 'Dev Panel: Failed to dispatch setSignalProcessingConfig', { error: e?.message || String(e) });
         }
-      }
-      
-      // Handle density changes
-      densityRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-          const newDensity = e.target.value;
-          document.documentElement.style.setProperty('--density', newDensity);
-          localStorage.setItem(DENSITY_STORAGE_KEY, newDensity);
-          structuredLog('INFO', 'Dev Panel: Density changed', { density: newDensity });
-        });
+      };
+
+      Object.values(capToggles).forEach(el => {
+        if (el) el.addEventListener('change', applyCapConfig, { passive: true });
       });
-      
-      structuredLog('INFO', 'Dev Panel: Density controls initialized');
+
+      // Initialize with current checkbox states
+      applyCapConfig();
     } catch (e) {
-      structuredLog('WARN', 'Dev Panel: Failed to initialize density controls', { error: e?.message || String(e) });
+      structuredLog('WARN', 'Dev Panel: Failed to wire Signal Processing toggles', { error: e?.message || String(e) });
     }
 
     // --- Wire Logging Configuration Controls ---
