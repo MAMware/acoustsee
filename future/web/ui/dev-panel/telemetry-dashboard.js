@@ -26,7 +26,19 @@ export class TelemetryDashboard {
       cueReceptions: [],         // Last 300 cues
       syncDeltas: [],            // Last 300 measurements
       lastFrameTime: 0,
-      workerTimings: {}
+      workerTimings: {},
+      // Feature extraction metrics (Phase 3)
+      featureLatencies: [],      // Extraction processing time
+      featureStability: [],      // Stability scores
+      determinismScore: 100,     // Determinism tracking
+      featureRanges: {           // Range verification
+        brightness: { min: null, max: null, valid: false },
+        motion: { min: null, max: null, valid: false },
+        edge: { min: null, max: null, valid: false },
+        complexity: { min: null, max: null, valid: false }
+      },
+      featureCount: 0,
+      activeCells: 0
     };
 
     this.charts = {};
@@ -71,6 +83,7 @@ export class TelemetryDashboard {
           <button class="telemetry-tab-btn" data-tab="audio">Audio</button>
           <button class="telemetry-tab-btn" data-tab="sync">Sync</button>
           <button class="telemetry-tab-btn" data-tab="resources">Resources</button>
+          <button class="telemetry-tab-btn" data-tab="features">Features</button>
         </div>
 
         <!-- Video Tab -->
@@ -227,6 +240,88 @@ export class TelemetryDashboard {
           </div>
         </div>
 
+        <!-- Features Tab -->
+        <div id="telemetry-tab-features" class="telemetry-tab-content">
+          <div class="metrics-container">
+            <!-- Feature Extraction Latency -->
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-name">Extraction Latency</span>
+                <span class="metric-value" id="feature-latency-value">—</span>
+                <span class="metric-status" id="feature-latency-status">🟡</span>
+              </div>
+              <canvas id="feature-latency-chart" class="metric-chart" width="400" height="100"></canvas>
+              <div class="metric-stats">
+                <span>Target: <10ms</span>
+                <span id="feature-latency-avg">Avg: —</span>
+              </div>
+            </div>
+
+            <!-- Feature Stability -->
+            <div class="metric-card">
+              <div class="metric-header">
+                <span class="metric-name">Feature Stability</span>
+                <span class="metric-value" id="feature-stability-value">—</span>
+                <span class="metric-status" id="feature-stability-status">🟡</span>
+              </div>
+              <canvas id="feature-stability-chart" class="metric-chart" width="400" height="100"></canvas>
+              <div class="metric-stats">
+                <span>Target: >95%</span>
+                <span id="feature-stability-avg">Avg: —</span>
+              </div>
+            </div>
+
+            <!-- Determinism Score -->
+            <div class="metric-card metric-gauge">
+              <div class="metric-header">
+                <span class="metric-name">Determinism Score</span>
+                <span class="metric-value" id="determinism-value">—</span>
+              </div>
+              <div class="gauge-bar">
+                <div class="gauge-fill determinism-bar" id="determinism-bar" style="width: 0%"></div>
+              </div>
+              <div class="metric-stats">
+                <span>Target: 100%</span>
+                <span id="determinism-status">Measuring...</span>
+              </div>
+            </div>
+
+            <!-- Feature Range Verification -->
+            <div class="metric-card metric-range-grid">
+              <div class="metric-header">
+                <span class="metric-name">Range Verification</span>
+              </div>
+              <div id="feature-range-grid" class="range-verification-grid">
+                <div class="range-item">
+                  <span class="range-label">Brightness</span>
+                  <span class="range-status" id="range-brightness">—</span>
+                </div>
+                <div class="range-item">
+                  <span class="range-label">Motion</span>
+                  <span class="range-status" id="range-motion">—</span>
+                </div>
+                <div class="range-item">
+                  <span class="range-label">Edge Density</span>
+                  <span class="range-status" id="range-edge">—</span>
+                </div>
+                <div class="range-item">
+                  <span class="range-label">Complexity</span>
+                  <span class="range-status" id="range-complexity">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Feature Count -->
+            <div class="metric-card metric-counter">
+              <div class="metric-header">
+                <span class="metric-name">Features/Frame</span>
+                <span class="metric-value" id="feature-count-value">0</span>
+              </div>
+              <div class="counter-text" id="feature-count-text">0 cells active</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Controls -->
         <div class="telemetry-controls">
           <button id="telemetry-pause-btn" class="btn-secondary">⏸ Pause</button>
@@ -259,6 +354,17 @@ export class TelemetryDashboard {
     this.charts.syncDelta = new CanvasLineChart(
       this.dashboardElement.querySelector('#sync-delta-chart'),
       { minValue: -5, maxValue: 5, targetLine: 0 }
+    );
+
+    // Feature extraction charts (Phase 3)
+    this.charts.featureLatency = new CanvasLineChart(
+      this.dashboardElement.querySelector('#feature-latency-chart'),
+      { minValue: 0, maxValue: 20, targetLine: 10 }
+    );
+
+    this.charts.featureStability = new CanvasLineChart(
+      this.dashboardElement.querySelector('#feature-stability-chart'),
+      { minValue: 0, maxValue: 100, targetLine: 95 }
     );
 
     // Wire up tab buttons
@@ -302,6 +408,23 @@ export class TelemetryDashboard {
     this.engine.on?.('audio_video_latency_delta_measured', (payload) => {
       this.recordSyncMetric(payload);
     });
+
+    // Feature extraction metrics (Phase 3)
+    this.engine.on?.('feature_extraction_complete', (payload) => {
+      this.recordFeatureMetric(payload);
+    });
+
+    this.engine.on?.('feature_stability_measured', (payload) => {
+      this.recordStabilityMetric(payload);
+    });
+
+    this.engine.on?.('feature_determinism_verified', (payload) => {
+      this.recordDeterminismMetric(payload);
+    });
+
+    this.engine.on?.('feature_range_updated', (payload) => {
+      this.recordRangeMetric(payload);
+    });
   }
 
   recordFrameMetric(payload) {
@@ -336,6 +459,67 @@ export class TelemetryDashboard {
     this.metrics.syncDeltas.push(deltaMagnitude);
     if (this.metrics.syncDeltas.length > 300) {
       this.metrics.syncDeltas.shift();
+    }
+  }
+
+  /**
+   * Record feature extraction latency
+   * @param {Object} payload - Feature extraction event payload
+   */
+  recordFeatureMetric(payload) {
+    if (payload?.extractionDurationMs === undefined) return;
+
+    this.metrics.featureLatencies.push(payload.extractionDurationMs);
+    if (this.metrics.featureLatencies.length > 300) {
+      this.metrics.featureLatencies.shift();
+    }
+
+    // Track feature count and active cells
+    if (payload.featureCount !== undefined) {
+      this.metrics.featureCount = payload.featureCount;
+    }
+    if (payload.activeCells !== undefined) {
+      this.metrics.activeCells = payload.activeCells;
+    }
+  }
+
+  /**
+   * Record feature stability score
+   * @param {Object} payload - Stability measurement payload
+   */
+  recordStabilityMetric(payload) {
+    if (payload?.stabilityPercent === undefined) return;
+
+    this.metrics.featureStability.push(payload.stabilityPercent);
+    if (this.metrics.featureStability.length > 300) {
+      this.metrics.featureStability.shift();
+    }
+  }
+
+  /**
+   * Record determinism verification result
+   * @param {Object} payload - Determinism verification payload
+   */
+  recordDeterminismMetric(payload) {
+    if (payload?.determinismScore !== undefined) {
+      this.metrics.determinismScore = payload.determinismScore;
+    }
+  }
+
+  /**
+   * Record feature range verification
+   * @param {Object} payload - Range update payload
+   */
+  recordRangeMetric(payload) {
+    if (!payload?.featureName) return;
+
+    const name = payload.featureName.toLowerCase();
+    if (this.metrics.featureRanges[name]) {
+      this.metrics.featureRanges[name] = {
+        min: payload.min ?? this.metrics.featureRanges[name].min,
+        max: payload.max ?? this.metrics.featureRanges[name].max,
+        valid: payload.valid ?? this.metrics.featureRanges[name].valid
+      };
     }
   }
 
@@ -384,6 +568,80 @@ export class TelemetryDashboard {
     const droppedEl = this.dashboardElement?.querySelector('#dropped-frames-count');
     if (droppedEl) {
       droppedEl.textContent = this.metrics.droppedFrameCount;
+    }
+
+    // Update feature metrics (Phase 3)
+    this.updateFeatureMetrics(avg);
+  }
+
+  /**
+   * Update feature extraction metrics display
+   * @param {Function} avgFn - Average calculation function
+   */
+  updateFeatureMetrics(avgFn) {
+    // Feature latency
+    const featureLatencyAvg = avgFn(this.metrics.featureLatencies);
+    this.updateMetricDisplay('feature-latency', featureLatencyAvg, 10);
+    this.charts.featureLatency?.update(this.metrics.featureLatencies);
+
+    // Feature stability
+    const stabilityAvg = avgFn(this.metrics.featureStability);
+    this.updateMetricDisplay('feature-stability', stabilityAvg, 95);
+    this.charts.featureStability?.update(this.metrics.featureStability);
+
+    // Determinism gauge
+    const determinismEl = this.dashboardElement?.querySelector('#determinism-value');
+    const determinismBar = this.dashboardElement?.querySelector('#determinism-bar');
+    const determinismStatus = this.dashboardElement?.querySelector('#determinism-status');
+    
+    if (determinismEl) {
+      determinismEl.textContent = this.metrics.determinismScore.toFixed(1) + '%';
+    }
+    if (determinismBar) {
+      determinismBar.style.width = this.metrics.determinismScore + '%';
+      determinismBar.style.backgroundColor = this.metrics.determinismScore >= 99 ? '#27ae60' :
+        this.metrics.determinismScore >= 95 ? '#f1c40f' : '#e74c3c';
+    }
+    if (determinismStatus) {
+      determinismStatus.textContent = this.metrics.determinismScore >= 99 ? 'Deterministic' :
+        this.metrics.determinismScore >= 95 ? 'Minor variance' : 'Non-deterministic';
+    }
+
+    // Feature ranges
+    this.updateFeatureRanges();
+
+    // Feature count
+    const featureCountEl = this.dashboardElement?.querySelector('#feature-count-value');
+    const featureCountText = this.dashboardElement?.querySelector('#feature-count-text');
+    
+    if (featureCountEl) {
+      featureCountEl.textContent = this.metrics.featureCount;
+    }
+    if (featureCountText) {
+      featureCountText.textContent = `${this.metrics.activeCells} cells active`;
+    }
+  }
+
+  /**
+   * Update feature range verification display
+   */
+  updateFeatureRanges() {
+    const ranges = this.metrics.featureRanges;
+    
+    for (const [name, data] of Object.entries(ranges)) {
+      const el = this.dashboardElement?.querySelector(`#range-${name}`);
+      if (el) {
+        if (data.min === null && data.max === null) {
+          el.textContent = '—';
+          el.className = 'range-status pending';
+        } else if (data.valid) {
+          el.textContent = `✓ ${data.min?.toFixed(2)}–${data.max?.toFixed(2)}`;
+          el.className = 'range-status valid';
+        } else {
+          el.textContent = `⚠ ${data.min?.toFixed(2)}–${data.max?.toFixed(2)}`;
+          el.className = 'range-status invalid';
+        }
+      }
     }
   }
 
@@ -492,7 +750,19 @@ export class TelemetryDashboard {
       cueReceptions: [],
       syncDeltas: [],
       lastFrameTime: 0,
-      workerTimings: {}
+      workerTimings: {},
+      // Feature extraction metrics (Phase 3)
+      featureLatencies: [],
+      featureStability: [],
+      determinismScore: 100,
+      featureRanges: {
+        brightness: { min: null, max: null, valid: false },
+        motion: { min: null, max: null, valid: false },
+        edge: { min: null, max: null, valid: false },
+        complexity: { min: null, max: null, valid: false }
+      },
+      featureCount: 0,
+      activeCells: 0
     };
   }
 

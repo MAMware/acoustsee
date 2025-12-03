@@ -38,6 +38,9 @@ import { initializeChartController } from './dev-panel-chart-controller.js'; // 
 import { initializeCustomization } from './dev-panel-customization.js'; // Phase 4: Customization System
 import { initializeCameraControls } from './camera-controls.js'; // Task 5: Camera Controls UI (Workflow 1)
 import { initializeTelemetryDashboard } from './telemetry-dashboard.js'; // Task 6: Telemetry Dashboard (Workflow 3)
+import { createTelemetryCollector } from './telemetry-collector.js'; // Phase 3: Telemetry Collection
+import { DevPanelAnalytics } from './analytics.js'; // Phase 3: Analytics Event Emitter
+import { TelemetryExporter } from './telemetry-exporter.js'; // Phase 3: Session Export
 import { getWorkersForMode, getTotalLatencyBudget, WORKER_MANIFEST } from '../../video/workers/worker-manifest.js'; // Worker chain controls
 import { DevPanelConditionEngine } from './dev-panel-conditions.js'; // Phase 2: Conditional Logic Engine
 // Do not import core constants here; version info is read from engine state (buildInfo)
@@ -742,6 +745,49 @@ export function initializeDevPanel(arg1, arg2) {
     } catch (e) {
       structuredLog('ERROR', 'dev-panel', { message: 'Failed to initialize Conditional Logic Engine', error: e?.message || String(e) });
       // Non-critical: panel still functions, just without dynamic visibility rules
+    }
+
+    // --- Initialize Analytics & Telemetry Collection (Phase 3: Dev Panel Overhaul) ---
+    let telemetryCollector = null;
+    let devPanelAnalytics = null;
+    let telemetryExporter = null;
+
+    try {
+      // Initialize telemetry collector with baseline detection
+      telemetryCollector = createTelemetryCollector(engine, {
+        batchSize: 50,
+        batchInterval: 5000,
+        baselineWarmupMs: 10000,
+        anomalyThreshold: 2.5
+      });
+      panel.__telemetryCollectorStop = () => telemetryCollector.stop();
+
+      // Initialize analytics event emitter
+      devPanelAnalytics = new DevPanelAnalytics(engine, {
+        endpoint: '/api/telemetry/analytics'
+      });
+      panel.__analyticsDispose = () => devPanelAnalytics.dispose();
+
+      // Initialize session exporter
+      telemetryExporter = new TelemetryExporter({
+        engine,
+        collector: telemetryCollector,
+        analytics: devPanelAnalytics
+      });
+      panel.__telemetryExporterDispose = () => telemetryExporter.dispose();
+
+      // Store on engine for dashboard access
+      if (!engine._devPanelComponents) {
+        engine._devPanelComponents = {};
+      }
+      engine._devPanelComponents.telemetryCollector = telemetryCollector;
+      engine._devPanelComponents.analytics = devPanelAnalytics;
+      engine._devPanelComponents.exporter = telemetryExporter;
+
+      structuredLog('INFO', 'dev-panel', { message: 'Analytics & Telemetry Collection initialized (Phase 3)' });
+    } catch (e) {
+      structuredLog('ERROR', 'dev-panel', { message: 'Failed to initialize Analytics/Telemetry', error: e?.message || String(e) });
+      // Non-critical: panel still functions without analytics
     }
 
     // --- Control Synchronization ---
@@ -1658,7 +1704,20 @@ export function initializeDevPanel(arg1, arg2) {
         }
       } catch (e) { /* swallow */ }
 
-      // 12. Remove panel node from DOM
+      // 12. Analytics & Telemetry cleanup (Phase 3: Dev Panel Overhaul)
+      try {
+        if (typeof panel.__analyticsDispose === 'function') {
+          panel.__analyticsDispose();
+        }
+        if (typeof panel.__telemetryCollectorStop === 'function') {
+          panel.__telemetryCollectorStop();
+        }
+        if (typeof panel.__telemetryExporterDispose === 'function') {
+          panel.__telemetryExporterDispose();
+        }
+      } catch (e) { /* swallow */ }
+
+      // 13. Remove panel node from DOM
       try {
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
       } catch (e) { /* swallow */ }

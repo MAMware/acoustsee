@@ -38,11 +38,25 @@ export class TelemetryCollector {
     // Batch flush interval
     this.flushInterval = null;
     
+    // Baseline detection (Phase 3)
+    this.baselineConfig = {
+      warmupDuration: options.baselineWarmupMs || 10000,  // 10 seconds
+      sampleWindow: options.baselineSampleWindow || 100,   // 100 samples
+      anomalyThreshold: options.anomalyThreshold || 2.5    // 2.5 standard deviations
+    };
+    this.baselineEstablished = false;
+    this.baselines = {};        // Metric baselines: { metricName: { mean, stdDev, min, max } }
+    this.baselineSamples = {};  // Samples during warmup: { metricName: [] }
+    this.baselineTimer = null;
+    
     // Subscribe to engine events
     this._subscribeToEvents();
     
     // Start periodic flush
     this._startPeriodicFlush();
+    
+    // Start baseline warmup
+    this._startBaselineWarmup();
   }
 
   /**
@@ -98,7 +112,7 @@ export class TelemetryCollector {
         this.engine.on(eventName, (payload) => {
           this._recordEvent(eventName, payload);
         });
-      } catch (err) {
+      } catch {
         // Silently fail if subscription fails (event might not exist yet)
       }
     });
@@ -146,10 +160,164 @@ export class TelemetryCollector {
 
     this.eventsCollected++;
 
+    // Track baseline metrics (Phase 3)
+    this._trackBaselineMetric(eventName, payload);
+
     // Check if we should flush
     if (this.events.length >= this.batchSize) {
       this.flush();
     }
+  }
+
+  /**
+   * Start baseline warmup period
+   * @private
+   */
+  _startBaselineWarmup() {
+    this.baselineTimer = setTimeout(() => {
+      this._establishBaseline();
+    }, this.baselineConfig.warmupDuration);
+  }
+
+  /**
+   * Track metric for baseline calculation
+   * @private
+   */
+  _trackBaselineMetric(eventName, payload) {
+    // Extract numeric metrics from known event types
+    const metricMappings = {
+      'video_frame_processed': ['latencyMs', 'processingTimeMs'],
+      'audio_cues_received': ['routingDurationMs', 'latencyMs'],
+      'audio_video_latency_delta_measured': ['audioVideoLatencyDeltaMs'],
+      'worker_latency_measured': ['latencyMs', 'processingTimeMs'],
+      'cpu_usage_spike_detected': ['cpuUsagePercent'],
+      'memory_growth_detected': ['memoryMB'],
+      'feature_extraction_complete': ['extractionDurationMs']
+    };
+
+    const metricsToTrack = metricMappings[eventName];
+    if (!metricsToTrack) return;
+
+    for (const metricKey of metricsToTrack) {
+      const value = payload?.[metricKey];
+      if (typeof value !== 'number' || !isFinite(value)) continue;
+
+      const metricName = `${eventName}.${metricKey}`;
+
+      if (!this.baselineEstablished) {
+        // During warmup: collect samples
+        if (!this.baselineSamples[metricName]) {
+          this.baselineSamples[metricName] = [];
+        }
+        this.baselineSamples[metricName].push(value);
+        
+        // Limit sample size during warmup
+        if (this.baselineSamples[metricName].length > this.baselineConfig.sampleWindow) {
+          this.baselineSamples[metricName].shift();
+        }
+      } else {
+        // After baseline established: check for anomalies
+        this._checkAnomaly(metricName, value);
+      }
+    }
+  }
+
+  /**
+   * Establish baseline from warmup samples
+   * @private
+   */
+  _establishBaseline() {
+    for (const [metricName, samples] of Object.entries(this.baselineSamples)) {
+      if (samples.length < 10) continue;  // Need minimum samples
+
+      const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
+      const variance = samples.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / samples.length;
+      const stdDev = Math.sqrt(variance);
+
+      this.baselines[metricName] = {
+        mean,
+        stdDev,
+        min: Math.min(...samples),
+        max: Math.max(...samples),
+        sampleCount: samples.length
+      };
+    }
+
+    this.baselineEstablished = true;
+
+    // Emit baseline established event
+    if (this.engine?.emit) {
+      this.engine.emit('telemetry_baseline_established', {
+        timestamp: performance.now(),
+        session_id: this.session_id,
+        warmupDurationMs: this.baselineConfig.warmupDuration,
+        metrics: Object.keys(this.baselines),
+        baselines: this.baselines
+      });
+    }
+
+    // Clear warmup samples to free memory
+    this.baselineSamples = {};
+  }
+
+  /**
+   * Check if a metric value is anomalous
+   * @private
+   */
+  _checkAnomaly(metricName, value) {
+    const baseline = this.baselines[metricName];
+    if (!baseline || baseline.stdDev === 0) return;
+
+    const zScore = Math.abs(value - baseline.mean) / baseline.stdDev;
+
+    if (zScore > this.baselineConfig.anomalyThreshold) {
+      // Emit anomaly detected event
+      if (this.engine?.emit) {
+        this.engine.emit('telemetry_anomaly_detected', {
+          timestamp: performance.now(),
+          session_id: this.session_id,
+          metricName,
+          value,
+          baseline: {
+            mean: baseline.mean,
+            stdDev: baseline.stdDev,
+            min: baseline.min,
+            max: baseline.max
+          },
+          zScore,
+          severity: zScore > 4 ? 'critical' : zScore > 3 ? 'warning' : 'info',
+          direction: value > baseline.mean ? 'high' : 'low'
+        });
+      }
+    }
+  }
+
+  /**
+   * Get current baselines
+   * @returns {Object} Current baseline data
+   */
+  getBaselines() {
+    return {
+      established: this.baselineEstablished,
+      warmupRemaining: this.baselineEstablished ? 0 : 
+        Math.max(0, this.baselineConfig.warmupDuration - (performance.now() - this.startTime)),
+      metrics: this.baselines
+    };
+  }
+
+  /**
+   * Reset baselines and restart warmup
+   */
+  resetBaselines() {
+    this.baselineEstablished = false;
+    this.baselines = {};
+    this.baselineSamples = {};
+    
+    if (this.baselineTimer) {
+      clearTimeout(this.baselineTimer);
+    }
+    
+    this._startBaselineWarmup();
   }
 
   /**
@@ -234,6 +402,11 @@ export class TelemetryCollector {
       this.flushInterval = null;
     }
 
+    if (this.baselineTimer) {
+      clearTimeout(this.baselineTimer);
+      this.baselineTimer = null;
+    }
+
     // Final flush
     return this.flush();
   }
@@ -256,7 +429,10 @@ export class TelemetryCollector {
       eventsFlushed: this.eventsFlushed,
       eventsFailed: this.eventsFailed,
       pendingEvents: this.events.length,
-      successRate: this.eventsFlushed / Math.max(this.eventsCollected, 1)
+      successRate: this.eventsFlushed / Math.max(this.eventsCollected, 1),
+      // Baseline metrics (Phase 3)
+      baselineEstablished: this.baselineEstablished,
+      baselineMetricCount: Object.keys(this.baselines).length
     };
   }
 

@@ -440,7 +440,7 @@ export const VISIBILITY_RULES = {
  * Manages conditional visibility/enablement for dev panel elements
  */
 export class DevPanelConditionEngine {
-  constructor(engine) {
+  constructor(engine, panelElement) {
     this.engine = engine;
     this.rules = VISIBILITY_RULES;
     this.elementCache = new Map();
@@ -448,6 +448,11 @@ export class DevPanelConditionEngine {
     this.throttleTimers = new Map();
     this.subscriptions = [];
     this.lastState = null;
+    
+    // Auto-initialize if panel element provided
+    if (panelElement) {
+      this.initialize(panelElement);
+    }
   }
   
   /**
