@@ -192,8 +192,21 @@ export function output(level, entry, legacyData = {}) {
     // Performance optimization: avoid JSON.stringify for objects with >3 keys
     if (dataKeys.length <= 3) {
       // Small object: format as inline key=value (minimal stringify)
-      const inline = dataKeys.map(k => `${k}=${JSON.stringify(meaningfulData[k])}`).join(', ');
-      method(`${consoleText} { ${inline} }`);
+      // Wrap in try/catch to handle circular references gracefully
+      try {
+        const inline = dataKeys.map(k => {
+          try {
+            return `${k}=${JSON.stringify(meaningfulData[k])}`;
+          } catch {
+            // Circular ref or other serialization error - show type instead
+            return `${k}=[${typeof meaningfulData[k]}]`;
+          }
+        }).join(', ');
+        method(`${consoleText} { ${inline} }`);
+      } catch {
+        // Fallback: use native console display if stringify fails completely
+        method(consoleText, meaningfulData);
+      }
     } else {
       // Larger object: Use native console object display (let browser handle it)
       // This is FASTER than JSON.stringify and preserves clickable objects

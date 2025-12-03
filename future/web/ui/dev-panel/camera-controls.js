@@ -11,11 +11,12 @@
  */
 
 export class CameraControls {
+  // Private WeakRef to engine - breaks circular reference chain for JSON serialization
+  #engineRef = null;
+
   constructor(containerElement = null) {
-    // PRIORITY 2 FIX: Do NOT store engine reference (causes circular refs when stored on engine._devPanelComponents)
-    // Instead, accept engine as parameter to methods that need it
-    this.engine = null;  // Will be injected via registerEventListeners/subscribeToTelemetry
-    
+    // PRIORITY 2 FIX: Use WeakRef to avoid circular refs when stored on engine._devPanelComponents
+    // WeakRef allows garbage collection and doesn't serialize in JSON.stringify
     this.container = containerElement || document.getElementById('camera-controls-content');
     this.isRunning = false;
     this.currentSource = 'gpu';
@@ -47,17 +48,22 @@ export class CameraControls {
       hasStopBtn: !!this.stopBtn,
       hasContainer: !!this.container
     });
+  }
 
-    // Validate all elements exist
-    const elements = [
-      this.statusIndicator, this.statusText, this.sourceSelector,
-      this.timingBadge, this.startBtn, this.stopBtn, this.testFallbackBtn,
-      this.streamResolution, this.streamFps, this.errorContainer
-    ];
-    
-    if (elements.some(el => !el)) {
-      console.warn('CameraControls: Some UI elements not found', { elements });
-    }
+  /**
+   * Get engine reference from WeakRef (returns null if engine was garbage collected)
+   * @returns {Object|null} Engine instance or null
+   */
+  get engine() {
+    return this.#engineRef?.deref() ?? null;
+  }
+
+  /**
+   * Set engine reference using WeakRef to avoid circular references
+   * @param {Object} engine - Engine instance
+   */
+  set engine(engine) {
+    this.#engineRef = engine ? new WeakRef(engine) : null;
   }
 
   /**
@@ -66,7 +72,7 @@ export class CameraControls {
    * @param {Object} engine - Engine instance for command dispatch
    */
   registerEventListeners(engine = null) {
-    this.engine = engine;  // Inject engine reference here instead of in constructor
+    this.engine = engine;  // Uses WeakRef setter to avoid circular refs
     
     if (this.startBtn) {
       this.startBtn.addEventListener('click', () => this.startCamera());
@@ -92,7 +98,7 @@ export class CameraControls {
   subscribeToTelemetry(engine = null) {
     if (!engine) return;
     
-    this.engine = engine;  // Also update stored reference
+    this.engine = engine;  // Uses WeakRef setter - safe from circular refs
 
     // Listen to camera lifecycle events (Task 2 telemetry)
     engine.on?.('video_capture_started', (payload) => {

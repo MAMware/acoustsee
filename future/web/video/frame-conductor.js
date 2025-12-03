@@ -125,8 +125,17 @@ export class FrameConductor {
     this.#initializationFrameCount = 3;
     this.#initializationTimeoutMs = 2000; // 2s for initialization
 
+    // Log safe config object to avoid circular reference errors (engine contains _devPanelComponents)
+    const safeConfig = {
+      flowTimeout: this.config.flowTimeout,
+      focusTimeout: this.config.focusTimeout,
+      hasEngine: !!this.config.engine,
+      hasGetEngineState: typeof this.config.getEngineState === 'function',
+      hasGetCurrentGrid: typeof this.config.getCurrentGrid === 'function',
+      hasProcessFrame: typeof this.config.processFrame === 'function',
+    };
     structuredLog('DEBUG', 'FrameConductor created', {
-      config: this.config,
+      config: safeConfig,
       deviceTier: this.#timingMetrics.deviceTier,
     });
   }

@@ -1061,8 +1061,9 @@ export function initializeDevPanel(arg1, arg2) {
     updateVideoSourceStatus();
 
     // Subscribe to mode changes to re-render worker controls
-    if (engine.subscribe) {
-      engine.subscribe((state, prevState) => {
+    // Use onStateChange (full state listener) instead of subscribe(selector, callback)
+    if (engine.onStateChange) {
+      engine.onStateChange((state, prevState) => {
         if (state.currentMode !== prevState?.currentMode) {
           renderWorkerChainControls(state.currentMode);
           // Reset to full preset on mode change

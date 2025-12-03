@@ -441,10 +441,17 @@ export function sendCriticalEventBeacon(event, endpoint) {
       return;
     }
 
+    // Use 'analytics' type which the Cloudflare Worker handles (routes to unified_analytics table)
+    // The 'error_beacon' type was not handled, causing 400 Bad Request errors
     const payload = {
-      type: 'error_beacon',
-      event,
-      timestamp: Date.now()
+      type: 'analytics',
+      event_type: 'error_beacon',
+      category: event.category || 'ERROR',
+      message: event.message || '',
+      data: JSON.stringify(event.data || {}),
+      timestamp: new Date().toISOString(),
+      session_id: event.session_id || null,
+      trace_id: event.trace_id || null
     };
 
     const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
