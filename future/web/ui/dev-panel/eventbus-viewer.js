@@ -444,6 +444,17 @@ export function initEventBusViewer(engine, DOM) {
   }
 
   /**
+   * Force initial render - called at startup to ensure UI shows data immediately
+   * Unlike smartRefresh which is optimized for updates, this always renders (v0.9.7.4 pattern)
+   */
+  function initialRender() {
+    renderMetrics();
+    renderEventList();
+    renderCorrelationView();
+    lastEventCount = getFilteredEvents().length;
+  }
+
+  /**
    * Optimized manual refresh: Cache filtered events once, reuse for all renders
    * CRITICAL: Filtering large event buffers 3x causes stutter on transition
    * This fix reduces 3 full filter passes to 1 pass + reuse
@@ -537,8 +548,9 @@ export function initEventBusViewer(engine, DOM) {
     structuredLog('DEBUG', 'EventBusViewer: Using fallback polling (2s interval)');
   }
 
-  // Initial render
-  smartRefresh();
+  // CRITICAL: Eager initial render - shows data immediately (v0.9.7.4 pattern)
+  // This ensures the dev panel shows event data as soon as it opens
+  initialRender();
 
   structuredLog('INFO', 'EventBusViewer initialized');
 

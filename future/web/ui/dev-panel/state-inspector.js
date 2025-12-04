@@ -67,12 +67,27 @@ export class StateInspector {
         </div>
       `;
       
-      // Listen to state changes with throttling
+      // Eagerly fetch and render initial state immediately (v0.9.7.4 pattern)
+      // This ensures data appears immediately when dev panel opens
+      const initialState = this.engine?.getState?.();
+      if (initialState) {
+        this.scheduleUpdate(initialState);
+      } else {
+        // Show placeholder if no initial state
+        const contentContainer = this.container.querySelector('#state-groups-content');
+        if (contentContainer) {
+          contentContainer.innerHTML = `
+            <div style="color: #95a5a6; font-size: 12px; padding: 12px; background: #ecf0f1; border-radius: 4px; text-align: center;">
+              <strong>State Inspector</strong><br>
+              <span style="font-size: 11px;">Waiting for state data...</span>
+            </div>
+          `;
+        }
+      }
+      
+      // Listen to state changes with throttling for reactive updates
       if (this.engine && typeof this.engine.onStateChange === 'function') {
         this.engine.onStateChange(state => this.scheduleUpdate(state));
-        
-        // Initial render
-        this.scheduleUpdate(this.engine.getState());
       } else {
         structuredLog('WARN', 'state-inspector', { message: 'Engine missing onStateChange method' });
       }

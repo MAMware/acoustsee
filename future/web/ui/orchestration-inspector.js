@@ -490,16 +490,12 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
    */
   function initialize() {
     try {
-      // Get initial state via selectors
-      const orchestration = engine.getOrchestration();
-      if (orchestration) {
-        updateUI();
-      } else {
-        // Show loading state if orchestration not yet available
-        container.innerHTML = '<div class="orch-error" style="padding: 12px;">Orchestration state initializing...</div>';
-      }
+      // Eagerly fetch and render orchestration data immediately (v0.9.7.4 pattern)
+      // This ensures data appears as soon as dev panel opens
+      // updateUI() handles cases where methods don't exist or return null with safe fallbacks
+      updateUI();
       
-      // Subscribe to state changes
+      // Subscribe to state changes for reactive updates
       if (engine.onStateChange) {
         unsubscribeStateChange = engine.onStateChange(() => {
           // ADR-0011: updateUI() now uses selectors internally
