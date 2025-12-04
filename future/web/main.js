@@ -2,6 +2,7 @@ import { setupUIController } from './ui/ui-controller.js';
 import { createEventDispatcher } from './ui/event-dispatcher.js';
 import { loadConfigs } from './state.js';
 import { structuredLog } from './utils/logging.js';  
+import { setDOM } from './context.js'; 
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),
@@ -17,6 +18,9 @@ const DOM = {
   mainContainer: document.getElementById('mainContainer'),
   debugPanel: document.getElementById('debugPanel'),
 };
+
+// Initialize shared DOM context for modules that need it
+setDOM(DOM);
 
 async function init() {
   try {

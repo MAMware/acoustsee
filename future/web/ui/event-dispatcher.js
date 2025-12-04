@@ -5,6 +5,7 @@ import { getText } from './utils.js';
 import { initializeMicAudio } from '../audio-processor.js';
 import { processFrame } from './video-capture.js';
 import { structuredLog } from '../utils/logging.js';
+import { cleanupFrameProcessor } from './video-capture.js';
 
 export let dispatchEvent = null;
 
@@ -197,16 +198,30 @@ export async function createEventDispatcher(DOM) {
           await getText('button1.tts.gridSelect', { state: settings.gridType });
         } else {
           if (!settings.stream) {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!settings.micStream });
+            // video-only to avoid duplicate audio tracks
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            // attach stream and wait for valid metadata before proceeding
             DOM.videoFeed.srcObject = stream;
+            await new Promise((resolve, reject) => {
+              DOM.videoFeed.addEventListener('loadedmetadata', () => {
+                if (DOM.videoFeed.videoWidth <= 0 || DOM.videoFeed.videoHeight <= 0) {
+                  return reject(new Error('Invalid video dimensions after metadata'));
+                }
+                structuredLog('INFO', 'Video metadata loaded', { width: DOM.videoFeed.videoWidth, height: DOM.videoFeed.videoHeight });
+                resolve();
+              }, { once: true });
+              DOM.videoFeed.addEventListener('error', reject, { once: true });
+            });
             setStream(stream);
             setAudioInterval(setInterval(() => {
               dispatchEvent('processFrame');
             }, settings.updateInterval));
             await getText('button1.tts.startStop', { state: 'starting' });
           } else {
-            settings.stream.getTracks().forEach(track => track.stop());
+            // stop only video tracks
+            settings.stream.getVideoTracks().forEach(track => track.stop());
             setStream(null);
+            await cleanupFrameProcessor(); // Reset frame processor state
             if (settings.micStream) {
               settings.micStream.getTracks().forEach(track => track.stop());
               setMicStream(null);
@@ -287,19 +302,43 @@ export async function createEventDispatcher(DOM) {
       }
     },
 
-    toggleVideoSource: async () => {  // New handler for settings mode (DEF-003)
+    toggleVideoSource: async () => {
       try {
-        const videoTrack = DOM.videoFeed?.srcObject?.getVideoTracks()[0];
-        if (videoTrack) {
-          const settings = videoTrack.getSettings();
-          const currentFacingMode = settings.facingMode || 'user';
+        const oldStream = DOM.videoFeed?.srcObject;
+        if (oldStream) {
+          const currentVideoTrack = oldStream.getVideoTracks()[0];
+          const currentFacingMode = currentVideoTrack.getSettings().facingMode || 'user';
           const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-          const stream = await navigator.mediaDevices.getUserMedia({
+
+          // Release old camera & mic tracks
+          oldStream.getTracks().forEach(track => track.stop());
+          await cleanupFrameProcessor(); // Reset frame processor state
+
+          // Request new stream with updated video source and existing audio state
+          const newStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: newFacingMode },
             audio: !!settings.micStream
           });
-          DOM.videoFeed.srcObject = stream;
-          setStream(stream);  // Update stream state
+          // attach new stream and validate metadata
+          DOM.videoFeed.srcObject = newStream;
+          await new Promise((resolve, reject) => {
+            DOM.videoFeed.addEventListener('loadedmetadata', () => {
+              if (DOM.videoFeed.videoWidth <= 0 || DOM.videoFeed.videoHeight <= 0) {
+                return reject(new Error('Invalid video dimensions after metadata'));
+              }
+              structuredLog('INFO', 'Video metadata loaded', { width: DOM.videoFeed.videoWidth, height: DOM.videoFeed.videoHeight });
+              resolve();
+            }, { once: true });
+            DOM.videoFeed.addEventListener('error', reject, { once: true });
+          });
+          setStream(newStream);
+
+          // Re-init mic if it was on
+          if (settings.micStream) {
+            setMicStream(newStream);
+            initializeMicAudio(newStream);
+          }
+
           await getText('button3.tts.videoSourceSelect', { state: newFacingMode });
         } else {
           structuredLog('WARN', 'toggleVideoSource: No video track available');

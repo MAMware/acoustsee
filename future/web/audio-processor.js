@@ -6,6 +6,7 @@ import { structuredLog } from "./utils/logging.js";  // Add for detailed logging
 let audioContext = null;
 let isAudioInitialized = false;
 let oscillators = [];
+let modulators = [];
 let micSource = null;
 let micGainNode = null;
 
@@ -127,8 +128,18 @@ export async function cleanupAudio() {
         micGainNode = null;
       }
       oscillators = [];
+      // cleanup modulators
+      modulators.forEach(({ osc, gain }) => {
+        osc.stop();
+        osc.disconnect();
+        gain.disconnect();
+      });
+      modulators = [];
+      // Fully close AudioContext to release system resources
+      await audioContext.close();
+      audioContext = null;
       isAudioInitialized = false;
-      structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up');
+      structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up and context closed');
     } catch (err) {
       structuredLog('ERROR', 'cleanupAudio error', { message: err.message });
       dispatchEvent('logError', { message: `Cleanup audio error: ${err.message}` });
@@ -170,4 +181,4 @@ export function initializeMicAudio(micStream) {
   }
 }
 
-export { audioContext, isAudioInitialized, oscillators };
+export { audioContext, isAudioInitialized, oscillators, modulators };

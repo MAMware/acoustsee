@@ -1,4 +1,200 @@
-// Generated on: 2025-07-17 00:53:24 +0000
+// Generated on: 2025-07-28 12:27:46 +0000
+
+// File: web/utils/logging.js
+// web/utils/logging.js
+// Centralized logging utilities for structured, level-based outputs with async emission and sampling.
+// Supports async to avoid blocking high-throughput paths (e.g., frame processing).
+// Sampling reduces log volume for DEBUG level in performance-critical scenarios.
+
+import { addIdbLog } from './idb-logger.js';  // Updated to use IndexedDB.
+
+const LOG_LEVELS = {
+  DEBUG: 0,
+  INFO: 1,
+  WARN: 2,
+  ERROR: 3,
+};
+
+let currentLogLevel = LOG_LEVELS.DEBUG;  // Default; can be set from settings.debugLogging.
+const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+let sampleRate = isMobile ? 0.1 : 1.0;  // 10% DEBUG logs on mobile.
+
+// Helper to set global log level (e.g., from settings.isSettingsMode or debugLogging).
+export function setLogLevel(level) {
+  const upperLevel = level.toUpperCase();
+  if (Object.keys(LOG_LEVELS).includes(upperLevel)) {
+    currentLogLevel = LOG_LEVELS[upperLevel];
+  } else {
+    structuredLog('WARN', 'Invalid log level attempted', { level });
+  }
+}
+
+// Helper to set sampling rate (0.0 to 1.0; from settings or dynamically).
+export function setSampleRate(rate) {
+  if (rate >= 0 && rate <= 1) {
+    sampleRate = rate;
+  } else {
+    structuredLog('WARN', 'Invalid sample rate attempted', { rate });
+  }
+}
+
+/**
+ * Logs a structured message with level, timestamp, and data payload.
+ * Emits asynchronously to prevent blocking.
+ * @param {string} level - One of 'DEBUG', 'INFO', 'WARN', 'ERROR'.
+ * @param {string} message - Descriptive message (e.g., 'setAudioInterval').
+ * @param {Object} [data={}] - Additional context (e.g., { timerId: 42, ms: 50 }).
+ * @param {boolean} [persist=true] - If true, also calls addLog with serialized form.
+ * @param {boolean} [sample=true] - If false, bypass sampling (for critical logs).
+ */
+export async function structuredLog(level, message, data = {}, persist = true, sample = true) {
+  const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
+  if (numericLevel < currentLogLevel) return;  // Skip if below threshold.
+
+  // Sampling: For DEBUG, randomly skip based on sampleRate.
+  if (sample && level.toUpperCase() === 'DEBUG' && Math.random() > sampleRate) return;
+
+  const timestamp = new Date().toISOString();
+  const logEntry = { timestamp, level: level.toUpperCase(), message, data };
+
+  // Async emission: Use setTimeout(0) for browser (non-blocking queue).
+  setTimeout(() => {
+    // Human-readable console output.
+    const consoleMethod = console[level.toLowerCase()] || console.log;
+    consoleMethod(`[${timestamp}] ${logEntry.level}: ${message}`, data);
+
+    if (persist) {
+// Persist via IndexedDB (async to avoid blocking).
+      addIdbLog(logEntry).catch(err => {
+        console.warn('Failed to persist log to IndexedDB:', err.message);
+      });
+    }
+  }, 0);
+}
+
+// File: web/utils/idb-logger.js
+// web/utils/idb-logger.js
+// IndexedDB wrapper for persistent logging: Append JSON logs, retrieve all, cap size, export.
+// Asynchronous, transaction-based for non-blocking ops in high-throughput scenarios.
+// Fallback if IndexedDB not supported (e.g., logs to console only).
+
+const DB_NAME = 'AcoustSeeLogsDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'logs';
+const MAX_ENTRIES = 1000;  // Cap to prevent unbounded growth.
+let dbPromise = null;
+
+// Check IndexedDB support (technical: Feature detection to avoid errors in non-supporting envs like some iframes or old browsers).
+const isIndexedDBSupported = 'indexedDB' in window;
+
+// Open (or create) DB asynchronously.
+function openDB() {
+  if (!isIndexedDBSupported) {
+    return Promise.reject(new Error('IndexedDB not supported in this environment'));
+  }
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { autoIncrement: true });
+      }
+    };
+  });
+}
+
+// Lazy-init DB promise with error handling.
+async function getDB() {
+  if (!dbPromise) {
+    dbPromise = openDB().catch(err => {
+      console.warn('IndexedDB init failed; falling back to console-only logging:', err.message);
+      return null;  // Null signals fallback.
+    });
+  }
+  return dbPromise;
+}
+
+// Append a log entry (JSON object). Fallback to console if DB unavailable.
+export async function addIdbLog(logEntry) {
+  const db = await getDB();
+  if (!db) {
+    console.warn('DB unavailable; logging to console:', logEntry);
+    return;  // Fallback: No persistence.
+  }
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const addRequest = store.add(logEntry);
+
+    addRequest.onsuccess = () => {
+      // Cap size: If over max, delete oldest (cursor for efficiency).
+      capLogSize(store).then(resolve).catch(reject);
+    };
+    addRequest.onerror = () => reject(addRequest.error);
+
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+// Helper to cap entries: Delete oldest if > MAX_ENTRIES.
+async function capLogSize(store) {
+  return new Promise((resolve, reject) => {
+    const countRequest = store.count();
+    countRequest.onsuccess = () => {
+      if (countRequest.result <= MAX_ENTRIES) return resolve();
+
+      // Delete excess oldest entries via cursor.
+      let deleted = 0;
+      const excess = countRequest.result - MAX_ENTRIES;
+      const cursorRequest = store.openCursor();
+
+      cursorRequest.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor && deleted < excess) {
+          cursor.delete();
+          deleted++;
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      cursorRequest.onerror = () => reject(cursorRequest.error);
+    };
+    countRequest.onerror = () => reject(countRequest.error);
+  });
+}
+
+// Retrieve all logs for export. Fallback to empty if DB unavailable.
+export async function getAllIdbLogs() {
+  const db = await getDB();
+  if (!db) return [];  // Fallback: Empty array.
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.getAll();
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Clear all logs (optional, e.g., after send). Fallback no-op if DB unavailable.
+export async function clearIdbLogs() {
+  const db = await getDB();
+  if (!db) return;
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.clear();
+
+    request.onsuccess = resolve;
+    request.onerror = () => reject(request.error);
+  });
+}
 
 // File: web/synthesis-methods/grids/availableGrids.json
 [
@@ -41,7 +237,7 @@ for (let y = 0; y < gridSize; y++) {
   }
 }
 
-export function mapFrameToTonnetz(
+export function mapFrameToHexTonnetz(
   frameData,
   width,
   height,
@@ -52,28 +248,40 @@ export function mapFrameToTonnetz(
   const gridHeight = height / gridSize;
   const movingRegions = [];
   const newFrameData = new Uint8ClampedArray(frameData);
-  let avgIntensity = 0;
-  for (let i = 0; i < frameData.length; i++) avgIntensity += frameData[i];
-  avgIntensity /= frameData.length;
+ 
+ // Correct avgIntensity over pixels (skip alpha)
+ let avgIntensity = 0;
+ for (let i = 0; i < frameData.length; i += 4) {
+   const r = frameData[i];
+   const g = frameData[i + 1];
+   const b = frameData[i + 2];
+   avgIntensity += (r + g + b) / 3;
+ }
+ avgIntensity /= (frameData.length / 4);  
 
-  if (prevFrameData) {
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = y * width + x;
-        const delta = Math.abs(frameData[idx] - prevFrameData[idx]);
-        if (delta > 50) {
-          const gridX = Math.floor(x / gridWidth);
-          const gridY = Math.floor(y / gridHeight);
-          movingRegions.push({
-            gridX,
-            gridY,
-            intensity: frameData[idx],
-            delta,
-          });
-        }
-      }
-    }
-  }
+ if (prevFrameData) {
+   for (let y = 0; y < height; y++) {
+     for (let x = 0; x < width; x++) {
+       const idx = (y * width + x) * 4;
+       const r = frameData[idx];
+       const g = frameData[idx + 1];
+       const b = frameData[idx + 2];
+       const intensity = (r + g + b) / 3;
+
+       const pr = prevFrameData[idx];
+       const pg = prevFrameData[idx + 1];
+       const pb = prevFrameData[idx + 2];
+       const prevIntensity = (pr + pg + pb) / 3;
+
+       const delta = Math.abs(intensity - prevIntensity);
+       if (delta > 20) {
+         const gridX = Math.floor(x / gridWidth);
+         const gridY = Math.floor(y / gridHeight);
+         movingRegions.push({ gridX, gridY, intensity, delta });
+       }
+     }
+   }
+ }
 
   movingRegions.sort((a, b) => b.delta - a.delta);
   const notes = [];
@@ -128,28 +336,39 @@ export function mapFrameToCircleOfFifths(
   const gridHeight = height / 12;
   const movingRegions = [];
   const newFrameData = new Uint8ClampedArray(frameData);
-  let avgIntensity = 0;
-  for (let i = 0; i < frameData.length; i++) avgIntensity += frameData[i];
-  avgIntensity /= frameData.length;
+ // Correct avgIntensity over pixels (skip alpha)
+ let avgIntensity = 0;
+ for (let i = 0; i < frameData.length; i += 4) {
+   const r = frameData[i];
+   const g = frameData[i + 1];
+   const b = frameData[i + 2];
+   avgIntensity += (r + g + b) / 3;
+ }
+ avgIntensity /= (frameData.length / 4);
 
-  if (prevFrameData) {
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = y * width + x;
-        const delta = Math.abs(frameData[idx] - prevFrameData[idx]);
-        if (delta > 50) {
-          const gridX = Math.floor(x / gridWidth);
-          const gridY = Math.floor(y / gridHeight);
-          movingRegions.push({
-            gridX,
-            gridY,
-            intensity: frameData[idx],
-            delta,
-          });
-        }
-      }
-    }
-  }
+ if (prevFrameData) {
+   for (let y = 0; y < height; y++) {
+     for (let x = 0; x < width; x++) {
+       const idx = (y * width + x) * 4;
+       const r = frameData[idx];
+       const g = frameData[idx + 1];
+       const b = frameData[idx + 2];
+       const intensity = (r + g + b) / 3;
+
+       const pr = prevFrameData[idx];
+       const pg = prevFrameData[idx + 1];
+       const pb = prevFrameData[idx + 2];
+       const prevIntensity = (pr + pg + pb) / 3;
+
+       const delta = Math.abs(intensity - prevIntensity);
+       if (delta > 20) {
+         const gridX = Math.floor(x / gridWidth);
+         const gridY = Math.floor(y / gridHeight);
+         movingRegions.push({ gridX, gridY, intensity, delta });
+       }
+     }
+   }
+ }
 
   movingRegions.sort((a, b) => b.delta - a.delta);
   const notes = [];
@@ -236,14 +455,15 @@ export function playSineWave(notes) {
 
 
 // File: web/synthesis-methods/engines/fm-synthesis.js
-import { audioContext, oscillators } from "../../audio-processor.js";
+import { audioContext, oscillators, modulators } from "../../audio-processor.js";
 
-export function playFMSynthesis(notes) {
+export function playFmSynthesis(notes) {
   let oscIndex = 0;
+  let modIndex = 0;
   const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
   for (let i = 0; i < oscillators.length; i++) {
     const oscData = oscillators[i];
-    if (oscIndex < allNotes.length && i < oscillators.length) {
+    if (oscIndex < allNotes.length) {
       const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
       oscData.osc.type = "sine";
       oscData.osc.frequency.setTargetAtTime(
@@ -258,27 +478,39 @@ export function playFMSynthesis(notes) {
       );
       oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
       oscData.active = true;
-      if (harmonics.length && oscIndex + 1 < oscillators.length) {
-        // Limitar a 1 modulador por nota
-        oscIndex++;
-        const modulator = audioContext.createOscillator();
-        modulator.type = "sine";
-        modulator.frequency.setTargetAtTime(
+      if (harmonics.length) {
+        // handle one modulator per note, reuse or create
+        let modData;
+        if (modIndex < modulators.length) {
+          modData = modulators[modIndex];
+        } else {
+          const mOsc = audioContext.createOscillator();
+          const mGain = audioContext.createGain();
+          modulators.push({ osc: mOsc, gain: mGain, started: false });
+          modData = modulators[modulators.length - 1];
+        }
+        // configure modulator
+        modData.osc.type = "sine";
+        modData.osc.frequency.setTargetAtTime(
           pitch * 2,
           audioContext.currentTime,
           0.015,
         );
-        const modGain = audioContext.createGain();
-        modGain.gain.setTargetAtTime(
+        modData.gain.gain.setTargetAtTime(
           intensity * 100,
           audioContext.currentTime,
           0.015,
         );
-        modulator.connect(modGain).connect(oscData.osc.frequency);
-        modulator.start();
-        // Usar el siguiente oscilador para el armónico principal
-        if (oscIndex < oscillators.length) {
-          const harmonicOsc = oscillators[oscIndex];
+        // connect and start only once
+        modData.osc.connect(modData.gain).connect(oscData.osc.frequency);
+        if (!modData.started) {
+          modData.osc.start();
+          modData.started = true;
+        }
+        modIndex++;
+        // Use next oscillator for main harmonic
+        if (oscIndex + 1 < oscillators.length) {
+          const harmonicOsc = oscillators[oscIndex + 1];
           harmonicOsc.osc.type = "sine";
           harmonicOsc.osc.frequency.setTargetAtTime(
             harmonics[0],
@@ -303,6 +535,10 @@ export function playFMSynthesis(notes) {
       oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
       oscData.active = false;
     }
+  }
+  // silence any unused modulators
+  for (let i = modIndex; i < modulators.length; i++) {
+    modulators[i].gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
   }
 }
 
@@ -346,299 +582,186 @@ import { settings } from '../state.js';
 import { getText, tryVibrate, hapticCount } from './utils.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
-  if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
+  if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 ||
+      !DOM.button4 || !DOM.button5 || !DOM.button6) {
     console.error('Missing DOM elements in ui-settings');
     dispatchEvent('logError', { message: 'Missing DOM elements in ui-settings' });
     return;
   }
 
-  // Button 1: Start/Stop Stream (Normal Mode), Grid Toggle (Settings Mode)
-  DOM.button1.addEventListener('touchstart', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button1 touched', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(1)
-    try {
-      dispatchEvent('startStop', { settingsMode: settings.isSettingsMode });
-    } catch (err) {
-      console.error('button1 error:', err.message);
-      dispatchEvent('logError', { message: `button1 error: ${err.message}` });
-      await getText('button1.tts.startStop', { state: 'error' });
-    }
-  });
-  DOM.button1.addEventListener('click', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button1 clicked', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(1)
-    try {
-      dispatchEvent('startStop', { settingsMode: settings.isSettingsMode });
-    } catch (err) {
-      console.error('button1 error:', err.message);
-      dispatchEvent('logError', { message: `button1 error: ${err.message}` });
-      await getText('button1.tts.startStop', { state: 'error' });
-    }
-  });
-
-  // Button 2: Mic Toggle (Normal Mode), Synthesis Toggle (Settings Mode)
-  DOM.button2.addEventListener('touchstart', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button2 touched', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(2)
-    try {
-      dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode });
-    } catch (err) {
-      console.error('button2 error:', err.message);
-      dispatchEvent('logError', { message: `button2 error: ${err.message}` });
-      await getText('button2.tts.micError');
-    }
-  });
-  DOM.button2.addEventListener('click', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button2 clicked', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(2)
-    try {
-      dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode });
-    } catch (err) {
-      console.error('button2 error:', err.message);
-      dispatchEvent('logError', { message: `button2 error: ${err.message}` });
-      await getText('button2.tts.micError');
-    }
-  });
-
-  // Button 3: Language Toggle (Normal Mode), Input Selector (Settings Mode)
-  DOM.button3.addEventListener('touchstart', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button3 touched', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(3)
-    try {
-      if (!settings.isSettingsMode) {
-        dispatchEvent('toggleLanguage');
-      } else {
-        dispatchEvent('toggleVideoSource');
+  // Helper: wire a single pointer event for both touch & click
+  function wireButton(el, id, { normal, settings: settingsAction }, {
+    normalError, settingsError, params = () => ({})
+  }) {
+    el.addEventListener('pointerdown', async (event) => {
+      if (event.cancelable) event.preventDefault();
+      console.log(`${id} event`, { settingsMode: settings.isSettingsMode });
+      tryVibrate(event);
+      hapticCount(Number(id.replace('button', '')));
+      try {
+        if (!settings.isSettingsMode) {
+          await normal();
+        } else {
+          await settingsAction();
+        }
+        dispatchEvent('updateUI', {
+          settingsMode: settings.isSettingsMode,
+          streamActive: !!settings.stream,
+          micActive: !!settings.micStream,
+        });
+      } catch (err) {
+        console.error(`${id} error:`, err.message);
+        dispatchEvent('logError', { message: `${id} error: ${err.message}` });
+        const key = !settings.isSettingsMode ? normalError : settingsError;
+        await getText(key, params());
       }
-      dispatchEvent('updateUI', {
-        settingsMode: settings.isSettingsMode,
-        streamActive: !!settings.stream,
-        micActive: !!settings.micStream,
-      });
-    } catch (err) {
-      console.error('button3 error:', err.message);
-      dispatchEvent('logError', { message: `button3 error: ${err.message}` });
-      await getText('button3.tts.inputError');
-    }
-  });
-  DOM.button3.addEventListener('click', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button3 clicked', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(3)
-    try {
-      if (!settings.isSettingsMode) {
-        dispatchEvent('toggleInput');
-      }
-      dispatchEvent('updateUI', {
-        settingsMode: settings.isSettingsMode,
-        streamActive: !!settings.stream,
-        micActive: !!settings.micStream,
-      });
-    } catch (err) {
-      console.error('button3 error:', err.message);
-      dispatchEvent('logError', { message: `button3 error: ${err.message}` });
-      await getText('button3.tts.fpsError');
-    }
-  });
+    });
+  }
 
-  // Button 4: FPS Toggle (Normal Mode), Save Settings (Settings Mode)
-  DOM.button4.addEventListener('touchstart', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button4 touched', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(4)
-    try {
-      if (settings.isSettingsMode) {
-        dispatchEvent('saveSettings', { settingsMode: true });
-      } else {
+  // Button 1
+  wireButton(DOM.button1, 'button1',
+    {
+      normal: () => dispatchEvent('startStop', { settingsMode: settings.isSettingsMode }),
+      settings: () => dispatchEvent('startStop', { settingsMode: settings.isSettingsMode })
+    },
+    {
+      normalError: 'button1.tts.startStop',
+      settingsError: 'button1.tts.startStop',
+      params: () => ({ state: 'error' })
+    }
+  );
+
+  // Button 2
+  wireButton(DOM.button2, 'button2',
+    {
+      normal: () => dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode }),
+      settings: () => dispatchEvent('toggleAudio', { settingsMode: settings.isSettingsMode })
+    },
+    {
+      normalError: 'button2.tts.micError',
+      settingsError: 'button2.tts.micError'
+    }
+  );
+
+  // Button 3
+  wireButton(DOM.button3, 'button3',
+    {
+      normal: () => dispatchEvent('toggleLanguage'),
+      settings: () => dispatchEvent('toggleVideoSource')
+    },
+    {
+      normalError: 'button3.tts.languageError',
+      settingsError: 'button3.tts.videoSourceError'
+    }
+  );
+
+  // Button 4
+  wireButton(DOM.button4, 'button4',
+    {
+      normal: async () => {
         if (settings.autoFPS) {
           settings.autoFPS = false;
           settings.updateInterval = 1000 / 20;
         } else {
           const fpsOptions = [20, 30, 60];
           const currentFps = 1000 / settings.updateInterval;
-          const currentIndex = fpsOptions.indexOf(currentFps);
-          if (currentIndex === fpsOptions.length - 1) {
-            settings.autoFPS = true;
-          } else {
-            const nextFps = fpsOptions[currentIndex + 1];
-            settings.updateInterval = 1000 / nextFps;
+          const idx = fpsOptions.indexOf(currentFps);
+          settings.autoFPS = idx === fpsOptions.length - 1;
+          if (!settings.autoFPS) {
+            settings.updateInterval = 1000 / fpsOptions[idx + 1];
           }
         }
-        dispatchEvent('updateFrameInterval', {
-          interval: settings.updateInterval,
-        });
+        dispatchEvent('updateFrameInterval', { interval: settings.updateInterval });
         await getText('button4.tts.fpsBtn', {
-          fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval),
+          fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval)
         });
-      }
-      dispatchEvent('updateUI', {
-        settingsMode: settings.isSettingsMode,
-        streamActive: !!settings.stream,
-        micActive: !!settings.micStream,
-      });
-    } catch (err) {
-      console.error('button4 error:', err.message);
-      dispatchEvent('logError', { message: `button4 error: ${err.message}` });
-      await getText(settings.isSettingsMode ? 'button4.tts.saveError' : 'button4.tts.fpsError');
+      },
+      settings: () => dispatchEvent('saveSettings', { settingsMode: true })
+    },
+    {
+      normalError: 'button4.tts.fpsError',
+      settingsError: 'button4.tts.saveError'
     }
-  });
-  DOM.button4.addEventListener('click', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button4 clicked', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(4)
-    try {
-      if (settings.isSettingsMode) {
-        dispatchEvent('saveSettings', { settingsMode: true });
-      } else {
-        if (settings.autoFPS) {
-          settings.autoFPS = false;
-          settings.updateInterval = 1000 / 20;
-        } else {
-          const fpsOptions = [20, 30, 60];
-          const currentFps = 1000 / settings.updateInterval;
-          const currentIndex = fpsOptions.indexOf(currentFps);
-          if (currentIndex === fpsOptions.length - 1) {
-            settings.autoFPS = true;
-          } else {
-            const nextFps = fpsOptions[currentIndex + 1];
-            settings.updateInterval = 1000 / nextFps;
-          }
-        }
-        dispatchEvent('updateFrameInterval', {
-          interval: settings.updateInterval,
-        });
-        await getText('button4.tts.fpsBtn', {
-          fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval),
-        });
-      }
-      dispatchEvent('updateUI', {
-        settingsMode: settings.isSettingsMode,
-        streamActive: !!settings.stream,
-        micActive: !!settings.micStream,
-      });
-    } catch (err) {
-      console.error('button4 error:', err.message);
-      dispatchEvent('logError', { message: `button4 error: ${err.message}` });
-      await getText(settings.isSettingsMode ? 'button4.tts.saveError' : 'button4.tts.fpsError');
-    }
-  });
+  );
 
-  // Button 5: Email Console Log (Normal Mode), Load Settings (Settings Mode)
-  DOM.button5.addEventListener('touchstart', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button5 touched', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(5)
-    try {
-      if (settings.isSettingsMode) {
-        dispatchEvent('loadSettings', { settingsMode: true });
-      } else {
+  // Button 5
+  wireButton(DOM.button5, 'button5',
+    {
+      normal: async () => {
         dispatchEvent('emailDebug');
         await getText('button5.tts.emailDebug');
-      }
-    } catch (err) {
-      console.error('button5 error:', err.message);
-      dispatchEvent('logError', { message: `button5 error: ${err.message}` });
-      await getText(settings.isSettingsMode ? 'button5.tts.loadError' : 'button5.tts.emailDebug', { state: 'error' });
+      },
+      settings: () => dispatchEvent('loadSettings', { settingsMode: true })
+    },
+    {
+      normalError: 'button5.tts.emailDebug',
+      settingsError: 'button5.tts.loadError',
+      params: () => ({ state: 'error' })
     }
-  });
-  DOM.button5.addEventListener('click', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button5 clicked', { settingsMode: settings.isSettingsMode });
-    tryVibrate(event);
-    hapticCount(5)
-    try {
-      if (settings.isSettingsMode) {
-        dispatchEvent('loadSettings', { settingsMode: true });
-      } else {
-        dispatchEvent('emailDebug');
-        await getText('button5.tts.emailDebug');
-      }
-    } catch (err) {
-      console.error('button5 error:', err.message);
-      dispatchEvent('logError', { message: `button5 error: ${err.message}` });
-      await getText(settings.isSettingsMode ? 'button5.tts.loadError' : 'button5.tts.emailDebug', { state: 'error' });
-    }
-  });
+  );
 
-  // Button 6: Settings Toggle
-  DOM.button6.addEventListener('touchstart', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button6 touched');
-    tryVibrate(event);
-    hapticCount(6)
-    try {
-      settings.isSettingsMode = !settings.isSettingsMode;
-      dispatchEvent('updateUI', {
-        settingsMode: settings.isSettingsMode,
-        streamActive: !!settings.stream,
-        micActive: !!settings.micStream,
-      });
-      dispatchEvent('toggleDebug', { show: settings.isSettingsMode });
-      await getText('button6.tts.settingsToggle', { state: settings.isSettingsMode ? 'on' : 'off' });
-    } catch (err) {
-      console.error('button6 error:', err.message);
-      dispatchEvent('logError', { message: `button6 error: ${err.message}` });
-      await getText('button6.tts.settingsError');
+  // Button 6
+  wireButton(DOM.button6, 'button6',
+    {
+      normal: async () => {
+        settings.isSettingsMode = !settings.isSettingsMode;
+        dispatchEvent('toggleDebug', { show: settings.isSettingsMode });
+        await getText('button6.tts.settingsToggle', {
+          state: settings.isSettingsMode ? 'on' : 'off'
+        });
+      },
+      settings: async () => {
+        settings.isSettingsMode = !settings.isSettingsMode;
+        dispatchEvent('toggleDebug', { show: settings.isSettingsMode });
+        await getText('button6.tts.settingsToggle', {
+          state: settings.isSettingsMode ? 'on' : 'off'
+        });
+      }
+    },
+    {
+      normalError: 'button6.tts.settingsError',
+      settingsError: 'button6.tts.settingsError'
     }
-  });
-  DOM.button6.addEventListener('click', async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log('button6 clicked');
-    tryVibrate(event);
-    hapticCount(6)
-    try {
-      settings.isSettingsMode = !settings.isSettingsMode;
-      dispatchEvent('updateUI', {
-        settingsMode: settings.isSettingsMode,
-        streamActive: !!settings.stream,
-        micActive: !!settings.micStream,
-      });
-      dispatchEvent('toggleDebug', { show: settings.isSettingsMode });
-      await getText('button6.tts.settingsToggle', { state: settings.isSettingsMode ? 'on' : 'off' });
-    } catch (err) {
-      console.error('button6 error:', err.message);
-      dispatchEvent('logError', { message: `button6 error: ${err.message}` });
-      await getText('button6.tts.settingsError');
-    }
-  });
+  );
 
   console.log('setupUISettings: Setup complete');
 }
 
 
 // File: web/ui/event-dispatcher.js
+/* @ts-nocheck */
 // future/web/ui/event-dispatcher.js
 import { settings, setAudioInterval, setStream, setMicStream, getLogs } from '../state.js';
 import { getText } from './utils.js';
-import { getDOM } from '../context.js';
 import { initializeMicAudio } from '../audio-processor.js';
+import { processFrame } from './video-capture.js';
+import { structuredLog } from '../utils/logging.js';
 
 export let dispatchEvent = null;
 
 let lastTTSTime = 0;
 const ttsCooldown = 3000;
+let fpsSamplerInterval = null;  // For averaging FPS.
+let frameCount = 0;  // Reset per sample period.
 
 export async function createEventDispatcher(DOM) {
-  console.log('createEventDispatcher: Initializing event dispatcher');
+  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!DOM });
   if (!DOM) {
-    console.error('DOM is undefined in createEventDispatcher');
-    return { dispatchEvent: () => console.error('dispatchEvent not initialized due to undefined DOM') };
+    structuredLog('ERROR', 'DOM is undefined in createEventDispatcher');
+    return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined DOM') };
   }
 
+ // Log DOM elements for debugging.
+  structuredLog('DEBUG', 'DOM elements received', {
+    hasButton1: !!DOM.button1,
+    hasButton2: !!DOM.button2,
+    hasButton3: !!DOM.button3,
+    hasButton4: !!DOM.button4,
+    hasButton5: !!DOM.button5,
+    hasButton6: !!DOM.button6,
+    hasVideoFeed: !!DOM.videoFeed,
+  });
+  
   // Load configurations
   const [availableGrids, availableEngines, availableLanguages] = await Promise.all([
     fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
@@ -646,110 +769,167 @@ export async function createEventDispatcher(DOM) {
     fetch('./languages/availableLanguages.json').then(res => res.json())
   ]);
 
+  // Gather and log enhanced browser/app debug info.
+  const browserInfo = {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    parsedBrowserVersion: parseBrowserVersion(navigator.userAgent),  // New: Parsed version.
+    hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',  // CPU cores.
+    deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',  // Approx RAM.
+    screen: `${screen.width}x${screen.height}`,
+    audioContextState: typeof audioContext !== 'undefined' ? audioContext.state : 'Not initialized',  // App-specific.
+    streamActive: !!settings.stream,
+    micActive: !!settings.micStream,
+    currentFPSInterval: settings.updateInterval  // Proxy for FPS (1000 / ms).
+  };
+  structuredLog('INFO', 'Enhanced browser and app debug info', browserInfo);
+
+  // Start FPS sampler if debugLogging (logs average every 10s when stream active).
+  if (settings.debugLogging) {
+    fpsSamplerInterval = setInterval(() => {
+      if (settings.stream) {
+        const avgFPS = frameCount / 10;  // Over 10s period.
+        structuredLog('DEBUG', 'Average FPS sample', { avgFPS, overSeconds: 10 });
+        frameCount = 0;  // Reset.
+      }
+    }, 10000);  // 10s.
+  }
+
   const handlers = {
     updateUI: async ({ settingsMode, streamActive, micActive }) => {
-      if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
-        console.error('Missing critical DOM elements for UI update');
-        dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
-        return;
+      try {
+        if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
+          const missing = [
+            !DOM.button1 && 'button1',
+            !DOM.button2 && 'button2',
+            !DOM.button3 && 'button3',
+            !DOM.button4 && 'button4',
+            !DOM.button5 && 'button5',
+            !DOM.button6 && 'button6'
+          ].filter(Boolean);
+          structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
+          dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
+          return;
+        }
+        
+        const currentTime = performance.now();
+        const grid = availableGrids.find(g => g.id === settings.gridType);
+        const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
+        const language = availableLanguages.find(l => l.id === settings.language);
+
+        // Button 1
+        const button1Text = settingsMode
+          ? await getText('button1.settings.text', { gridName: grid?.id || 'Grid' }, 'text')
+          : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
+        const button1Aria = settingsMode
+          ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
+          : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
+            state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
+          });
+        }
+        setTextAndAriaLabel(DOM.button1, button1Text, button1Aria);
+
+        // Button 2
+        const button2Text = settingsMode
+          ? await getText('button2.settings.text', { engineName: engine?.id || 'Engine' }, 'text')
+          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.text`, {}, 'text');
+        const button2Aria = settingsMode
+          ? await getText('button2.settings.aria', { synthesisEngine: settings.synthesisEngine }, 'aria')
+          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.aria`, {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button2.tts.${settingsMode ? 'synthesisSelect' : 'micToggle'}`, {
+            state: settingsMode ? settings.synthesisEngine : (micActive ? 'turningOff' : 'turningOn')
+          });
+        }
+        setTextAndAriaLabel(DOM.button2, button2Text, button2Aria);
+
+        // Button 3
+        const button3Text = settingsMode
+          ? await getText('button3.settings.text', { languageName: language?.id || 'Language' }, 'text')
+          : await getText('button3.normal.text', { languageName: language?.id || 'Language' }, 'text');
+        const button3Aria = settingsMode
+          ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
+          : await getText('button3.normal.aria', { language: settings.language }, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button3.tts.${settingsMode ? 'videoSourceSelect' : 'languageSelect'}`, {
+            state: settingsMode ? (DOM.videoFeed?.srcObject?.getVideoTracks()[0]?.getSettings().facingMode || 'unknown') : settings.language
+          });
+        }
+        setTextAndAriaLabel(DOM.button3, button3Text, button3Aria);
+
+        // Button 4
+        const button4Text = settingsMode
+          ? await getText('button4.settings.text', {}, 'text')
+          : await getText(`button4.normal.${settings.autoFPS ? 'auto' : 'manual'}.text`, { fps: Math.round(1000 / settings.updateInterval) }, 'text');
+        const button4Aria = settingsMode
+          ? await getText('button4.settings.aria', {}, 'aria')
+          : await getText('button4.normal.aria', {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button4.tts.${settingsMode ? 'saveSettings' : 'fpsBtn'}`, {
+            state: settingsMode ? 'save' : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
+          });
+        }
+        setTextAndAriaLabel(DOM.button4, button4Text, button4Aria);
+
+        // Button 5
+        const button5Text = settingsMode
+          ? await getText('button5.settings.text', {}, 'text')
+          : await getText('button5.normal.text', {}, 'text');
+        const button5Aria = settingsMode
+          ? await getText('button5.settings.aria', {}, 'aria')
+          : await getText('button5.normal.aria', {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button5.tts.${settingsMode ? 'loadSettings' : 'emailDebug'}`, {
+            state: settingsMode ? 'load' : 'email'
+          });
+        }
+        setTextAndAriaLabel(DOM.button5, button5Text, button5Aria);
+
+        // Button 6
+        const button6Text = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.text`, {}, 'text');
+        const button6Aria = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.aria`, {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText('button6.tts.settingsToggle', { state: settingsMode ? 'off' : 'on' });
+        }
+        setTextAndAriaLabel(DOM.button6, button6Text, button6Aria);
+
+        lastTTSTime = currentTime;
+        structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
+      } catch (err) {
+        structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `UI update error: ${err.message}` });
       }
-
-      const currentTime = performance.now();
-      const grid = availableGrids.find(g => g.id === settings.gridType);
-      const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
-      const language = availableLanguages.find(l => l.id === settings.language);
-
-      // Button 1
-      const button1Text = settingsMode
-        ? await getText('button1.settings.text', { gridName: grid?.id || 'Grid' }, 'text')
-        : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
-      const button1Aria = settingsMode
-        ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
-        : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
-      if (currentTime - lastTTSTime >= ttsCooldown) {
-        await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
-          state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
-        });
-      }
-      setTextAndAriaLabel(DOM.button1, button1Text, button1Aria);
-
-      // Button 2
-      const button2Text = settingsMode
-        ? await getText('button2.settings.text', { engineName: engine?.id || 'Engine' }, 'text')
-        : await getText(`button2.normal.${micActive ? 'off' : 'on'}.text`, {}, 'text');
-      const button2Aria = settingsMode
-        ? await getText('button2.settings.aria', { synthesisEngine: settings.synthesisEngine }, 'aria')
-        : await getText(`button2.normal.${micActive ? 'off' : 'on'}.aria`, {}, 'aria');
-      if (currentTime - lastTTSTime >= ttsCooldown) {
-        await getText(`button2.tts.${settingsMode ? 'synthesisSelect' : 'micToggle'}`, {
-          state: settingsMode ? settings.synthesisEngine : (micActive ? 'turningOff' : 'turningOn')
-        });
-      }
-      setTextAndAriaLabel(DOM.button2, button2Text, button2Aria);
-
-      // Button 3
-      const button3Text = settingsMode
-        ? await getText('button3.settings.text', { languageName: language?.id || 'Language' }, 'text')
-        : await getText('button3.normal.text', { languageName: language?.id || 'Language' }, 'text');
-      const button3Aria = settingsMode
-        ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
-        : await getText('button3.normal.aria', { language: settings.language }, 'aria');
-      if (currentTime - lastTTSTime >= ttsCooldown) {
-        await getText(`button3.tts.${settingsMode ? 'languageSelect' : 'languageSelect'}`, {
-          state: settings.language
-        });
-      }
-      setTextAndAriaLabel(DOM.button3, button3Text, button3Aria);
-
-      // Button 4
-      const button4Text = settingsMode
-        ? await getText('button4.settings.text', {}, 'text')
-        : await getText(`button4.normal.${settings.autoFPS ? 'auto' : 'manual'}.text`, { fps: Math.round(1000 / settings.updateInterval) }, 'text');
-      const button4Aria = settingsMode
-        ? await getText('button4.settings.aria', {}, 'aria')
-        : await getText('button4.normal.aria', {}, 'aria');
-      if (currentTime - lastTTSTime >= ttsCooldown) {
-        await getText(`button4.tts.${settingsMode ? 'saveSettings' : 'fpsBtn'}`, {
-          state: settingsMode ? 'save' : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
-        });
-      }
-      setTextAndAriaLabel(DOM.button4, button4Text, button4Aria);
-
-      // Button 5
-      const button5Text = settingsMode
-        ? await getText('button5.settings.text', {}, 'text')
-        : await getText('button5.normal.text', {}, 'text');
-      const button5Aria = settingsMode
-        ? await getText('button5.settings.aria', {}, 'aria')
-        : await getText('button5.normal.aria', {}, 'aria');
-      if (currentTime - lastTTSTime >= ttsCooldown) {
-        await getText(`button5.tts.${settingsMode ? 'loadSettings' : 'emailDebug'}`, {
-          state: settingsMode ? 'load' : 'email'
-        });
-      }
-      setTextAndAriaLabel(DOM.button5, button5Text, button5Aria);
-
-      // Button 6
-      const button6Text = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.text`, {}, 'text');
-      const button6Aria = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.aria`, {}, 'aria');
-      if (currentTime - lastTTSTime >= ttsCooldown) {
-        await getText('button6.tts.settingsToggle', { state: settingsMode ? 'off' : 'on' });
-      }
-      setTextAndAriaLabel(DOM.button6, button6Text, button6Aria);
-
-      lastTTSTime = currentTime;
-      console.log('updateUI: UI updated', { settingsMode, streamActive, micActive });
     },
+
+    processFrame: async () => {
+      try {
+        const video = DOM.videoFeed;
+        if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+          structuredLog('WARN', 'processFrame: Invalid video feed', { width: video?.videoWidth, height: video?.videoHeight });
+          return;
+        }
+        const result = await processFrame(DOM, video.videoWidth, video.videoHeight);
+        structuredLog('DEBUG', 'processFrame result', { notesCount: result?.notes?.length || 0, avgIntensity: result?.avgIntensity });
+        frameCount++;
+      } catch (err) {
+        structuredLog('ERROR', 'processFrame handler error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Frame processing handler error: ${err.message}` });
+      }
+    },
+
     startStop: async ({ settingsMode }) => {
-      if (settingsMode) {
-        const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
-        const nextIndex = (currentIndex + 1) % availableGrids.length;
-        settings.gridType = availableGrids[nextIndex].id;
-        await getText('button1.tts.gridSelect', { state: settings.gridType });
-      } else {
-        try {
+      try {
+        if (settingsMode) {
+          const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
+          const nextIndex = (currentIndex + 1) % availableGrids.length;
+          settings.gridType = availableGrids[nextIndex].id;
+          await getText('button1.tts.gridSelect', { state: settings.gridType });
+        } else {
           if (!settings.stream) {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !!settings.micStream });
+            // video-only to avoid duplicate audio tracks
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             DOM.videoFeed.srcObject = stream;
             setStream(stream);
             setAudioInterval(setInterval(() => {
@@ -757,34 +937,41 @@ export async function createEventDispatcher(DOM) {
             }, settings.updateInterval));
             await getText('button1.tts.startStop', { state: 'starting' });
           } else {
-            settings.stream.getTracks().forEach(track => track.stop());
+            // stop only video tracks
+            settings.stream.getVideoTracks().forEach(track => track.stop());
             setStream(null);
             if (settings.micStream) {
               settings.micStream.getTracks().forEach(track => track.stop());
               setMicStream(null);
               initializeMicAudio(null);
             }
-            clearInterval(settings.audioInterval);
+            clearInterval(settings.audioTimerId);
             setAudioInterval(null);
+            if (fpsSamplerInterval) {
+              clearInterval(fpsSamplerInterval);
+              fpsSamplerInterval = null;
+              structuredLog('INFO', 'FPS sampler cleared on stream stop');
+            }
             await getText('button1.tts.startStop', { state: 'stopping' });
           }
           dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-        } catch (err) {
-          console.error('Stream toggle error:', err.message);
-          dispatchEvent('logError', { message: `Stream toggle error: ${err.message}` });
-          await getText('button1.tts.cameraError');
         }
+      } catch (err) {
+        structuredLog('ERROR', 'startStop error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Stream toggle error: ${err.message}` });
+        await getText('button1.tts.cameraError');
       }
     },
+
     toggleAudio: async ({ settingsMode }) => {
-      if (settingsMode) {
-        const currentIndex = availableEngines.findIndex(e => e.id === settings.synthesisEngine);
-        const nextIndex = (currentIndex + 1) % availableEngines.length;
-        settings.synthesisEngine = availableEngines[nextIndex].id;
-        await getText('button2.tts.synthesisSelect', { state: settings.synthesisEngine });
-      } else {
-        try {
-          console.log('toggleAudio: Current mic state', { micActive: !!settings.micStream });
+      try {
+        structuredLog('INFO', 'toggleAudio: Current mic state', { micActive: !!settings.micStream });
+        if (settingsMode) {
+          const currentIndex = availableEngines.findIndex(e => e.id === settings.synthesisEngine);
+          const nextIndex = (currentIndex + 1) % availableEngines.length;
+          settings.synthesisEngine = availableEngines[nextIndex].id;
+          await getText('button2.tts.synthesisSelect', { state: settings.synthesisEngine });
+        } else {
           if (!settings.micStream) {
             const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             setMicStream(micStream);
@@ -797,31 +984,72 @@ export async function createEventDispatcher(DOM) {
             await getText('button2.tts.micToggle', { state: 'turningOff' });
           }
           dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-        } catch (err) {
-          console.error('Mic toggle error:', err.message);
-          dispatchEvent('logError', { message: `Mic toggle error: ${err.message}` });
-          await getText('button2.tts.micError');
         }
+      } catch (err) {
+        structuredLog('ERROR', 'toggleAudio error', { message: err.message });
+        handlers.logError({ message: `Mic toggle error: ${err.message}` });
+        await getText('button2.tts.micError');
       }
     },
-    toggleInput: async () => {
+
+    toggleInput: async () => {  // Renamed from toggleInput for clarity
       try {
         const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
         const nextIndex = (currentIndex + 1) % availableLanguages.length;
         settings.language = availableLanguages[nextIndex].id;
         await getText('button3.tts.languageSelect', { state: settings.language });
-        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+        // Remove redundant dispatchEvent; updateUI triggered by setupUIController
       } catch (err) {
-        console.error('Language toggle error:', err.message);
-        dispatchEvent('logError', { message: `Language toggle error: ${err.message}` });
-        await getText('button3.tts.fpsError');
+        structuredLog('ERROR', 'toggleInput error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Language toggle error: ${err.message}` });
+        await getText('button3.tts.languageError');  // Changed to language-specific error
       }
     },
+
+    toggleLanguage: async () => {  // Renamed from toggleInput for clarity
+      try {
+        const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
+        const nextIndex = (currentIndex + 1) % availableLanguages.length;
+        settings.language = availableLanguages[nextIndex].id;
+        await getText('button3.tts.languageSelect', { state: settings.language });
+        // Remove redundant dispatchEvent; updateUI triggered by setupUIController
+      } catch (err) {
+        structuredLog('ERROR', 'toggleLanguage error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Language toggle error: ${err.message}` });
+        await getText('button3.tts.languageError');  // Changed to language-specific error
+      }
+    },
+
+    toggleVideoSource: async () => {  // New handler for settings mode (DEF-003)
+      try {
+        const videoTrack = DOM.videoFeed?.srcObject?.getVideoTracks()[0];
+        if (videoTrack) {
+          const settings = videoTrack.getSettings();
+          const currentFacingMode = settings.facingMode || 'user';
+          const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: newFacingMode },
+            audio: !!settings.micStream
+          });
+          DOM.videoFeed.srcObject = stream;
+          setStream(stream);  // Update stream state
+          await getText('button3.tts.videoSourceSelect', { state: newFacingMode });
+        } else {
+          structuredLog('WARN', 'toggleVideoSource: No video track available');
+          await getText('button3.tts.videoSourceError');
+        }
+      } catch (err) {
+        structuredLog('ERROR', 'toggleVideoSource error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Video source toggle error: ${err.message}` });
+        await getText('button3.tts.videoSourceError');
+      }
+    },
+
     updateFrameInterval: async ({ interval }) => {
       try {
         settings.updateInterval = interval;
         if (settings.stream) {
-          clearInterval(settings.audioInterval);
+          clearInterval(settings.audioTimerId);
           setAudioInterval(setInterval(() => {
             dispatchEvent('processFrame');
           }, settings.updateInterval));
@@ -831,11 +1059,12 @@ export async function createEventDispatcher(DOM) {
         });
         dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {
-        console.error('Frame interval update error:', err.message);
-        dispatchEvent('logError', { message: `Frame interval update error: ${err.message}` });
+        structuredLog('ERROR', 'updateFrameInterval error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Frame interval update error: ${err.message}` });
         await getText('button4.tts.fpsError');
       }
     },
+
     toggleGrid: async () => {
       try {
         const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
@@ -844,11 +1073,12 @@ export async function createEventDispatcher(DOM) {
         await getText('button1.tts.gridSelect', { state: settings.gridType });
         dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
       } catch (err) {
-        console.error('Grid toggle error:', err.message);
-        dispatchEvent('logError', { message: `Grid toggle error: ${err.message}` });
+        structuredLog('ERROR', 'toggleGrid error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Grid toggle error: ${err.message}` });
         await getText('button1.tts.startStop', { state: 'error' });
       }
     },
+
     toggleDebug: async ({ show }) => {
       try {
         if (DOM.debug) {
@@ -856,10 +1086,11 @@ export async function createEventDispatcher(DOM) {
         }
         await getText('button6.tts.settingsToggle', { state: show ? 'on' : 'off' });
       } catch (err) {
-        console.error('Debug toggle error:', err.message);
-        dispatchEvent('logError', { message: `Debug toggle error: ${err.message}` });
+        structuredLog('ERROR', 'toggleDebug error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Debug toggle error: ${err.message}` });
       }
     },
+
     saveSettings: async () => {
       try {
         const settingsToSave = {
@@ -874,70 +1105,118 @@ export async function createEventDispatcher(DOM) {
         localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
         await getText('button4.tts.saveSettings');
       } catch (err) {
-        console.error('Save settings error:', err.message);
-        dispatchEvent('logError', { message: `Save settings error: ${err.message}` });
+        structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Save settings error: ${err.message}` });
         await getText('button4.tts.saveError');
       }
       dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
+
     loadSettings: async () => {
       try {
         const savedSettings = localStorage.getItem('acoustsee-settings');
         if (savedSettings) {
-          const parsedSettings = JSON.parse(savedSettings);
-          settings.gridType = parsedSettings.gridType || settings.gridType;
-          settings.synthesisEngine = parsedSettings.synthesisEngine || settings.synthesisEngine;
-          settings.language = parsedSettings.language || settings.language;
-          settings.autoFPS = parsedSettings.autoFPS ?? settings.autoFPS;
-          settings.updateInterval = parsedSettings.updateInterval || settings.updateInterval;
-          settings.dayNightMode = parsedSettings.dayNightMode || settings.dayNightMode;
-          settings.ttsEnabled = parsedSettings.ttsEnabled ?? settings.ttsEnabled;
+          let parsedSettings;
+          try {
+            parsedSettings = JSON.parse(savedSettings);
+          } catch (parseErr) {
+            throw new Error(`Invalid JSON in localStorage: ${parseErr.message}`);
+          }
+
+          // Sanitize: Define expected keys and types, assign only whitelisted ones to prevent extra/proto keys.
+          const expectedKeys = ['gridType', 'synthesisEngine', 'language', 'autoFPS', 'updateInterval', 'dayNightMode', 'ttsEnabled'];
+          const expectedTypes = {
+            gridType: 'string',
+            synthesisEngine: 'string',
+            language: 'string',
+            autoFPS: 'boolean',
+            updateInterval: 'number',
+            dayNightMode: 'string',
+            ttsEnabled: 'boolean'
+          };
+
+          // Selective assignment: Only copy if key is expected and type matches.
+          expectedKeys.forEach(key => {
+            if (Object.hasOwn(parsedSettings, key) && typeof parsedSettings[key] === expectedTypes[key]) {
+              settings[key] = parsedSettings[key];
+            } else if (Object.hasOwn(parsedSettings, key)) {
+              structuredLog('WARN', 'Invalid type for setting during load', { key, receivedType: typeof parsedSettings[key] });
+            }
+          });
+
+          // Log if extra keys present (potential pollution attempt).
+          const extraKeys = Object.keys(parsedSettings).filter(key => !expectedKeys.includes(key));
+          if (extraKeys.length > 0) {
+            structuredLog('WARN', 'Extra keys ignored in loaded settings (potential pollution)', { extraKeys });
+          }
+
           await getText('button5.tts.loadSettings.loaded');
         } else {
           await getText('button5.tts.loadSettings.none');
         }
       } catch (err) {
-        console.error('Load settings error:', err.message);
-        dispatchEvent('logError', { message: `Load settings error: ${err.message}` });
+        structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Load settings error: ${err.message}` });
         await getText('button5.tts.loadError');
       }
       dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
     },
+
     emailDebug: async () => {
       try {
-        const logs = getLogs();
-        const subject = encodeURIComponent('AcoustSee Debug Log');
-        const body = encodeURIComponent(`Debug Log:\n${logs}`);
-        window.location.href = `mailto:acoustsee@outlook.com?subject=${subject}&body=${body}`;
+        const logsText = await getLogs();
+        if (!logsText || logsText.trim() === '') {
+          structuredLog('WARN', 'emailDebug: No logs retrieved or empty from IndexedDB');
+          alert('No logs available to download. Try generating some actions first.');
+          await getText('button5.tts.emailDebug', { state: 'error' });
+          return;
+        }
+        const blob = new Blob([logsText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'acoustsee-debug-log.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
         await getText('button5.tts.emailDebug');
       } catch (err) {
-        console.error('Email debug error:', err.message);
-        dispatchEvent('logError', { message: `Email debug error: ${err.message}` });
+        structuredLog('ERROR', 'emailDebug error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Email debug error: ${err.message}` });
+        alert('Failed to download logs: ' + err.message);  // Mobile-friendly feedback.
         await getText('button5.tts.emailDebug', { state: 'error' });
       }
     },
+
     logError: ({ message }) => {
-      console.error('Error logged:', message);
-      addLog(`ERROR: ${message}`);
+      structuredLog('ERROR', 'Error logged', { message });
     }
   };
 
   dispatchEvent = (eventName, payload = {}) => {
     if (handlers[eventName]) {
       try {
+        structuredLog('DEBUG', `Dispatching event: ${eventName}`, { payload });
         handlers[eventName](payload);
       } catch (err) {
-        console.error(`Error in handler ${eventName}:`, err.message);
+        structuredLog('ERROR', `Error in handler ${eventName}`, { message: err.message, stack: err.stack });
         handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
       }
     } else {
-      console.error(`No handler found for event: ${eventName}`);
+      structuredLog('ERROR', `No handler found for event: ${eventName}`);
       handlers.logError({ message: `No handler for event: ${eventName}` });
     }
   };
 
-  console.log('createEventDispatcher: Dispatcher initialized');
+  structuredLog('INFO', 'createEventDispatcher: Dispatcher initialized');
   return { dispatchEvent };
+}
+
+// Helper for parsed browser version (simple regex examples; expand as needed).
+function parseBrowserVersion(userAgent) {
+  let match = userAgent.match(/Chrome\/([0-9.]+)/) || userAgent.match(/Firefox\/([0-9.]+)/) || userAgent.match(/Safari\/([0-9.]+)/) || userAgent.match(/Edg\/([0-9.]+)/);
+  return match ? match[1] : 'Unknown';
 }
 
 function setTextAndAriaLabel(element, text, ariaLabel) {
@@ -945,14 +1224,15 @@ function setTextAndAriaLabel(element, text, ariaLabel) {
     element.textContent = text;
     element.setAttribute('aria-label', ariaLabel);
   } else {
-    console.warn(`Element not found for text update: ${text}`);
+    structuredLog('WARN', `Element not found for text update: ${text}`);
   }
 }
 
 // File: web/ui/audio-controls.js
+// Update web/ui/audio-controls.js: Remove { passive: true } from touchstart listener to ensure it counts as a user gesture for AudioContext
+
 import { getText } from "./utils.js";
 import { initializeAudio, cleanupAudio } from "../audio-processor.js";
-import { dispatchEvent } from "./event-dispatcher.js";
 
 let isAudioContextInitialized = false;
 let audioContext = null;
@@ -960,12 +1240,11 @@ let audioContext = null;
 export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
   if (!DOM || !DOM.powerOn) {
     console.error("setupAudioControls: Missing DOM elements");
-    dispatchEvent("logError", { message: "Missing DOM elements in audio-controls" });
+    dispatch("logError", { message: "Missing DOM elements in audio-controls" });
     return;
   }
 
   const initializeAudioContext = async (event) => {
-    if (event.cancelable) event.preventDefault();
     console.log(`powerOn: ${event.type} event`);
     const maxRetries = 3;
     for (let i = 0; i <= maxRetries; i++) {
@@ -984,17 +1263,17 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
         DOM.splashScreen.style.display = "none";
         DOM.mainContainer.style.display = "grid";
         await getText("audioOn");
-        dispatchEvent("updateUI", { settingsMode: false, streamActive: false, micActive: false });
+        dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
         console.log("powerOn: AudioContext initialized, UI updated");
         return;
       } catch (err) {
         console.error(`Attempt ${i + 1} failed: ${err.message}`);
-        dispatchEvent("logError", { message: `Audio init attempt ${i + 1} failed: ${err.message}` });
+        dispatch("logError", { message: `Audio init attempt ${i + 1} failed: ${err.message}` });
       }
     }
     await getText("audioError");
-    DOM.powerOn.textContent = "Audio Failed - Retry";
-    DOM.powerOn.setAttribute("aria-label", "Retry audio initialization");
+    DOM.powerOn.textContent = await getText("powerOn.failed.text", {}, 'text');
+    DOM.powerOn.setAttribute("aria-label", await getText("powerOn.failed.aria", {}, 'aria'));
   };
 
   const handlePowerOn = async (event) => {
@@ -1007,12 +1286,12 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
       DOM.splashScreen.style.display = "flex";
       DOM.mainContainer.style.display = "none";
       await getText("audioOff");
-      dispatchEvent("updateUI", { settingsMode: false, streamActive: false, micActive: false });
+      dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
     }
   };
 
   DOM.powerOn.addEventListener("click", handlePowerOn);
-  DOM.powerOn.addEventListener("touchstart", handlePowerOn);
+  DOM.powerOn.addEventListener("touchstart", handlePowerOn);  // Removed { passive: true }
 
   console.log("setupAudioControls: Audio controls initialized");
 }
@@ -1279,24 +1558,28 @@ export function setupSettingsHandlers({ dispatchEvent, DOM }) {
 
 
 // File: web/ui/video-capture.js
-// future/web/ui/video-capture.js
-// This module captures video frames from a video feed and processes them to generate audio notes.
 import { settings } from "../state.js";
 import { mapFrameToNotes } from "../frame-processor.js";
 import { playAudio } from "../audio-processor.js";
 import { dispatchEvent } from "./event-dispatcher.js";
+import { getDOM } from "../context.js";
 
 let prevFrameDataLeft = null;
 let prevFrameDataRight = null;
 
-export async function processFrame(DOM, width, height) {
+export async function processFrame(width, height) {
+  // Retrieve DOM references from shared context
+  const DOM = getDOM();
   try {
-    const context = DOM.canvas.getContext("2d", { willReadFrequently: true });
+    const canvas = DOM.frameCanvas;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
     if (!context) {
       console.error("Canvas context not found");
       dispatchEvent("logError", { message: "Canvas context not found" });
       return;
     }
+    canvas.width = width;
+    canvas.height = height;
     context.drawImage(DOM.videoFeed, 0, 0, width, height);
     const frameData = context.getImageData(0, 0, width, height).data;
     const { notes, prevFrameDataLeft: newLeft, prevFrameDataRight: newRight } = await mapFrameToNotes(
@@ -1351,7 +1634,7 @@ export async function getText(key, params = {}, type = 'tts') {
     // Usa el cache si ya está cargado
     let translations = translationsCache[language.id];
     if (!translations) {
-      const response = await fetch(language.file);
+      const response = await fetch(`./languages/${language.id}.json`);
       if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
       translations = await response.json();
       translationsCache[language.id] = translations;
@@ -1365,7 +1648,8 @@ export async function getText(key, params = {}, type = 'tts') {
       finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
     }
     for (const [paramKey, paramValue] of Object.entries(params)) {
-      finalMessage = finalMessage.replace(`{${paramKey}}`, paramValue);
+      const placeholderRegex = new RegExp(`\\{${paramKey}\\}`, 'g');
+      finalMessage = finalMessage.replace(placeholderRegex, paramValue);
     }
     if (type === 'tts' && settings.ttsEnabled) {
       const utterance = new SpeechSynthesisUtterance(finalMessage);
@@ -1529,6 +1813,24 @@ export async function getText(key, params = {}, type = 'tts') {
 
 // File: web/languages/en-US.json
 {
+"powerOn": {
+    "text": "Power On",
+    "aria": "Power On to enable audio",
+    "failed": {
+      "text": "Audio Failed - Retry",
+      "aria": "Retry audio initialization"
+    }
+  },
+  "videoFeed": {
+    "aria": "Video Feed"
+  },
+  "frameCanvas": {
+    "aria": "Hidden Frame Processing Canvas"
+  },
+  "debugPanel": {
+    "aria": "Debug Panel"
+  },
+  
   "button1": {
     "normal": {
       "start": {
@@ -1760,14 +2062,15 @@ body {
 
 
 // File: web/main.js
-// future/web/main.js
-// This is the main entry point for the AcoustSee web application.
-// It initializes the application, sets up the UI controller, and handles DOM events.
 import { setupUIController } from './ui/ui-controller.js';
-import { getDispatchEvent } from './context.js';
+import { createEventDispatcher } from './ui/event-dispatcher.js';
+import { loadConfigs } from './state.js';
+import { structuredLog } from './utils/logging.js';  
+import { setDOM } from './context.js'; 
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),
+  frameCanvas: document.getElementById('frameCanvas'),  
   button1: document.getElementById('button1'),
   button2: document.getElementById('button2'),
   button3: document.getElementById('button3'),
@@ -1780,27 +2083,75 @@ const DOM = {
   debugPanel: document.getElementById('debugPanel'),
 };
 
+// Initialize shared DOM context for modules that need it
+setDOM(DOM);
+
 async function init() {
   try {
+    await loadConfigs;
+    let getText;
+    try {
+      ({ getText } = await import('./ui/utils.js'));
+      console.log('utils.js imported successfully');  // Confirm import worked
+    } catch (importErr) {
+      console.error('Failed to import utils.js:', importErr.message);
+      getText = async (key) => {  // Make async for consistency with await calls
+        console.warn('TTS fallback for key:', key);
+        return key;  // Return key as fallback string (better than '')
+      };
+    }
+    // Set aria and text for all relevant elements deriving from ID
+    const staticElements = [
+      DOM.splashScreen,
+      DOM.mainContainer,
+      DOM.powerOn,
+      DOM.videoFeed,
+      DOM.frameCanvas,
+      DOM.debugPanel,
+      DOM.button1,
+      DOM.button2,
+      DOM.button3,
+      DOM.button4,
+      DOM.button5,
+      DOM.button6,
+    ];
+    for (const el of staticElements) {
+      if (!el) {
+        console.warn(`Skipping null element in staticElements`);
+        continue;
+      }
+      const baseKey = el.id;
+      el.setAttribute('aria-label', await getText(`${baseKey}.aria`, {}, 'aria'));
+      // Set text content only for elements that need it (e.g., powerOn, buttons)
+      if (['powerOn'].includes(el.id) || el.tagName === 'BUTTON') {
+        el.textContent = await getText(`${baseKey}.text`, {}, 'text');
+      }
+    }
     if (!DOM.videoFeed || !DOM.button1 || !DOM.button2 || !DOM.button3 || 
         !DOM.button4 || !DOM.button5 || !DOM.button6 || !DOM.powerOn || 
-        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel) {
+        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel || !DOM.frameCanvas) {
       throw new Error('Missing DOM elements in main.js');
     }
-    const dispatchEvent = getDispatchEvent();
+    const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
+    // Force initial UI update for dynamic content
+    dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
     console.log('init: UI setup complete');
   } catch (err) {
     console.error('init error:', err.message);
-    dispatchEvent('logError', { message: `init error: ${err.message}` });
     try {
-      const { getText } = await import('./ui/utils.js');
       await getText('init.tts.error');
     } catch (ttsErr) {
       console.error('TTS error:', ttsErr.message);
     }
   }
 }
+
+// Adds uncaught error handler for global contexts (e.g., hangs/OOM).
+window.onerror = function (message, source, lineno, colno, error) {
+  structuredLog('ERROR', 'Uncaught global error', { message, source, lineno, colno, stack: error ? error.stack : 'N/A' });
+  return true;  // Prevent default browser error logging.
+};
 
 init();
 
@@ -1809,10 +2160,12 @@ init();
 // future/web/audio-processor.js
 import { settings } from "./state.js";
 import { dispatchEvent } from "./ui/event-dispatcher.js";
+import { structuredLog } from "./utils/logging.js";  // Add for detailed logging.
 
 let audioContext = null;
 let isAudioInitialized = false;
 let oscillators = [];
+let modulators = [];
 let micSource = null;
 let micGainNode = null;
 
@@ -1823,13 +2176,13 @@ export function setAudioContext(newContext) {
 
 export async function initializeAudio(context) {
   if (isAudioInitialized || !context) {
-    console.warn("initializeAudio: Already initialized or no context");
+    structuredLog('WARN', 'initializeAudio: Already initialized or no context');
     return false;
   }
   try {
     audioContext = context;
     if (audioContext.state === "suspended") {
-      console.log("initializeAudio: Resuming AudioContext");
+      structuredLog('INFO', 'initializeAudio: Resuming AudioContext');
       await audioContext.resume();
     }
     if (audioContext.state !== "running") {
@@ -1841,7 +2194,7 @@ export async function initializeAudio(context) {
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
         const panner = audioContext.createStereoPanner();
-        osc.type = "sine"; // Default, updated by synthesis engine
+        osc.type = "sine";
         osc.frequency.setValueAtTime(0, audioContext.currentTime);
         gain.gain.setValueAtTime(0, audioContext.currentTime);
         panner.pan.setValueAtTime(0, audioContext.currentTime);
@@ -1850,11 +2203,11 @@ export async function initializeAudio(context) {
         return { osc, gain, panner, active: false };
       });
     isAudioInitialized = true;
-    console.log("initializeAudio: Audio initialized with 24 oscillators");
+    structuredLog('INFO', 'initializeAudio: Audio initialized with 24 oscillators');
     return true;
   } catch (error) {
-    console.error("initializeAudio error:", error.message);
-    dispatchEvent("logError", { message: `Audio init error: ${error.message}` });
+    structuredLog('ERROR', 'initializeAudio error', { message: error.message });
+    dispatchEvent('logError', { message: `Audio init error: ${error.message}` });
     isAudioInitialized = false;
     audioContext = null;
     return false;
@@ -1863,11 +2216,20 @@ export async function initializeAudio(context) {
 
 export async function playAudio(notes) {
   if (!isAudioInitialized || !audioContext || audioContext.state !== "running") {
-    console.warn("playAudio: Audio not initialized or context not running", {
+    structuredLog('WARN', 'playAudio: Audio not initialized or context not running', {
       isAudioInitialized,
       audioContext: !!audioContext,
       state: audioContext?.state,
     });
+    // Attempt to resume AudioContext on mobile (requires user gesture).
+    if (audioContext && audioContext.state === "suspended") {
+      try {
+        await audioContext.resume();
+        structuredLog('INFO', 'playAudio: Resumed AudioContext');
+      } catch (err) {
+        structuredLog('ERROR', 'playAudio: Failed to resume AudioContext', { message: err.message });
+      }
+    }
     return;
   }
   try {
@@ -1878,22 +2240,24 @@ export async function playAudio(notes) {
     const availableEngines = await enginesResponse.json();
     const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
     if (!engine) {
-      console.error(`Engine not found: ${settings.synthesisEngine}`);
-      dispatchEvent("logError", { message: `Engine not found: ${settings.synthesisEngine}` });
+      structuredLog('ERROR', `playAudio: Engine not found`, { synthesisEngine: settings.synthesisEngine });
+      dispatchEvent('logError', { message: `Engine not found: ${settings.synthesisEngine}` });
       return;
     }
     const engineModule = await import(`./synthesis-methods/engines/${engine.id}.js`);
-    const playFunction = engineModule[`play${engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
+    // Fix DEF-001: Normalize to camelCase (e.g., fm-synthesis -> playFmSynthesis).
+    const engineName = engine.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+    const playFunction = engineModule[`play${engineName}`];
     if (playFunction) {
       playFunction(notes);
-      console.log("playAudio: Played notes", { engine: engine.id, noteCount: notes.length });
+      structuredLog('INFO', 'playAudio: Played notes', { engine: engine.id, noteCount: notes.length });
     } else {
-      console.error(`Play function for ${engine.id} not found`);
-      dispatchEvent("logError", { message: `Play function for ${engine.id} not found` });
+      structuredLog('ERROR', `playAudio: Play function not found`, { engine: engine.id });
+      dispatchEvent('logError', { message: `Play function for ${engine.id} not found` });
     }
   } catch (err) {
-    console.error("playAudio error:", err.message);
-    dispatchEvent("logError", { message: `Play audio error: ${err.message}` });
+    structuredLog('ERROR', 'playAudio error', { message: err.message });
+    dispatchEvent('logError', { message: `Play audio error: ${err.message}` });
   }
 }
 
@@ -1913,11 +2277,21 @@ export async function cleanupAudio() {
         micGainNode = null;
       }
       oscillators = [];
+      // cleanup modulators
+      modulators.forEach(({ osc, gain }) => {
+        osc.stop();
+        osc.disconnect();
+        gain.disconnect();
+      });
+      modulators = [];
+      // Fully close AudioContext to release system resources
+      await audioContext.close();
+      audioContext = null;
       isAudioInitialized = false;
-      console.log("cleanupAudio: Audio resources cleaned up");
+      structuredLog('INFO', 'cleanupAudio: Audio resources cleaned up and context closed');
     } catch (err) {
-      console.error("cleanupAudio error:", err.message);
-      dispatchEvent("logError", { message: `Cleanup audio error: ${err.message}` });
+      structuredLog('ERROR', 'cleanupAudio error', { message: err.message });
+      dispatchEvent('logError', { message: `Cleanup audio error: ${err.message}` });
     }
   }
 }
@@ -1928,8 +2302,8 @@ export async function stopAudio() {
 
 export function initializeMicAudio(micStream) {
   if (!audioContext || !isAudioInitialized) {
-    console.warn("initializeMicAudio: Audio context not initialized");
-    dispatchEvent("logError", { message: "Audio context not initialized for microphone" });
+    structuredLog('WARN', 'initializeMicAudio: Audio context not initialized');
+    dispatchEvent('logError', { message: 'Audio context not initialized for microphone' });
     return null;
   }
   try {
@@ -1942,22 +2316,21 @@ export function initializeMicAudio(micStream) {
     if (micStream) {
       micSource = audioContext.createMediaStreamSource(micStream);
       micGainNode = audioContext.createGain();
-      micGainNode.gain.setValueAtTime(0.7, audioContext.currentTime); // Adjustable gain
+      micGainNode.gain.setValueAtTime(0.7, audioContext.currentTime);
       micSource.connect(micGainNode).connect(audioContext.destination);
-      console.log("initializeMicAudio: Microphone stream connected", { gain: 0.7 });
+      structuredLog('INFO', 'initializeMicAudio: Microphone stream connected', { gain: 0.7 });
       return micSource;
     }
-    console.log("initializeMicAudio: Microphone stream disconnected");
+    structuredLog('INFO', 'initializeMicAudio: Microphone stream disconnected');
     return null;
   } catch (error) {
-    console.error("initializeMicAudio error:", error.message);
-    dispatchEvent("logError", { message: `Microphone init error: ${error.message}` });
+    structuredLog('ERROR', 'initializeMicAudio error', { message: error.message });
+    dispatchEvent('logError', { message: `Microphone init error: ${error.message}` });
     return null;
   }
 }
 
-export { audioContext, isAudioInitialized, oscillators };
-
+export { audioContext, isAudioInitialized, oscillators, modulators };
 
 // File: web/index.html
 <!DOCTYPE html>
@@ -1973,18 +2346,23 @@ export { audioContext, isAudioInitialized, oscillators };
 </head>
 <body>
   <div id="splashScreen">
-    <button id="powerOn" aria-label="Power On"></button>
+    <button id="powerOn" class="power-on-button" role="button"></button>
   </div>
-  <div id="mainContainer" style="display: none;">
-    <video id="videoFeed" autoplay playsinline muted aria-label="Video Feed"></video>
-    <div id="debugPanel" style="display: none;"></div>
-    <button id="button1" aria-label="Start/Stop Stream"></button>
-    <button id="button2" aria-label="Toggle Microphone"></button>
-    <button id="button3" aria-label="Toggle Language/Input"></button>
-    <button id="button4" aria-label="Toggle FPS/Save Settings"></button>
-    <button id="button5" aria-label="Email Log/Load Settings"></button>
-    <button id="button6" aria-label="Toggle Settings Mode"></button>
+  <div id="mainContainer" class="main-container" style="display: none;">
+    <button id="button1" class="grid-button video-container" role="button" aria-label="Start or stop stream">
+      <video id="videoFeed" autoplay muted playsinline></video>
+      <span class="button-text">Start</span>
+    </button>
+    <button id="button2" class="grid-button" role="button"></button>
+    <button id="button3" class="grid-button" role="button"></button>
+    <button id="button4" class="grid-button" role="button"></button>
+    <button id="button5" class="grid-button" role="button"></button>
+    <button id="button6" class="grid-button" role="button"></button>
   </div>
+  <canvas id="frameCanvas" width="0" height="0" style="display: none;" aria-hidden="true"></canvas>
+  <div id="debugPanel" style="display: none;" role="log" aria-live="off"></div>
+  <button id="emailDebug" style="display: none;" aria-hidden="true"></button>
+  <div id="announcements" aria-live="polite" style="position: absolute; left: -9999px;"></div>  <!-- For TTS announcements -->
   <script type="module" src="./main.js"></script>
 </body>
 </html>
@@ -2105,10 +2483,13 @@ describe('ui-settings', () => {
 
 
 // File: web/state.js
+import { structuredLog } from './utils/logging.js';  // Top import.
+import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import for DB logging.
+
 export let settings = {
-  debugLogging: false,
+  debugLogging: true,
   stream: null,
-  audioInterval: null,
+  audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
   updateInterval: 30, 
   autoFPS: true,
   gridType: null, 
@@ -2116,81 +2497,88 @@ export let settings = {
   language: null, 
   isSettingsMode: false,
   micStream: null,
-  ttsEnabled: true,
+  ttsEnabled: false,
   dayNightMode: 'day'
 };
-export let availableLanguages = [];
-// Load configurations at startup
-(async () => {
+
+export const loadConfigs = (async () => {
   try {
     const [grids, engines, languages, intervals] = await Promise.all([
       fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
       fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
       fetch('./languages/availableLanguages.json').then(res => res.json()),
-      Promise.resolve([50, 33, 16]) // Hardcoded intervals for now
+      Promise.resolve([50, 33, 16])
     ]);
+    availableLanguages = languages;
     settings.gridType = grids[0]?.id || settings.gridType;
     settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
     settings.language = languages[0]?.id || settings.language;
     settings.updateInterval = intervals[0] || settings.updateInterval;
   } catch (err) {
-    console.error('Failed to load configurations:', err.message);
-    addLog(`ERROR: Failed to load configurations: ${err.message}`);
+    structuredLog('ERROR', 'Failed to load configurations', { message: err.message });
   }
 })();
 
-const logs = [];
+export let availableLanguages = [];
 
-export function addLog(message) {
-  logs.push(`[${new Date().toISOString()}] ${message}`);
-  if (logs.length > 1000) logs.shift(); // Limit to 1000 entries
-}
-
-export function getLogs() {
-  return logs.join('\n');
+export async function getLogs() {
+  // Fetch from IndexedDB and pretty-print for readability.
+  const allLogs = await getAllIdbLogs();
+  return allLogs.map(log => {
+    try {
+      return `Timestamp: ${log.timestamp}\nLevel: ${log.level}\nMessage: ${log.message}\nData: ${JSON.stringify(log.data, null, 2)}\n---\n`;
+    } catch (err) {
+      return `Invalid log entry: ${JSON.stringify(log)}\n---\n`;  // Fallback for malformed logs.
+    }
+  }).join('');
 }
 
 export function setStream(stream) {
   settings.stream = stream;
   if (settings.debugLogging) {
-    console.log('setStream', stream);
-    addLog(`setStream: ${stream ? 'Stream set' : 'Stream cleared'}`);
+    structuredLog('INFO', 'setStream', { streamSet: !!stream });
   }
 }
 
-export function setAudioInterval(interval) {
-  settings.audioInterval = interval;
+export function setAudioInterval(timerId) {
+  settings.audioTimerId = timerId;
   if (settings.debugLogging) {
-    console.log('setAudioInterval', interval);
-    addLog(`setAudioInterval: ${interval ? `Interval set to ${interval}ms` : 'Interval cleared'}`);
+    const ms = settings.updateInterval;
+    structuredLog('INFO', 'setAudioInterval', { timerId, updateIntervalMs: ms });
   }
 }
 
 export function setMicStream(stream) {
   settings.micStream = stream;
   if (settings.debugLogging) {
-    console.log('setMicStream', stream);
-    addLog(`setMicStream: ${stream ? 'Mic stream set' : 'Mic stream cleared'}`);
+    structuredLog('INFO', 'setMicStream', { micStreamSet: !!stream });
   }
 }
 
-// Override console methods to collect logs
-const originalConsoleLog = console.log;
-const originalConsoleWarn = console.warn;
-const originalConsoleError = console.error;
+// Override console methods but retain native output, augment with structured logging when enabled
+// Capture original console methods before overriding
+const originalConsole = {
+  log: console.log,
+  warn: console.warn,
+  error: console.error,
+};
 
 console.log = (...args) => {
-  originalConsoleLog(...args);
-  addLog(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' '));
+  originalConsole.log(...args);
+  if (settings.debugLogging) {
+    structuredLog('INFO', 'Console log', { args }, false);
+  }
 };
 
 console.warn = (...args) => {
-  originalConsoleWarn(...args);
-  addLog(`WARN: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+  originalConsole.warn(...args);
+  if (settings.debugLogging) {
+    structuredLog('WARN', 'Console warn', { args }, false);
+  }
 };
 
 console.error = (...args) => {
-  originalConsoleError(...args);
-  addLog(`ERROR: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}`);
+  originalConsole.error(...args);
+  structuredLog('ERROR', 'Console error', { args }, false);
 };
 

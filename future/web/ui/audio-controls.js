@@ -2,6 +2,7 @@
 
 import { getText } from "./utils.js";
 import { initializeAudio, cleanupAudio } from "../audio-processor.js";
+import { structuredLog } from "../utils/logging.js";
 
 let isAudioContextInitialized = false;
 let audioContext = null;
@@ -36,6 +37,10 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
         console.log("powerOn: AudioContext initialized, UI updated");
         return;
       } catch (err) {
+        if (err.message.includes("Permission denied")) {
+          structuredLog('ERROR', 'Audio init permission denied', { message: err.message });
+          await getText('button2.tts.micError');
+        }
         console.error(`Attempt ${i + 1} failed: ${err.message}`);
         dispatch("logError", { message: `Audio init attempt ${i + 1} failed: ${err.message}` });
       }
