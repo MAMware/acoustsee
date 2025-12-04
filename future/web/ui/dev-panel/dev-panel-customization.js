@@ -6,13 +6,13 @@ import { structuredLog } from '../../utils/logging.js';
 
 const STORAGE_KEY = 'devpanel-group-preferences';
 const DEFAULT_GROUPS = [
-  { id: 'ui-settings', label: 'UI Settings', visible: true },
-  { id: 'ui-system', label: 'UI & System', visible: true },
-  { id: 'audio-synthesis', label: 'Audio & Synthesis', visible: true },
-  { id: 'video-motion', label: 'Video & Motion', visible: true },
-  { id: 'processing-controls', label: 'Processing & Controls', visible: true },
-  { id: 'pipeline-monitoring', label: 'Pipeline Monitoring', visible: true },
-  { id: 'diagnostics-logs', label: 'Diagnostics & Logs', visible: true }
+  { id: 'testing-execution', label: 'Testing & Execution', visible: true },
+  { id: 'signal-chain', label: 'Signal Chain Control', visible: true },
+  { id: 'realtime-monitoring', label: 'Real-Time Monitoring', visible: true },
+  { id: 'diagnostics', label: 'Diagnostics & Investigation', visible: true },
+  { id: 'audio-testing', label: 'Audio Testing', visible: true },
+  { id: 'logging-output', label: 'Logging & Output', visible: true },
+  { id: 'system-metadata', label: 'System & Metadata', visible: false }
 ];
 
 export function initializeCustomization(panel) {
@@ -120,9 +120,11 @@ export function initializeCustomization(panel) {
       if (isCollapsed) {
         group.classList.remove('collapsed');
         btn.setAttribute('aria-expanded', 'true');
+        btn.textContent = '−';
       } else {
         group.classList.add('collapsed');
         btn.setAttribute('aria-expanded', 'false');
+        btn.textContent = '+';
       }
 
       // Persist collapse state
@@ -131,21 +133,27 @@ export function initializeCustomization(panel) {
       structuredLog('DEBUG', 'dev-panel-customization', { message: 'Group collapsed state updated', groupId, collapsed: !isCollapsed });
     };
 
-    // Restore collapse states
+    // Restore collapse states from localStorage
     const restoreCollapseStates = () => {
-      DEFAULT_GROUPS.forEach(group => {
-        const collapseKey = `devpanel-group-collapsed-${group.id}`;
+      // Query all group collapse buttons in the DOM instead of iterating DEFAULT_GROUPS
+      const collapseButtons = panel.querySelectorAll('.group-collapse-btn');
+      collapseButtons.forEach(btn => {
+        const groupId = btn.dataset.group;
+        if (!groupId) return;
+        
+        const collapseKey = `devpanel-group-collapsed-${groupId}`;
         const isCollapsed = localStorage.getItem(collapseKey) === 'true';
-        const groupEl = panel.querySelector(`[data-group="${group.id}"]`);
-        const btn = panel.querySelector(`[data-group="${group.id}"] .group-collapse-btn`);
+        const groupEl = panel.querySelector(`[data-group="${groupId}"]`);
         
         if (groupEl && btn) {
           if (isCollapsed) {
             groupEl.classList.add('collapsed');
             btn.setAttribute('aria-expanded', 'false');
+            btn.textContent = '+';
           } else {
             groupEl.classList.remove('collapsed');
             btn.setAttribute('aria-expanded', 'true');
+            btn.textContent = '−';
           }
         }
       });

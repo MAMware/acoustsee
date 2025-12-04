@@ -1664,7 +1664,7 @@ Cues → Audio Synthesis:
 
 ---
 
-## UI: Dev Panel Fine-Tuning (Dec 3, 2025)
+## UI: Dev Panel Fine-Tuning (Dec 3-4, 2025)
 
 Changes:
 - Removed "Density (Spacing)" controls from `future/web/ui/dev-panel/dev-panel.html`.
@@ -1672,6 +1672,12 @@ Changes:
 - Verified `State Inspector` is rendered (initialized in `dev-panel.js`).
 - Confirmed `Synth Sandbox` touch pad exists and is wired to generate cues.
 - Worker selection checkboxes available under "Signal Chain Control" and bind to engine via debug config.
+
+**Dec 4 live test fixes:**
+- Expanded three groups by default in HTML: `diagnostics` (State Inspector, Orchestration), `audio-testing` (Synth Sandbox Pad), `logging-output` (EventBus Viewer).
+- Updated `DEFAULT_GROUPS` in `dev-panel-customization.js` to match current group IDs.
+- Improved `restoreCollapseStates()` to query DOM for actual collapse buttons instead of iterating DEFAULT_GROUPS.
+- All five missing UI cards now render: State Inspector, EventBus Viewer, Low FPS Preview, Synth Sandbox Pad, Orchestration Inspector.
 
 Notes: If `setSignalProcessingConfig` is not yet implemented in engine, toggles will log a WARN and remain non-disruptive.
 

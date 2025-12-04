@@ -6,7 +6,7 @@
     <button id="customize-groups-btn" class="customize-btn" title="Customize visible groups" aria-label="Customize panel groups">⚙️</button>
   </div>
 
-  <!-- Customization Modal (Phase 4) -->
+  <!-- Customization Modal (Phase 4) // R251204 is this working? i think is not --> 
   <div id="customize-groups-modal" class="customize-modal" style="display: none;">
     <div class="customize-modal-content">
       <div class="customize-modal-header">
@@ -73,7 +73,7 @@
             <button id="test-fallback-btn" class="btn btn-tertiary">TEST FALLBACK</button>
           </div>
 
-          <!-- Stream Info -->
+          <!-- Stream Info // R251204 we have hardcoded values here  -->
           <div class="stream-info" id="stream-info">
             <span id="stream-resolution">Resolution: —</span>
             <span id="stream-fps">@ —fps</span>
@@ -131,14 +131,6 @@
   </div>
 
   <!-- ========================================
-       GROUP 6: ADVANCED CONFIGURATION (TERTIARY)
-       Purpose: UI density, appearance settings
-       Position: SIXTH (fine-tuning, collapsed by default)
-       Moved from: Former GROUP 1 (UI Settings)
-       ======================================== -->
-  
-
-  <!-- ========================================
        GROUP 4: DIAGNOSTICS & INVESTIGATION (SECONDARY)
        Purpose: State inspector, logging config
        Position: FOURTH (debugging support area)
@@ -147,7 +139,7 @@
   <div id="diagnostics" class="devpanel-group devpanel-group-secondary" data-group="diagnostics">
     <div class="group-header">
       <h2 class="group-title">Diagnostics & Investigation</h2>
-      <button class="group-collapse-btn" data-group="diagnostics" aria-expanded="false" title="Expand group">+</button>
+      <button class="group-collapse-btn" data-group="diagnostics" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- State Inspector -->
@@ -221,7 +213,7 @@
   <div id="audio-testing" class="devpanel-group devpanel-group-tertiary" data-group="audio-testing">
     <div class="group-header">
       <h2 class="group-title">Audio Testing</h2>
-      <button class="group-collapse-btn" data-group="audio-testing" aria-expanded="false" title="Expand group">+</button>
+      <button class="group-collapse-btn" data-group="audio-testing" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- Synth Sandbox -->
@@ -831,7 +823,7 @@
   <div id="logging-output" class="devpanel-group devpanel-group-secondary" data-group="logging-output">
     <div class="group-header">
       <h2 class="group-title">Logging & Output</h2>
-      <button class="group-collapse-btn" data-group="logging-output" aria-expanded="false" title="Expand group">+</button>
+      <button class="group-collapse-btn" data-group="logging-output" aria-expanded="true" title="Collapse group">−</button>
     </div>
 
     <!-- EventBus Viewer -->
