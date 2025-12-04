@@ -4,6 +4,18 @@ export function playFmSynthesis(notes) {
   let oscIndex = 0;
   let modIndex = 0;
   const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
+  // Clean up any existing FM modulators from previous frames
+  oscillators.forEach(oscData => {
+    if (oscData.modulator) {
+      oscData.modulator.stop();
+      oscData.modulator.disconnect();
+      oscData.modulator = null;
+    }
+    if (oscData.modGain) {
+      oscData.modGain.disconnect();
+      oscData.modGain = null;
+    }
+  });
   for (let i = 0; i < oscillators.length; i++) {
     const oscData = oscillators[i];
     if (oscIndex < allNotes.length) {
@@ -44,16 +56,14 @@ export function playFmSynthesis(notes) {
           audioContext.currentTime,
           0.015,
         );
-        // connect and start only once
-        modData.osc.connect(modData.gain).connect(oscData.osc.frequency);
-        if (!modData.started) {
-          modData.osc.start();
-          modData.started = true;
-        }
-        modIndex++;
-        // Use next oscillator for main harmonic
-        if (oscIndex + 1 < oscillators.length) {
-          const harmonicOsc = oscillators[oscIndex + 1];
+        modulator.connect(modGain).connect(oscData.osc.frequency);
+        modulator.start();
+        // Store references for cleanup
+        oscData.modulator = modulator;
+        oscData.modGain = modGain;
+        // Usar el siguiente oscilador para el armónico principal
+        if (oscIndex < oscillators.length) {
+          const harmonicOsc = oscillators[oscIndex];
           harmonicOsc.osc.type = "sine";
           harmonicOsc.osc.frequency.setTargetAtTime(
             harmonics[0],

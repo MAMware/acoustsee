@@ -5,6 +5,13 @@
 
 import { addIdbLog } from './idb-logger.js';  // Updated to use IndexedDB.
 
+// Capture original console methods before any overrides
+const originalConsoleRef = {
+  log: console.log,
+  warn: console.warn,
+  error: console.error,
+};
+
 const LOG_LEVELS = {
   DEBUG: 0,
   INFO: 1,

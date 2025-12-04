@@ -1,6 +1,13 @@
 import { structuredLog } from './utils/logging.js';  // Top import.
 import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import for DB logging.
 
+// Capture original console methods before overrides
+const originalConsole = {
+  log: console.log,
+  warn: console.warn,
+  error: console.error
+};
+
 export let settings = {
   debugLogging: true,
   stream: null,
@@ -80,6 +87,7 @@ const originalConsole = {
 // Expose the original console methods to avoid override recursion
 export { originalConsole };
 
+// Override console methods to collect logs, fully routed through structuredLog
 console.log = (...args) => {
   originalConsole.log(...args);
   if (settings.debugLogging) {
@@ -95,6 +103,7 @@ console.warn = (...args) => {
 };
 
 console.error = (...args) => {
-  originalConsole.error(...args);
-  structuredLog('ERROR', 'Console error', { args }, false);
+  if (settings.debugLogging) {
+    structuredLog('ERROR', 'Console error', { args }, false);
+  }
 };
