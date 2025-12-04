@@ -1,10 +1,32 @@
 ## USAGE
 
-Please note that the current best performer can be run without installation directly from a internet browser, the latest stable version is hosted at: 
+# Web Application Interface
+The web application features a user-friendly interface divided into five interactive regions, designed to facilitate seamless control and customization of the synesthetic audio experience. All camera processing is performed locally on your device, ensuring privacy. No frames are transmitted externally, though the browser will request camera access permission to enable this local processing for audio generation.
+
+## Interface Regions
+- **Center Rectangle**: Audio Enabler  
+  A touch-sensitive area that activates the webpage’s audio output, allowing sound generation to begin.
+- **Top Border Rectangle**: Settings SHIFTer Button  
+  Toggles the settings mode to reveal advanced configuration options.
+- **Bottom Rectangle**: Start/Stop Button  
+  Initiates or pauses the audio generation and camera processing.
+- **Left Rectangle**: Day/Night Switch  
+  Inverts light logic to optimize visibility and processing for different lighting conditions.
+- **Right Rectangle**: Language Switcher  
+  Changes the interface language for improved accessibility.
+
+## Settings Mode (SHIFTed Interface)
+When settings are enabled via the SHIFTer button:
+- **SHIFTed Left Rectangle**: Grid Selector  
+  Adjusts the camera’s framing or "gridding" of the environment, allowing users to customize how the visual input is segmented for audio mapping.
+- **SHIFTed Right Rectangle**: Audio Engine Selector  
+  Modifies the sound synthesizer’s response to the selected grid, enabling users to tailor the audio output to their preferences.
+
+The latest stable version is hosted at: 
 
 https://mamware.github.io/acoustsee/present
 
-Browser compability list:
+## Browser compability list:
 
 
 | Browser             | Minimum Version for Full Support   | Notes                                                                          |
@@ -16,43 +38,10 @@ Browser compability list:
 | Opera Mobile        | Opera 36 (2016)                    | Based on Chromium, full support for all APIs.                                  |
 | Edge for Android    | Edge 79 (January 2020)             | Based on Chromium, full support for all APIs.                                  |
 
-Privacy Note: All of the video processing is done at your device, not a single frame is sent to anyone or anywhere than that the ones that takes places at your own device processing logic.
 
+### To test our first commit wich is a Python script, either out of curiosity or educational purposes, follow the instrucctions below
 
-
-
-
-### Project structure for TBD version
-
-```
-acoustsee/
-├── src/                       # Contains the Python PoC code for still image processing and audio generation.
-├── web/                       # Contains HTML, CSS, and JavaScript files for the web interface folder for different approaches at the core logic
-│   ├── fft/                   # Experimenting with Fourier, fast. 
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── hrft/                  # Experimenting the Head Related Transfer Function
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── tonnetz/               # Experimenting with Euler, Tonnetz.
-│   │    ├── index.html
-│   │    ├── main.js
-│   │    ├── styles.css
-│   ├── index.html             # The current chosen version as a better performer (Tonnetz, 5/18/2025).
-│   ├── main.js
-│   ├── styles.css
-├── examples/                  # Still image and output container for the Python PoC
-├── tests/                     # Should contain unit tests (currently missing)
-├── docs/                      # Contains technical documentation (working)
-│    ├── DIAGRAMS.ms           # Wireframes the logic at main.js
-└── README.md                  # This file, providing an overview of the project
-```
-
-## To test our first commit wich is a Python script, either out of curiosit or educational purposes, follow the instrucctions below
-
-Our first iteration, a simple proof-of-concept: process a static image file and output basic left/right panned audio file.
+How to run the first iteration, a simple proof-of-concept processing a static image file and output basic left/right panned audio file.
 
 ## Setup
 
@@ -139,4 +128,9 @@ Try it with examples/wall_left.jpg to hear a basic left/right audio split!
   - `pyo` may warn about missing WxPython, falling back to Tkinter. This is harmless for WAV generation.
 - **SetuptoolsDeprecationWarning**:
   - A warning about `License :: OSI Approved :: GNU General Public License` is harmless (it’s a `pyo` packaging issue).
+
+> Privacy and Processing
+The application processes all camera data locally on your device, ensuring no visual information leaves your processor. Upon launching, the browser will request camera access to perform this private processing, which is essential for generating the real-time audio cues used for navigation.
+
+
 - **Still stuck?** Open an issue on GitHub or ping us on [X](https://x.com/MAMware).

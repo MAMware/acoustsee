@@ -1,18 +1,19 @@
-// ui/ui-controller.js
-import { setupAudioControls } from "./audio-controls.js";
-import { setupStreamControl } from "./stream-control.js";
-import { setupUISettings } from "./ui-settings.js";
-import { setupDebugControls } from "./debug-controls.js";
-import { setupSettingsPersistence } from "./settings-persistence.js";
-import { setupCleanupManager } from "./cleanup-manager.js";
+// future/web/ui-controller.js
+import { setupAudioControls } from './audio-controls.js';
+import { setupUISettings } from './ui-settings.js';
+import { setupCleanupManager } from './cleanup-manager.js';
+// Importa los módulos de configuración cuando los tengas
+// import { setupSaveSettings, setupLoadSettings } from './settings-manager.js';
 
 export function setupUIController({ dispatchEvent, DOM }) {
-  console.log("setupUIController: Starting setup");
+  console.log('setupUIController: Starting setup');
   setupAudioControls({ dispatchEvent, DOM });
-  setupStreamControl({ dispatchEvent, DOM });
   setupUISettings({ dispatchEvent, DOM });
-  setupDebugControls({ dispatchEvent, DOM });
-  setupSettingsPersistence({ dispatchEvent, DOM });
   setupCleanupManager();
-  console.log("setupUIController: Setup complete");
+
+  // Inicialización futura para guardar y leer configuraciones
+  // setupSaveSettings({ dispatchEvent, DOM });
+  // setupLoadSettings({ dispatchEvent, DOM });
+
+  console.log('setupUIController: Setup complete');
 }

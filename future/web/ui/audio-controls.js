@@ -1,78 +1,66 @@
-// ui/audio-controls.js
-import { settings } from "../state.js";
-import { speak } from "./utils.js";
-import { initializeAudio, cleanupAudio, initializeMicAudio } from "../audio-processor.js";
-import { getDispatchEvent } from "../context.js";
+// Update web/ui/audio-controls.js: Remove { passive: true } from touchstart listener to ensure it counts as a user gesture for AudioContext
+
+import { getText } from "./utils.js";
+import { initializeAudio, cleanupAudio } from "../audio-processor.js";
 
 let isAudioContextInitialized = false;
 let audioContext = null;
 
-export function setupAudioControls({ dispatchEvent, DOM }) {
-  if (!DOM || !DOM.powerOn || !DOM.button2 || !DOM.splashScreen || !DOM.mainContainer) {
-    console.error("Missing DOM elements in audio-controls");
-    dispatchEvent("logError", { message: "Missing DOM elements in audio-controls" });
+export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
+  if (!DOM || !DOM.powerOn) {
+    console.error("setupAudioControls: Missing DOM elements");
+    dispatch("logError", { message: "Missing DOM elements in audio-controls" });
     return;
   }
 
-  // Power On: Initialize Audio Context
-  DOM.powerOn.addEventListener("touchstart", async (event) => {
-    if (event.cancelable) event.preventDefault();
-    console.log("powerOn touched");
-    try {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      if (!audioContext) throw new Error("AudioContext creation failed");
-      await initializeAudio(audioContext);
-      isAudioContextInitialized = true;
-      DOM.splashScreen.style.display = "none";
-      DOM.mainContainer.style.display = "grid";
-      await speak("audioOn");
-      dispatchEvent("updateUI", { settingsMode: false, streamActive: false, micActive: false });
-      console.log("powerOn: AudioContext initialized, UI updated");
-    } catch (err) {
-      console.error("Power on error:", err.message);
-      dispatchEvent("logError", { message: `Power on error: ${err.message}` });
-      await speak("audioError");
-      for (let i = 0; i < 3; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        try {
-          console.log(`PowerOn: Retry ${i + 1} for AudioContext`);
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          await initializeAudio(audioContext);
-          isAudioContextInitialized = true;
-          DOM.splashScreen.style.display = "none";
-          DOM.mainContainer.style.display = "grid";
-          await speak("audioOn");
-          dispatchEvent("updateUI", { settingsMode: false, streamActive: false, micActive: false });
-          console.log("PowerOn: AudioContext initialized on retry");
-          break;
-        } catch (retryErr) {
-          console.error(`Retry ${i + 1} failed:`, retryErr.message);
-          dispatchEvent("logError", { message: `Audio retry ${i + 1} failed: ${retryErr.message}` });
+  const initializeAudioContext = async (event) => {
+    console.log(`powerOn: ${event.type} event`);
+    const maxRetries = 3;
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+        if (!audioContext) throw new Error("AudioContext creation failed");
+        if (audioContext.state === "suspended") {
+          console.log("AudioContext is suspended, attempting to resume");
+          await audioContext.resume();
         }
+        if (audioContext.state !== "running") {
+          throw new Error(`AudioContext failed to start, state: ${audioContext.state}`);
+        }
+        await initializeAudio(audioContext);
+        isAudioContextInitialized = true;
+        DOM.splashScreen.style.display = "none";
+        DOM.mainContainer.style.display = "grid";
+        await getText("audioOn");
+        dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
+        console.log("powerOn: AudioContext initialized, UI updated");
+        return;
+      } catch (err) {
+        console.error(`Attempt ${i + 1} failed: ${err.message}`);
+        dispatch("logError", { message: `Audio init attempt ${i + 1} failed: ${err.message}` });
       }
-      if (!isAudioContextInitialized) await speak("audioError");
     }
-  });
+    await getText("audioError");
+    DOM.powerOn.textContent = await getText("powerOn.failed.text", {}, 'text');
+    DOM.powerOn.setAttribute("aria-label", await getText("powerOn.failed.aria", {}, 'aria'));
+  };
 
-  // Button 2: Toggle Microphone (non-settings mode)
-  DOM.button2.addEventListener("touchstart", async (event) => {
-    if (event.cancelable) event.preventDefault();
-    if (settings.isSettingsMode) return; // Handled in ui-settings.js
+  const handlePowerOn = async (event) => {
     if (!isAudioContextInitialized) {
-      console.error("Audio not initialized");
-      dispatchEvent("logError", { message: "Audio not initialized" });
-      await speak("audioNotEnabled");
-      return;
+      await initializeAudioContext(event);
+    } else {
+      console.log("powerOn: Audio already initialized, cleaning up");
+      await cleanupAudio();
+      isAudioContextInitialized = false;
+      DOM.splashScreen.style.display = "flex";
+      DOM.mainContainer.style.display = "none";
+      await getText("audioOff");
+      dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
     }
-    try {
-      console.log("button2: Dispatching toggleMic");
-      dispatchEvent("toggleMic", { settingsMode: false });
-    } catch (err) {
-      console.error("Mic toggle error:", err.message);
-      dispatchEvent("logError", { message: `Mic toggle error: ${err.message}` });
-      await speak("micError");
-    }
-  });
+  };
 
-  console.log("setupAudioControls: Setup complete");
+  DOM.powerOn.addEventListener("click", handlePowerOn);
+  DOM.powerOn.addEventListener("touchstart", handlePowerOn);  // Removed { passive: true }
+
+  console.log("setupAudioControls: Audio controls initialized");
 }

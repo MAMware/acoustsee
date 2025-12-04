@@ -1,6 +1,21 @@
+// future/web/ui/dom.js
+function assignDOMElements() {
+  DOM.splashScreen = document.getElementById('splashScreen');
+  DOM.powerOn = document.getElementById('powerOn');
+  DOM.mainContainer = document.getElementById('mainContainer');
+  DOM.button1 = document.getElementById('button1');
+  DOM.button2 = document.getElementById('button2');
+  DOM.button3 = document.getElementById('button3');
+  DOM.button4 = document.getElementById('button4');
+  DOM.button5 = document.getElementById('button5');
+  DOM.button6 = document.getElementById('button6');
+  DOM.emailDebug = document.getElementById('emailDebug');
+  DOM.videoFeed = document.getElementById('videoFeed');
+}
+
 let DOM = {
-  powerOn: null,
   splashScreen: null,
+  powerOn: null,
   mainContainer: null,
   button1: null,
   button2: null,
@@ -9,9 +24,6 @@ let DOM = {
   button5: null,
   button6: null,
   videoFeed: null,
-  loadingIndicator: null,
-  debug: null,
-  closeDebug: null,
   emailDebug: null
 };
 
@@ -37,21 +49,4 @@ export function initDOM() {
       document.addEventListener('DOMContentLoaded', checkDOMReady, { once: true });
     }
   });
-}
-
-function assignDOMElements() {
-  DOM.powerOn = document.getElementById('powerOn');
-  DOM.splashScreen = document.getElementById('splashScreen');
-  DOM.mainContainer = document.getElementById('mainContainer');
-  DOM.button1 = document.getElementById('button1');
-  DOM.button2 = document.getElementById('button2');
-  DOM.button3 = document.getElementById('button3');
-  DOM.button4 = document.getElementById('button4');
-  DOM.button5 = document.getElementById('button5');
-  DOM.button6 = document.getElementById('button6');
-  DOM.videoFeed = document.getElementById('videoFeed');
-  DOM.loadingIndicator = document.getElementById('loadingIndicator');
-  DOM.debug = document.getElementById('debug');
-  DOM.closeDebug = document.getElementById('closeDebug');
-  DOM.emailDebug = document.getElementById('emailDebug');
 }

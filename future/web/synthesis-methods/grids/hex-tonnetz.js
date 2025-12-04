@@ -26,7 +26,7 @@ for (let y = 0; y < gridSize; y++) {
   }
 }
 
-export function mapFrameToTonnetz(
+export function mapFrameToHexTonnetz(
   frameData,
   width,
   height,
@@ -46,8 +46,8 @@ export function mapFrameToTonnetz(
       for (let x = 0; x < width; x++) {
         const idx = y * width + x;
         const delta = Math.abs(frameData[idx] - prevFrameData[idx]);
-        if (delta > 50) {
-          const gridX = Math.floor(x / gridWidth);
+        if (delta > 20) {
+          const grid7X = Math.floor(x / gridWidth);
           const gridY = Math.floor(y / gridHeight);
           movingRegions.push({
             gridX,

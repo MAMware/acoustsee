@@ -1,12 +1,35 @@
+**a photon to phonon code**
+
 ## [Introduction](#introduction)
+
+The content in this repository builds a web app and provides the code for a public working platform that transform visual environments into a soundscapes, thus empowering the user to experience a visual world by synthetic audio cues in real time.
+
+> **Why?** We believe in enhancing humanity with open-source software in a fast, accessible and impactful way. You are invited to join us to improve its mission and make a difference!
 
 ### Project Vision
 
-The content at this repository builds a web app that aims to transform visual environments into intuitive soundscapes to experience the visual world by synthetic audio cues in real time. Generating dynamic soundscapes by mapping motion into distinct sound signatures.
+- Synesthetic Translation: Converting visual data into stereo audio cues, mapping colors, motion to distinct sound signatures.
+- Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
+- Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
 
+### Tech stack needed
 
-> We believe in software that improves quality of life. Enhancing accessibility with open-source tools is central to this mission. You're welcome to contribute.
+Run the version of your choice in any internet browser from year 2020 and up.
+The design is tested with a mobile phone anda its front camera
+Input: Mobile camera for real-time visual data capture.
+Audio Output: Stereo headphones for spatial audio effects.
 
+### Hipothetic Use Case
+
+Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, the phone, worn as a necklace, captures visuals like a swing in motion. As the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
+
+### Development
+
+Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts 
+Milestone 5 wich is a work in progress got a little help from OpenAI ChatGPT 4.1 via @github copilot at codespaces
+Research drafts are going to be feed into Grok 4 for a surprise next step ;)
+
+>We welcome contributors! 
 
 ## Table of Contents
 
@@ -23,6 +46,30 @@ The content at this repository builds a web app that aims to transform visual en
 
 ### [Usage](docs/USAGE.md)
 
+The webapp runs from a Internet browsers and mobile hardware from 2021.
+
+- Current version [RUN](https://mamware.github.io/acoustsee/present/)
+- Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
+- Testing developments [RUN](https://mamware.github.io/acoustsee/future/web)
+
+### Check [Usage](docs/USAGE.md) for further details
+
+### [Current Status](#status) 
+
+Working at **Milestone 5 (Current)**
+
+- Haptic feedback via Vibration API **Developing in Progress** 
+- Console log on device screen and mail to feature for debuggin. **Developing in Progress**
+- New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress**
+- Audio imput from camera into the headphones among the synthetized sound from camera. **Developing in Progress**
+- Further Modularity **Developing in Progress**
+- Mermaid diagrams to reflect current Modular Single Responsability Principle **To do**
+ 
+### [Changelog](docs/CHANGELOG.md)
+
+- Current "stable" version from "present" is v0.4.7, link above logs the history and details past milestones achieved.
+
+### [Project structure](#project_structure)
 - Current version [RUN](https://mamware.github.io/acoustsee/present/)
 - Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
 - Test version in development [RUN](https://mamware.github.io/acoustsee/future/web)
@@ -107,15 +154,11 @@ web/
 
 >We welcome contributors! 
 
-- See `docs/CONTRIBUTING.md` for detailed contributing guidelines, branching strategy, and examples.
-- Strict architecture: avoid hardcoding and implicit fallbacks, clean up leftovers.
-- UI separated from core logic to enable customizable skins 
-- Adding support for new video and audio techniques (WIP)
-- Ongoing tweaks and bugfixes
+- At this document linked above, you will find the list for our current TO TO list, now from milestone 5 (v0.5.2)
 
 ### [Code flow diagrams](docs/DIAGRAMS.md) 
 
-- Early stage diagrams covering the Trunk Based Development approach (v0.2) can be found at the link from above, reflecting:  
+Diagrams covering the Turnk Based Development approach (v0.2). 
 
   - Process Frame Flow
   - Audio Generation Flow
@@ -144,26 +187,12 @@ graph TD
 - Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
 - Current "future" version in development starts from v0.6 
 
-### [License](docs/LICENSE.md)
-
-AcoustSee is available under two licenses. See `docs/LICENSE.md` for full text.
-
-**1. Open Source (GPL-3.0)**
-
-This project is licensed under the GNU General Public License v3.0. Derivative works distributed publicly must comply with GPL-3.0 obligations.
-
-**2. Commercial**
-
-Commercial licenses are available for proprietary use. Contact the project maintainer for details.
-
 ### [FAQ](docs/FAQ.md)
 
-- See `docs/FAQ.md` for Frequently Asked Questions.
-- Usage analytics: We collect a small amount of anonymous usage data to help prioritize features and fix bugs. The code that sends analytics is in `core/ingest.js` .
- - **Data we collect:** a random session id, browser language, device type, and app version.
- - **Data we do not collect:** IP address, precise location, browser history, or other PII.
+- Follow the link for list of the Frecuently Asqued Questions.
 
-*Peace.*
-**Love.**
-*Union.*
-**Respect.**
+### [License](docs/LICENSE.md)
+
+- GPL-3.0 license details
+  
+MAKE LOVE NOT WAR

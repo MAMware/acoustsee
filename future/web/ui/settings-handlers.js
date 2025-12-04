@@ -1,6 +1,6 @@
+// future/web/ui/settings-handlers.js
 import { settings } from "../state.js";
 import { speak } from "./utils.js";
-import { getDispatchEvent } from "../context.js";
 
 export function setupSettingsHandlers({ dispatchEvent, DOM }) {
   console.log("setupSettingsHandlers: Starting setup");

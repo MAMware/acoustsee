@@ -34,6 +34,16 @@ body {
   cursor: pointer;
 }
 
+.instructions-button {
+  font-size: 5vw;
+  padding: 2vw 4vw;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 1vw;
+  cursor: pointer;
+}
+
 .main-container {
   width: 100%;
   height: 100%;
@@ -81,50 +91,4 @@ body {
   border-radius: 0.5vw;
   color: white;
   font-size: 3vw;
-}
-
-.loading-indicator {
-  position: fixed;
-  top: 1vw;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 3vw;
-  color: #333;
-  display: none;
-  z-index: 10;
-}
-
-.debug-panel {
-  position: absolute;
-  bottom: 1vw;
-  right: 1vw;
-  width: calc(50% - 1.5vw);
-  height: calc(33.33% - 1.5vw);
-  background: rgba(0, 0, 0, 0.9);
-  color: white;
-  overflow-y: auto;
-  padding: 1vw;
-  z-index: 40;
-  border-radius: 1vw;
-  display: none;
-}
-
-.debug-panel pre {
-  font-size: 2vw;
-  margin: 0 0 1vw 0;
-}
-
-.debug-button {
-  width: 48%;
-  margin: 0.5vw 1%;
-  padding: 0.5vw;
-  font-size: 2vw;
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 0.5vw;
-  cursor: pointer;
-  display: inline-block;
-}
-
 }
