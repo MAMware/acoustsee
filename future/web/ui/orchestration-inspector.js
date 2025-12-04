@@ -59,12 +59,34 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
    * ADR-0011: Use engine selectors to avoid Law of Demeter violations
    */
   function updateUI() {
-    // Use selectors instead of direct state access
-    const orchestration = engine.getOrchestration();
-    const metrics = engine.getMetrics();
+    // Try to get orchestration/metrics from engine methods, fallback to safe defaults
+    let orchestration = null;
+    let metrics = null;
     
-    if (!orchestration) {
-      container.innerHTML = '<div class="orch-error">Orchestration state not available</div>';
+    try {
+      if (typeof engine.getOrchestration === 'function') {
+        orchestration = engine.getOrchestration();
+      }
+    } catch (e) {
+      structuredLog('DEBUG', 'orchestration-inspector', { message: 'getOrchestration() unavailable', error: e?.message });
+    }
+    
+    try {
+      if (typeof engine.getMetrics === 'function') {
+        metrics = engine.getMetrics();
+      }
+    } catch (e) {
+      structuredLog('DEBUG', 'orchestration-inspector', { message: 'getMetrics() unavailable', error: e?.message });
+    }
+    
+    // If neither method is available, provide a minimal placeholder
+    if (!orchestration && !metrics) {
+      container.innerHTML = `
+        <div style="color: #95a5a6; font-size: 12px; padding: 12px; background: #ecf0f1; border-radius: 4px; text-align: center;">
+          <strong>Orchestration Inspector</strong><br>
+          <span style="font-size: 11px;">Waiting for orchestration data...</span>
+        </div>
+      `;
       return;
     }
     

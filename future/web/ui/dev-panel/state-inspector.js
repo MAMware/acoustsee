@@ -115,6 +115,17 @@ export class StateInspector {
       // Group state properties logically
       const stateGroups = this.groupStateProperties(state);
 
+      // If state is empty, show a placeholder
+      if (Object.keys(stateGroups).length === 0) {
+        contentContainer.innerHTML = `
+          <div style="color: #95a5a6; font-size: 12px; padding: 12px; background: #ecf0f1; border-radius: 4px; text-align: center;">
+            <strong>State Inspector</strong><br>
+            <span style="font-size: 11px;">Waiting for state data...</span>
+          </div>
+        `;
+        return;
+      }
+
       // Inject computed "Effective Throttle" group (derived from state)
       try {
         const updateInterval = state?.settings?.updateInterval || (state?.orchestration?.qualityProfile?.fpsTarget ? Math.round(1000 / state.orchestration.qualityProfile.fpsTarget) : 1000 / 10);

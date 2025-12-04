@@ -104,7 +104,16 @@ export function initEventBusViewer(engine, DOM) {
    * Get filtered events from EventBus
    */
   function getFilteredEvents() {
-    let events = eventBus.getEvents();
+    // Fallback if getEvents doesn't exist
+    let events = [];
+    try {
+      if (typeof eventBus.getEvents === 'function') {
+        events = eventBus.getEvents() || [];
+      }
+    } catch (e) {
+      structuredLog('DEBUG', 'EventBusViewer', { message: 'getEvents() failed', error: e?.message });
+      events = [];
+    }
 
     // Filter by type
     if (filters.type !== 'all') {
@@ -135,7 +144,14 @@ export function initEventBusViewer(engine, DOM) {
    * Calculate total buffer size in bytes and convert to kB
    */
   function getBufferSizeKB() {
-    const events = eventBus.getEvents?.() || [];
+    let events = [];
+    try {
+      if (typeof eventBus.getEvents === 'function') {
+        events = eventBus.getEvents?.() || [];
+      }
+    } catch (e) {
+      events = [];
+    }
     const totalBytes = events.reduce((sum, event) => sum + getEventSizeBytes(event), 0);
     return (totalBytes / 1024).toFixed(1);
   }
@@ -147,9 +163,17 @@ export function initEventBusViewer(engine, DOM) {
     const metricsContainer = DOM['eventbus-metrics-container'];
     if (!metricsContainer) return; // Skip if container not in DOM
 
-    const metrics = eventBus.getMetrics?.();
+    let metrics = null;
+    try {
+      if (typeof eventBus.getMetrics === 'function') {
+        metrics = eventBus.getMetrics?.();
+      }
+    } catch (_e) {
+      structuredLog('DEBUG', 'EventBusViewer', { message: 'getMetrics() failed', error: _e?.message });
+    }
+    
     if (!metrics) {
-      metricsContainer.innerHTML = '<div class="eventbus-metrics-unavailable">Metrics unavailable</div>';
+      metricsContainer.innerHTML = '<div class="eventbus-metrics-unavailable" style="color: #95a5a6; font-size: 12px; padding: 12px; text-align: center;">EventBus metrics not available</div>';
       return;
     }
 
@@ -286,7 +310,14 @@ export function initEventBusViewer(engine, DOM) {
       return;
     }
 
-    const correlatedEvents = eventBus.getEvents({ traceId: selectedTraceId });
+    let correlatedEvents = [];
+    try {
+      if (typeof eventBus.getEvents === 'function') {
+        correlatedEvents = eventBus.getEvents({ traceId: selectedTraceId }) || [];
+      }
+    } catch (e) {
+      structuredLog('DEBUG', 'EventBusViewer', { message: 'Failed to get correlated events', error: e?.message });
+    }
 
     if (correlatedEvents.length === 0) {
       correlationView.innerHTML = `<div class="eventbus-empty">No events found for traceId: ${selectedTraceId}</div>`;
