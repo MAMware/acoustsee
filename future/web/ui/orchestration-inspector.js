@@ -67,16 +67,16 @@ export function initializeOrchestrationInspector(engine, DOM, options = {}) {
       if (typeof engine.getOrchestration === 'function') {
         orchestration = engine.getOrchestration();
       }
-    } catch (e) {
-      structuredLog('DEBUG', 'orchestration-inspector', { message: 'getOrchestration() unavailable', error: e?.message });
+    } catch (err) {
+      structuredLog('DEBUG', 'orchestration-inspector', { message: 'getOrchestration() unavailable', error: err?.message });
     }
     
     try {
       if (typeof engine.getMetrics === 'function') {
         metrics = engine.getMetrics();
       }
-    } catch (e) {
-      structuredLog('DEBUG', 'orchestration-inspector', { message: 'getMetrics() unavailable', error: e?.message });
+    } catch (err) {
+      structuredLog('DEBUG', 'orchestration-inspector', { message: 'getMetrics() unavailable', error: err?.message });
     }
     
     // If neither method is available, provide a minimal placeholder

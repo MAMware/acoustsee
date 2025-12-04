@@ -139,7 +139,9 @@ export class StateInspector {
           'Resolution Scale': scale,
           'Power Profile': profile
         };
-      } catch (_) {}
+      } catch (err) {
+        structuredLog('DEBUG', 'state-inspector', { message: 'Failed to compute effective throttle', error: err?.message });
+      }
       
       // Clear and rebuild
       contentContainer.innerHTML = '';
@@ -378,7 +380,9 @@ export class StateInspector {
     try {
       const s = this.engine?.getState ? this.engine.getState() : null;
       if (s) this.scheduleUpdate(s);
-    } catch (_) {}
+    } catch (err) {
+      structuredLog('DEBUG', 'state-inspector', { message: 'Failed to filter state', error: err?.message });
+    }
   }
 
   propertyMatches(key, value) {
@@ -405,7 +409,8 @@ export class StateInspector {
     try {
       const keys = Object.keys(value || {});
       return keys.some(k => String(k).toLowerCase().includes(ft));
-    } catch (_) {
+    } catch (err) {
+      structuredLog('DEBUG', 'state-inspector', { message: 'Failed to scan object keys', error: err?.message });
       return false;
     }
   }

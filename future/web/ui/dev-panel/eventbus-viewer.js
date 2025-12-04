@@ -35,7 +35,6 @@ export function initEventBusViewer(engine, DOM) {
     // --- Delta Histogram Snapshot Chart State ---
     const histogramBuffer = [];
     const batchSize = 10;
-    let lastUploadTs = 0;
     function handleDeltaHistogramSnapshot(event) {
       if (!event || !event.data || !Array.isArray(event.data.histogram)) return;
       histogramBuffer.push(event.data.histogram);
@@ -43,7 +42,6 @@ export function initEventBusViewer(engine, DOM) {
         // Simulate analytics upload (replace with real endpoint)
         structuredLog('INFO', 'Analytics batch upload', { batch: histogramBuffer.slice() });
         histogramBuffer.length = 0;
-        lastUploadTs = Date.now();
       }
       renderHistogramChart(event.data.histogram);
     }
@@ -90,7 +88,6 @@ export function initEventBusViewer(engine, DOM) {
   const filterCategory = DOM['eventbus-filter-category'];
   const filterFrames = DOM['eventbus-filter-frames'];
   const refreshBtn = DOM['eventbus-refresh-btn'];
-  const autoRefreshCheckbox = DOM['eventbus-auto-refresh'];
   const clearBtn = DOM['eventbus-clear-btn'];
   const exportBtn = DOM['eventbus-export-btn'];
   const eventCount = DOM['eventbus-event-count'];
@@ -110,8 +107,8 @@ export function initEventBusViewer(engine, DOM) {
       if (typeof eventBus.getEvents === 'function') {
         events = eventBus.getEvents() || [];
       }
-    } catch (e) {
-      structuredLog('DEBUG', 'EventBusViewer', { message: 'getEvents() failed', error: e?.message });
+    } catch (err) {
+      structuredLog('DEBUG', 'EventBusViewer', { message: 'getEvents() failed', error: err?.message });
       events = [];
     }
 
@@ -536,7 +533,7 @@ export function initEventBusViewer(engine, DOM) {
   } else {
     // Fallback: Poll only if eventBus doesn't support subscriptions
     // This is rare, but keeps backward compatibility
-    const pollInterval = setInterval(smartRefresh, 2000);
+    setInterval(smartRefresh, 2000);
     structuredLog('DEBUG', 'EventBusViewer: Using fallback polling (2s interval)');
   }
 
