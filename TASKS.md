@@ -1673,10 +1673,11 @@ Changes:
 - Confirmed `Synth Sandbox` touch pad exists and is wired to generate cues.
 - Worker selection checkboxes available under "Signal Chain Control" and bind to engine via debug config.
 
-**Dec 4 live test fixes:**
+**Dec 4 live test fixes - localStorage persistence issue:**
 - Expanded three groups by default in HTML: `diagnostics` (State Inspector, Orchestration), `audio-testing` (Synth Sandbox Pad), `logging-output` (EventBus Viewer).
 - Updated `DEFAULT_GROUPS` in `dev-panel-customization.js` to match current group IDs.
-- Improved `restoreCollapseStates()` to query DOM for actual collapse buttons instead of iterating DEFAULT_GROUPS.
+- **Fixed localStorage override bug:** Modified `restoreCollapseStates()` to respect HTML's `aria-expanded` attribute as the default state when localStorage has no value. This prevents old collapsed states from persisting.
+- Added migration logic to clear old localStorage keys for removed groups.
 - All five missing UI cards now render: State Inspector, EventBus Viewer, Low FPS Preview, Synth Sandbox Pad, Orchestration Inspector.
 
 Notes: If `setSignalProcessingConfig` is not yet implemented in engine, toggles will log a WARN and remain non-disruptive.

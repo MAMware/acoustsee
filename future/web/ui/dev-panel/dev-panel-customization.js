@@ -28,6 +28,16 @@ export function initializeCustomization(panel) {
       return { dispose: () => {} };
     }
 
+    // Migration: Clear old localStorage keys for removed groups
+    const oldGroupIds = ['ui-settings', 'ui-system', 'audio-synthesis', 'video-motion', 'processing-controls', 'pipeline-monitoring', 'diagnostics-logs', 'advanced-config-ui'];
+    oldGroupIds.forEach(id => {
+      const key = `devpanel-group-collapsed-${id}`;
+      if (localStorage.getItem(key) !== null) {
+        localStorage.removeItem(key);
+        structuredLog('DEBUG', 'dev-panel-customization', { message: 'Cleared old localStorage key', key });
+      }
+    });
+
     // Load saved preferences or use defaults
     const loadPreferences = () => {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -133,7 +143,7 @@ export function initializeCustomization(panel) {
       structuredLog('DEBUG', 'dev-panel-customization', { message: 'Group collapsed state updated', groupId, collapsed: !isCollapsed });
     };
 
-    // Restore collapse states from localStorage
+    // Restore collapse states from localStorage, respecting HTML defaults
     const restoreCollapseStates = () => {
       // Query all group collapse buttons in the DOM instead of iterating DEFAULT_GROUPS
       const collapseButtons = panel.querySelectorAll('.group-collapse-btn');
@@ -142,19 +152,32 @@ export function initializeCustomization(panel) {
         if (!groupId) return;
         
         const collapseKey = `devpanel-group-collapsed-${groupId}`;
-        const isCollapsed = localStorage.getItem(collapseKey) === 'true';
+        const storedState = localStorage.getItem(collapseKey);
         const groupEl = panel.querySelector(`[data-group="${groupId}"]`);
         
-        if (groupEl && btn) {
-          if (isCollapsed) {
-            groupEl.classList.add('collapsed');
-            btn.setAttribute('aria-expanded', 'false');
-            btn.textContent = '+';
-          } else {
-            groupEl.classList.remove('collapsed');
-            btn.setAttribute('aria-expanded', 'true');
-            btn.textContent = '−';
-          }
+        if (!groupEl || !btn) return;
+        
+        // Determine if group should be collapsed:
+        // 1. If localStorage has a value, use it
+        // 2. Otherwise, check HTML aria-expanded attribute
+        // 3. Default to false (expanded) if neither is clear
+        let isCollapsed = false;
+        if (storedState !== null) {
+          isCollapsed = storedState === 'true';
+        } else {
+          // Use HTML's aria-expanded as the default state
+          const htmlExpandedAttr = btn.getAttribute('aria-expanded');
+          isCollapsed = htmlExpandedAttr === 'false';
+        }
+        
+        if (isCollapsed) {
+          groupEl.classList.add('collapsed');
+          btn.setAttribute('aria-expanded', 'false');
+          btn.textContent = '+';
+        } else {
+          groupEl.classList.remove('collapsed');
+          btn.setAttribute('aria-expanded', 'true');
+          btn.textContent = '−';
         }
       });
     };
