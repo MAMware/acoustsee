@@ -1,6 +1,13 @@
 import { structuredLog } from './utils/logging.js';  // Top import.
 import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import for DB logging.
 
+// Capture original console methods before overrides
+const originalConsole = {
+  log: console.log,
+  warn: console.warn,
+  error: console.error
+};
+
 export let settings = {
   debugLogging: true,
   stream: null,
