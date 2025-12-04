@@ -150,7 +150,9 @@
         <button class="collapse-btn" data-target="state-content" aria-expanded="true" title="Collapse Inspector">-</button>
       </h2>
       <div id="state-content" class="section-content">
-        <!-- StateInspector component will be rendered here -->
+        <div class="loading-placeholder" style="color: #95a5a6; font-size: 12px; padding: 12px; text-align: center;">
+          <span>⏳ Loading state inspector...</span>
+        </div>
       </div>
     </div>
 
@@ -273,19 +275,21 @@
       </h2>
       <div id="touch-pad-content" class="section-content">
         <p style="font-size: 12px; color: #95a5a6; margin: 0 0 12px 0;">Click and drag to generate cues using the currently selected Grid and Synth.</p>
-        <div class="controls-grid-2col" style="margin-bottom: 8px;">
-          <div class="control-column">
+        <div class=\"controls-grid-2col\" style=\"margin-bottom: 8px;\">
+          <div class=\"control-column\">
             <!-- left column reserved for future controls -->
           </div>
-          <div class="control-column">
+          <div class=\"control-column\">
             <label>Note Duration (sec)</label>
-            <div class="slider-container">
-              <input id="pad-duration" type="range" min="0.1" max="5" step="0.1" value="0.5">
-              <span id="pad-duration-value">0.5</span>
+            <div class=\"slider-container\">
+              <input id=\"pad-duration\" type=\"range\" min=\"0.1\" max=\"5\" step=\"0.1\" value=\"0.5\">
+              <span id=\"pad-duration-value\">0.5</span>
             </div>
           </div>
         </div>
-        <div id="touch-pad-area" style="width: 100%; height: 200px; background-color: #222; border: 1px solid #555; cursor: crosshair; touch-action: none;"></div>
+        <div id=\"touch-pad-area\" style=\"width: 100%; height: 200px; background-color: #222; border: 1px solid #555; cursor: crosshair; touch-action: none; display: flex; align-items: center; justify-content: center; position: relative;\">
+          <span style=\"color: #555; font-size: 14px; pointer-events: none; user-select: none;\">🎹 Click/drag here to generate audio cues</span>
+        </div>
       </div>
     </div>
   </div>
@@ -867,7 +871,11 @@
             </div>
           </div>
           <div id="eventbus-metrics-container" class="eventbus-metrics-container"></div>
-          <div id="eventbus-event-list" class="eventbus-event-list"></div>
+          <div id="eventbus-event-list" class="eventbus-event-list">
+            <div class="loading-placeholder" style="color: #95a5a6; font-size: 12px; padding: 12px; text-align: center;">
+              <span>No events yet. Events will appear here when the app starts processing.</span>
+            </div>
+          </div>
           <div id="eventbus-correlation-view" class="eventbus-correlation-view"></div>
         </div>
       </div>
@@ -881,7 +889,9 @@
         <button class="collapse-btn" data-target="orchestration-content" aria-expanded="true" title="Collapse Orchestration">-</button>
       </h2>
       <div id="orchestration-content" class="section-content">
-        <!-- OrchestrationInspector component will be rendered here -->
+        <div class="loading-placeholder" style="color: #95a5a6; font-size: 12px; padding: 12px; text-align: center;">
+          <span>⏳ Loading orchestration inspector...</span>
+        </div>
       </div>
     </div>
   </div>
