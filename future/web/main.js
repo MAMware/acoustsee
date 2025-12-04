@@ -1,6 +1,7 @@
 import { setupUIController } from './ui/ui-controller.js';
 import { createEventDispatcher } from './ui/event-dispatcher.js';
-import { loadConfigs } from './state.js';  
+import { loadConfigs } from './state.js';
+import { structuredLog } from './utils/logging.js';  
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),
@@ -77,5 +78,11 @@ async function init() {
     }
   }
 }
+
+// Adds uncaught error handler for global contexts (e.g., hangs/OOM).
+window.onerror = function (message, source, lineno, colno, error) {
+  structuredLog('ERROR', 'Uncaught global error', { message, source, lineno, colno, stack: error ? error.stack : 'N/A' });
+  return true;  // Prevent default browser error logging.
+};
 
 init();

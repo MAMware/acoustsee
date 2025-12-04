@@ -3,6 +3,18 @@ import { audioContext, oscillators } from "../../audio-processor.js";
 export function playFmSynthesis(notes) {
   let oscIndex = 0;
   const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
+  // Clean up any existing FM modulators from previous frames
+  oscillators.forEach(oscData => {
+    if (oscData.modulator) {
+      oscData.modulator.stop();
+      oscData.modulator.disconnect();
+      oscData.modulator = null;
+    }
+    if (oscData.modGain) {
+      oscData.modGain.disconnect();
+      oscData.modGain = null;
+    }
+  });
   for (let i = 0; i < oscillators.length; i++) {
     const oscData = oscillators[i];
     if (oscIndex < allNotes.length && i < oscillators.length) {
@@ -38,6 +50,9 @@ export function playFmSynthesis(notes) {
         );
         modulator.connect(modGain).connect(oscData.osc.frequency);
         modulator.start();
+        // Store references for cleanup
+        oscData.modulator = modulator;
+        oscData.modGain = modGain;
         // Usar el siguiente oscilador para el armónico principal
         if (oscIndex < oscillators.length) {
           const harmonicOsc = oscillators[oscIndex];
