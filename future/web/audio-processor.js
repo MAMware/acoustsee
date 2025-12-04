@@ -3,16 +3,17 @@ import { mapFrame } from "./grid-dispatcher.js";
 import { playSineWave } from "./synthesis-methods/engines/sine-wave.js";
 import { playFMSynthesis } from "./synthesis-methods/engines/fm-synthesis.js";
 
-export let audioContext = null;
-export let isAudioInitialized = false;
-export let oscillators = [];
+let audioContext = null;
+let isAudioInitialized = false;
+let oscillators = [];
+let micSource = null;
 
-export function setAudioContext(newContext) {
+function setAudioContext(newContext) {
   audioContext = newContext;
   isAudioInitialized = false; // Reset state when setting a new context
 }
 
-export async function initializeAudio(context) {
+async function initializeAudio(context) {
   if (isAudioInitialized || !context) {
     console.warn("initializeAudio: Already initialized or no context provided");
     return false;
@@ -70,7 +71,7 @@ export async function initializeAudio(context) {
   }
 }
 
-export function playAudio(
+function playAudio(
   frameData,
   width,
   height,
@@ -132,7 +133,7 @@ export function playAudio(
   };
 }
 
-export async function cleanupAudio() {
+async function cleanupAudio() {
   if (!isAudioInitialized || !audioContext) {
     console.warn("cleanupAudio: No audio context to clean up");
     return;
@@ -144,7 +145,6 @@ export async function cleanupAudio() {
       osc.disconnect();
       gain.disconnect();
       panner.disconnect();
-      // Clean up FM modulators
       if (osc.frequency?.connectedNodes) {
         osc.frequency.connectedNodes.forEach((node) => {
           if (node instanceof OscillatorNode) {
@@ -154,6 +154,10 @@ export async function cleanupAudio() {
         });
       }
     });
+    if (micSource) {
+      micSource.disconnect();
+      micSource = null;
+    }
     oscillators = [];
     isAudioInitialized = false;
     audioContext = null;
@@ -168,6 +172,55 @@ export async function cleanupAudio() {
   }
 }
 
-export async function stopAudio() {
+async function stopAudio() {
   await cleanupAudio();
 }
+
+function initializeMicAudio(micStream) {
+  if (!audioContext || !isAudioInitialized) {
+    console.warn("initializeMicAudio: Audio context not initialized");
+    if (window.dispatchEvent) {
+      window.dispatchEvent("logError", {
+        message: "Audio context not initialized for microphone",
+      });
+    }
+    return null;
+  }
+  try {
+    if (micStream) {
+      micSource = audioContext.createMediaStreamSource(micStream);
+      const gain = audioContext.createGain();
+      gain.gain.setValueAtTime(1, audioContext.currentTime);
+      micSource.connect(gain).connect(audioContext.destination);
+      console.log("initializeMicAudio: Microphone stream connected to output");
+      return micSource;
+    } else {
+      if (micSource) {
+        micSource.disconnect();
+        micSource = null;
+      }
+      console.log("initializeMicAudio: No microphone stream provided, disconnected");
+      return null;
+    }
+  } catch (error) {
+    console.error("initializeMicAudio: Error initializing microphone:", error.message);
+    if (window.dispatchEvent) {
+      window.dispatchEvent("logError", {
+        message: `Microphone init error: ${error.message}`,
+      });
+    }
+    return null;
+  }
+}
+
+export {
+  setAudioContext,
+  initializeAudio,
+  playAudio,
+  cleanupAudio,
+  stopAudio,
+  initializeMicAudio,
+  audioContext,
+  isAudioInitialized,
+  oscillators
+};

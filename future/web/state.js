@@ -13,7 +13,6 @@ export let settings = {
 
 export let skipFrame = false;
 export let frameCount = 0;
-export let lastTime = 0;
 export let prevFrameDataLeft = null;
 export let prevFrameDataRight = null;
 
