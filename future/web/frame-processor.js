@@ -1,5 +1,5 @@
 import { settings } from "./state.js";
-import { dispatchEvent } from "./ui/event-dispatcher.js";
+import { dispatchEvent } from "./core/dispatcher.js";
 
 export async function mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
   try {

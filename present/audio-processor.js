@@ -7,6 +7,19 @@ export let audioContext = null;
 export let isAudioInitialized = false;
 export let oscillators = [];
 
+// WeakMap for tracking audio resources
+const audioResourceMap = new WeakMap();
+// Interval ID for memory logging
+let memoryInterval;
+
+// Function to log memory usage (Chrome only)
+function logMemoryUsage() {
+    if (performance && performance.memory) {
+        const { usedJSHeapSize, totalJSHeapSize } = performance.memory;
+        console.log(`Memory Usage: ${(usedJSHeapSize/1e6).toFixed(2)}MB / ${(totalJSHeapSize/1e6).toFixed(2)}MB`);
+    }
+}
+
 export async function initializeAudio(context) {
     if (isAudioInitialized || !context) return;
     try {
@@ -25,8 +38,14 @@ export async function initializeAudio(context) {
             osc.connect(gain).connect(panner).connect(audioContext.destination);
             osc.start();
             oscillators.push({ osc, gain, panner, active: false });
+            // Track audio resources in WeakMap
+            audioResourceMap.set(osc, { gain, panner });
         }
         isAudioInitialized = true;
+        // Start memory monitoring
+        if (!memoryInterval) {
+            memoryInterval = setInterval(logMemoryUsage, 60000);
+        }
         if (window.speechSynthesis) {
             const utterance = new SpeechSynthesisUtterance('Audio initialized');
             utterance.lang = settings.language || 'en-US';
@@ -73,3 +92,19 @@ export function playAudio(frameData, width, height, prevFrameDataLeft, prevFrame
 
     return { prevFrameDataLeft, prevFrameDataRight };
 }
+
+// Cleanup audio resources on unload
+window.addEventListener('beforeunload', () => {
+    oscillators.forEach(({ osc, gain, panner }) => {
+        try {
+            osc.stop();
+            osc.disconnect();
+            gain.disconnect && gain.disconnect();
+            panner.disconnect && panner.disconnect();
+        } catch (e) {
+            console.warn('Error during audio cleanup', e);
+        }
+        audioResourceMap.delete(osc);
+    });
+    if (memoryInterval) clearInterval(memoryInterval);
+});
