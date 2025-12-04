@@ -74,11 +74,8 @@ export async function playAudio(notes) {
     return;
   }
   try {
-    const enginesResponse = await fetch("./synthesis-methods/engines/availableEngines.json");
-    if (!enginesResponse.ok) {
-      throw new Error(`Failed to load availableEngines.json: ${enginesResponse.status}`);
-    }
-    const availableEngines = await enginesResponse.json();
+    // Use cached engines loaded at startup
+    const availableEngines = settings.availableEngines;
     const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
     if (!engine) {
       structuredLog('ERROR', `playAudio: Engine not found`, { synthesisEngine: settings.synthesisEngine });

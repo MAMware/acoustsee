@@ -11,6 +11,9 @@ const originalConsole = {
 export let settings = {
   debugLogging: true,
   stream: null,
+  availableGrids: [],    // Loaded once at startup
+  availableEngines: [],  // Loaded once at startup
+  availableLanguages: [], // Loaded once at startup
   audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
   updateInterval: 30, 
   autoFPS: true,
@@ -31,7 +34,9 @@ export const loadConfigs = (async () => {
       fetch('./languages/availableLanguages.json').then(res => res.json()),
       Promise.resolve([50, 33, 16])
     ]);
-    availableLanguages = languages;
+    settings.availableGrids = grids;
+    settings.availableEngines = engines;
+    settings.availableLanguages = languages;
     settings.gridType = grids[0]?.id || settings.gridType;
     settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
     settings.language = languages[0]?.id || settings.language;
@@ -40,8 +45,6 @@ export const loadConfigs = (async () => {
     structuredLog('ERROR', 'Failed to load configurations', { message: err.message });
   }
 })();
-
-export let availableLanguages = [];
 
 export async function getLogs() {
   // Fetch from IndexedDB and pretty-print for readability.
@@ -69,41 +72,3 @@ export function setAudioInterval(timerId) {
     structuredLog('INFO', 'setAudioInterval', { timerId, updateIntervalMs: ms });
   }
 }
-
-export function setMicStream(stream) {
-  settings.micStream = stream;
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'setMicStream', { micStreamSet: !!stream });
-  }
-}
-
-// Override console methods but retain native output, augment with structured logging when enabled
-// Capture original console methods before overriding
-const originalConsole = {
-  log: console.log,
-  warn: console.warn,
-  error: console.error,
-};
-// Expose the original console methods to avoid override recursion
-export { originalConsole };
-
-// Override console methods to collect logs, fully routed through structuredLog
-console.log = (...args) => {
-  originalConsole.log(...args);
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'Console log', { args }, false);
-  }
-};
-
-console.warn = (...args) => {
-  originalConsole.warn(...args);
-  if (settings.debugLogging) {
-    structuredLog('WARN', 'Console warn', { args }, false);
-  }
-};
-
-console.error = (...args) => {
-  if (settings.debugLogging) {
-    structuredLog('ERROR', 'Console error', { args }, false);
-  }
-};
