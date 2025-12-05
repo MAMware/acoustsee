@@ -67,55 +67,90 @@ Working at **Milestone 5 (Current)**
 - Current "stable" version from "present" is v0.4.7, link above logs the history and details past milestones achieved.
 - Current "future" version in development starts from v0.5 
 
-### ["future" Project structure](#project_structure)
+### [Project structure](#project_structure)
+- Current version [RUN](https://mamware.github.io/acoustsee/present/)
+- Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
+- Test version in development [RUN](https://mamware.github.io/acoustsee/future/web)
+
+### System requirements
+
+The software is designed to run in most modern mobile and desktop web browsers. Video processing runs locally in the browser; audio is produced in real time and routed to stereo output (headphones recommended).
+
+### Hypothetical Use Case
+
+Launch the app in a web browser to translate live camera input into a dynamic stereo soundscape. For example, a swinging object might map to a softer sound as it moves away and a louder, richer sound as it approaches. A distant car could render as a low hum. The goal is to enable perception of surroundings through an auditory interface, improving independence and situational awareness.
+
+### [Current Status](#status) 
+
+- Milestone 0 to 4: reached by vibecoding with xAI Grok 3 
+- Milestone 5:  reached byv ibecoded with SuperGrok 4. some assistance from Gemini 2.5 Pro (Preview), ChatGPT 4.1 & o4-mini agents + small reviews from Claude 4.
+- Milestone 6:  restructered with Gemini 2.5 Pro and ChatGPT 4.1 & 04-mini agents 
+- Milestone 6.5: (WIP) robust architectural improvements and integration work by GPT-5 mini (Preview)
+- Milestone 7 to 9: mayor redesign with a foundational Command pattern and Hexagonal architecture while still in plain vanilla JS, not merged to developing branch becouse this actually a complete rebase. 
+
+### [v0.6 Project structure, (in construction)](#project_structure)
 
 ```
 
 web/
-├── audio/                    # Audio processing and synthesis
-│   ├── audio-processor.js    # AudioContext, oscillators, mic handling
-│   ├── synthesis-engines/    # Synthesis methods (sine-wave.js, fm-synthesis.js)
-│   │   ├── sine-wave.js
-│   │   ├── fm-synthesis.js
-│   │   └── available-engines.json
-│   └── audio-controls.js     # PowerOn button and AudioContext initialization (moved from ui)
-├── core/                     # Core application logic and state
-│   ├── dispatcher.js         # Event dispatching (renamed from event-dispatcher.js)
-│   ├── frame-processor.js    # Frame-to-notes mapping (moved from ui)
-│   ├── state.js              # Global settings and config loading
-│   └── context.js            # Shared DOM and dispatcher context
-├── ui/                       # Strictly UI-related code (DOM, buttons, rendering)
-│   ├── ui-controller.js      # UI setup and orchestration
-│   ├── ui-settings.js        # Button event bindings
-│   ├── video-capture.js      # Video feed rendering and canvas setup (refocused from processing)
-│   └── dom.js                # DOM element initialization
-├── utils/                    # General-purpose utilities
-│   ├── logging.js            # Structured logging
-│   ├── idb-logger.js         # IndexedDB logging
-│   ├── utils.js              # General utilities (tryVibrate, hapticCount, getText, etc.)
-│   └── async.js              # Async utilities (withErrorBoundary)
-├── synthesis-grids/          # Grid-based synthesis methods
-│   ├── hex-tonnetz.js
-│   ├── circle-of-fifths.js
-│   └── available-grids.json
-├── languages/                # Language and translation files
+├── audio/                    # Audio synthesis/processing (notes-to-sound, HRTF, mic)
+│   ├── audio-controls.js     # PowerOn/AudioContext init
+│   ├── audio-manager.js      # AudioContext management
+│   ├── audio-processor.js    # Core audio (oscillators, playAudio, cleanup; integrates HRTF/ML depth)
+│   ├── hrtf-processor.js     # HRTF logic (PannerNode, positional filtering)
+│   └── synths/               # Synth methods (extend with HRTF)
+│       ├── sine-wave.js
+│       ├── fm-synthesis.js
+│       └── available-engines.json
+├── video/                    # Video capture/mapping (camera-to-notes/positions; includes ML depth)
+│   ├── video-capture.js      # Stream setup/cleanup
+│   ├── frame-processor.js    # Frame analysis (emits notes/positions; calls ML if enabled)
+│   ├── ml-depth-processor.js # New: Monocular depth estimation 
+│   └── grids/                # Visual mappings 
+│       ├── hex-tonnetz.js
+│       ├── circle-of-fifths.js
+│       └── available-grids.json
+├── core/                     # Orchestration (events, state)
+│   ├── dispatcher.js         # Event handling 
+│   ├── state.js              # Settings/configs 
+│   └── context.js            # Shared refs
+├── ui/                       # Presentation (buttons, DOM; optional ML/HRTF toggles)
+│   ├── ui-controller.js      # UI setup
+│   ├── ui-settings.js        # Button bindings 
+│   ├── cleanup-manager.js    # Teardown listeners
+│   └── dom.js                # DOM init
+├── utils/                    # Cross-cutting tools (TTS, haptics, logs)
+│   ├── async.js              # Error wrappers
+│   ├── idb-logger.js         # Persistent logs
+│   ├── logging.js            # Structured logs
+│   └── utils.js              # Helpers (getText, ...)
+├── languages/                # Localization (add ML/HRTF strings)
 │   ├── es-ES.json
 │   ├── en-US.json
 │   └── available-languages.json
-├── styles.css                # Global styles
-├── index.html                # Main HTML
-├── main.js                   # Application entry point
-└── test/                     # Tests
-    ├── ui-settings.test.js
-    └── video-capture.test.js
+├── test/                     # Tests (grouped by category)
+│   ├── audio/                # Audio/HRTF tests
+│   │   ├── audio-processor.test.js
+│   │   └── hrtf-processor.test.js
+│   ├── video/                # Video/grid/ML tests
+│   │   ├── frame-processor.test.js
+│   │   └── ml-depth-processor.test.js  # New: Test depth estimation
+│   ├── core/                 # Dispatcher/state tests (if added)
+│   ├── ui/                   # UI tests
+│   │   ├── ui-settings.test.js
+│   │   └── video-capture.test.js
+│   └── utils/                # Utils tests (if added)
+├── .eslintrc.json            # Linting
+├── index.html                # HTML entry
+├── main.js                   # Bootstrap (update imports for moves/ML init)
+├── README.md                 # Docs (update structure/ML/HRTF)
+└── styles.css                # Styles
 
 ```
 
 ### [Contributing](docs/CONTRIBUTING.md)
 
-- Please follow the link above for the detailed contributing guidelines, branching strategy and examples.
-
-### [To-Do List](docs/TO_DO.md)
+>We welcome contributors! 
 
 - At this document linked above, you will find the list for our current TO TO list, now from milestone 5 (v0.5.2)
 
@@ -123,10 +158,32 @@ web/
 
 Diagrams covering the Turnk Based Development approach (v0.2). 
 
-Reflecting:  
   - Process Frame Flow
   - Audio Generation Flow
   - Motion Detection such as oscillator logic.
+```mermaid
+
+graph TD
+        A[dispatcher.js] -->|routes| B[core/handlers/]
+        B --> C[video-handlers.js]
+        B --> D[audio-handlers.js]
+        B --> E[ui-handlers.js]
+        B --> F[settings-handlers.js]
+        B --> G[grid-handlers.js]
+        B --> H[debug-handlers.js]
+        C -->|calls| I[video/frame-processor.js]
+        D -->|calls| J[audio/audio-processor.js]
+        E -->|updates| K[ui/ui-settings.js]
+        F -->|uses| L[utils/utils.js]
+        A -->|state| M[state.js]
+        A -->|logs| N[utils/logging.js]
+        B -->|future| O[ml-handlers.js]
+```
+
+### [Changelog](docs/CHANGELOG.md)
+
+- Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
+- Current "future" version in development starts from v0.6 
 
 ### [FAQ](docs/FAQ.md)
 
