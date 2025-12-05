@@ -12,23 +12,31 @@ let dbPromise = null;
 // Check IndexedDB support (technical: Feature detection to avoid errors in non-supporting envs like some iframes or old browsers).
 const isIndexedDBSupported = 'indexedDB' in window;
 
-// Open (or create) DB asynchronously.
-function openDB() {
+import { structuredLog } from './logging.js';
+// Open (or create) DB asynchronously with retry on transient errors.
+function openDB(retries = 3) {
   if (!isIndexedDBSupported) {
     return Promise.reject(new Error('IndexedDB not supported in this environment'));
   }
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { autoIncrement: true });
-      }
+    const attempt = (count) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => {
+        if (count > 0) {
+          setTimeout(() => attempt(count - 1), 500);
+        } else {
+          reject(request.error);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { autoIncrement: true });
+        }
+      };
     };
+    attempt(retries);
   });
 }
 
@@ -48,6 +56,7 @@ export async function addIdbLog(logEntry) {
   const db = await getDB();
   if (!db) {
     console.warn('DB unavailable; logging to console:', logEntry);
+    structuredLog('WARN', 'IDB fallback to console', { entry: logEntry }, false, false);
     return;  // Fallback: No persistence.
   }
   return new Promise((resolve, reject) => {

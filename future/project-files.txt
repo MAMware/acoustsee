@@ -1,4 +1,4 @@
-// Generated on: 2025-07-28 12:27:46 +0000
+// Generated on: 2025-07-30 18:17:33 +0000
 
 // File: web/utils/logging.js
 // web/utils/logging.js
@@ -47,29 +47,49 @@ export function setSampleRate(rate) {
  * @param {boolean} [persist=true] - If true, also calls addLog with serialized form.
  * @param {boolean} [sample=true] - If false, bypass sampling (for critical logs).
  */
+
+let inStructuredLog = false;
+/**
+ * Logs a structured message synchronously with recursion guard.
+ */
 export async function structuredLog(level, message, data = {}, persist = true, sample = true) {
   const numericLevel = LOG_LEVELS[level.toUpperCase()] || LOG_LEVELS.INFO;
-  if (numericLevel < currentLogLevel) return;  // Skip if below threshold.
-
-  // Sampling: For DEBUG, randomly skip based on sampleRate.
+  if (numericLevel < currentLogLevel) return;
   if (sample && level.toUpperCase() === 'DEBUG' && Math.random() > sampleRate) return;
 
-  const timestamp = new Date().toISOString();
-  const logEntry = { timestamp, level: level.toUpperCase(), message, data };
-
-  // Async emission: Use setTimeout(0) for browser (non-blocking queue).
-  setTimeout(() => {
-    // Human-readable console output.
-    const consoleMethod = console[level.toLowerCase()] || console.log;
-    consoleMethod(`[${timestamp}] ${logEntry.level}: ${message}`, data);
-
+  if (inStructuredLog) return;
+  inStructuredLog = true;
+  try {
+    const timestamp = new Date().toISOString();
+    const logEntry = { timestamp, level: level.toUpperCase(), message, data };
+    // Use global console to avoid circular import
+    const fn = (console[level.toLowerCase()] || console.log).bind(console);
+    fn(`[${timestamp}] ${logEntry.level}: ${message}`, data);
     if (persist) {
-// Persist via IndexedDB (async to avoid blocking).
       addIdbLog(logEntry).catch(err => {
-        console.warn('Failed to persist log to IndexedDB:', err.message);
+        originalConsole.warn('Failed to persist log to IndexedDB:', err.message);
       });
     }
-  }, 0);
+  } finally {
+    inStructuredLog = false;
+  }
+}
+
+// File: web/utils/async.js
+/**
+ * Wraps any async function in a standardized try/catch boundary.
+ * @param {Function} fn - The async function to execute.
+ * @param {...any} args - Arguments to pass to the function.
+ * @returns {Promise<{data: any, error: Error|null}>}
+ */
+export async function withErrorBoundary(fn, ...args) {
+  try {
+    const data = await fn(...args);
+    return { data, error: null };
+  } catch (error) {
+    console.error(`${fn.name} error:`, error);
+    return { data: null, error };
+  }
 }
 
 // File: web/utils/idb-logger.js
@@ -196,370 +216,93 @@ export async function clearIdbLogs() {
   });
 }
 
-// File: web/synthesis-methods/grids/availableGrids.json
-[
-  {
-    "id": "hex-tonnetz",
-    "createdAt": 1750899236982.1191
-  },
-  {
-    "id": "circle-of-fifths",
-    "createdAt": 1750899236950.1191
-  }
-]
+// File: web/utils/utils.js
+import { settings, availableLanguages } from '../core/state.js';
+import { structuredLog } from './logging.js';
 
-// File: web/synthesis-methods/grids/hex-tonnetz.js
-import { settings } from "../../state.js";
-
-const gridSize = 32;
-const notesPerOctave = 12;
-const octaves = 5;
-const minFreq = 100;
-const maxFreq = 3200;
-const frequencies = [];
-for (let octave = 0; octave < octaves; octave++) {
-  for (let note = 0; note < notesPerOctave; note++) {
-    const freq = minFreq * Math.pow(2, octave + note / notesPerOctave);
-    if (freq <= maxFreq) frequencies.push(freq);
-  }
-}
-const tonnetzGrid = Array(gridSize)
-  .fill()
-  .map(() => Array(gridSize).fill(0));
-for (let y = 0; y < gridSize; y++) {
-  for (let x = 0; x < gridSize; x++) {
-    const octave = Math.floor((y / gridSize) * octaves);
-    const noteOffset = (x + (y % 2) * 6) % notesPerOctave;
-    const freqIndex = octave * notesPerOctave + noteOffset;
-    tonnetzGrid[y][x] =
-      frequencies[freqIndex % frequencies.length] ||
-      frequencies[frequencies.length - 1];
-  }
-}
-
-export function mapFrameToHexTonnetz(
-  frameData,
-  width,
-  height,
-  prevFrameData,
-  panValue,
-) {
-  const gridWidth = width / gridSize;
-  const gridHeight = height / gridSize;
-  const movingRegions = [];
-  const newFrameData = new Uint8ClampedArray(frameData);
- 
- // Correct avgIntensity over pixels (skip alpha)
- let avgIntensity = 0;
- for (let i = 0; i < frameData.length; i += 4) {
-   const r = frameData[i];
-   const g = frameData[i + 1];
-   const b = frameData[i + 2];
-   avgIntensity += (r + g + b) / 3;
- }
- avgIntensity /= (frameData.length / 4);  
-
- if (prevFrameData) {
-   for (let y = 0; y < height; y++) {
-     for (let x = 0; x < width; x++) {
-       const idx = (y * width + x) * 4;
-       const r = frameData[idx];
-       const g = frameData[idx + 1];
-       const b = frameData[idx + 2];
-       const intensity = (r + g + b) / 3;
-
-       const pr = prevFrameData[idx];
-       const pg = prevFrameData[idx + 1];
-       const pb = prevFrameData[idx + 2];
-       const prevIntensity = (pr + pg + pb) / 3;
-
-       const delta = Math.abs(intensity - prevIntensity);
-       if (delta > 20) {
-         const gridX = Math.floor(x / gridWidth);
-         const gridY = Math.floor(y / gridHeight);
-         movingRegions.push({ gridX, gridY, intensity, delta });
-       }
-     }
-   }
- }
-
-  movingRegions.sort((a, b) => b.delta - a.delta);
-  const notes = [];
-  const usedCells = new Set();
-  for (let i = 0; i < Math.min(16, movingRegions.length); i++) {
-    const { gridX, gridY, intensity } = movingRegions[i];
-    const cellKey = `${gridX},${gridY}`;
-    if (usedCells.has(cellKey)) continue;
-    usedCells.add(cellKey);
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        usedCells.add(`${gridX + dx},${gridY + dy}`);
-      }
-    }
-    const freq = tonnetzGrid[gridY][gridX];
-    const amplitude =
-      settings.dayNightMode === "day"
-        ? 0.02 + (intensity / 255) * 0.06
-        : 0.08 - (intensity / 255) * 0.06;
-    const harmonics = [freq * Math.pow(2, 7 / 12), freq * Math.pow(2, 4 / 12)];
-    notes.push({ pitch: freq, intensity: amplitude, harmonics, pan: panValue });
-  }
-
-  return { notes, newFrameData, avgIntensity };
-}
-
-
-// File: web/synthesis-methods/grids/circle-of-fifths.js
-import { settings } from "../../state.js";
-
-const notesPerOctave = 12;
-const octaves = 5;
-const minFreq = 100;
-const maxFreq = 3200;
-const frequencies = [];
-for (let octave = 0; octave < octaves; octave++) {
-  for (let note = 0; note < notesPerOctave; note++) {
-    const freq = minFreq * Math.pow(2, octave + note / notesPerOctave);
-    if (freq <= maxFreq) frequencies.push(freq);
-  }
-}
-
-export function mapFrameToCircleOfFifths(
-  frameData,
-  width,
-  height,
-  prevFrameData,
-  panValue,
-) {
-  const gridWidth = width / 12;
-  const gridHeight = height / 12;
-  const movingRegions = [];
-  const newFrameData = new Uint8ClampedArray(frameData);
- // Correct avgIntensity over pixels (skip alpha)
- let avgIntensity = 0;
- for (let i = 0; i < frameData.length; i += 4) {
-   const r = frameData[i];
-   const g = frameData[i + 1];
-   const b = frameData[i + 2];
-   avgIntensity += (r + g + b) / 3;
- }
- avgIntensity /= (frameData.length / 4);
-
- if (prevFrameData) {
-   for (let y = 0; y < height; y++) {
-     for (let x = 0; x < width; x++) {
-       const idx = (y * width + x) * 4;
-       const r = frameData[idx];
-       const g = frameData[idx + 1];
-       const b = frameData[idx + 2];
-       const intensity = (r + g + b) / 3;
-
-       const pr = prevFrameData[idx];
-       const pg = prevFrameData[idx + 1];
-       const pb = prevFrameData[idx + 2];
-       const prevIntensity = (pr + pg + pb) / 3;
-
-       const delta = Math.abs(intensity - prevIntensity);
-       if (delta > 20) {
-         const gridX = Math.floor(x / gridWidth);
-         const gridY = Math.floor(y / gridHeight);
-         movingRegions.push({ gridX, gridY, intensity, delta });
-       }
-     }
-   }
- }
-
-  movingRegions.sort((a, b) => b.delta - a.delta);
-  const notes = [];
-  const usedCells = new Set();
-  for (let i = 0; i < Math.min(8, movingRegions.length); i++) {
-    const { gridX, gridY, intensity } = movingRegions[i];
-    const cellKey = `${gridX},${gridY}`;
-    if (usedCells.has(cellKey)) continue;
-    usedCells.add(cellKey);
-    const noteIndex = (gridX + gridY) % notesPerOctave;
-    const freq = frequencies[noteIndex] || frequencies[frequencies.length - 1];
-    const amplitude =
-      settings.dayNightMode === "day"
-        ? 0.02 + (intensity / 255) * 0.06
-        : 0.08 - (intensity / 255) * 0.06;
-    const harmonics = [freq * Math.pow(2, 7 / 12), freq * Math.pow(2, 4 / 12)];
-    notes.push({ pitch: freq, intensity: amplitude, harmonics, pan: panValue });
-  }
-
-  return { notes, newFrameData, avgIntensity };
-}
-
-
-// File: web/synthesis-methods/engines/sine-wave.js
-import { audioContext, oscillators } from "../../audio-processor.js";
-
-export function playSineWave(notes) {
-  let oscIndex = 0;
-  const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
-  for (let i = 0; i < oscillators.length; i++) {
-    const oscData = oscillators[i];
-    if (oscIndex < allNotes.length && i < oscillators.length) {
-      const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
-      oscData.osc.type = "sine";
-      oscData.osc.frequency.setTargetAtTime(
-        pitch,
-        audioContext.currentTime,
-        0.015,
-      );
-      oscData.gain.gain.setTargetAtTime(
-        intensity,
-        audioContext.currentTime,
-        0.015,
-      );
-      oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
-      oscData.active = true;
-      if (
-        harmonics.length &&
-        oscIndex + harmonics.length < oscillators.length
-      ) {
-        for (
-          let h = 0;
-          h < harmonics.length && oscIndex + h < oscillators.length;
-          h++
-        ) {
-          oscIndex++;
-          const harmonicOsc = oscillators[oscIndex];
-          harmonicOsc.osc.type = "sine";
-          harmonicOsc.osc.frequency.setTargetAtTime(
-            harmonics[h],
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.gain.gain.setTargetAtTime(
-            intensity * 0.5,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.panner.pan.setTargetAtTime(
-            pan,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.active = true;
-        }
-      }
-      oscIndex++;
-    } else {
-      oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
-      oscData.active = false;
+export function tryVibrate(event) {
+  if (event.cancelable && navigator.vibrate) {
+    try {
+      navigator.vibrate(50);
+    } catch (err) {
+      console.warn('Vibration blocked:', err.message);
     }
   }
 }
 
-
-// File: web/synthesis-methods/engines/fm-synthesis.js
-import { audioContext, oscillators, modulators } from "../../audio-processor.js";
-
-export function playFmSynthesis(notes) {
-  let oscIndex = 0;
-  let modIndex = 0;
-  const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
-  for (let i = 0; i < oscillators.length; i++) {
-    const oscData = oscillators[i];
-    if (oscIndex < allNotes.length) {
-      const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
-      oscData.osc.type = "sine";
-      oscData.osc.frequency.setTargetAtTime(
-        pitch,
-        audioContext.currentTime,
-        0.015,
-      );
-      oscData.gain.gain.setTargetAtTime(
-        intensity,
-        audioContext.currentTime,
-        0.015,
-      );
-      oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
-      oscData.active = true;
-      if (harmonics.length) {
-        // handle one modulator per note, reuse or create
-        let modData;
-        if (modIndex < modulators.length) {
-          modData = modulators[modIndex];
-        } else {
-          const mOsc = audioContext.createOscillator();
-          const mGain = audioContext.createGain();
-          modulators.push({ osc: mOsc, gain: mGain, started: false });
-          modData = modulators[modulators.length - 1];
-        }
-        // configure modulator
-        modData.osc.type = "sine";
-        modData.osc.frequency.setTargetAtTime(
-          pitch * 2,
-          audioContext.currentTime,
-          0.015,
-        );
-        modData.gain.gain.setTargetAtTime(
-          intensity * 100,
-          audioContext.currentTime,
-          0.015,
-        );
-        // connect and start only once
-        modData.osc.connect(modData.gain).connect(oscData.osc.frequency);
-        if (!modData.started) {
-          modData.osc.start();
-          modData.started = true;
-        }
-        modIndex++;
-        // Use next oscillator for main harmonic
-        if (oscIndex + 1 < oscillators.length) {
-          const harmonicOsc = oscillators[oscIndex + 1];
-          harmonicOsc.osc.type = "sine";
-          harmonicOsc.osc.frequency.setTargetAtTime(
-            harmonics[0],
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.gain.gain.setTargetAtTime(
-            intensity * 0.5,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.panner.pan.setTargetAtTime(
-            pan,
-            audioContext.currentTime,
-            0.015,
-          );
-          harmonicOsc.active = true;
-        }
-      }
-      oscIndex++;
-    } else {
-      oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
-      oscData.active = false;
-    }
-  }
-  // silence any unused modulators
-  for (let i = modIndex; i < modulators.length; i++) {
-    modulators[i].gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+export function hapticCount(count) {
+  if (navigator.vibrate) {
+    const pattern = Array(count * 2 - 1).fill(30).map((v, i) => i % 2 === 0 ? 30 : 50);
+    navigator.vibrate(pattern);
   }
 }
 
+const translationsCache = {};
 
-// File: web/synthesis-methods/engines/availableEngines.json
-[
-  {
-    "id": "sine-wave",
-    "createdAt": 1750899236911.1191
-  },
-  {
-    "id": "fm-synthesis",
-    "createdAt": 1750899236897.1191
+export async function getText(key, params = {}, type = 'tts') {
+  try {
+    const language = availableLanguages.find(l => l.id === settings.language);
+    if (!language) throw new Error(`Language not found: ${settings.language}`);
+
+    let translations = translationsCache[language.id];
+    if (!translations) {
+      const response = await fetch(`./languages/${language.id}.json`);
+      if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
+      translations = await response.json();
+      translationsCache[language.id] = translations;
+    }
+
+    let finalMessage = translations;
+    for (const part of key.split('.')) {
+      finalMessage = finalMessage[part] || key;
+    }
+    if (typeof finalMessage === 'object') {
+      finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
+    }
+    for (const [paramKey, paramValue] of Object.entries(params)) {
+      const placeholderRegex = new RegExp(`\\{${paramKey}\\}`, 'g');
+      finalMessage = finalMessage.replace(placeholderRegex, paramValue);
+    }
+    if (type === 'tts' && settings.ttsEnabled) {
+      const utterance = new SpeechSynthesisUtterance(finalMessage);
+      utterance.lang = settings.language;
+      window.speechSynthesis.speak(utterance);
+    }
+    const announcements = document.getElementById('announcements');
+    if (announcements) {
+      announcements.textContent = finalMessage;
+    }
+    return finalMessage;
+  } catch (err) {
+    console.error(`${type} error:`, err.message);
+    const announcements = document.getElementById('announcements');
+    if (announcements) {
+      announcements.textContent = `${type} error: Unable to process message`;
+    }
+    return key;
   }
-]
+}
+
+export function parseBrowserVersion(userAgent) {
+  const rx = /Chrome\/([0-9.]+)|Firefox\/([0-9.]+)|Safari\/([0-9.]+)|Edg\/([0-9.]+)/;
+  const m = userAgent.match(rx);
+  return (m && (m[1] || m[2] || m[3] || m[4])) || 'Unknown';
+}
+
+export function setTextAndAriaLabel(element, text, ariaLabel) {
+  if (element) {
+    element.textContent = text;
+    element.setAttribute('aria-label', ariaLabel);
+  } else {
+    structuredLog('WARN', 'Element not found for text update', { text });
+  }
+}
 
 // File: web/ui/ui-controller.js
-// future/web/ui-controller.js
-import { setupAudioControls } from './audio-controls.js';
+import { setupAudioControls } from '../audio/audio-controls.js';
 import { setupUISettings } from './ui-settings.js';
 import { setupCleanupManager } from './cleanup-manager.js';
+import { setupVideoCapture } from './video-capture.js';
 // Importa los módulos de configuración cuando los tengas
 // import { setupSaveSettings, setupLoadSettings } from './settings-manager.js';
 
@@ -577,9 +320,8 @@ export function setupUIController({ dispatchEvent, DOM }) {
 }
 
 // File: web/ui/ui-settings.js
-// future/web/ui/ui-settings.js
-import { settings } from '../state.js';
-import { getText, tryVibrate, hapticCount } from './utils.js';
+import { settings } from '../core/state.js';
+import { getText, tryVibrate, hapticCount } from '../utils/utils.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
   if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 ||
@@ -728,578 +470,9 @@ export function setupUISettings({ dispatchEvent, DOM }) {
 }
 
 
-// File: web/ui/event-dispatcher.js
-/* @ts-nocheck */
-// future/web/ui/event-dispatcher.js
-import { settings, setAudioInterval, setStream, setMicStream, getLogs } from '../state.js';
-import { getText } from './utils.js';
-import { initializeMicAudio } from '../audio-processor.js';
-import { processFrame } from './video-capture.js';
-import { structuredLog } from '../utils/logging.js';
-
-export let dispatchEvent = null;
-
-let lastTTSTime = 0;
-const ttsCooldown = 3000;
-let fpsSamplerInterval = null;  // For averaging FPS.
-let frameCount = 0;  // Reset per sample period.
-
-export async function createEventDispatcher(DOM) {
-  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!DOM });
-  if (!DOM) {
-    structuredLog('ERROR', 'DOM is undefined in createEventDispatcher');
-    return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined DOM') };
-  }
-
- // Log DOM elements for debugging.
-  structuredLog('DEBUG', 'DOM elements received', {
-    hasButton1: !!DOM.button1,
-    hasButton2: !!DOM.button2,
-    hasButton3: !!DOM.button3,
-    hasButton4: !!DOM.button4,
-    hasButton5: !!DOM.button5,
-    hasButton6: !!DOM.button6,
-    hasVideoFeed: !!DOM.videoFeed,
-  });
-  
-  // Load configurations
-  const [availableGrids, availableEngines, availableLanguages] = await Promise.all([
-    fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
-    fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
-    fetch('./languages/availableLanguages.json').then(res => res.json())
-  ]);
-
-  // Gather and log enhanced browser/app debug info.
-  const browserInfo = {
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
-    parsedBrowserVersion: parseBrowserVersion(navigator.userAgent),  // New: Parsed version.
-    hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',  // CPU cores.
-    deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',  // Approx RAM.
-    screen: `${screen.width}x${screen.height}`,
-    audioContextState: typeof audioContext !== 'undefined' ? audioContext.state : 'Not initialized',  // App-specific.
-    streamActive: !!settings.stream,
-    micActive: !!settings.micStream,
-    currentFPSInterval: settings.updateInterval  // Proxy for FPS (1000 / ms).
-  };
-  structuredLog('INFO', 'Enhanced browser and app debug info', browserInfo);
-
-  // Start FPS sampler if debugLogging (logs average every 10s when stream active).
-  if (settings.debugLogging) {
-    fpsSamplerInterval = setInterval(() => {
-      if (settings.stream) {
-        const avgFPS = frameCount / 10;  // Over 10s period.
-        structuredLog('DEBUG', 'Average FPS sample', { avgFPS, overSeconds: 10 });
-        frameCount = 0;  // Reset.
-      }
-    }, 10000);  // 10s.
-  }
-
-  const handlers = {
-    updateUI: async ({ settingsMode, streamActive, micActive }) => {
-      try {
-        if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
-          const missing = [
-            !DOM.button1 && 'button1',
-            !DOM.button2 && 'button2',
-            !DOM.button3 && 'button3',
-            !DOM.button4 && 'button4',
-            !DOM.button5 && 'button5',
-            !DOM.button6 && 'button6'
-          ].filter(Boolean);
-          structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
-          dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
-          return;
-        }
-        
-        const currentTime = performance.now();
-        const grid = availableGrids.find(g => g.id === settings.gridType);
-        const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
-        const language = availableLanguages.find(l => l.id === settings.language);
-
-        // Button 1
-        const button1Text = settingsMode
-          ? await getText('button1.settings.text', { gridName: grid?.id || 'Grid' }, 'text')
-          : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
-        const button1Aria = settingsMode
-          ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
-          : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
-            state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
-          });
-        }
-        setTextAndAriaLabel(DOM.button1, button1Text, button1Aria);
-
-        // Button 2
-        const button2Text = settingsMode
-          ? await getText('button2.settings.text', { engineName: engine?.id || 'Engine' }, 'text')
-          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.text`, {}, 'text');
-        const button2Aria = settingsMode
-          ? await getText('button2.settings.aria', { synthesisEngine: settings.synthesisEngine }, 'aria')
-          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.aria`, {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button2.tts.${settingsMode ? 'synthesisSelect' : 'micToggle'}`, {
-            state: settingsMode ? settings.synthesisEngine : (micActive ? 'turningOff' : 'turningOn')
-          });
-        }
-        setTextAndAriaLabel(DOM.button2, button2Text, button2Aria);
-
-        // Button 3
-        const button3Text = settingsMode
-          ? await getText('button3.settings.text', { languageName: language?.id || 'Language' }, 'text')
-          : await getText('button3.normal.text', { languageName: language?.id || 'Language' }, 'text');
-        const button3Aria = settingsMode
-          ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
-          : await getText('button3.normal.aria', { language: settings.language }, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button3.tts.${settingsMode ? 'videoSourceSelect' : 'languageSelect'}`, {
-            state: settingsMode ? (DOM.videoFeed?.srcObject?.getVideoTracks()[0]?.getSettings().facingMode || 'unknown') : settings.language
-          });
-        }
-        setTextAndAriaLabel(DOM.button3, button3Text, button3Aria);
-
-        // Button 4
-        const button4Text = settingsMode
-          ? await getText('button4.settings.text', {}, 'text')
-          : await getText(`button4.normal.${settings.autoFPS ? 'auto' : 'manual'}.text`, { fps: Math.round(1000 / settings.updateInterval) }, 'text');
-        const button4Aria = settingsMode
-          ? await getText('button4.settings.aria', {}, 'aria')
-          : await getText('button4.normal.aria', {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button4.tts.${settingsMode ? 'saveSettings' : 'fpsBtn'}`, {
-            state: settingsMode ? 'save' : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
-          });
-        }
-        setTextAndAriaLabel(DOM.button4, button4Text, button4Aria);
-
-        // Button 5
-        const button5Text = settingsMode
-          ? await getText('button5.settings.text', {}, 'text')
-          : await getText('button5.normal.text', {}, 'text');
-        const button5Aria = settingsMode
-          ? await getText('button5.settings.aria', {}, 'aria')
-          : await getText('button5.normal.aria', {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText(`button5.tts.${settingsMode ? 'loadSettings' : 'emailDebug'}`, {
-            state: settingsMode ? 'load' : 'email'
-          });
-        }
-        setTextAndAriaLabel(DOM.button5, button5Text, button5Aria);
-
-        // Button 6
-        const button6Text = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.text`, {}, 'text');
-        const button6Aria = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.aria`, {}, 'aria');
-        if (currentTime - lastTTSTime >= ttsCooldown) {
-          await getText('button6.tts.settingsToggle', { state: settingsMode ? 'off' : 'on' });
-        }
-        setTextAndAriaLabel(DOM.button6, button6Text, button6Aria);
-
-        lastTTSTime = currentTime;
-        structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
-      } catch (err) {
-        structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `UI update error: ${err.message}` });
-      }
-    },
-
-    processFrame: async () => {
-      try {
-        const video = DOM.videoFeed;
-        if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-          structuredLog('WARN', 'processFrame: Invalid video feed', { width: video?.videoWidth, height: video?.videoHeight });
-          return;
-        }
-        const result = await processFrame(DOM, video.videoWidth, video.videoHeight);
-        structuredLog('DEBUG', 'processFrame result', { notesCount: result?.notes?.length || 0, avgIntensity: result?.avgIntensity });
-        frameCount++;
-      } catch (err) {
-        structuredLog('ERROR', 'processFrame handler error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Frame processing handler error: ${err.message}` });
-      }
-    },
-
-    startStop: async ({ settingsMode }) => {
-      try {
-        if (settingsMode) {
-          const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
-          const nextIndex = (currentIndex + 1) % availableGrids.length;
-          settings.gridType = availableGrids[nextIndex].id;
-          await getText('button1.tts.gridSelect', { state: settings.gridType });
-        } else {
-          if (!settings.stream) {
-            // video-only to avoid duplicate audio tracks
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            DOM.videoFeed.srcObject = stream;
-            setStream(stream);
-            setAudioInterval(setInterval(() => {
-              dispatchEvent('processFrame');
-            }, settings.updateInterval));
-            await getText('button1.tts.startStop', { state: 'starting' });
-          } else {
-            // stop only video tracks
-            settings.stream.getVideoTracks().forEach(track => track.stop());
-            setStream(null);
-            if (settings.micStream) {
-              settings.micStream.getTracks().forEach(track => track.stop());
-              setMicStream(null);
-              initializeMicAudio(null);
-            }
-            clearInterval(settings.audioTimerId);
-            setAudioInterval(null);
-            if (fpsSamplerInterval) {
-              clearInterval(fpsSamplerInterval);
-              fpsSamplerInterval = null;
-              structuredLog('INFO', 'FPS sampler cleared on stream stop');
-            }
-            await getText('button1.tts.startStop', { state: 'stopping' });
-          }
-          dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-        }
-      } catch (err) {
-        structuredLog('ERROR', 'startStop error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Stream toggle error: ${err.message}` });
-        await getText('button1.tts.cameraError');
-      }
-    },
-
-    toggleAudio: async ({ settingsMode }) => {
-      try {
-        structuredLog('INFO', 'toggleAudio: Current mic state', { micActive: !!settings.micStream });
-        if (settingsMode) {
-          const currentIndex = availableEngines.findIndex(e => e.id === settings.synthesisEngine);
-          const nextIndex = (currentIndex + 1) % availableEngines.length;
-          settings.synthesisEngine = availableEngines[nextIndex].id;
-          await getText('button2.tts.synthesisSelect', { state: settings.synthesisEngine });
-        } else {
-          if (!settings.micStream) {
-            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            setMicStream(micStream);
-            initializeMicAudio(micStream);
-            await getText('button2.tts.micToggle', { state: 'turningOn' });
-          } else {
-            settings.micStream.getTracks().forEach(track => track.stop());
-            setMicStream(null);
-            initializeMicAudio(null);
-            await getText('button2.tts.micToggle', { state: 'turningOff' });
-          }
-          dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-        }
-      } catch (err) {
-        structuredLog('ERROR', 'toggleAudio error', { message: err.message });
-        handlers.logError({ message: `Mic toggle error: ${err.message}` });
-        await getText('button2.tts.micError');
-      }
-    },
-
-    toggleInput: async () => {  // Renamed from toggleInput for clarity
-      try {
-        const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
-        const nextIndex = (currentIndex + 1) % availableLanguages.length;
-        settings.language = availableLanguages[nextIndex].id;
-        await getText('button3.tts.languageSelect', { state: settings.language });
-        // Remove redundant dispatchEvent; updateUI triggered by setupUIController
-      } catch (err) {
-        structuredLog('ERROR', 'toggleInput error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Language toggle error: ${err.message}` });
-        await getText('button3.tts.languageError');  // Changed to language-specific error
-      }
-    },
-
-    toggleLanguage: async () => {  // Renamed from toggleInput for clarity
-      try {
-        const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
-        const nextIndex = (currentIndex + 1) % availableLanguages.length;
-        settings.language = availableLanguages[nextIndex].id;
-        await getText('button3.tts.languageSelect', { state: settings.language });
-        // Remove redundant dispatchEvent; updateUI triggered by setupUIController
-      } catch (err) {
-        structuredLog('ERROR', 'toggleLanguage error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Language toggle error: ${err.message}` });
-        await getText('button3.tts.languageError');  // Changed to language-specific error
-      }
-    },
-
-    toggleVideoSource: async () => {  // New handler for settings mode (DEF-003)
-      try {
-        const videoTrack = DOM.videoFeed?.srcObject?.getVideoTracks()[0];
-        if (videoTrack) {
-          const settings = videoTrack.getSettings();
-          const currentFacingMode = settings.facingMode || 'user';
-          const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: newFacingMode },
-            audio: !!settings.micStream
-          });
-          DOM.videoFeed.srcObject = stream;
-          setStream(stream);  // Update stream state
-          await getText('button3.tts.videoSourceSelect', { state: newFacingMode });
-        } else {
-          structuredLog('WARN', 'toggleVideoSource: No video track available');
-          await getText('button3.tts.videoSourceError');
-        }
-      } catch (err) {
-        structuredLog('ERROR', 'toggleVideoSource error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Video source toggle error: ${err.message}` });
-        await getText('button3.tts.videoSourceError');
-      }
-    },
-
-    updateFrameInterval: async ({ interval }) => {
-      try {
-        settings.updateInterval = interval;
-        if (settings.stream) {
-          clearInterval(settings.audioTimerId);
-          setAudioInterval(setInterval(() => {
-            dispatchEvent('processFrame');
-          }, settings.updateInterval));
-        }
-        await getText('button4.tts.fpsBtn', {
-          fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval)
-        });
-        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-      } catch (err) {
-        structuredLog('ERROR', 'updateFrameInterval error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Frame interval update error: ${err.message}` });
-        await getText('button4.tts.fpsError');
-      }
-    },
-
-    toggleGrid: async () => {
-      try {
-        const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
-        const nextIndex = (currentIndex + 1) % availableGrids.length;
-        settings.gridType = availableGrids[nextIndex].id;
-        await getText('button1.tts.gridSelect', { state: settings.gridType });
-        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-      } catch (err) {
-        structuredLog('ERROR', 'toggleGrid error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Grid toggle error: ${err.message}` });
-        await getText('button1.tts.startStop', { state: 'error' });
-      }
-    },
-
-    toggleDebug: async ({ show }) => {
-      try {
-        if (DOM.debug) {
-          DOM.debug.style.display = show ? 'block' : 'none';
-        }
-        await getText('button6.tts.settingsToggle', { state: show ? 'on' : 'off' });
-      } catch (err) {
-        structuredLog('ERROR', 'toggleDebug error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Debug toggle error: ${err.message}` });
-      }
-    },
-
-    saveSettings: async () => {
-      try {
-        const settingsToSave = {
-          gridType: settings.gridType,
-          synthesisEngine: settings.synthesisEngine,
-          language: settings.language,
-          autoFPS: settings.autoFPS,
-          updateInterval: settings.updateInterval,
-          dayNightMode: settings.dayNightMode,
-          ttsEnabled: settings.ttsEnabled
-        };
-        localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
-        await getText('button4.tts.saveSettings');
-      } catch (err) {
-        structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Save settings error: ${err.message}` });
-        await getText('button4.tts.saveError');
-      }
-      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-    },
-
-    loadSettings: async () => {
-      try {
-        const savedSettings = localStorage.getItem('acoustsee-settings');
-        if (savedSettings) {
-          let parsedSettings;
-          try {
-            parsedSettings = JSON.parse(savedSettings);
-          } catch (parseErr) {
-            throw new Error(`Invalid JSON in localStorage: ${parseErr.message}`);
-          }
-
-          // Sanitize: Define expected keys and types, assign only whitelisted ones to prevent extra/proto keys.
-          const expectedKeys = ['gridType', 'synthesisEngine', 'language', 'autoFPS', 'updateInterval', 'dayNightMode', 'ttsEnabled'];
-          const expectedTypes = {
-            gridType: 'string',
-            synthesisEngine: 'string',
-            language: 'string',
-            autoFPS: 'boolean',
-            updateInterval: 'number',
-            dayNightMode: 'string',
-            ttsEnabled: 'boolean'
-          };
-
-          // Selective assignment: Only copy if key is expected and type matches.
-          expectedKeys.forEach(key => {
-            if (Object.hasOwn(parsedSettings, key) && typeof parsedSettings[key] === expectedTypes[key]) {
-              settings[key] = parsedSettings[key];
-            } else if (Object.hasOwn(parsedSettings, key)) {
-              structuredLog('WARN', 'Invalid type for setting during load', { key, receivedType: typeof parsedSettings[key] });
-            }
-          });
-
-          // Log if extra keys present (potential pollution attempt).
-          const extraKeys = Object.keys(parsedSettings).filter(key => !expectedKeys.includes(key));
-          if (extraKeys.length > 0) {
-            structuredLog('WARN', 'Extra keys ignored in loaded settings (potential pollution)', { extraKeys });
-          }
-
-          await getText('button5.tts.loadSettings.loaded');
-        } else {
-          await getText('button5.tts.loadSettings.none');
-        }
-      } catch (err) {
-        structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Load settings error: ${err.message}` });
-        await getText('button5.tts.loadError');
-      }
-      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
-    },
-
-    emailDebug: async () => {
-      try {
-        const logsText = await getLogs();
-        if (!logsText || logsText.trim() === '') {
-          structuredLog('WARN', 'emailDebug: No logs retrieved or empty from IndexedDB');
-          alert('No logs available to download. Try generating some actions first.');
-          await getText('button5.tts.emailDebug', { state: 'error' });
-          return;
-        }
-        const blob = new Blob([logsText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'acoustsee-debug-log.txt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        await getText('button5.tts.emailDebug');
-      } catch (err) {
-        structuredLog('ERROR', 'emailDebug error', { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Email debug error: ${err.message}` });
-        alert('Failed to download logs: ' + err.message);  // Mobile-friendly feedback.
-        await getText('button5.tts.emailDebug', { state: 'error' });
-      }
-    },
-
-    logError: ({ message }) => {
-      structuredLog('ERROR', 'Error logged', { message });
-    }
-  };
-
-  dispatchEvent = (eventName, payload = {}) => {
-    if (handlers[eventName]) {
-      try {
-        structuredLog('DEBUG', `Dispatching event: ${eventName}`, { payload });
-        handlers[eventName](payload);
-      } catch (err) {
-        structuredLog('ERROR', `Error in handler ${eventName}`, { message: err.message, stack: err.stack });
-        handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
-      }
-    } else {
-      structuredLog('ERROR', `No handler found for event: ${eventName}`);
-      handlers.logError({ message: `No handler for event: ${eventName}` });
-    }
-  };
-
-  structuredLog('INFO', 'createEventDispatcher: Dispatcher initialized');
-  return { dispatchEvent };
-}
-
-// Helper for parsed browser version (simple regex examples; expand as needed).
-function parseBrowserVersion(userAgent) {
-  let match = userAgent.match(/Chrome\/([0-9.]+)/) || userAgent.match(/Firefox\/([0-9.]+)/) || userAgent.match(/Safari\/([0-9.]+)/) || userAgent.match(/Edg\/([0-9.]+)/);
-  return match ? match[1] : 'Unknown';
-}
-
-function setTextAndAriaLabel(element, text, ariaLabel) {
-  if (element) {
-    element.textContent = text;
-    element.setAttribute('aria-label', ariaLabel);
-  } else {
-    structuredLog('WARN', `Element not found for text update: ${text}`);
-  }
-}
-
-// File: web/ui/audio-controls.js
-// Update web/ui/audio-controls.js: Remove { passive: true } from touchstart listener to ensure it counts as a user gesture for AudioContext
-
-import { getText } from "./utils.js";
-import { initializeAudio, cleanupAudio } from "../audio-processor.js";
-
-let isAudioContextInitialized = false;
-let audioContext = null;
-
-export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
-  if (!DOM || !DOM.powerOn) {
-    console.error("setupAudioControls: Missing DOM elements");
-    dispatch("logError", { message: "Missing DOM elements in audio-controls" });
-    return;
-  }
-
-  const initializeAudioContext = async (event) => {
-    console.log(`powerOn: ${event.type} event`);
-    const maxRetries = 3;
-    for (let i = 0; i <= maxRetries; i++) {
-      try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
-        if (!audioContext) throw new Error("AudioContext creation failed");
-        if (audioContext.state === "suspended") {
-          console.log("AudioContext is suspended, attempting to resume");
-          await audioContext.resume();
-        }
-        if (audioContext.state !== "running") {
-          throw new Error(`AudioContext failed to start, state: ${audioContext.state}`);
-        }
-        await initializeAudio(audioContext);
-        isAudioContextInitialized = true;
-        DOM.splashScreen.style.display = "none";
-        DOM.mainContainer.style.display = "grid";
-        await getText("audioOn");
-        dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
-        console.log("powerOn: AudioContext initialized, UI updated");
-        return;
-      } catch (err) {
-        console.error(`Attempt ${i + 1} failed: ${err.message}`);
-        dispatch("logError", { message: `Audio init attempt ${i + 1} failed: ${err.message}` });
-      }
-    }
-    await getText("audioError");
-    DOM.powerOn.textContent = await getText("powerOn.failed.text", {}, 'text');
-    DOM.powerOn.setAttribute("aria-label", await getText("powerOn.failed.aria", {}, 'aria'));
-  };
-
-  const handlePowerOn = async (event) => {
-    if (!isAudioContextInitialized) {
-      await initializeAudioContext(event);
-    } else {
-      console.log("powerOn: Audio already initialized, cleaning up");
-      await cleanupAudio();
-      isAudioContextInitialized = false;
-      DOM.splashScreen.style.display = "flex";
-      DOM.mainContainer.style.display = "none";
-      await getText("audioOff");
-      dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
-    }
-  };
-
-  DOM.powerOn.addEventListener("click", handlePowerOn);
-  DOM.powerOn.addEventListener("touchstart", handlePowerOn);  // Removed { passive: true }
-
-  console.log("setupAudioControls: Audio controls initialized");
-}
-
 // File: web/ui/cleanup-manager.js
-// ui/cleanup-manager.js
-import { settings, setStream, setAudioInterval } from "../state.js";
-import { cleanupAudio } from "../audio-processor.js";
+import { settings, setStream, setAudioInterval } from '../core/state.js';
+import { cleanupAudio } from '../audio/audio-processor.js';
 
 let isAudioInitialized = false;
 let audioContext = null;
@@ -1337,7 +510,8 @@ export function setAudioContextState(context, initialized) {
 }
 
 // File: web/ui/dom.js
-// future/web/ui/dom.js
+import { getText } from '../utils/utils.js';
+
 function assignDOMElements() {
   DOM.splashScreen = document.getElementById('splashScreen');
   DOM.powerOn = document.getElementById('powerOn');
@@ -1558,118 +732,655 @@ export function setupSettingsHandlers({ dispatchEvent, DOM }) {
 
 
 // File: web/ui/video-capture.js
-import { settings } from "../state.js";
-import { mapFrameToNotes } from "../frame-processor.js";
-import { playAudio } from "../audio-processor.js";
-import { dispatchEvent } from "./event-dispatcher.js";
-import { getDOM } from "../context.js";
+import { settings } from '../core/state.js';
+import { structuredLog } from '../utils/logging.js';
+import { getText } from '../utils/utils.js';
+import { dispatchEvent } from '../core/dispatcher.js';
+import { getDOM } from '../core/context.js';
 
-let prevFrameDataLeft = null;
-let prevFrameDataRight = null;
+export async function setupVideoCapture(DOM) {
+  try {
+    if (!DOM.videoFeed || !DOM.frameCanvas) {
+      const msg = 'Missing videoFeed or frameCanvas in setupVideoCapture';
+      structuredLog('ERROR', msg);
+      dispatchEvent('logError', { message: msg });
+      return false;
+    }
 
-export async function processFrame(width, height) {
-  // Retrieve DOM references from shared context
+    DOM.videoFeed.setAttribute('autoplay', '');
+    DOM.videoFeed.setAttribute('muted', '');
+    DOM.videoFeed.setAttribute('playsinline', '');
+    DOM.frameCanvas.style.display = 'none';
+    DOM.frameCanvas.setAttribute('aria-hidden', 'true');
+
+    structuredLog('INFO', 'setupVideoCapture: Video feed and canvas initialized');
+    return true;
+  } catch (err) {
+    structuredLog('ERROR', 'setupVideoCapture error', { message: err.message });
+    dispatchEvent('logError', { message: `Video capture setup error: ${err.message}` });
+    return false;
+  }
+}
+
+export async function cleanupVideoCapture() {
   const DOM = getDOM();
-  try {
-    const canvas = DOM.frameCanvas;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) {
-      console.error("Canvas context not found");
-      dispatchEvent("logError", { message: "Canvas context not found" });
-      return;
+  if (DOM.videoFeed?.srcObject) {
+    DOM.videoFeed.srcObject.getTracks().forEach(track => track.stop());
+    DOM.videoFeed.srcObject = null;
+  }
+  DOM.frameCanvas.width = 0;
+  DOM.frameCanvas.height = 0;
+  structuredLog('INFO', 'cleanupVideoCapture: Video capture cleaned up');
+}
+
+// File: web/core/dispatcher.js
+/* @ts-nocheck */
+import { settings, setAudioInterval, setStream, setMicStream, getLogs } from './state.js';
+import { getText, parseBrowserVersion, setTextAndAriaLabel } from '../utils/utils.js';
+import { withErrorBoundary } from '../utils/async.js';
+import { initializeMicAudio } from '../audio/audio-processor.js';
+import { processFrame } from './frame-processor.js';
+import { cleanupFrameProcessor } from './frame-processor.js';
+import { dispatchEvent, setDispatcher } from './dispatcher.js';
+import { structuredLog } from '../utils/logging.js';
+
+let lastTTSTime = 0;
+const ttsCooldown = 3000;
+let fpsSamplerInterval = null;
+let frameCount = 0;
+
+export async function createEventDispatcher(DOM) {
+  structuredLog('INFO', 'createEventDispatcher: Initializing event dispatcher', { domExists: !!DOM });
+  if (!DOM) {
+    structuredLog('ERROR', 'DOM is undefined in createEventDispatcher');
+    return { dispatchEvent: () => structuredLog('ERROR', 'dispatchEvent not initialized due to undefined DOM') };
+  }
+
+  structuredLog('DEBUG', 'DOM elements received', {
+    hasButton1: !!DOM.button1,
+    hasButton2: !!DOM.button2,
+    hasButton3: !!DOM.button3,
+    hasButton4: !!DOM.button4,
+    hasButton5: !!DOM.button5,
+    hasButton6: !!DOM.button6,
+    hasVideoFeed: !!DOM.videoFeed,
+  });
+
+  const [availableGrids, availableEngines, availableLanguages] = await Promise.all([
+    fetch('./synthesis-grids/available-grids.json').then(res => res.json()),
+    fetch('./audio/synthesis-engines/available-engines.json').then(res => res.json()),
+    fetch('./languages/available-languages.json').then(res => res.json())
+  ]);
+
+  const browserInfo = {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    parsedBrowserVersion: parseBrowserVersion(navigator.userAgent),
+    hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
+    deviceMemory: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'N/A',
+    screen: `${screen.width}x${screen.height}`,
+    audioContextState: typeof audioContext !== 'undefined' ? audioContext.state : 'Not initialized',
+    streamActive: !!settings.stream,
+    micActive: !!settings.micStream,
+    currentFPSInterval: settings.updateInterval
+  };
+  structuredLog('INFO', 'Enhanced browser and app debug info', browserInfo);
+
+  if (settings.debugLogging) {
+    fpsSamplerInterval = setInterval(() => {
+      if (settings.stream) {
+        const avgFPS = frameCount / 10;
+        structuredLog('DEBUG', 'Average FPS sample', { avgFPS, overSeconds: 10 });
+        frameCount = 0;
+      }
+    }, 10000);
+  }
+
+  const handlers = {
+    updateUI: async ({ settingsMode, streamActive, micActive }) => {
+      try {
+        if (!DOM.button1 || !DOM.button2 || !DOM.button3 || !DOM.button4 || !DOM.button5 || !DOM.button6) {
+          const missing = [
+            !DOM.button1 && 'button1',
+            !DOM.button2 && 'button2',
+            !DOM.button3 && 'button3',
+            !DOM.button4 && 'button4',
+            !DOM.button5 && 'button5',
+            !DOM.button6 && 'button6'
+          ].filter(Boolean);
+          structuredLog('ERROR', 'Missing critical DOM elements for UI update', { missing });
+          dispatchEvent('logError', { message: 'Missing critical DOM elements for UI update' });
+          return;
+        }
+
+        const currentTime = performance.now();
+        const grid = availableGrids.find(g => g.id === settings.gridType);
+        const engine = availableEngines.find(e => e.id === settings.synthesisEngine);
+        const language = availableLanguages.find(l => l.id === settings.language);
+
+        const button1Text = settingsMode
+          ? await getText('button1.settings.text', { gridName: grid?.id || 'Grid' }, 'text')
+          : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.text`, {}, 'text');
+        const button1Aria = settingsMode
+          ? await getText('button1.settings.aria', { gridType: settings.gridType }, 'aria')
+          : await getText(`button1.normal.${streamActive ? 'stop' : 'start'}.aria`, {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button1.tts.${settingsMode ? 'gridSelect' : 'startStop'}`, {
+            state: settingsMode ? settings.gridType : (streamActive ? 'stopping' : 'starting')
+          });
+        }
+        setTextAndAriaLabel(DOM.button1, button1Text, button1Aria);
+
+        const button2Text = settingsMode
+          ? await getText('button2.settings.text', { engineName: engine?.id || 'Engine' }, 'text')
+          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.text`, {}, 'text');
+        const button2Aria = settingsMode
+          ? await getText('button2.settings.aria', { synthesisEngine: settings.synthesisEngine }, 'aria')
+          : await getText(`button2.normal.${micActive ? 'off' : 'on'}.aria`, {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button2.tts.${settingsMode ? 'synthesisSelect' : 'micToggle'}`, {
+            state: settingsMode ? settings.synthesisEngine : (micActive ? 'turningOff' : 'turningOn')
+          });
+        }
+        setTextAndAriaLabel(DOM.button2, button2Text, button2Aria);
+
+        const button3Text = settingsMode
+          ? await getText('button3.settings.text', { languageName: language?.id || 'Language' }, 'text')
+          : await getText('button3.normal.text', { languageName: language?.id || 'Language' }, 'text');
+        const button3Aria = settingsMode
+          ? await getText('button3.settings.aria', { language: settings.language }, 'aria')
+          : await getText('button3.normal.aria', { language: settings.language }, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button3.tts.${settingsMode ? 'videoSourceSelect' : 'languageSelect'}`, {
+            state: settingsMode ? (DOM.videoFeed?.srcObject?.getVideoTracks()[0]?.getSettings().facingMode || 'unknown') : settings.language
+          });
+        }
+        setTextAndAriaLabel(DOM.button3, button3Text, button3Aria);
+
+        const button4Text = settingsMode
+          ? await getText('button4.settings.text', {}, 'text')
+          : await getText(`button4.normal.${settings.autoFPS ? 'auto' : 'manual'}.text`, { fps: Math.round(1000 / settings.updateInterval) }, 'text');
+        const button4Aria = settingsMode
+          ? await getText('button4.settings.aria', {}, 'aria')
+          : await getText('button4.normal.aria', {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button4.tts.${settingsMode ? 'saveSettings' : 'fpsBtn'}`, {
+            state: settingsMode ? 'save' : (settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval))
+          });
+        }
+        setTextAndAriaLabel(DOM.button4, button4Text, button4Aria);
+
+        const button5Text = settingsMode
+          ? await getText('button5.settings.text', {}, 'text')
+          : await getText('button5.normal.text', {}, 'text');
+        const button5Aria = settingsMode
+          ? await getText('button5.settings.aria', {}, 'aria')
+          : await getText('button5.normal.aria', {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText(`button5.tts.${settingsMode ? 'loadSettings' : 'emailDebug'}`, {
+            state: settingsMode ? 'load' : 'email'
+          });
+        }
+        setTextAndAriaLabel(DOM.button5, button5Text, button5Aria);
+
+        const button6Text = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.text`, {}, 'text');
+        const button6Aria = await getText(`button6.${settingsMode ? 'settings' : 'normal'}.aria`, {}, 'aria');
+        if (currentTime - lastTTSTime >= ttsCooldown) {
+          await getText('button6.tts.settingsToggle', { state: settingsMode ? 'off' : 'on' });
+        }
+        setTextAndAriaLabel(DOM.button6, button6Text, button6Aria);
+
+        lastTTSTime = currentTime;
+        structuredLog('DEBUG', 'updateUI: UI updated', { settingsMode, streamActive, micActive });
+      } catch (err) {
+        structuredLog('ERROR', 'updateUI error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `UI update error: ${err.message}` });
+      }
+    },
+
+    processFrame: async () => {
+      const { data: result, error } = await withErrorBoundary(processFrame, DOM.videoFeed.videoWidth, DOM.videoFeed.videoHeight);
+      if (error) {
+        structuredLog('ERROR', 'processFrame handler error', { message: error.message, stack: error.stack });
+        handlers.logError({ message: `Frame processing handler error: ${error.message}` });
+        return;
+      }
+      if (!result) {
+        structuredLog('WARN', 'processFrame: No result returned', { width: DOM.videoFeed?.videoWidth, height: DOM.videoFeed?.videoHeight });
+        return;
+      }
+      structuredLog('DEBUG', 'processFrame result', { notesCount: result.notes?.length || 0, avgIntensity: result.avgIntensity });
+      frameCount++;
+    },
+
+    startStop: async ({ settingsMode }) => {
+      try {
+        if (settingsMode) {
+          const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
+          const nextIndex = (currentIndex + 1) % availableGrids.length;
+          settings.gridType = availableGrids[nextIndex].id;
+          await getText('button1.tts.gridSelect', { state: settings.gridType });
+        } else {
+          if (!settings.stream) {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            DOM.videoFeed.srcObject = stream;
+            await new Promise((resolve, reject) => {
+              DOM.videoFeed.addEventListener('loadedmetadata', () => {
+                if (DOM.videoFeed.videoWidth <= 0 || DOM.videoFeed.videoHeight <= 0) {
+                  return reject(new Error('Invalid video dimensions after metadata'));
+                }
+                structuredLog('INFO', 'Video metadata loaded', { width: DOM.videoFeed.videoWidth, height: DOM.videoFeed.videoHeight });
+                resolve();
+              }, { once: true });
+              DOM.videoFeed.addEventListener('error', reject, { once: true });
+            });
+            setStream(stream);
+            setAudioInterval(setInterval(() => {
+              dispatchEvent('processFrame');
+            }, settings.updateInterval));
+            await getText('button1.tts.startStop', { state: 'starting' });
+          } else {
+            settings.stream.getVideoTracks().forEach(track => track.stop());
+            setStream(null);
+            await cleanupFrameProcessor();
+            if (settings.micStream) {
+              settings.micStream.getTracks().forEach(track => track.stop());
+              setMicStream(null);
+              initializeMicAudio(null);
+            }
+            clearInterval(settings.audioTimerId);
+            setAudioInterval(null);
+            if (fpsSamplerInterval) {
+              clearInterval(fpsSamplerInterval);
+              fpsSamplerInterval = null;
+              structuredLog('INFO', 'FPS sampler cleared on stream stop');
+            }
+            await getText('button1.tts.startStop', { state: 'stopping' });
+          }
+          dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+        }
+      } catch (err) {
+        structuredLog('ERROR', 'startStop error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Stream toggle error: ${err.message}` });
+        await getText('button1.tts.cameraError');
+      }
+    },
+
+    toggleAudio: async ({ settingsMode }) => {
+      try {
+        structuredLog('INFO', 'toggleAudio: Current mic state', { micActive: !!settings.micStream });
+        if (settingsMode) {
+          const currentIndex = availableEngines.findIndex(e => e.id === settings.synthesisEngine);
+          const nextIndex = (currentIndex + 1) % availableEngines.length;
+          settings.synthesisEngine = availableEngines[nextIndex].id;
+          await getText('button2.tts.synthesisSelect', { state: settings.synthesisEngine });
+        } else {
+          if (!settings.micStream) {
+            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            setMicStream(micStream);
+            initializeMicAudio(micStream);
+            await getText('button2.tts.micToggle', { state: 'turningOn' });
+          } else {
+            settings.micStream.getTracks().forEach(track => track.stop());
+            setMicStream(null);
+            initializeMicAudio(null);
+            await getText('button2.tts.micToggle', { state: 'turningOff' });
+          }
+          dispatchEvent('updateUI', { settingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+        }
+      } catch (err) {
+        structuredLog('ERROR', 'toggleAudio error', { message: err.message });
+        handlers.logError({ message: `Mic toggle error: ${err.message}` });
+        await getText('button2.tts.micError');
+      }
+    },
+
+    toggleLanguage: async () => {
+      try {
+        const currentIndex = availableLanguages.findIndex(l => l.id === settings.language);
+        const nextIndex = (currentIndex + 1) % availableLanguages.length;
+        settings.language = availableLanguages[nextIndex].id;
+        await getText('button3.tts.languageSelect', { state: settings.language });
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+      } catch (err) {
+        structuredLog('ERROR', 'toggleLanguage error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Language toggle error: ${err.message}` });
+        await getText('button3.tts.languageError');
+      }
+    },
+
+    toggleVideoSource: async () => {
+      try {
+        const oldStream = DOM.videoFeed?.srcObject;
+        if (oldStream) {
+          const currentVideoTrack = oldStream.getVideoTracks()[0];
+          const currentFacingMode = currentVideoTrack.getSettings().facingMode || 'user';
+          const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+
+          oldStream.getTracks().forEach(track => track.stop());
+          await cleanupFrameProcessor();
+
+          const newStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: newFacingMode },
+            audio: !!settings.micStream
+          });
+          DOM.videoFeed.srcObject = newStream;
+          await new Promise((resolve, reject) => {
+            DOM.videoFeed.addEventListener('loadedmetadata', () => {
+              if (DOM.videoFeed.videoWidth <= 0 || DOM.videoFeed.videoHeight <= 0) {
+                return reject(new Error('Invalid video dimensions after metadata'));
+              }
+              structuredLog('INFO', 'Video metadata loaded', { width: DOM.videoFeed.videoWidth, height: DOM.videoFeed.videoHeight });
+              resolve();
+            }, { once: true });
+            DOM.videoFeed.addEventListener('error', reject, { once: true });
+          });
+          setStream(newStream);
+
+          if (settings.micStream) {
+            setMicStream(newStream);
+            initializeMicAudio(newStream);
+          }
+
+          await getText('button3.tts.videoSourceSelect', { state: newFacingMode });
+        } else {
+          structuredLog('WARN', 'toggleVideoSource: No video track available');
+          await getText('button3.tts.videoSourceError');
+        }
+      } catch (err) {
+        structuredLog('ERROR', 'toggleVideoSource error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Video source toggle error: ${err.message}` });
+        await getText('button3.tts.videoSourceError');
+      }
+    },
+
+    updateFrameInterval: async ({ interval }) => {
+      try {
+        settings.updateInterval = interval;
+        if (settings.stream) {
+          clearInterval(settings.audioTimerId);
+          setAudioInterval(setInterval(() => {
+            dispatchEvent('processFrame');
+          }, settings.updateInterval));
+        }
+        await getText('button4.tts.fpsBtn', {
+          fps: settings.autoFPS ? 'auto' : Math.round(1000 / settings.updateInterval)
+        });
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+      } catch (err) {
+        structuredLog('ERROR', 'updateFrameInterval error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Frame interval update error: ${err.message}` });
+        await getText('button4.tts.fpsError');
+      }
+    },
+
+    toggleGrid: async () => {
+      try {
+        const currentIndex = availableGrids.findIndex(g => g.id === settings.gridType);
+        const nextIndex = (currentIndex + 1) % availableGrids.length;
+        settings.gridType = availableGrids[nextIndex].id;
+        await getText('button1.tts.gridSelect', { state: settings.gridType });
+        dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+      } catch (err) {
+        structuredLog('ERROR', 'toggleGrid error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Grid toggle error: ${err.message}` });
+        await getText('button1.tts.startStop', { state: 'error' });
+      }
+    },
+
+    toggleDebug: async ({ show }) => {
+      try {
+        if (DOM.debug) {
+          DOM.debug.style.display = show ? 'block' : 'none';
+        }
+        await getText('button6.tts.settingsToggle', { state: show ? 'on' : 'off' });
+      } catch (err) {
+        structuredLog('ERROR', 'toggleDebug error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Debug toggle error: ${err.message}` });
+      }
+    },
+
+    saveSettings: async () => {
+      try {
+        const settingsToSave = {
+          gridType: settings.gridType,
+          synthesisEngine: settings.synthesisEngine,
+          language: settings.language,
+          autoFPS: settings.autoFPS,
+          updateInterval: settings.updateInterval,
+          dayNightMode: settings.dayNightMode,
+          ttsEnabled: settings.ttsEnabled
+        };
+        localStorage.setItem('acoustsee-settings', JSON.stringify(settingsToSave));
+        await getText('button4.tts.saveSettings');
+      } catch (err) {
+        structuredLog('ERROR', 'saveSettings error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Save settings error: ${err.message}` });
+        await getText('button4.tts.saveError');
+      }
+      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+    },
+
+    loadSettings: async () => {
+      try {
+        const savedSettings = localStorage.getItem('acoustsee-settings');
+        if (savedSettings) {
+          let parsedSettings;
+          try {
+            parsedSettings = JSON.parse(savedSettings);
+          } catch (parseErr) {
+            throw new Error(`Invalid JSON in localStorage: ${parseErr.message}`);
+          }
+
+          const expectedKeys = ['gridType', 'synthesisEngine', 'language', 'autoFPS', 'updateInterval', 'dayNightMode', 'ttsEnabled'];
+          const expectedTypes = {
+            gridType: 'string',
+            synthesisEngine: 'string',
+            language: 'string',
+            autoFPS: 'boolean',
+            updateInterval: 'number',
+            dayNightMode: 'string',
+            ttsEnabled: 'boolean'
+          };
+
+          expectedKeys.forEach(key => {
+            if (Object.hasOwn(parsedSettings, key) && typeof parsedSettings[key] === expectedTypes[key]) {
+              settings[key] = parsedSettings[key];
+            } else if (Object.hasOwn(parsedSettings, key)) {
+              structuredLog('WARN', 'Invalid type for setting during load', { key, receivedType: typeof parsedSettings[key] });
+            }
+          });
+
+          const extraKeys = Object.keys(parsedSettings).filter(key => !expectedKeys.includes(key));
+          if (extraKeys.length > 0) {
+            structuredLog('WARN', 'Extra keys ignored in loaded settings (potential pollution)', { extraKeys });
+          }
+
+          await getText('button5.tts.loadSettings.loaded');
+        } else {
+          await getText('button5.tts.loadSettings.none');
+        }
+      } catch (err) {
+        structuredLog('ERROR', 'Load settings error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Load settings error: ${err.message}` });
+        await getText('button5.tts.loadError');
+      }
+      dispatchEvent('updateUI', { settingsMode: settings.isSettingsMode, streamActive: !!settings.stream, micActive: !!settings.micStream });
+    },
+
+    emailDebug: async () => {
+      try {
+        const logsText = await getLogs();
+        if (!logsText || logsText.trim() === '') {
+          structuredLog('WARN', 'emailDebug: No logs retrieved or empty from IndexedDB');
+          alert('No logs available to download. Try generating some actions first.');
+          await getText('button5.tts.emailDebug', { state: 'error' });
+          return;
+        }
+        const blob = new Blob([logsText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'acoustsee-debug-log.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        await getText('button5.tts.emailDebug');
+      } catch (err) {
+        structuredLog('ERROR', 'emailDebug error', { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Email debug error: ${err.message}` });
+        alert('Failed to download logs: ' + err.message);
+        await getText('button5.tts.emailDebug', { state: 'error' });
+      }
+    },
+
+    logError: ({ message }) => {
+      structuredLog('ERROR', 'Error logged', { message });
     }
-    canvas.width = width;
-    canvas.height = height;
-    context.drawImage(DOM.videoFeed, 0, 0, width, height);
-    const frameData = context.getImageData(0, 0, width, height).data;
-    const { notes, prevFrameDataLeft: newLeft, prevFrameDataRight: newRight } = await mapFrameToNotes(
-      frameData,
-      width,
-      height,
-      prevFrameDataLeft,
-      prevFrameDataRight
-    );
-    await playAudio(notes);
-    prevFrameDataLeft = newLeft;
-    prevFrameDataRight = newRight;
+  };
+
+  setDispatcher((eventName, payload = {}) => {
+    if (handlers[eventName]) {
+      try {
+        structuredLog('DEBUG', `Dispatching event: ${eventName}`, { payload });
+        handlers[eventName](payload);
+      } catch (err) {
+        structuredLog('ERROR', `Error in handler ${eventName}`, { message: err.message, stack: err.stack });
+        handlers.logError({ message: `Handler ${eventName} error: ${err.message}` });
+      }
+    } else {
+      structuredLog('ERROR', `No handler found for event: ${eventName}`);
+      handlers.logError({ message: `No handler for event: ${eventName}` });
+    }
+  });
+
+  structuredLog('INFO', 'createEventDispatcher: Dispatcher initialized');
+  return { dispatchEvent };
+}
+
+// File: web/core/frame-processor.js
+import { settings } from "./state.js";
+import { dispatchEvent } from "./dispatcher.js";
+
+export async function mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
+  try {
+    // Use cached grids loaded at startup
+    const availableGrids = settings.availableGrids;
+    const grid = availableGrids.find((g) => g.id === settings.gridType);
+    if (!grid) {
+      console.error(`Grid not found: ${settings.gridType}`);
+      dispatchEvent("logError", { message: `Grid not found: ${settings.gridType}` });
+      return { notes: [], prevFrameDataLeft, prevFrameDataRight };
+    }
+    const gridModule = await import(`./synthesis-methods/grids/${grid.id}.js`);
+    const mapFunction = gridModule[`mapFrameTo${grid.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
+    if (!mapFunction) {
+      console.error(`Map function for ${grid.id} not found`);
+      dispatchEvent("logError", { message: `Map function for ${grid.id} not found` });
+      return { notes: [], prevFrameDataLeft, prevFrameDataRight };
+    }
+    // Determine split buffers and copy full RGBA pixels
+    const halfWidth = Math.floor(width / 2);
+    const frameSize = halfWidth * height * 4;
+    const leftFrameData = new Uint8ClampedArray(frameSize);
+    const rightFrameData = new Uint8ClampedArray(frameSize);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < halfWidth; x++) {
+        const fullIdx = (y * width + x) * 4;
+        const halfIdx = (y * halfWidth + x) * 4;
+        // Copy left RGBA
+        leftFrameData.set(frameData.subarray(fullIdx, fullIdx + 4), halfIdx);
+        // Copy right RGBA
+        const fullIdxR = (y * width + x + halfWidth) * 4;
+        rightFrameData.set(frameData.subarray(fullIdxR, fullIdxR + 4), halfIdx);
+      }
+    }
+    const leftResult = mapFunction(leftFrameData, halfWidth, height, prevFrameDataLeft, -1);
+    const rightResult = mapFunction(rightFrameData, halfWidth, height, prevFrameDataRight, 1);
+    const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
+    return {
+      notes: allNotes,
+      prevFrameDataLeft: leftResult.newFrameData,
+      prevFrameDataRight: rightResult.newFrameData,
+    };
   } catch (err) {
-    console.error("processFrame error:", err.message);
-    dispatchEvent("logError", { message: `Frame processing error: ${err.message}` });
+    console.error("mapFrameToNotes error:", err.message);
+    dispatchEvent("logError", { message: `Frame mapping error: ${err.message}` });
+    return { notes: [], prevFrameDataLeft, prevFrameDataRight };
   }
 }
 
-export async function cleanupFrameProcessor() {
-  prevFrameDataLeft = null;
-  prevFrameDataRight = null;
-  console.log("cleanupFrameProcessor: Frame processor cleaned up");
-}
+// File: web/core/state.js
+import { structuredLog } from '../utils/logging.js';  // Top import.
+import { addIdbLog, getAllIdbLogs } from '../utils/idb-logger.js';  // New import for DB logging.
 
-// File: web/ui/utils.js
-import { settings, availableLanguages } from '../state.js';
+export let settings = {
+  debugLogging: true,
+  stream: null,
+  availableGrids: [],    // Loaded once at startup
+  availableEngines: [],  // Loaded once at startup
+  availableLanguages: [], // Loaded once at startup
+  audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
+  updateInterval: 30, 
+  autoFPS: true,
+  gridType: null, 
+  synthesisEngine: null, 
+  language: null, 
+  isSettingsMode: false,
+  micStream: null,
+  ttsEnabled: false,
+  dayNightMode: 'day'
+};
 
-export function tryVibrate(event) {
-  if (event.cancelable && navigator.vibrate) {
+export const loadConfigs = (async () => {
+  try {
+    const [grids, engines, languages, intervals] = await Promise.all([
+      fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
+      fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
+      fetch('./languages/availableLanguages.json').then(res => res.json()),
+      Promise.resolve([50, 33, 16])
+    ]);
+    settings.availableGrids = grids;
+    settings.availableEngines = engines;
+    settings.availableLanguages = languages;
+    settings.gridType = grids[0]?.id || settings.gridType;
+    settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
+    settings.language = languages[0]?.id || settings.language;
+    settings.updateInterval = intervals[0] || settings.updateInterval;
+  } catch (err) {
+    structuredLog('ERROR', 'Failed to load configurations', { message: err.message });
+  }
+})();
+
+export async function getLogs() {
+  // Fetch from IndexedDB and pretty-print for readability.
+  const allLogs = await getAllIdbLogs();
+  return allLogs.map(log => {
     try {
-      navigator.vibrate(50);
+      return `Timestamp: ${log.timestamp}\nLevel: ${log.level}\nMessage: ${log.message}\nData: ${JSON.stringify(log.data, null, 2)}\n---\n`;
     } catch (err) {
-      console.warn('Vibration blocked:', err.message);
+      return `Invalid log entry: ${JSON.stringify(log)}\n---\n`;  // Fallback for malformed logs.
     }
+  }).join('');
+}
+
+export function setStream(stream) {
+  settings.stream = stream;
+  if (settings.debugLogging) {
+    structuredLog('INFO', 'setStream', { streamSet: !!stream });
   }
 }
 
-export function hapticCount(count) {
-  if (navigator.vibrate) {
-    const pattern = Array(count * 2 - 1).fill(30).map((v, i) => i % 2 === 0 ? 30 : 50);
-    navigator.vibrate(pattern);
+export function setAudioInterval(timerId) {
+  settings.audioTimerId = timerId;
+  if (settings.debugLogging) {
+    const ms = settings.updateInterval;
+    structuredLog('INFO', 'setAudioInterval', { timerId, updateIntervalMs: ms });
   }
 }
 
-const translationsCache = {};
-
-export async function getText(key, params = {}, type = 'tts') {
-  try {
-    const language = availableLanguages.find(l => l.id === settings.language);
-    if (!language) throw new Error(`Language not found: ${settings.language}`);
-
-    // Usa el cache si ya está cargado
-    let translations = translationsCache[language.id];
-    if (!translations) {
-      const response = await fetch(`./languages/${language.id}.json`);
-      if (!response.ok) throw new Error(`Failed to load language file: ${response.status}`);
-      translations = await response.json();
-      translationsCache[language.id] = translations;
-    }
-
-    let finalMessage = translations;
-    for (const part of key.split('.')) {
-      finalMessage = finalMessage[part] || key;
-    }
-    if (typeof finalMessage === 'object') {
-      finalMessage = finalMessage[params.state || params.fps || params.lang] || key;
-    }
-    for (const [paramKey, paramValue] of Object.entries(params)) {
-      const placeholderRegex = new RegExp(`\\{${paramKey}\\}`, 'g');
-      finalMessage = finalMessage.replace(placeholderRegex, paramValue);
-    }
-    if (type === 'tts' && settings.ttsEnabled) {
-      const utterance = new SpeechSynthesisUtterance(finalMessage);
-      utterance.lang = settings.language;
-      window.speechSynthesis.speak(utterance);
-    }
-    const announcements = document.getElementById('announcements');
-    if (announcements) {
-      announcements.textContent = finalMessage;
-    }
-    return finalMessage;
-  } catch (err) {
-    console.error(`${type} error:`, err.message);
-    const announcements = document.getElementById('announcements');
-    if (announcements) {
-      announcements.textContent = `${type} error: Unable to process message`;
-    }
-    return key;
-  }
-}
 
 // File: web/languages/es-ES.json
 {
@@ -1724,16 +1435,18 @@ export async function getText(key, params = {}, type = 'tts') {
   },
   "button3": {
     "normal": {
-      "text": "Seleccionar Idioma: {languageName}",
+      "text": "Idioma: {languageName}",
       "aria": "Seleccionar idioma {language}"
     },
     "settings": {
-      "text": "Sin Acción",
-      "aria": "Sin acción en modo configuración"
+      "text": "Cambiar Cámara",
+      "aria": "Cambiar entre cámara frontal y trasera"
     },
     "tts": {
       "languageSelect": "Idioma establecido en {state}",
-      "fpsError": "Error al alternar idioma"
+      "videoSourceSelect": "Cámara establecida en {state}",
+      "videoSourceError": "Error al cambiar de cámara",
+      "languageError": "Error al cambiar de idioma"
     }
   },
   "button4": {
@@ -2061,106 +1774,252 @@ body {
 }
 
 
-// File: web/main.js
-import { setupUIController } from './ui/ui-controller.js';
-import { createEventDispatcher } from './ui/event-dispatcher.js';
-import { loadConfigs } from './state.js';
-import { structuredLog } from './utils/logging.js';  
-import { setDOM } from './context.js'; 
+// File: web/audio/synthesis-engines/sine-wave.js
+import { audioContext, oscillators } from "../../audio-processor.js";
 
-const DOM = {
-  videoFeed: document.getElementById('videoFeed'),
-  frameCanvas: document.getElementById('frameCanvas'),  
-  button1: document.getElementById('button1'),
-  button2: document.getElementById('button2'),
-  button3: document.getElementById('button3'),
-  button4: document.getElementById('button4'),
-  button5: document.getElementById('button5'),
-  button6: document.getElementById('button6'),
-  powerOn: document.getElementById('powerOn'),
-  splashScreen: document.getElementById('splashScreen'),
-  mainContainer: document.getElementById('mainContainer'),
-  debugPanel: document.getElementById('debugPanel'),
-};
-
-// Initialize shared DOM context for modules that need it
-setDOM(DOM);
-
-async function init() {
-  try {
-    await loadConfigs;
-    let getText;
-    try {
-      ({ getText } = await import('./ui/utils.js'));
-      console.log('utils.js imported successfully');  // Confirm import worked
-    } catch (importErr) {
-      console.error('Failed to import utils.js:', importErr.message);
-      getText = async (key) => {  // Make async for consistency with await calls
-        console.warn('TTS fallback for key:', key);
-        return key;  // Return key as fallback string (better than '')
-      };
-    }
-    // Set aria and text for all relevant elements deriving from ID
-    const staticElements = [
-      DOM.splashScreen,
-      DOM.mainContainer,
-      DOM.powerOn,
-      DOM.videoFeed,
-      DOM.frameCanvas,
-      DOM.debugPanel,
-      DOM.button1,
-      DOM.button2,
-      DOM.button3,
-      DOM.button4,
-      DOM.button5,
-      DOM.button6,
-    ];
-    for (const el of staticElements) {
-      if (!el) {
-        console.warn(`Skipping null element in staticElements`);
-        continue;
+export function playSineWave(notes) {
+  let oscIndex = 0;
+  const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
+  for (let i = 0; i < oscillators.length; i++) {
+    const oscData = oscillators[i];
+    if (oscIndex < allNotes.length && i < oscillators.length) {
+      const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
+      oscData.osc.type = "sine";
+      oscData.osc.frequency.setTargetAtTime(
+        pitch,
+        audioContext.currentTime,
+        0.015,
+      );
+      oscData.gain.gain.setTargetAtTime(
+        intensity,
+        audioContext.currentTime,
+        0.015,
+      );
+      oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
+      oscData.active = true;
+      if (
+        harmonics.length &&
+        oscIndex + harmonics.length < oscillators.length
+      ) {
+        for (
+          let h = 0;
+          h < harmonics.length && oscIndex + h < oscillators.length;
+          h++
+        ) {
+          oscIndex++;
+          const harmonicOsc = oscillators[oscIndex];
+          harmonicOsc.osc.type = "sine";
+          harmonicOsc.osc.frequency.setTargetAtTime(
+            harmonics[h],
+            audioContext.currentTime,
+            0.015,
+          );
+          harmonicOsc.gain.gain.setTargetAtTime(
+            intensity * 0.5,
+            audioContext.currentTime,
+            0.015,
+          );
+          harmonicOsc.panner.pan.setTargetAtTime(
+            pan,
+            audioContext.currentTime,
+            0.015,
+          );
+          harmonicOsc.active = true;
+        }
       }
-      const baseKey = el.id;
-      el.setAttribute('aria-label', await getText(`${baseKey}.aria`, {}, 'aria'));
-      // Set text content only for elements that need it (e.g., powerOn, buttons)
-      if (['powerOn'].includes(el.id) || el.tagName === 'BUTTON') {
-        el.textContent = await getText(`${baseKey}.text`, {}, 'text');
-      }
-    }
-    if (!DOM.videoFeed || !DOM.button1 || !DOM.button2 || !DOM.button3 || 
-        !DOM.button4 || !DOM.button5 || !DOM.button6 || !DOM.powerOn || 
-        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel || !DOM.frameCanvas) {
-      throw new Error('Missing DOM elements in main.js');
-    }
-    const { dispatchEvent } = await createEventDispatcher(DOM);
-    setupUIController({ dispatchEvent, DOM });
-    // Force initial UI update for dynamic content
-    dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
-    console.log('init: UI setup complete');
-  } catch (err) {
-    console.error('init error:', err.message);
-    try {
-      await getText('init.tts.error');
-    } catch (ttsErr) {
-      console.error('TTS error:', ttsErr.message);
+      oscIndex++;
+    } else {
+      oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+      oscData.active = false;
     }
   }
 }
 
-// Adds uncaught error handler for global contexts (e.g., hangs/OOM).
-window.onerror = function (message, source, lineno, colno, error) {
-  structuredLog('ERROR', 'Uncaught global error', { message, source, lineno, colno, stack: error ? error.stack : 'N/A' });
-  return true;  // Prevent default browser error logging.
-};
 
-init();
+// File: web/audio/synthesis-engines/fm-synthesis.js
+import { audioContext, oscillators, modulators } from "../../audio-processor.js";
+
+export function playFmSynthesis(notes) {
+  let oscIndex = 0;
+  let modIndex = 0;
+  const allNotes = notes.sort((a, b) => b.intensity - a.intensity);
+  for (let i = 0; i < oscillators.length; i++) {
+    const oscData = oscillators[i];
+    if (oscIndex < allNotes.length) {
+      const { pitch, intensity, harmonics, pan } = allNotes[oscIndex];
+      oscData.osc.type = "sine";
+      oscData.osc.frequency.setTargetAtTime(
+        pitch,
+        audioContext.currentTime,
+        0.015,
+      );
+      oscData.gain.gain.setTargetAtTime(
+        intensity,
+        audioContext.currentTime,
+        0.015,
+      );
+      oscData.panner.pan.setTargetAtTime(pan, audioContext.currentTime, 0.015);
+      oscData.active = true;
+      if (harmonics.length) {
+        // handle one modulator per note, reuse or create
+        let modData;
+        if (modIndex < modulators.length) {
+          modData = modulators[modIndex];
+        } else {
+          const mOsc = audioContext.createOscillator();
+          const mGain = audioContext.createGain();
+          modulators.push({ osc: mOsc, gain: mGain, started: false });
+          modData = modulators[modulators.length - 1];
+        }
+        // configure modulator
+        modData.osc.type = "sine";
+        modData.osc.frequency.setTargetAtTime(
+          pitch * 2,
+          audioContext.currentTime,
+          0.015,
+        );
+        modData.gain.gain.setTargetAtTime(
+          intensity * 100,
+          audioContext.currentTime,
+          0.015,
+        );
+        // connect and start only once
+        modData.osc.connect(modData.gain).connect(oscData.osc.frequency);
+        if (!modData.started) {
+          modData.osc.start();
+          modData.started = true;
+        }
+        modIndex++;
+        // Use next oscillator for main harmonic
+        if (oscIndex + 1 < oscillators.length) {
+          const harmonicOsc = oscillators[oscIndex + 1];
+          harmonicOsc.osc.type = "sine";
+          harmonicOsc.osc.frequency.setTargetAtTime(
+            harmonics[0],
+            audioContext.currentTime,
+            0.015,
+          );
+          harmonicOsc.gain.gain.setTargetAtTime(
+            intensity * 0.5,
+            audioContext.currentTime,
+            0.015,
+          );
+          harmonicOsc.panner.pan.setTargetAtTime(
+            pan,
+            audioContext.currentTime,
+            0.015,
+          );
+          harmonicOsc.active = true;
+        }
+      }
+      oscIndex++;
+    } else {
+      oscData.gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+      oscData.active = false;
+    }
+  }
+  // silence any unused modulators
+  for (let i = modIndex; i < modulators.length; i++) {
+    modulators[i].gain.gain.setTargetAtTime(0, audioContext.currentTime, 0.015);
+  }
+}
 
 
-// File: web/audio-processor.js
+// File: web/audio/synthesis-engines/availableEngines.json
+[
+  {
+    "id": "sine-wave",
+    "createdAt": 1750899236911.1191
+  },
+  {
+    "id": "fm-synthesis",
+    "createdAt": 1750899236897.1191
+  }
+]
+
+// File: web/audio/synthesis-engines/available-engines.json
+
+
+
+// File: web/audio/audio-controls.js
+// Update web/ui/audio-controls.js: Remove { passive: true } from touchstart listener to ensure it counts as a user gesture for AudioContext
+
+import { getText } from "./utils.js";
+import { initializeAudio, cleanupAudio } from "../audio-processor.js";
+import { structuredLog } from "../utils/logging.js";
+
+let isAudioContextInitialized = false;
+let audioContext = null;
+
+export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
+  if (!DOM || !DOM.powerOn) {
+    console.error("setupAudioControls: Missing DOM elements");
+    dispatch("logError", { message: "Missing DOM elements in audio-controls" });
+    return;
+  }
+
+  const initializeAudioContext = async (event) => {
+    console.log(`powerOn: ${event.type} event`);
+    const maxRetries = 3;
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+        if (!audioContext) throw new Error("AudioContext creation failed");
+        if (audioContext.state === "suspended") {
+          console.log("AudioContext is suspended, attempting to resume");
+          await audioContext.resume();
+        }
+        if (audioContext.state !== "running") {
+          throw new Error(`AudioContext failed to start, state: ${audioContext.state}`);
+        }
+        await initializeAudio(audioContext);
+        isAudioContextInitialized = true;
+        DOM.splashScreen.style.display = "none";
+        DOM.mainContainer.style.display = "grid";
+        await getText("audioOn");
+        dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
+        console.log("powerOn: AudioContext initialized, UI updated");
+        return;
+      } catch (err) {
+        if (err.message.includes("Permission denied")) {
+          structuredLog('ERROR', 'Audio init permission denied', { message: err.message });
+          await getText('button2.tts.micError');
+        }
+        console.error(`Attempt ${i + 1} failed: ${err.message}`);
+        dispatch("logError", { message: `Audio init attempt ${i + 1} failed: ${err.message}` });
+      }
+    }
+    await getText("audioError");
+    DOM.powerOn.textContent = await getText("powerOn.failed.text", {}, 'text');
+    DOM.powerOn.setAttribute("aria-label", await getText("powerOn.failed.aria", {}, 'aria'));
+  };
+
+  const handlePowerOn = async (event) => {
+    if (!isAudioContextInitialized) {
+      await initializeAudioContext(event);
+    } else {
+      console.log("powerOn: Audio already initialized, cleaning up");
+      await cleanupAudio();
+      isAudioContextInitialized = false;
+      DOM.splashScreen.style.display = "flex";
+      DOM.mainContainer.style.display = "none";
+      await getText("audioOff");
+      dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
+    }
+  };
+
+  DOM.powerOn.addEventListener("click", handlePowerOn);
+  DOM.powerOn.addEventListener("touchstart", handlePowerOn);  // Removed { passive: true }
+
+  console.log("setupAudioControls: Audio controls initialized");
+}
+
+
+// File: web/audio/audio-processor.js
 // future/web/audio-processor.js
-import { settings } from "./state.js";
-import { dispatchEvent } from "./ui/event-dispatcher.js";
-import { structuredLog } from "./utils/logging.js";  // Add for detailed logging.
+import { settings } from "../core/state.js";
+import { dispatchEvent } from "../core/dispatcher.js";
+import { structuredLog } from "../utils/logging.js";  // Add for detailed logging.
 
 let audioContext = null;
 let isAudioInitialized = false;
@@ -2233,11 +2092,8 @@ export async function playAudio(notes) {
     return;
   }
   try {
-    const enginesResponse = await fetch("./synthesis-methods/engines/availableEngines.json");
-    if (!enginesResponse.ok) {
-      throw new Error(`Failed to load availableEngines.json: ${enginesResponse.status}`);
-    }
-    const availableEngines = await enginesResponse.json();
+    // Use cached engines loaded at startup
+    const availableEngines = settings.availableEngines;
     const engine = availableEngines.find((e) => e.id === settings.synthesisEngine);
     if (!engine) {
       structuredLog('ERROR', `playAudio: Engine not found`, { synthesisEngine: settings.synthesisEngine });
@@ -2332,6 +2188,131 @@ export function initializeMicAudio(micStream) {
 
 export { audioContext, isAudioInitialized, oscillators, modulators };
 
+// File: web/main.js
+import { setupUIController } from './ui/ui-controller.js';
+import { createEventDispatcher } from './core/dispatcher.js';
+import { loadConfigs, settings } from './core/state.js';
+import { structuredLog } from './utils/logging.js';
+import { setDOM } from './core/context.js';
+import { getText } from './utils/utils.js';
+
+const DOM = {
+  videoFeed: document.getElementById('videoFeed'),
+  frameCanvas: document.getElementById('frameCanvas'),  
+  button1: document.getElementById('button1'),
+  button2: document.getElementById('button2'),
+  button3: document.getElementById('button3'),
+  button4: document.getElementById('button4'),
+  button5: document.getElementById('button5'),
+  button6: document.getElementById('button6'),
+  powerOn: document.getElementById('powerOn'),
+  splashScreen: document.getElementById('splashScreen'),
+  mainContainer: document.getElementById('mainContainer'),
+  debugPanel: document.getElementById('debugPanel'),
+};
+
+// Initialize shared DOM context for modules that need it
+setDOM(DOM);
+
+async function init() {
+  try {
+    await loadConfigs;
+    let getText;
+    try {
+      ({ getText } = await import('./ui/utils.js'));
+      console.log('utils.js imported successfully');  // Confirm import worked
+    } catch (importErr) {
+      console.error('Failed to import utils.js:', importErr.message);
+      getText = async (key) => {  // Make async for consistency with await calls
+        console.warn('TTS fallback for key:', key);
+        return key;  // Return key as fallback string (better than '')
+      };
+    }
+    // Set aria and text for all relevant elements deriving from ID
+    const staticElements = [
+      DOM.splashScreen,
+      DOM.mainContainer,
+      DOM.powerOn,
+      DOM.videoFeed,
+      DOM.frameCanvas,
+      DOM.debugPanel,
+      DOM.button1,
+      DOM.button2,
+      DOM.button3,
+      DOM.button4,
+      DOM.button5,
+      DOM.button6,
+    ];
+    for (const el of staticElements) {
+      if (!el) {
+        console.warn(`Skipping null element in staticElements`);
+        continue;
+      }
+      const baseKey = el.id;
+      el.setAttribute('aria-label', await getText(`${baseKey}.aria`, {}, 'aria'));
+      // Set text content only for elements that need it (e.g., powerOn, buttons)
+      if (['powerOn'].includes(el.id) || el.tagName === 'BUTTON') {
+        el.textContent = await getText(`${baseKey}.text`, {}, 'text');
+      }
+    }
+    if (!DOM.videoFeed || !DOM.button1 || !DOM.button2 || !DOM.button3 || 
+        !DOM.button4 || !DOM.button5 || !DOM.button6 || !DOM.powerOn || 
+        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel || !DOM.frameCanvas) {
+      throw new Error('Missing DOM elements in main.js');
+    }
+    const { dispatchEvent } = await createEventDispatcher(DOM);
+    setupUIController({ dispatchEvent, DOM });
+    // Console overrides moved here to break circular dependency
+    const originalConsole = {
+      log: console.log,
+      warn: console.warn,
+      error: console.error
+    };
+    const oldStructuredLog = structuredLog;
+    window.structuredLog = async (level, message, data = {}, persist = true, sample = true) => {
+      const backup = { log: console.log, warn: console.warn, error: console.error };
+      console.log = originalConsole.log;
+      console.warn = originalConsole.warn;
+      console.error = originalConsole.error;
+      await oldStructuredLog(level, message, data, persist, sample);
+      console.log = backup.log;
+      console.warn = backup.warn;
+      console.error = backup.error;
+    };
+    console.log = (...args) => {
+      originalConsole.log.apply(console, args);
+      if (settings.debugLogging) window.structuredLog('INFO', 'Console log', { args }, false);
+    };
+    console.warn = (...args) => {
+      originalConsole.warn.apply(console, args);
+      if (settings.debugLogging) window.structuredLog('WARN', 'Console warn', { args }, false);
+    };
+    console.error = (...args) => {
+      originalConsole.error.apply(console, args);
+      window.structuredLog('ERROR', 'Console error', { args }, false);
+    };
+    // Force initial UI update for dynamic content
+    dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
+    console.log('init: UI setup complete');
+  } catch (err) {
+    console.error('init error:', err.message);
+    try {
+      await getText('init.tts.error');
+    } catch (ttsErr) {
+      console.error('TTS error:', ttsErr.message);
+    }
+  }
+}
+
+// Adds uncaught error handler for global contexts (e.g., hangs/OOM).
+window.onerror = function (message, source, lineno, colno, error) {
+  structuredLog('ERROR', 'Uncaught global error', { message, source, lineno, colno, stack: error ? error.stack : 'N/A' });
+  return true;  // Prevent default browser error logging.
+};
+
+init();
+
+
 // File: web/index.html
 <!DOCTYPE html>
 <html lang="en">
@@ -2368,52 +2349,6 @@ export { audioContext, isAudioInitialized, oscillators, modulators };
 </html>
 
 
-// File: web/frame-processor.js
-import { settings } from "./state.js";
-import { dispatchEvent } from "./ui/event-dispatcher.js";
-
-export async function mapFrameToNotes(frameData, width, height, prevFrameDataLeft, prevFrameDataRight) {
-  try {
-    const gridsResponse = await fetch("./synthesis-methods/grids/availableGrids.json");
-    if (!gridsResponse.ok) throw new Error(`Failed to load availableGrids.json: ${gridsResponse.status}`);
-    const availableGrids = await gridsResponse.json();
-    const grid = availableGrids.find((g) => g.id === settings.gridType);
-    if (!grid) {
-      console.error(`Grid not found: ${settings.gridType}`);
-      dispatchEvent("logError", { message: `Grid not found: ${settings.gridType}` });
-      return { notes: [], prevFrameDataLeft, prevFrameDataRight };
-    }
-    const gridModule = await import(`./synthesis-methods/grids/${grid.id}.js`);
-    const mapFunction = gridModule[`mapFrameTo${grid.id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`];
-    if (!mapFunction) {
-      console.error(`Map function for ${grid.id} not found`);
-      dispatchEvent("logError", { message: `Map function for ${grid.id} not found` });
-      return { notes: [], prevFrameDataLeft, prevFrameDataRight };
-    }
-    const halfWidth = width / 2;
-    const leftFrame = new Uint8ClampedArray(halfWidth * height);
-    const rightFrame = new Uint8ClampedArray(halfWidth * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < halfWidth; x++) {
-        leftFrame[y * halfWidth + x] = frameData[y * width + x];
-        rightFrame[y * halfWidth + x] = frameData[y * width + x + halfWidth];
-      }
-    }
-    const leftResult = mapFunction(leftFrame, halfWidth, height, prevFrameDataLeft, -1);
-    const rightResult = mapFunction(rightFrame, halfWidth, height, prevFrameDataRight, 1);
-    const allNotes = [...(leftResult.notes || []), ...(rightResult.notes || [])];
-    return {
-      notes: allNotes,
-      prevFrameDataLeft: leftResult.newFrameData,
-      prevFrameDataRight: rightResult.newFrameData,
-    };
-  } catch (err) {
-    console.error("mapFrameToNotes error:", err.message);
-    dispatchEvent("logError", { message: `Frame mapping error: ${err.message}` });
-    return { notes: [], prevFrameDataLeft, prevFrameDataRight };
-  }
-}
-
 // File: web/context.js
 let DOM = null;
 let dispatchEvent = null;
@@ -2441,6 +2376,206 @@ export function getDispatchEvent() {
   }
   return dispatchEvent;
 }
+
+// File: web/synthesis-grids/availableGrids.json
+[
+  {
+    "id": "hex-tonnetz",
+    "createdAt": 1750899236982.1191
+  },
+  {
+    "id": "circle-of-fifths",
+    "createdAt": 1750899236950.1191
+  }
+]
+
+// File: web/synthesis-grids/available-grids.json
+
+
+
+// File: web/synthesis-grids/hex-tonnetz.js
+import { settings } from "../../state.js";
+
+const gridSize = 32;
+const notesPerOctave = 12;
+const octaves = 5;
+const minFreq = 100;
+const maxFreq = 3200;
+const frequencies = [];
+for (let octave = 0; octave < octaves; octave++) {
+  for (let note = 0; note < notesPerOctave; note++) {
+    const freq = minFreq * Math.pow(2, octave + note / notesPerOctave);
+    if (freq <= maxFreq) frequencies.push(freq);
+  }
+}
+const tonnetzGrid = Array(gridSize)
+  .fill()
+  .map(() => Array(gridSize).fill(0));
+for (let y = 0; y < gridSize; y++) {
+  for (let x = 0; x < gridSize; x++) {
+    const octave = Math.floor((y / gridSize) * octaves);
+    const noteOffset = (x + (y % 2) * 6) % notesPerOctave;
+    const freqIndex = octave * notesPerOctave + noteOffset;
+    tonnetzGrid[y][x] =
+      frequencies[freqIndex % frequencies.length] ||
+      frequencies[frequencies.length - 1];
+  }
+}
+
+export function mapFrameToHexTonnetz(
+  frameData,
+  width,
+  height,
+  prevFrameData,
+  panValue,
+) {
+  const gridWidth = width / gridSize;
+  const gridHeight = height / gridSize;
+  const movingRegions = [];
+  const newFrameData = new Uint8ClampedArray(frameData);
+ 
+ // Correct avgIntensity over pixels (skip alpha)
+ let avgIntensity = 0;
+ for (let i = 0; i < frameData.length; i += 4) {
+   const r = frameData[i];
+   const g = frameData[i + 1];
+   const b = frameData[i + 2];
+   avgIntensity += (r + g + b) / 3;
+ }
+ avgIntensity /= (frameData.length / 4);  
+
+ if (prevFrameData) {
+   for (let y = 0; y < height; y++) {
+     for (let x = 0; x < width; x++) {
+       const idx = (y * width + x) * 4;
+       const r = frameData[idx];
+       const g = frameData[idx + 1];
+       const b = frameData[idx + 2];
+       const intensity = (r + g + b) / 3;
+
+       const pr = prevFrameData[idx];
+       const pg = prevFrameData[idx + 1];
+       const pb = prevFrameData[idx + 2];
+       const prevIntensity = (pr + pg + pb) / 3;
+
+       const delta = Math.abs(intensity - prevIntensity);
+       if (delta > 20) {
+         const gridX = Math.floor(x / gridWidth);
+         const gridY = Math.floor(y / gridHeight);
+         movingRegions.push({ gridX, gridY, intensity, delta });
+       }
+     }
+   }
+ }
+
+  movingRegions.sort((a, b) => b.delta - a.delta);
+  const notes = [];
+  const usedCells = new Set();
+  for (let i = 0; i < Math.min(16, movingRegions.length); i++) {
+    const { gridX, gridY, intensity } = movingRegions[i];
+    const cellKey = `${gridX},${gridY}`;
+    if (usedCells.has(cellKey)) continue;
+    usedCells.add(cellKey);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        usedCells.add(`${gridX + dx},${gridY + dy}`);
+      }
+    }
+    const freq = tonnetzGrid[gridY][gridX];
+    const amplitude =
+      settings.dayNightMode === "day"
+        ? 0.02 + (intensity / 255) * 0.06
+        : 0.08 - (intensity / 255) * 0.06;
+    const harmonics = [freq * Math.pow(2, 7 / 12), freq * Math.pow(2, 4 / 12)];
+    notes.push({ pitch: freq, intensity: amplitude, harmonics, pan: panValue });
+  }
+
+  return { notes, newFrameData, avgIntensity };
+}
+
+
+// File: web/synthesis-grids/circle-of-fifths.js
+import { settings } from "../../state.js";
+
+const notesPerOctave = 12;
+const octaves = 5;
+const minFreq = 100;
+const maxFreq = 3200;
+const frequencies = [];
+for (let octave = 0; octave < octaves; octave++) {
+  for (let note = 0; note < notesPerOctave; note++) {
+    const freq = minFreq * Math.pow(2, octave + note / notesPerOctave);
+    if (freq <= maxFreq) frequencies.push(freq);
+  }
+}
+
+export function mapFrameToCircleOfFifths(
+  frameData,
+  width,
+  height,
+  prevFrameData,
+  panValue,
+) {
+  const gridWidth = width / 12;
+  const gridHeight = height / 12;
+  const movingRegions = [];
+  const newFrameData = new Uint8ClampedArray(frameData);
+ // Correct avgIntensity over pixels (skip alpha)
+ let avgIntensity = 0;
+ for (let i = 0; i < frameData.length; i += 4) {
+   const r = frameData[i];
+   const g = frameData[i + 1];
+   const b = frameData[i + 2];
+   avgIntensity += (r + g + b) / 3;
+ }
+ avgIntensity /= (frameData.length / 4);
+
+ if (prevFrameData) {
+   for (let y = 0; y < height; y++) {
+     for (let x = 0; x < width; x++) {
+       const idx = (y * width + x) * 4;
+       const r = frameData[idx];
+       const g = frameData[idx + 1];
+       const b = frameData[idx + 2];
+       const intensity = (r + g + b) / 3;
+
+       const pr = prevFrameData[idx];
+       const pg = prevFrameData[idx + 1];
+       const pb = prevFrameData[idx + 2];
+       const prevIntensity = (pr + pg + pb) / 3;
+
+       const delta = Math.abs(intensity - prevIntensity);
+       if (delta > 20) {
+         const gridX = Math.floor(x / gridWidth);
+         const gridY = Math.floor(y / gridHeight);
+         movingRegions.push({ gridX, gridY, intensity, delta });
+       }
+     }
+   }
+ }
+
+  movingRegions.sort((a, b) => b.delta - a.delta);
+  const notes = [];
+  const usedCells = new Set();
+  for (let i = 0; i < Math.min(8, movingRegions.length); i++) {
+    const { gridX, gridY, intensity } = movingRegions[i];
+    const cellKey = `${gridX},${gridY}`;
+    if (usedCells.has(cellKey)) continue;
+    usedCells.add(cellKey);
+    const noteIndex = (gridX + gridY) % notesPerOctave;
+    const freq = frequencies[noteIndex] || frequencies[frequencies.length - 1];
+    const amplitude =
+      settings.dayNightMode === "day"
+        ? 0.02 + (intensity / 255) * 0.06
+        : 0.08 - (intensity / 255) * 0.06;
+    const harmonics = [freq * Math.pow(2, 7 / 12), freq * Math.pow(2, 4 / 12)];
+    notes.push({ pitch: freq, intensity: amplitude, harmonics, pan: panValue });
+  }
+
+  return { notes, newFrameData, avgIntensity };
+}
+
 
 // File: web/test/ui-settings.test.js
 // test/ui-settings.test.js
@@ -2482,103 +2617,18 @@ describe('ui-settings', () => {
 });
 
 
-// File: web/state.js
-import { structuredLog } from './utils/logging.js';  // Top import.
-import { addIdbLog, getAllIdbLogs } from './utils/idb-logger.js';  // New import for DB logging.
+// File: web/test/video-capture.test.js
+describe('processFrame', () => {
+  test('handles non-finite dimensions', async () => {
+    jest.spyOn(global.console, 'error').mockImplementation(() => {});
+    jest.spyOn(structuredLog, 'call').mockImplementation(() => {});
+    const DOM = { frameCanvas: { getContext: () => null }, videoFeed: {} };
+    jest.spyOn(getDOM, 'call').mockReturnValue(DOM);
+    const result = await processFrame(NaN, 240);
+    expect(result).toEqual({ notes: [], newFrameData: null, avgIntensity: 0 });
+    expect(structuredLog).toHaveBeenCalledWith('DEBUG', 'processFrame dimensions', { rawWidth: NaN, rawHeight: 240 });
+    expect(console.error).toHaveBeenCalledWith("Canvas context not found");
+  });
+});
 
-export let settings = {
-  debugLogging: true,
-  stream: null,
-  audioTimerId: null,  // Renamed from audioInterval: timer ID from setInterval, or null when cleared.
-  updateInterval: 30, 
-  autoFPS: true,
-  gridType: null, 
-  synthesisEngine: null, 
-  language: null, 
-  isSettingsMode: false,
-  micStream: null,
-  ttsEnabled: false,
-  dayNightMode: 'day'
-};
-
-export const loadConfigs = (async () => {
-  try {
-    const [grids, engines, languages, intervals] = await Promise.all([
-      fetch('./synthesis-methods/grids/availableGrids.json').then(res => res.json()),
-      fetch('./synthesis-methods/engines/availableEngines.json').then(res => res.json()),
-      fetch('./languages/availableLanguages.json').then(res => res.json()),
-      Promise.resolve([50, 33, 16])
-    ]);
-    availableLanguages = languages;
-    settings.gridType = grids[0]?.id || settings.gridType;
-    settings.synthesisEngine = engines[0]?.id || settings.synthesisEngine;
-    settings.language = languages[0]?.id || settings.language;
-    settings.updateInterval = intervals[0] || settings.updateInterval;
-  } catch (err) {
-    structuredLog('ERROR', 'Failed to load configurations', { message: err.message });
-  }
-})();
-
-export let availableLanguages = [];
-
-export async function getLogs() {
-  // Fetch from IndexedDB and pretty-print for readability.
-  const allLogs = await getAllIdbLogs();
-  return allLogs.map(log => {
-    try {
-      return `Timestamp: ${log.timestamp}\nLevel: ${log.level}\nMessage: ${log.message}\nData: ${JSON.stringify(log.data, null, 2)}\n---\n`;
-    } catch (err) {
-      return `Invalid log entry: ${JSON.stringify(log)}\n---\n`;  // Fallback for malformed logs.
-    }
-  }).join('');
-}
-
-export function setStream(stream) {
-  settings.stream = stream;
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'setStream', { streamSet: !!stream });
-  }
-}
-
-export function setAudioInterval(timerId) {
-  settings.audioTimerId = timerId;
-  if (settings.debugLogging) {
-    const ms = settings.updateInterval;
-    structuredLog('INFO', 'setAudioInterval', { timerId, updateIntervalMs: ms });
-  }
-}
-
-export function setMicStream(stream) {
-  settings.micStream = stream;
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'setMicStream', { micStreamSet: !!stream });
-  }
-}
-
-// Override console methods but retain native output, augment with structured logging when enabled
-// Capture original console methods before overriding
-const originalConsole = {
-  log: console.log,
-  warn: console.warn,
-  error: console.error,
-};
-
-console.log = (...args) => {
-  originalConsole.log(...args);
-  if (settings.debugLogging) {
-    structuredLog('INFO', 'Console log', { args }, false);
-  }
-};
-
-console.warn = (...args) => {
-  originalConsole.warn(...args);
-  if (settings.debugLogging) {
-    structuredLog('WARN', 'Console warn', { args }, false);
-  }
-};
-
-console.error = (...args) => {
-  originalConsole.error(...args);
-  structuredLog('ERROR', 'Console error', { args }, false);
-};
 

@@ -5,6 +5,21 @@
 
 import { addIdbLog } from './idb-logger.js';  // Updated to use IndexedDB.
 
+// Safely stringify objects, handling circular refs and Error instances
+function safeStringify(obj) {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, val) => {
+    if (typeof val === 'object' && val !== null) {
+      if (seen.has(val)) return '[Circular]';
+      seen.add(val);
+    }
+    if (val instanceof Error) {
+      return { message: val.message, stack: val.stack };
+    }
+    return val;
+  });
+}
+
 // Capture original console methods before any overrides
 const originalConsoleRef = {
   log: console.log,
@@ -68,10 +83,19 @@ export async function structuredLog(level, message, data = {}, persist = true, s
     const logEntry = { timestamp, level: level.toUpperCase(), message, data };
     // Use global console to avoid circular import
     const fn = (console[level.toLowerCase()] || console.log).bind(console);
-    fn(`[${timestamp}] ${logEntry.level}: ${message}`, data);
+    // Serialize only own properties to a JSON payload string to prevent endless prototype expansion
+    let payload = '';
+    if (Object.keys(data).length) {
+      try {
+        payload = ' ' + safeStringify(data);
+      } catch (e) {
+        payload = ' [Unserializable data]';
+      }
+    }
+    fn(`[${timestamp}] ${logEntry.level}: ${message}${payload}`);
     if (persist) {
       addIdbLog(logEntry).catch(err => {
-        originalConsole.warn('Failed to persist log to IndexedDB:', err.message);
+        console.warn('Failed to persist log to IndexedDB:', err.message);
       });
     }
   } finally {

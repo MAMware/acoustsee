@@ -1,11 +1,12 @@
 // Update web/ui/audio-controls.js: Remove { passive: true } from touchstart listener to ensure it counts as a user gesture for AudioContext
 
-import { getText } from "./utils.js";
-import { initializeAudio, cleanupAudio } from "../audio-processor.js";
+import { getText } from "../utils/utils.js";
+import { initializeAudio } from "./audio-processor.js";
 import { structuredLog } from "../utils/logging.js";
+import { AudioManager } from "./audio-manager.js";
 
+const audioManager = new AudioManager();
 let isAudioContextInitialized = false;
-let audioContext = null;
 
 export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
   if (!DOM || !DOM.powerOn) {
@@ -16,19 +17,10 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
 
   const initializeAudioContext = async (event) => {
     console.log(`powerOn: ${event.type} event`);
-    const maxRetries = 3;
-    for (let i = 0; i <= maxRetries; i++) {
-      try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
-        if (!audioContext) throw new Error("AudioContext creation failed");
-        if (audioContext.state === "suspended") {
-          console.log("AudioContext is suspended, attempting to resume");
-          await audioContext.resume();
-        }
-        if (audioContext.state !== "running") {
-          throw new Error(`AudioContext failed to start, state: ${audioContext.state}`);
-        }
-        await initializeAudio(audioContext);
+    try {
+      const success = await audioManager.initialize();
+      if (success) {
+        await initializeAudio(audioManager.context);
         isAudioContextInitialized = true;
         DOM.splashScreen.style.display = "none";
         DOM.mainContainer.style.display = "grid";
@@ -36,14 +28,14 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
         dispatch("updateUI", { settingsMode: false, streamActive: false, micActive: false });
         console.log("powerOn: AudioContext initialized, UI updated");
         return;
-      } catch (err) {
-        if (err.message.includes("Permission denied")) {
-          structuredLog('ERROR', 'Audio init permission denied', { message: err.message });
-          await getText('button2.tts.micError');
-        }
-        console.error(`Attempt ${i + 1} failed: ${err.message}`);
-        dispatch("logError", { message: `Audio init attempt ${i + 1} failed: ${err.message}` });
       }
+    } catch (err) {
+      if (err.message.includes("Permission denied")) {
+        structuredLog('ERROR', 'Audio init permission denied', { message: err.message });
+        await getText('button2.tts.micError');
+      }
+      console.error(`Audio init failed: ${err.message}`);
+      dispatch("logError", { message: `Audio init failed: ${err.message}` });
     }
     await getText("audioError");
     DOM.powerOn.textContent = await getText("powerOn.failed.text", {}, 'text');
@@ -55,7 +47,7 @@ export function setupAudioControls({ dispatchEvent: dispatch, DOM }) {
       await initializeAudioContext(event);
     } else {
       console.log("powerOn: Audio already initialized, cleaning up");
-      await cleanupAudio();
+      await audioManager.cleanup();
       isAudioContextInitialized = false;
       DOM.splashScreen.style.display = "flex";
       DOM.mainContainer.style.display = "none";

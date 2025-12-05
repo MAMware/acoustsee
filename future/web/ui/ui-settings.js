@@ -1,14 +1,9 @@
-// future/web/ui/ui-settings.js
-import { settings } from '../state.js';
-import { getText, tryVibrate, hapticCount } from './utils.js';
+// File: web/ui/ui-settings.js
+import { settings } from '../core/state.js';
+import { getText, tryVibrate, hapticCount } from '../utils/utils.js';
+import { structuredLog } from '../utils/logging.js';
 
 export function setupUISettings({ dispatchEvent, DOM }) {
-  if (!DOM || !DOM.button1 || !DOM.button2 || !DOM.button3 ||
-      !DOM.button4 || !DOM.button5 || !DOM.button6) {
-    console.error('Missing DOM elements in ui-settings');
-    dispatchEvent('logError', { message: 'Missing DOM elements in ui-settings' });
-    return;
-  }
 
   // Helper: wire a single pointer event for both touch & click
   function wireButton(el, id, { normal, settings: settingsAction }, {
@@ -37,6 +32,29 @@ export function setupUISettings({ dispatchEvent, DOM }) {
         await getText(key, params());
       }
     });
+    // Additional touchstart for compatibility (from settings-handlers.js)
+    el.addEventListener('touchstart', async (event) => {
+      if (event.cancelable) event.preventDefault();
+      console.log(`${id} touched`);
+      tryVibrate(event);
+      try {
+        if (!settings.isSettingsMode) {
+          await normal();
+        } else {
+          await settingsAction();
+        }
+        dispatchEvent('updateUI', {
+          settingsMode: settings.isSettingsMode,
+          streamActive: !!settings.stream,
+          micActive: !!settings.micStream,
+        });
+      } catch (err) {
+        console.error(`${id} error:`, err.message);
+        dispatchEvent('logError', { message: `${id} error: ${err.message}` });
+        await getText(`${id}.tts.${!settings.isSettingsMode ? normalError.split('.').pop() : settingsError.split('.').pop()}`, params());
+      }
+    });
+    console.log(`${id} event listeners attached`);
   }
 
   // Button 1

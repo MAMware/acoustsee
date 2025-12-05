@@ -1,8 +1,31 @@
+// File: web/main.js
 import { setupUIController } from './ui/ui-controller.js';
-import { createEventDispatcher } from './ui/event-dispatcher.js';
-import { loadConfigs, settings } from './state.js';
-import { structuredLog } from './utils/logging.js';  
-import { setDOM } from './context.js'; 
+import { createEventDispatcher } from './core/dispatcher.js';
+import { loadConfigs, settings } from './core/state.js';
+import { structuredLog } from './utils/logging.js';
+import { setDOM } from './core/context.js';
+
+let getText, initializeLanguageIfNeeded, speakText, announceMessage;
+try {
+  ({ getText, initializeLanguageIfNeeded, speakText, announceMessage } = await import('./utils/utils.js'));
+  console.log('utils.js imported successfully');  // Confirm import worked
+} catch (importErr) {
+  console.error('Failed to import utils.js:', importErr.message);
+  getText = async (key) => {
+    console.warn('TTS fallback for key:', key);
+    return key;
+  };
+  initializeLanguageIfNeeded = () => {
+    structuredLog('WARN', 'Language init skipped due to import failure');
+    return 'en-US';  // Fallback return
+  };
+  speakText = () => {
+    structuredLog('WARN', 'TTS skipped due to import failure');
+  };
+  announceMessage = (msg) => {
+    structuredLog('WARN', 'Announcement skipped due to import failure', { msg });
+  };
+}
 
 const DOM = {
   videoFeed: document.getElementById('videoFeed'),
@@ -22,100 +45,168 @@ const DOM = {
 // Initialize shared DOM context for modules that need it
 setDOM(DOM);
 
+// Custom Error class to attach metadata
+class CustomError extends Error {
+  constructor(message, data = {}) {
+    super(message);
+    this.data = data;
+  }
+}
+
+// Helper to validate DOM elements
+function validateDOM() {
+  const requiredIds = ['videoFeed', 'button1', 'button2', 'button3', 'button4', 'button5', 'button6', 'powerOn', 'splashScreen', 'mainContainer', 'debugPanel', 'frameCanvas'];
+  const missing = requiredIds.filter(id => !DOM[id]);
+  if (missing.length > 0) {
+    throw new CustomError('Missing DOM elements', { missing });
+  }
+}
+
 async function init() {
+  const originalConsole = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error
+  };
   try {
+    // Validate DOM early
+    validateDOM();
+
+    // Wait for configs to fully load and defaults to be set
     await loadConfigs;
-    let getText;
-    try {
-      ({ getText } = await import('./ui/utils.js'));
-      console.log('utils.js imported successfully');  // Confirm import worked
-    } catch (importErr) {
-      console.error('Failed to import utils.js:', importErr.message);
-      getText = async (key) => {  // Make async for consistency with await calls
-        console.warn('TTS fallback for key:', key);
-        return key;  // Return key as fallback string (better than '')
-      };
+    structuredLog('INFO', 'init: Configurations loaded', {
+      gridType: settings.gridType,
+      synthesisEngine: settings.synthesisEngine,
+      language: settings.language
+    });
+
+    // Validate critical settings before proceeding
+    if (!settings.language || !settings.gridType || !settings.synthesisEngine) {
+      throw new CustomError('Critical settings not initialized', {
+        language: settings.language,
+        gridType: settings.gridType,
+        synthesisEngine: settings.synthesisEngine
+      });
     }
+
+    // Ensure language is initialized before translating
+    initializeLanguageIfNeeded();
+
     // Set aria and text for all relevant elements deriving from ID
     const staticElements = [
-      DOM.splashScreen,
-      DOM.mainContainer,
-      DOM.powerOn,
-      DOM.videoFeed,
-      DOM.frameCanvas,
-      DOM.debugPanel,
-      DOM.button1,
-      DOM.button2,
-      DOM.button3,
-      DOM.button4,
-      DOM.button5,
-      DOM.button6,
+      { el: DOM.splashScreen, baseKey: 'splashScreen', setText: false, setAria: false }, // Non-interactive, no aria/text
+      { el: DOM.mainContainer, baseKey: 'mainContainer', setText: false, setAria: false },
+      { el: DOM.powerOn, baseKey: 'powerOn', setText: true, setAria: true },
+      { el: DOM.videoFeed, baseKey: 'videoFeed', setText: false, setAria: true },
+      { el: DOM.frameCanvas, baseKey: 'frameCanvas', setText: false, setAria: false }, // Hidden, no aria
+      { el: DOM.debugPanel, baseKey: 'debugPanel', setText: false, setAria: true },
+      { el: DOM.button1, baseKey: 'button1', setText: true, setAria: true },
+      { el: DOM.button2, baseKey: 'button2', setText: true, setAria: true },
+      { el: DOM.button3, baseKey: 'button3', setText: true, setAria: true },
+      { el: DOM.button4, baseKey: 'button4', setText: true, setAria: true },
+      { el: DOM.button5, baseKey: 'button5', setText: true, setAria: true },
+      { el: DOM.button6, baseKey: 'button6', setText: true, setAria: true },
     ];
-    for (const el of staticElements) {
-      if (!el) {
-        console.warn(`Skipping null element in staticElements`);
-        continue;
-      }
-      const baseKey = el.id;
-      el.setAttribute('aria-label', await getText(`${baseKey}.aria`, {}, 'aria'));
-      // Set text content only for elements that need it (e.g., powerOn, buttons)
-      if (['powerOn'].includes(el.id) || el.tagName === 'BUTTON') {
-        el.textContent = await getText(`${baseKey}.text`, {}, 'text');
+    const setupErrors = [];
+    for (const { el, baseKey, setText: shouldSetText, setAria } of staticElements) {
+      if (!el) continue;  // Validation already threw; no need for warn here
+      try {
+        if (setAria) {
+          const ariaText = await getText(`${baseKey}.aria`, {});
+          el.setAttribute('aria-label', ariaText);
+          announceMessage(ariaText); // Announce if needed
+        }
+        if (shouldSetText) {
+          const text = await getText(`${baseKey}.text`, {});
+          el.textContent = text;
+          announceMessage(text);
+          speakText(text); // Speak if TTS enabled
+        }
+      } catch (textErr) {
+        setupErrors.push({ baseKey, message: textErr.message });
+        // Continue with best-effort: set fallback
+        if (setAria) {
+          el.setAttribute('aria-label', baseKey);
+          announceMessage(baseKey);
+        }
+        if (shouldSetText) {
+          el.textContent = baseKey;
+          announceMessage(baseKey);
+          speakText(baseKey);
+        }
       }
     }
-    if (!DOM.videoFeed || !DOM.button1 || !DOM.button2 || !DOM.button3 || 
-        !DOM.button4 || !DOM.button5 || !DOM.button6 || !DOM.powerOn || 
-        !DOM.splashScreen || !DOM.mainContainer || !DOM.debugPanel || !DOM.frameCanvas) {
-      throw new Error('Missing DOM elements in main.js');
+    if (setupErrors.length > 0) {
+      structuredLog('WARN', 'UI setup had partial failures', { errors: setupErrors });
     }
+
     const { dispatchEvent } = await createEventDispatcher(DOM);
     setupUIController({ dispatchEvent, DOM });
+
     // Console overrides moved here to break circular dependency
-    const originalConsole = {
-      log: console.log,
-      warn: console.warn,
-      error: console.error
-    };
-    const oldStructuredLog = structuredLog;
-    window.structuredLog = async (level, message, data = {}, persist = true, sample = true) => {
-      const backup = { log: console.log, warn: console.warn, error: console.error };
-      console.log = originalConsole.log;
-      console.warn = originalConsole.warn;
-      console.error = originalConsole.error;
-      await oldStructuredLog(level, message, data, persist, sample);
-      console.log = backup.log;
-      console.warn = backup.warn;
-      console.error = backup.error;
-    };
+    function safeStructuredLog(level, message, data = {}, persist = true, sample = true) {
+      const tempLog = console.log;
+      const tempWarn = console.warn;
+      const tempError = console.error;
+      try {
+        console.log = originalConsole.log;
+        console.warn = originalConsole.warn;
+        console.error = originalConsole.error;
+
+        structuredLog(level, message, data, persist, sample);
+      } finally {
+        console.log = tempLog;
+        console.warn = tempWarn;
+        console.error = tempError;
+      }
+    }
+
     console.log = (...args) => {
       originalConsole.log.apply(console, args);
-      if (settings.debugLogging) window.structuredLog('INFO', 'Console log', { args }, false);
+      if (settings.debugLogging) safeStructuredLog('INFO', 'Console log', { args }, false);
     };
     console.warn = (...args) => {
       originalConsole.warn.apply(console, args);
-      if (settings.debugLogging) window.structuredLog('WARN', 'Console warn', { args }, false);
+      if (settings.debugLogging) safeStructuredLog('WARN', 'Console warn', { args }, false);
     };
     console.error = (...args) => {
       originalConsole.error.apply(console, args);
-      window.structuredLog('ERROR', 'Console error', { args }, false);
+      safeStructuredLog('ERROR', 'Console error', { args }, false);
     };
+
     // Force initial UI update for dynamic content
     dispatchEvent('updateUI', { settingsMode: false, streamActive: false, micActive: false });
-    console.log('init: UI setup complete');
+    structuredLog('INFO', 'init: UI setup complete');
   } catch (err) {
-    console.error('init error:', err.message);
+    let errorMessage = err.message;
+    let errorData = err instanceof CustomError ? err.data : {};
+    let specificMessage = errorMessage;
+    if (err.data?.missing) {
+      specificMessage = `Missing DOM elements: ${err.data.missing.join(', ')}`;
+    } else if (err.data?.language === null) {
+      specificMessage = 'Language configuration failed to initialize';
+    } // Add more categories as needed
+    structuredLog('ERROR', 'init error', { message: specificMessage, data: errorData, stack: err.stack });
+    originalConsole.error('init error:', err.message);
     try {
-      await getText('init.tts.error');
+      const errorText = await getText('init.tts.error');
+      speakText(errorText);
+      announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
     } catch (ttsErr) {
-      console.error('TTS error:', ttsErr.message);
+      originalConsole.error('TTS error:', ttsErr.message);
+      announceMessage(`Initialization failed: ${specificMessage}. Check console for details.`);
     }
   }
 }
 
-// Adds uncaught error handler for global contexts (e.g., hangs/OOM).
+// Adds uncaught error handler for global contexts
 window.onerror = function (message, source, lineno, colno, error) {
   structuredLog('ERROR', 'Uncaught global error', { message, source, lineno, colno, stack: error ? error.stack : 'N/A' });
-  return true;  // Prevent default browser error logging.
+  if (settings?.debugLogging ?? true) {  // Safe check; default to true if settings null (pre-init)
+    console.error(message); // Allow bubbling in debug mode
+    return false; // Let browser handle
+  }
+  return true; // Suppress in production
 };
 
 init();

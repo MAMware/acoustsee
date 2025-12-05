@@ -1,7 +1,7 @@
-// future/web/ui-controller.js
-import { setupAudioControls } from './audio-controls.js';
+import { setupAudioControls } from '../audio/audio-controls.js';
 import { setupUISettings } from './ui-settings.js';
 import { setupCleanupManager } from './cleanup-manager.js';
+import { setupVideoCapture } from './video-capture.js';
 // Importa los módulos de configuración cuando los tengas
 // import { setupSaveSettings, setupLoadSettings } from './settings-manager.js';
 

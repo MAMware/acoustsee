@@ -1,6 +1,5 @@
-// ui/cleanup-manager.js
-import { settings, setStream, setAudioInterval } from "../state.js";
-import { cleanupAudio } from "../audio-processor.js";
+import { settings, setStream, setAudioInterval } from '../core/state.js';
+import { cleanupAudio } from '../audio/audio-processor.js';
 
 let isAudioInitialized = false;
 let audioContext = null;
@@ -15,8 +14,8 @@ export function setupCleanupManager() {
       settings.micStream.getTracks().forEach((track) => track.stop());
       settings.micStream = null;
     }
-    if (settings.audioInterval) {
-      clearInterval(settings.audioInterval);
+    if (settings.audioTimerId) {
+      clearInterval(settings.audioTimerId);
       setAudioInterval(null);
     }
     if (isAudioInitialized && audioContext) {

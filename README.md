@@ -2,7 +2,7 @@
 
 ## [Introduction](#introduction)
 
-The content in this repository builds a web app and provides the code for a public working platform that transform visual environments into a soundscapes, thus empowering the user to experience a visual world by synthetic audio cues in real time.
+The content in this repository is meant to provide the code for a public infraestructure web app that aims to transform visual environments into soundscapes, empowering the users to experience the visual world by synthetic audio cues, in real time.
 
 > **Why?** We believe in enhancing humanity with open-source software in a fast, accessible and impactful way. You are invited to join us to improve its mission and make a difference!
 
@@ -21,13 +21,12 @@ Audio Output: Stereo headphones for spatial audio effects.
 
 ### Hipothetic Use Case
 
-Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, the phone, worn as a necklace, captures visuals like a swing in motion. As the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
+Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, a mobile phone worn as a necklace captures surrounding visuals like a swing in motion, as the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
 
 ### Development
 
 Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts 
-Milestone 5 wich is a work in progress got a little help from OpenAI ChatGPT 4.1 via @github copilot at codespaces
-Research drafts are going to be feed into Grok 4 for a surprise next step ;)
+Milestone 5 wich is a work in progress is getting help from OpenAI ChatGPT 4.1, 04-mini, Anthropic Claude 4 via @github copilot at codespaces and also Grok 4 wich is charge of the re-estructuring from v0.5.12
 
 >We welcome contributors! 
 
@@ -58,16 +57,15 @@ The webapp runs from a Internet browsers and mobile hardware from 2021.
 
 Working at **Milestone 5 (Current)**
 
-- Haptic feedback via Vibration API **Developing in Progress** 
-- Console log on device screen and mail to feature for debuggin. **Developing in Progress**
-- New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress**
-- Audio imput from camera into the headphones among the synthetized sound from camera. **Developing in Progress**
-- Further Modularity **Developing in Progress**
+- Haptic feedback via Vibration API **Developing in Progress 85%** 
+- Console log on device screen and mail to feature for debuggin. **Developing in Progress 85%**
+- New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress 95%**
 - Mermaid diagrams to reflect current Modular Single Responsability Principle **To do**
  
 ### [Changelog](docs/CHANGELOG.md)
 
 - Current "stable" version from "present" is v0.4.7, link above logs the history and details past milestones achieved.
+- Current "future" version in development starts from v0.5 
 
 ### [Project structure](#project_structure)
 - Current version [RUN](https://mamware.github.io/acoustsee/present/)
@@ -195,4 +193,9 @@ graph TD
 
 - GPL-3.0 license details
   
-MAKE LOVE NOT WAR
+Peace
+Love
+Union
+Respect
+
+
