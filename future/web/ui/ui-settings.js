@@ -93,6 +93,34 @@ export function setupUISettings({ dispatchEvent, DOM }) {
       settingsError: 'button2.tts.micError'
     }
   );
+  });
+  // Button 3 click: Language Toggle (Normal) or Input Selector (Settings)
+  DOM.button3.addEventListener('click', async (event) => {
+    if (event.cancelable) event.preventDefault();
+    console.log('button3 clicked', { settingsMode: settings.isSettingsMode });
+    tryVibrate(event);
+    hapticCount(3);
+    try {
+      if (!settings.isSettingsMode) {
+        dispatchEvent('toggleLanguage');
+      } else {
+        dispatchEvent('toggleVideoSource');
+      }
+      dispatchEvent('updateUI', {
+        settingsMode: settings.isSettingsMode,
+        streamActive: !!settings.stream,
+        micActive: !!settings.micStream,
+      });
+    } catch (err) {
+      console.error('button3 error:', err.message);
+      dispatchEvent('logError', { message: `button3 error: ${err.message}` });
+      await getText(
+        settings.isSettingsMode
+          ? 'button3.tts.videoSourceError'
+          : 'button3.tts.languageError'
+      );
+    }
+  });
 
   // Button 3
   wireButton(DOM.button3, 'button3',

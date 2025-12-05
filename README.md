@@ -113,9 +113,7 @@ web/
 
 ### [Contributing](docs/CONTRIBUTING.md)
 
-- Please follow the link above for the detailed contributing guidelines, branching strategy and examples.
-
-### [To-Do List](docs/TO_DO.md)
+>We welcome contributors! 
 
 - At this document linked above, you will find the list for our current TO TO list, now from milestone 5 (v0.5.2)
 
@@ -123,10 +121,32 @@ web/
 
 Diagrams covering the Turnk Based Development approach (v0.2). 
 
-Reflecting:  
   - Process Frame Flow
   - Audio Generation Flow
   - Motion Detection such as oscillator logic.
+```mermaid
+
+graph TD
+        A[dispatcher.js] -->|routes| B[core/handlers/]
+        B --> C[video-handlers.js]
+        B --> D[audio-handlers.js]
+        B --> E[ui-handlers.js]
+        B --> F[settings-handlers.js]
+        B --> G[grid-handlers.js]
+        B --> H[debug-handlers.js]
+        C -->|calls| I[video/frame-processor.js]
+        D -->|calls| J[audio/audio-processor.js]
+        E -->|updates| K[ui/ui-settings.js]
+        F -->|uses| L[utils/utils.js]
+        A -->|state| M[state.js]
+        A -->|logs| N[utils/logging.js]
+        B -->|future| O[ml-handlers.js]
+```
+
+### [Changelog](docs/CHANGELOG.md)
+
+- Current "stable" version from "present" is v0.4.7, the link above logs the history and details past milestones achieved.
+- Current "future" version in development starts from v0.6 
 
 ### [FAQ](docs/FAQ.md)
 

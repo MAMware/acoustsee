@@ -109,11 +109,21 @@ export async function playAudio(notes) {
 export async function cleanupAudio() {
   if (isAudioInitialized && audioContext) {
     try {
-      oscillatorPool.forEach(({ osc, gain, panner }) => {
+      oscillators.forEach(({ osc, gain, panner, modulator, modGain }) => {
+        // Stop and disconnect carrier
         osc.stop();
         osc.disconnect();
         gain.disconnect();
         panner.disconnect();
+        // Stop and disconnect FM modulator if present
+        if (modulator) {
+          modulator.stop();
+          modulator.disconnect();
+        }
+        // Disconnect modGain if present
+        if (modGain) {
+          modGain.disconnect();
+        }
       });
       oscillatorPool = [];
       if (micSource && micGainNode) {
