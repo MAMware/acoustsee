@@ -2,33 +2,30 @@
 
 ## [Introduction](#introduction)
 
-The content in this repository is meant to provide the code for a public infraestructure web app that aims to transform visual environments into soundscapes, empowering the users to experience the visual world by synthetic audio cues, in real time.
+The content in this repository provides code and docs of an accessibility web app that aims to help visually impaired users by transforming visual environments into soundscapes in real time.
 
-> **Why?** We believe in enhancing humanity with open-source software in a fast, accessible and impactful way. You are invited to join us to improve its mission and make a difference!
+> We believe in enhancing humanity with open-source software. You are invited to join us improving this mission and make a difference!
 
 ### Project Vision
 
-- Synesthetic Translation: Converting visual data into stereo audio cues, mapping colors, motion to distinct sound signatures.
-- Dynamic Soundscapes: Adjusts audio in real time based on object distance and motion, e.g., a swing’s sound shifts in volume and complexity as it moves.
-- Location-Aware Audio: Enhances spatial awareness by producing sounds in the corresponding ear, such as a wall on the left sounding in the left ear.
+- Synesthetic Translation: Converting visual data such as a live camera feed into stereo audio cues, mapping colors, shapes and motions to distinct sound signatures.
+- Dynamic Soundscapes for Location-Aware Audio: Adjusts audio in real time based on object distance and motion, e.g., an object approaching shifts the sound in tone, volume and complexity as it moves.
+
 
 ### Tech stack needed
 
-Run the version of your choice in any internet browser from year 2020 and up.
-The design is tested with a mobile phone anda its front camera
-Input: Mobile camera for real-time visual data capture.
-Audio Output: Stereo headphones for spatial audio effects.
+Development: Pure Vanilla JS with no external dependency
 
-### Hipothetic Use Case
+Software: Runs in a web browser from 2020 and up (ES6+)
+Hardware: The design is tested with low settings on a mobile phone from 2020. 
+Input: Video camera for real-time visual data capture.
+Audio Output: Stereo headphones or speakers for spatial audio effects.
 
-Launch the app on a mobile device to translate live camera input into a dynamic stereo soundscape. For a visually impaired user in a park, a mobile phone worn as a necklace captures surrounding visuals like a swing in motion, as the swing moves away, the app produces a softer, simpler sound; as it approaches, the sound grows louder and more complex. Similarly, a sidewalk might emit a steady, textured tone, a car in the distance a low hum, and a wall to the left a localized sound in the left ear. This enables users to perceive and interact with their surroundings through an innovative auditory interface, fostering greater independence and environmental awareness.
-
-### Development
+### BRIEF
 
 Entirely coded by xAI Grok 3 to Milestone 4 as per @MAMware prompts 
-Milestone 5 wich is a work in progress is getting help from OpenAI ChatGPT 4.1, 04-mini, Anthropic Claude 4 via @github copilot at codespaces and also Grok 4 wich is charge of the re-estructuring from v0.5.12
-
->We welcome contributors! 
+Milestone 5 got help from OpenAI ChatGPT 4.1, 04-mini, Anthropic Claude 4 via @github copilot at codespaces and also Grok 4 wich is charge of the re-estructuring from v0.5.12
+Currently at Milestone 9 (26.02.09) the project is developed in private and near public annoucement. 
 
 ## Table of Contents
 
@@ -53,10 +50,9 @@ The webapp runs from a Internet browsers and mobile hardware from 2021.
 
 ### Check [Usage](docs/USAGE.md) for further details
 
-### [Current Status](#status) 
+### [Current Status](#status) **OUTDATED**
 
-Working at **Milestone 5 (Current)**
-
+Working at **Milestone 5 (Current)** 
 - Haptic feedback via Vibration API **Developing in Progress 85%** 
 - Console log on device screen and mail to feature for debuggin. **Developing in Progress 85%**
 - New languajes agnostic architecture ready to provide multilingual support for the speech sinthetizer and UI  **Developing in Progress 95%**
@@ -68,17 +64,11 @@ Working at **Milestone 5 (Current)**
 - Current "future" version in development starts from v0.5 
 
 ### [Project structure](#project_structure)
+WARN: this is alpha stage and is only meant for testing purposing using the Sinewave synth, some synths like Strings cause VERY HIGH NOISE that could damage hearing and speakers. 
+
 - Current version [RUN](https://mamware.github.io/acoustsee/present/)
 - Previous versions [RUN](https://mamware.github.io/acoustsee/past/old_versions/preview)
 - Test version in development [RUN](https://mamware.github.io/acoustsee/future/web)
-
-### System requirements
-
-The software is designed to run in most modern mobile and desktop web browsers. Video processing runs locally in the browser; audio is produced in real time and routed to stereo output (headphones recommended).
-
-### Hypothetical Use Case
-
-Launch the app in a web browser to translate live camera input into a dynamic stereo soundscape. For example, a swinging object might map to a softer sound as it moves away and a louder, richer sound as it approaches. A distant car could render as a low hum. The goal is to enable perception of surroundings through an auditory interface, improving independence and situational awareness.
 
 ### [Current Status](#status) 
 
